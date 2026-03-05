@@ -1,0 +1,256 @@
+/**
+ * Guitar Strum Onset Detection Module
+ * strumming/detection.js
+ *
+ * Simple threshold-crossing onset detection:
+ *   1. Compute RMS each frame.
+ *   2. Detect onset when RMS crosses above ONSET_THRESHOLD (rising edge).
+ *   3. Enter hard lockout — skip all audio reading during lockout.
+ *   4. After lockout expires, skip 3 frames to establish a baseline before
+ *      allowing onset detection again.
+ *
+ * Direction classification (down vs up) using spectral features is available
+ * in classifyDirection() but currently disabled. The onset callback only
+ * reports timing. Direction detection is planned for future improvement once
+ * accuracy is more reliable.
+ */
+
+// Direction classification logic has been removed as it was deemed
+// too complex and fragile for the educational scope of this app.
+
+/* ---------------------------------------------------------- */
+/*  Constants (tunable)                                       */
+/* ---------------------------------------------------------- */
+
+const FFT_SIZE = 2048;
+
+const LATENCY_STORAGE_KEY = 'mtt_strumming_latency_ms';
+
+// One-time cleanup: clear any previously auto-detected latency values that
+// included human reaction time (~350ms) and grossly over-corrected timing.
+// The new approach uses a manual timing offset slider (default 0).
+try {
+  const old = localStorage.getItem(LATENCY_STORAGE_KEY);
+  if (old !== null && parseFloat(old) > 100) {
+    localStorage.removeItem(LATENCY_STORAGE_KEY);
+  }
+} catch { /* ignore */ }
+
+let latencyCompensationMs = loadLatencyCompensation();
+
+// RMS threshold for onset detection (rising-edge crossing).
+const ONSET_THRESHOLD = 0.06;
+
+// Hard lockout: after an onset, no new onsets fire for this many ms.
+// During lockout, audio is NOT read — everything is skipped.
+// Dynamically scaled to Math.min(DEFAULT_LOCKOUT_MS, eighthNoteMs * 0.7).
+const DEFAULT_LOCKOUT_MS = 400;
+
+// Number of frames to skip after lockout expires, to establish a baseline
+// RMS before allowing onset detection again.
+const SKIP_FRAMES_AFTER_LOCKOUT = 3;
+
+// Removed direction classification constants
+
+/* ---------------------------------------------------------- */
+/*  Detector State                                            */
+/* ---------------------------------------------------------- */
+
+let detector = null;
+
+/* ---------------------------------------------------------- */
+/*  Public API                                                */
+/* ---------------------------------------------------------- */
+
+/**
+ * Start onset detection using the microphone.
+ *
+ * @param {AudioContext} audioCtx - Existing AudioContext to use
+ * @param {function} onOnset - Callback called with (timestamp) on each detected strum.
+ * @param {number} [bpm=0] - Current tempo. Used to compute lockout duration.
+ *                            Pass 0 to use DEFAULT_LOCKOUT_MS.
+ * @returns {Promise<boolean>} true if mic access granted, false otherwise
+ */
+export async function startDetection(audioCtx, onOnset, bpm = 0) {
+  if (detector && detector.running) {
+    stopDetection();
+  }
+
+  try {
+    await fetch('/start_listen', { method: 'POST' });
+  } catch (err) {
+    console.warn("[detection] Backend listener failed to start:", err.message);
+    return false;
+  }
+
+  detector = {
+    audioCtx,
+    lastOnsetTime: 0,
+    prevRMS: 0,
+    skipFrames: 0,
+    lockoutMs: computeLockout(bpm),
+    running: true,
+    animFrameId: 0,
+    onOnset,
+  };
+
+  // Kick off detection loop
+  detectLoop();
+  return true;
+}
+
+/**
+ * Stop onset detection and release the microphone.
+ */
+export function stopDetection() {
+  if (!detector) return;
+
+  detector.running = false;
+
+  if (detector.animFrameId) {
+    clearTimeout(detector.animFrameId);
+  }
+
+  fetch('/stop_listen', { method: 'POST' }).catch(e => { });
+
+  detector = null;
+}
+
+/**
+ * Check if the detector is currently running.
+ *
+ * @returns {boolean}
+ */
+export function isDetecting() {
+  return detector !== null && detector.running;
+}
+
+/**
+ * Update the lockout duration for a new BPM.
+ * Call this whenever the tempo changes during gameplay.
+ *
+ * @param {number} bpm - Current tempo in beats per minute
+ */
+export function setDetectionBpm(bpm) {
+  if (detector) {
+    detector.lockoutMs = computeLockout(bpm);
+  }
+}
+
+/**
+ * Set audio latency compensation and persist to localStorage.
+ *
+ * @param {number} ms - Latency in milliseconds to subtract from onset timestamps
+ */
+export function setLatencyCompensation(ms) {
+  latencyCompensationMs = ms;
+  try {
+    localStorage.setItem(LATENCY_STORAGE_KEY, String(ms));
+  } catch { /* localStorage unavailable */ }
+}
+
+/**
+ * Get current latency compensation value in milliseconds.
+ *
+ * @returns {number}
+ */
+export function getLatencyCompensation() {
+  return latencyCompensationMs;
+}
+
+/* ---------------------------------------------------------- */
+/*  Internal Helpers                                          */
+/* ---------------------------------------------------------- */
+
+/**
+ * Load latency compensation from localStorage.
+ *
+ * @returns {number} Saved latency in ms, or 0 if not set
+ */
+function loadLatencyCompensation() {
+  try {
+    const val = localStorage.getItem(LATENCY_STORAGE_KEY);
+    if (val !== null) {
+      const parsed = parseFloat(val);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+  } catch { /* localStorage unavailable */ }
+  return 0;
+}
+
+/**
+ * Compute the lockout duration from a BPM value.
+ * Lockout = min(DEFAULT_LOCKOUT_MS, eighthNoteMs * 0.7).
+ *
+ * @param {number} bpm
+ * @returns {number} lockout in ms
+ */
+function computeLockout(bpm) {
+  if (!bpm || bpm <= 0) return DEFAULT_LOCKOUT_MS;
+  // A standard sixteenth note strum at `bpm` takes this long
+  const sixteenthNoteMs = (60000 / bpm) / 4;
+  // Lockout should be slightly shorter than the fastest expected strum (16th note)
+  return Math.min(DEFAULT_LOCKOUT_MS, sixteenthNoteMs * 0.8);
+}
+
+/* ---------------------------------------------------------- */
+/*  Internal Detection Loop                                   */
+/* ---------------------------------------------------------- */
+
+async function detectLoop() {
+  if (!detector || !detector.running) return;
+
+  const d = detector;
+  const now = performance.now();
+
+  // --- Hard lockout: skip everything (no audio read) ---
+  if (now - d.lastOnsetTime < d.lockoutMs) {
+    d.animFrameId = setTimeout(detectLoop, 20);
+    return;
+  }
+
+  // --- Lockout just expired: reset baseline and start skip countdown ---
+  if (d.lastOnsetTime > 0 && d.skipFrames === 0 && d.prevRMS === 0) {
+    d.skipFrames = SKIP_FRAMES_AFTER_LOCKOUT;
+  }
+
+  // --- Read audio from Python backend ---
+  let rms = 0;
+  try {
+    const res = await fetch('/poll_audio');
+    const data = await res.json();
+    if (data.active) {
+      rms = data.volume;
+    }
+  } catch (e) { }
+
+  // --- Post-lockout skip frames: establish baseline without triggering ---
+  if (d.skipFrames > 0) {
+    d.skipFrames--;
+    d.prevRMS = rms;
+    d.animFrameId = setTimeout(detectLoop, 20);
+    return;
+  }
+
+  // --- Onset detection: rising-edge threshold crossing ---
+  if (rms > ONSET_THRESHOLD && d.prevRMS <= ONSET_THRESHOLD) {
+    d.lastOnsetTime = now;
+    d.prevRMS = 0; // signal that lockout is active (baseline needs reset)
+    const onsetTime = now - latencyCompensationMs;
+
+    console.log(
+      `[detect] >>> ONSET rms=${rms.toFixed(4)} prev=${d.prevRMS.toFixed(4)} ` +
+      `lockoutMs=${d.lockoutMs.toFixed(0)}`
+    );
+
+    if (d.onOnset) {
+      d.onOnset(onsetTime);
+    }
+
+    d.animFrameId = setTimeout(detectLoop, 20);
+    return;
+  }
+
+  d.prevRMS = rms;
+  d.animFrameId = setTimeout(detectLoop, 20);
+}

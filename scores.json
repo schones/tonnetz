@@ -1,0 +1,43 @@
+{
+  "identify": [],
+  "clarity": [],
+  "chords": [
+    {
+      "player": "Anonymous",
+      "score": 50,
+      "rounds": 1,
+      "mode": "chords",
+      "date": "2026-03-04 17:35"
+    },
+    {
+      "player": "Anonymous",
+      "score": 0,
+      "rounds": 1,
+      "mode": "chords",
+      "date": "2026-03-04 17:37"
+    }
+  ],
+  "harmony": [
+    {
+      "player": "Anonymous",
+      "score": 0,
+      "rounds": 1,
+      "mode": "harmony",
+      "date": "2026-03-04 17:36"
+    },
+    {
+      "player": "Anonymous",
+      "score": 0,
+      "rounds": 1,
+      "mode": "harmony",
+      "date": "2026-03-04 17:36"
+    },
+    {
+      "player": "Anonymous",
+      "score": 0,
+      "rounds": 1,
+      "mode": "harmony",
+      "date": "2026-03-04 17:38"
+    }
+  ]
+}

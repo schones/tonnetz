@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relative Key Trainer</title>
+<style>
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 { font-size: 2rem; margin: 1.5rem 0 0.25rem; letter-spacing: 0.05em; }
+h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
+
+/* ------------------------------------------------------------------ */
+/*  Layout                                                             */
+/* ------------------------------------------------------------------ */
+.container { width: 100%; max-width: 640px; padding: 0 1rem; }
+
+.card {
+  background: #16213e;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mode toggle                                                        */
+/* ------------------------------------------------------------------ */
+.mode-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.65rem;
+  border: 2px solid #444;
+  border-radius: 8px;
+  background: transparent;
+  color: #ccc;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mode-btn:hover { border-color: #888; }
+.mode-btn.active {
+  border-color: #5c6bc0;
+  background: #283593;
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Prompt area                                                        */
+/* ------------------------------------------------------------------ */
+#prompt-area {
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 600;
+  min-height: 3.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffca28;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Big button                                                         */
+/* ------------------------------------------------------------------ */
+#start-btn {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto 1.5rem;
+  padding: 1rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #1565c0, #5e35b1);
+  box-shadow: 0 4px 20px rgba(94, 53, 177, 0.4);
+  transition: opacity 0.15s, transform 0.1s;
+}
+#start-btn:hover:not(:disabled) { transform: translateY(-2px); }
+#start-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Status text                                                        */
+/* ------------------------------------------------------------------ */
+#status-text {
+  text-align: center;
+  font-size: 1.05rem;
+  min-height: 1.6rem;
+  margin-bottom: 1rem;
+  color: #90caf9;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Pitch gauge                                                        */
+/* ------------------------------------------------------------------ */
+.gauge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.gauge {
+  position: relative;
+  width: 220px;
+  height: 120px;
+  overflow: hidden;
+}
+
+.gauge-bg {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  /* Red on outer edges, green in the center 20 % */
+  background: conic-gradient(
+    from 180deg,
+    #ff1744 0deg,            /* -50 c  far left  */
+    #ff1744 54deg,           /* -20 c            */
+    #ff9100 64deg,           /* -15 c            */
+    #00e676 72deg,           /*  -10 c           */
+    #00e676 108deg,          /*  +10 c           */
+    #ff9100 116deg,          /* +15 c            */
+    #ff1744 126deg,          /* +20 c            */
+    #ff1744 180deg           /* +50 c  far right */
+  );
+  mask: radial-gradient(circle at 50% 50%, transparent 60%, black 61%);
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent 60%, black 61%);
+}
+
+.gauge-needle {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  height: 90px;
+  background: #fff;
+  transform-origin: bottom center;
+  transform: rotate(0deg);
+  transition: transform 0.5s ease-out;
+  border-radius: 2px;
+  margin-left: -1.5px;
+  z-index: 2;
+}
+
+.gauge-dot {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: #fff;
+  border-radius: 50%;
+  z-index: 3;
+}
+
+.gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 220px;
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+#cents-readout {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  transition: color 0.3s;
+}
+#cents-readout.good { color: #00e676; }
+#cents-readout.ok   { color: #ff9100; }
+#cents-readout.bad  { color: #ff1744; }
+
+#pitch-note {
+  font-size: 1rem;
+  color: #aaa;
+  margin-top: 0.15rem;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Score card                                                         */
+/* ------------------------------------------------------------------ */
+#result-card { display: none; }
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+}
+
+.result-header .label { font-size: 0.9rem; color: #aaa; }
+.result-header .value { font-size: 1.6rem; font-weight: 700; }
+.result-header .value.hit  { color: #00e676; }
+.result-header .value.miss { color: #ff1744; }
+
+#breakdown {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: #ccc;
+  white-space: pre;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Ambiguity panel                                                    */
+/* ------------------------------------------------------------------ */
+#ambiguity-panel { display: none; }
+
+.amb-pair {
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.amb-pair .bar-track {
+  display: inline-block;
+  width: 120px;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  vertical-align: middle;
+  overflow: hidden;
+  margin-left: 6px;
+}
+.amb-pair .bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: #ff9100;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Leaderboard                                                        */
+/* ------------------------------------------------------------------ */
+.lb-section { margin-bottom: 0.5rem; }
+.lb-section h3 {
+  font-size: 0.85rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.4rem;
+}
+
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.lb-table th {
+  text-align: left;
+  color: #666;
+  font-weight: 400;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid #333;
+}
+.lb-table td {
+  padding: 0.3rem 0.5rem;
+}
+.lb-table tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+.lb-empty { color: #555; font-style: italic; padding: 0.4rem 0; }
+
+/* ------------------------------------------------------------------ */
+/*  Player name                                                        */
+/* ------------------------------------------------------------------ */
+#player-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 2px solid #333;
+  border-radius: 8px;
+  background: #0f1529;
+  color: #eee;
+  font-size: 1rem;
+  margin-bottom: 1.25rem;
+}
+#player-input:focus { outline: none; border-color: #5c6bc0; }
+#player-input::placeholder { color: #555; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>Relative Key Trainer</h1>
+  <h2>Golden Version</h2>
+
+  <!-- Player name -->
+  <input id="player-input" type="text" placeholder="Your name" maxlength="24" />
+
+  <!-- Mode toggle -->
+  <div class="mode-bar">
+    <button class="mode-btn active" data-mode="identify" onclick="setMode('identify')">Identify</button>
+    <button class="mode-btn"        data-mode="clarity"  onclick="setMode('clarity')">Clarity</button>
+  </div>
+
+  <!-- Prompt -->
+  <div class="card" id="prompt-card">
+    <div id="prompt-area">Choose a mode and press Start</div>
+  </div>
+
+  <!-- Start button -->
+  <button id="start-btn" onclick="startChallenge()">START CHALLENGE</button>
+
+  <!-- Status -->
+  <div id="status-text"></div>
+
+  <!-- Pitch gauge -->
+  <div class="card">
+    <div class="gauge-wrap">
+      <div class="gauge">
+        <div class="gauge-bg"></div>
+        <div class="gauge-needle" id="gauge-needle"></div>
+        <div class="gauge-dot"></div>
+      </div>
+      <div class="gauge-labels"><span>-50c</span><span>0</span><span>+50c</span></div>
+      <div id="cents-readout">--</div>
+      <div id="pitch-note">&nbsp;</div>
+    </div>
+  </div>
+
+  <!-- Result card -->
+  <div class="card" id="result-card">
+    <div class="result-header">
+      <span class="label" id="result-detected"></span>
+      <span class="value" id="result-score"></span>
+    </div>
+    <div id="breakdown"></div>
+  </div>
+
+  <!-- Ambiguity panel -->
+  <div class="card" id="ambiguity-panel">
+    <div style="font-size:0.85rem;color:#aaa;margin-bottom:0.5rem;">AMBIGUITY ANALYSIS</div>
+    <div id="ambiguity-body"></div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="card" id="leaderboard-card">
+    <div class="lb-section">
+      <h3>Identify — Top Scores</h3>
+      <div id="lb-identify"></div>
+    </div>
+    <div class="lb-section">
+      <h3>Clarity — Top Scores</h3>
+      <div id="lb-clarity"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+/* ================================================================== */
+/*  State                                                              */
+/* ================================================================== */
+let currentMode  = 'identify';
+let challenges   = {};
+let currentChallenge = null;   // { expected_root, expected_quality, promptText }
+let busy = false;
+
+const DISPLAY = { 'A#':'Bb', 'D#':'Eb', 'G#':'Ab', 'C#':'Db', 'F#':'F#' };
+function dn(root) { return DISPLAY[root] || root; }
+
+/* ================================================================== */
+/*  DOM refs                                                           */
+/* ================================================================== */
+const $prompt     = document.getElementById('prompt-area');
+const $btn        = document.getElementById('start-btn');
+const $status     = document.getElementById('status-text');
+const $needle     = document.getElementById('gauge-needle');
+const $cents      = document.getElementById('cents-readout');
+const $note       = document.getElementById('pitch-note');
+const $resultCard = document.getElementById('result-card');
+const $detected   = document.getElementById('result-detected');
+const $score      = document.getElementById('result-score');
+const $breakdown  = document.getElementById('breakdown');
+const $ambPanel   = document.getElementById('ambiguity-panel');
+const $ambBody    = document.getElementById('ambiguity-body');
+
+/* ================================================================== */
+/*  Mode toggle                                                        */
+/* ================================================================== */
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  pickChallenge();
+}
+
+/* ================================================================== */
+/*  Challenge picker (runs entirely in-browser)                        */
+/* ================================================================== */
+function pickChallenge() {
+  const keys = Object.keys(challenges);
+  if (!keys.length) { $prompt.textContent = 'Loading challenges...'; return; }
+
+  const ch = challenges[keys[Math.floor(Math.random() * keys.length)]];
+
+  if (currentMode === 'identify') {
+    // randomly pick direction
+    const askMinor = Math.random() < 0.5;
+    const given    = askMinor ? ch.major : ch.minor;
+    const expected = askMinor ? ch.minor : ch.major;
+    const dir      = askMinor ? 'Relative Minor' : 'Relative Major';
+
+    currentChallenge = {
+      expected_root:    expected.root,
+      expected_quality: expected.quality,
+      promptText: `Play the ${dir} of ${dn(given.root)} ${given.quality}`,
+    };
+  } else {
+    // Clarity — pick major or minor at random
+    const target = Math.random() < 0.5 ? ch.major : ch.minor;
+    currentChallenge = {
+      expected_root:    target.root,
+      expected_quality: target.quality,
+      promptText: `Play ${dn(target.root)} ${target.quality} as clearly as you can`,
+    };
+  }
+
+  $prompt.textContent = currentChallenge.promptText;
+}
+
+/* ================================================================== */
+/*  Start challenge → POST /play                                       */
+/* ================================================================== */
+async function startChallenge() {
+  if (busy || !currentChallenge) return;
+  busy = true;
+  $btn.disabled = true;
+  $btn.textContent = 'RECORDING...';
+  $status.textContent = 'Recording 3 seconds — play now!';
+  $resultCard.style.display = 'none';
+  $ambPanel.style.display   = 'none';
+  resetGauge();
+
+  const player = document.getElementById('player-input').value.trim() || 'Anonymous';
+
+  try {
+    const res = await fetch('/play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode:             currentMode,
+        expected_root:    currentChallenge.expected_root,
+        expected_quality: currentChallenge.expected_quality,
+        player:           player,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.error === 'no_sound') {
+      $status.textContent = 'No sound detected — check your mic!';
+    } else {
+      showResult(data);
+      $status.textContent = '';
+    }
+  } catch (err) {
+    $status.textContent = 'Server error — is app.py running?';
+  }
+
+  busy = false;
+  $btn.disabled = false;
+  $btn.textContent = 'NEXT CHALLENGE';
+  pickChallenge();
+  fetchLeaderboard();
+}
+
+/* ================================================================== */
+/*  Display result                                                     */
+/* ================================================================== */
+function showResult(data) {
+  // Score card
+  const chordLabel = `${data.chord.root} ${data.chord.quality}` +
+                     ` (${Math.round(data.chord.confidence * 100)}%)`;
+  $detected.textContent = `Detected: ${chordLabel}`;
+  $score.textContent     = `${data.score} pts`;
+  $score.className       = 'value ' + (data.hit ? 'hit' : 'miss');
+  $breakdown.textContent = data.breakdown.join('\n');
+  $resultCard.style.display = 'block';
+
+  // Gauge
+  if (data.pitch && data.pitch.cents_off !== null) {
+    updateGauge(data.pitch.cents_off, data.pitch.note);
+  }
+
+  // Ambiguity
+  const amb = data.ambiguity || {};
+  if (amb.ambiguous && amb.pairs && amb.pairs.length) {
+    $ambBody.innerHTML = '';
+    amb.pairs.forEach(p => {
+      const pct = Math.round(p.distance * 100);
+      $ambBody.innerHTML += `
+        <div class="amb-pair">
+          ${p.major.root} Maj <small>(${p.major.score.toFixed(3)})</small>
+          &nbsp;vs&nbsp;
+          ${p.minor.root} Min <small>(${p.minor.score.toFixed(3)})</small>
+          <span class="bar-track"><span class="bar-fill" style="width:${pct}%"></span></span>
+          <small>dist ${p.distance.toFixed(3)}</small>
+        </div>`;
+    });
+    $ambPanel.style.display = 'block';
+  } else {
+    $ambPanel.style.display = 'none';
+  }
+}
+
+/* ================================================================== */
+/*  Gauge helpers                                                      */
+/* ================================================================== */
+function resetGauge() {
+  $needle.style.transform = 'rotate(0deg)';
+  $cents.textContent = '--';
+  $cents.className   = '';
+  $note.innerHTML    = '&nbsp;';
+}
+
+function updateGauge(cents, noteName) {
+  // Map -50 … +50 cents to -90° … +90°
+  const clamped = Math.max(-50, Math.min(50, cents));
+  const deg     = (clamped / 50) * 90;
+  $needle.style.transform = `rotate(${deg}deg)`;
+
+  const absCents = Math.abs(cents);
+  $cents.textContent = (cents >= 0 ? '+' : '') + cents.toFixed(1) + ' cents';
+
+  if (absCents <= 10)      $cents.className = 'good';
+  else if (absCents <= 20) $cents.className = 'ok';
+  else                     $cents.className = 'bad';
+
+  $note.textContent = noteName || '';
+}
+
+/* ================================================================== */
+/*  Leaderboard                                                        */
+/* ================================================================== */
+function renderLB(entries, containerId) {
+  const el = document.getElementById(containerId);
+  if (!entries || !entries.length) {
+    el.innerHTML = '<div class="lb-empty">No scores yet</div>';
+    return;
+  }
+  let html = `<table class="lb-table">
+    <tr><th>#</th><th>Player</th><th>Score</th><th>Date</th></tr>`;
+  entries.forEach((e, i) => {
+    html += `<tr>
+      <td>${i + 1}</td>
+      <td>${esc(e.player || '???')}</td>
+      <td>${e.score}</td>
+      <td>${esc(e.date || '')}</td>
+    </tr>`;
+  });
+  html += '</table>';
+  el.innerHTML = html;
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function fetchLeaderboard() {
+  try {
+    const res  = await fetch('/status');
+    const data = await res.json();
+
+    challenges = data.challenges || {};
+    renderLB(data.scores.identify, 'lb-identify');
+    renderLB(data.scores.clarity,  'lb-clarity');
+
+    // Pick first challenge if none yet
+    if (!currentChallenge) pickChallenge();
+  } catch (_) { /* offline — ignore */ }
+}
+
+/* ================================================================== */
+/*  Init                                                               */
+/* ================================================================== */
+fetchLeaderboard();
+</script>
+</body>
+</html>

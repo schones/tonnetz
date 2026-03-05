@@ -17,6 +17,8 @@ import sounddevice as sd
 from flask import Flask, jsonify, render_template, request
 
 from chord_detector import ChordDetector
+from audio_processor import AudioProcessor
+import threading
 from game_engine import (
     CHALLENGES,
     RECORD_SECONDS,
@@ -36,7 +38,45 @@ app = Flask(__name__)
 
 detector = ChordDetector(sample_rate=SAMPLE_RATE)
 matcher = PitchMatcher(sample_rate=SAMPLE_RATE)
+audio_proc = AudioProcessor(sample_rate=SAMPLE_RATE)
 
+listen_stream = None
+latest_audio_state = {"pitch": None, "volume": 0, "active": False}
+
+def audio_callback(indata, frames, time, status):
+    buf = indata.flatten()
+    audio_proc.ingest_stream_buffer(buf)
+    
+    rms = float(np.sqrt(np.mean(buf ** 2)))
+    latest_audio_state["volume"] = rms
+    if rms > SILENCE_RMS:
+        pitch = matcher.detect_pitch(buf)
+        latest_audio_state["pitch"] = pitch
+    else:
+        latest_audio_state["pitch"] = None
+
+@app.route("/start_listen", methods=["POST"])
+def start_listen():
+    global listen_stream
+    if listen_stream is None:
+        listen_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, callback=audio_callback, blocksize=2048)
+        listen_stream.start()
+        latest_audio_state["active"] = True
+    return jsonify({"status": "started"})
+
+@app.route("/stop_listen", methods=["POST"])
+def stop_listen():
+    global listen_stream
+    if listen_stream is not None:
+        listen_stream.stop()
+        listen_stream.close()
+        listen_stream = None
+        latest_audio_state["active"] = False
+    return jsonify({"status": "stopped"})
+
+@app.route("/poll_audio", methods=["GET"])
+def poll_audio():
+    return jsonify(latest_audio_state)
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -45,6 +85,34 @@ matcher = PitchMatcher(sample_rate=SAMPLE_RATE)
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/relative")
+def relative():
+    return render_template("relative.html")
+
+@app.route("/chords")
+def chords():
+    return render_template("chords.html")
+
+@app.route("/harmony")
+def harmony():
+    return render_template("harmony.html")
+
+@app.route("/melody")
+def melody():
+    return render_template("melody.html")
+
+@app.route("/rhythm")
+def rhythm():
+    return render_template("rhythm.html")
+
+@app.route("/strumming")
+def strumming():
+    return render_template("strumming.html")
+
+@app.route("/skratch")
+def skratch():
+    return render_template("skratch-studio.html")
 
 
 @app.route("/play", methods=["POST"])
@@ -83,9 +151,26 @@ def play():
     chord = detector.identify_triad(buf)
     pitch = matcher.detect_pitch(buf)
     ambiguity = chord.get("ambiguity", {})
-
-    hit = (chord["root"] == expected_root and
-           chord["quality"] == expected_quality)
+    
+    # --- Mode Support ---
+    hit = False
+    
+    if mode == "chords":
+        hit = bool(chord["quality"].lower() == expected_quality.lower())
+    elif mode == "harmony":
+        # Check if the detected pitch is close to the expected harmony note
+        expected_pitch_freq = data.get("expected_pitch_freq")
+        if pitch and pitch.get("note") and expected_pitch_freq:
+            cents_from_expected = 1200 * np.log2(pitch["frequency"] / expected_pitch_freq)
+            # Within 50 cents (half a semitone) is considered a hit
+            hit = bool(abs(cents_from_expected) < 50)
+            # override cents_off to be relative to the EXPECTED pitch for scoring UI
+            pitch["cents_off"] = float(cents_from_expected)
+            pitch["expected_freq"] = float(expected_pitch_freq)
+    else:
+        # relative identify/clarity modes
+        hit = bool((chord["root"] == expected_root and
+               chord["quality"] == expected_quality))
 
     # --- Score ---
     points, breakdown = _compute_score(hit, pitch, ambiguity)

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harmony Training (Tonnetz Edition)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+    <style>
+        /* Combine tonnetz dark theme with harmony layout */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+            padding: 0 1rem;
+        }
+
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin: 1.5rem 0 0.25rem;
+            letter-spacing: 0.05em;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 400;
+            color: #aaa;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .nav-links a {
+            color: #90caf9;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        #prompt-area {
+            font-size: 1.35rem;
+            font-weight: 600;
+            min-height: 3.2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ffca28;
+        }
+
+        #start-btn {
+            display: block;
+            width: 100%;
+            max-width: 340px;
+            margin: 0 auto 1.5rem;
+            padding: 1rem;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #fff;
+            background: linear-gradient(135deg, #1565c0, #5e35b1);
+            box-shadow: 0 4px 20px rgba(94, 53, 177, 0.4);
+            transition: opacity 0.15s, transform 0.1s;
+        }
+
+        #start-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        #start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #status-text {
+            text-align: center;
+            font-size: 1.05rem;
+            min-height: 1.6rem;
+            margin-bottom: 1rem;
+            color: #90caf9;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-header .label {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .result-header .value {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .result-header .value.hit {
+            color: #00e676;
+        }
+
+        .result-header .value.miss {
+            color: #ff1744;
+        }
+
+        #breakdown {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: #ccc;
+            white-space: pre;
+            text-align: left;
+        }
+
+        /* Pitch gauge */
+        .gauge-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .gauge {
+            position: relative;
+            width: 220px;
+            height: 120px;
+            overflow: hidden;
+        }
+
+        .gauge-bg {
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: conic-gradient(from 180deg, #ff1744 0deg, #ff1744 54deg, #ff9100 64deg, #00e676 72deg, #00e676 108deg, #ff9100 116deg, #ff1744 126deg, #ff1744 180deg);
+            mask: radial-gradient(circle at 50% 50%, transparent 60%, black 61%);
+            -webkit-mask: radial-gradient(circle at 50% 50%, transparent 60%, black 61%);
+        }
+
+        .gauge-needle {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 3px;
+            height: 90px;
+            background: #fff;
+            transform-origin: bottom center;
+            transform: rotate(0deg);
+            transition: transform 0.5s ease-out;
+            border-radius: 2px;
+            margin-left: -1.5px;
+            z-index: 2;
+        }
+
+        .gauge-dot {
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            margin-left: -6px;
+            background: #fff;
+            border-radius: 50%;
+            z-index: 3;
+        }
+
+        .gauge-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 220px;
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        #cents-readout {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+            transition: color 0.3s;
+        }
+
+        #cents-readout.good {
+            color: #00e676;
+        }
+
+        #cents-readout.ok {
+            color: #ff9100;
+        }
+
+        #cents-readout.bad {
+            color: #ff1744;
+        }
+
+        #pitch-note {
+            font-size: 1rem;
+            color: #aaa;
+            margin-top: 0.15rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="nav-links mt-md">
+        <a href="/">Hub</a> | <a href="/relative">Relative</a> | <a href="/chords">Chords</a> | <span>Harmony</span>
+    </div>
+
+    <div class="container">
+        <h1>Harmony Training</h1>
+        <h2>Sing the requested interval</h2>
+
+        <input id="player-input" type="text" placeholder="Your name" maxlength="24"
+            style="width:100%; padding: 0.55rem 0.75rem; border: 2px solid #333; border-radius: 8px; background: #0f1529; color: #eee; font-size: 1rem; margin-bottom: 1.25rem;" />
+
+        <div class="card">
+            <div id="prompt-area">Press Start to Begin</div>
+        </div>
+
+        <button id="start-btn" onclick="startChallenge()">START CHALLENGE</button>
+        <div id="status-text"></div>
+
+        <div class="card" id="gauge-card" style="display:none;">
+            <div class="gauge-wrap">
+                <div class="gauge">
+                    <div class="gauge-bg"></div>
+                    <div class="gauge-needle" id="gauge-needle"></div>
+                    <div class="gauge-dot"></div>
+                </div>
+                <div class="gauge-labels"><span>-50c</span><span>0</span><span>+50c</span></div>
+                <div id="cents-readout">--</div>
+                <div id="pitch-note">&nbsp;</div>
+            </div>
+        </div>
+
+        <div class="card" id="result-card" style="display:none;">
+            <div class="result-header">
+                <span class="label" id="result-detected"></span>
+                <span class="value" id="result-score"></span>
+            </div>
+            <div id="breakdown"></div>
+        </div>
+    </div>
+
+    <script>
+        const INTERVALS = [
+            { name: 'Major 3rd', semitones: 4 },
+            { name: 'Perfect 5th', semitones: 7 },
+            { name: 'Minor 3rd', semitones: 3 },
+            { name: 'Octave', semitones: 12 }
+        ];
+        // simplified roots for basic training
+        const ROOTS = [{ name: 'C3', freq: 130.81 }, { name: 'E3', freq: 164.81 }, { name: 'G3', freq: 196.00 }, { name: 'C4', freq: 261.63 }];
+
+        let currentChallenge = null;
+        let busy = false;
+
+        const $prompt = document.getElementById('prompt-area');
+        const $btn = document.getElementById('start-btn');
+        const $status = document.getElementById('status-text');
+        const $resultCard = document.getElementById('result-card');
+        const $detected = document.getElementById('result-detected');
+        const $score = document.getElementById('result-score');
+        const $breakdown = document.getElementById('breakdown');
+        const $gaugeCard = document.getElementById('gauge-card');
+        const $needle = document.getElementById('gauge-needle');
+        const $cents = document.getElementById('cents-readout');
+        const $note = document.getElementById('pitch-note');
+
+        function pickChallenge() {
+            const root = ROOTS[Math.floor(Math.random() * ROOTS.length)];
+            const interval = INTERVALS[Math.floor(Math.random() * INTERVALS.length)];
+            const expectedFreq = root.freq * Math.pow(2, interval.semitones / 12);
+
+            currentChallenge = {
+                root_name: root.name,
+                interval_name: interval.name,
+                expected_freq: expectedFreq
+            };
+            $prompt.innerHTML = `Sing a <strong>${interval.name}</strong> above <strong>${root.name}</strong>`;
+        }
+
+        function updateGauge(cents, noteName) {
+            const clamped = Math.max(-50, Math.min(50, cents));
+            const deg = (clamped / 50) * 90;
+            $needle.style.transform = `rotate(${deg}deg)`;
+            const absCents = Math.abs(cents);
+            $cents.textContent = (cents >= 0 ? '+' : '') + cents.toFixed(1) + ' cents';
+            if (absCents <= 10) $cents.className = 'good';
+            else if (absCents <= 20) $cents.className = 'ok';
+            else $cents.className = 'bad';
+            $note.textContent = noteName || '';
+        }
+
+        async function startChallenge() {
+            if (busy || !currentChallenge) return;
+            busy = true;
+            $btn.disabled = true;
+            $btn.textContent = 'RECORDING...';
+            $status.textContent = 'Recording 3 seconds — sing now!';
+            $resultCard.style.display = 'none';
+            $gaugeCard.style.display = 'none';
+
+            const player = document.getElementById('player-input').value.trim() || 'Anonymous';
+
+            try {
+                const res = await fetch('/play', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'harmony',
+                        expected_pitch_freq: currentChallenge.expected_freq,
+                        player: player,
+                    }),
+                });
+
+                const data = await res.json();
+                if (data.error === 'no_sound') {
+                    $status.textContent = 'No sound detected — check your mic!';
+                } else {
+                    showResult(data);
+                    $status.textContent = '';
+                }
+            } catch (err) {
+                $status.textContent = 'Server error — is app.py running?';
+            }
+
+            busy = false;
+            $btn.disabled = false;
+            $btn.textContent = 'NEXT CHALLENGE';
+            pickChallenge();
+        }
+
+        function showResult(data) {
+            if (data.pitch && data.pitch.note) {
+                $detected.textContent = `Detected Note: ${data.pitch.note}`;
+                updateGauge(data.pitch.cents_off, data.pitch.note);
+                $gaugeCard.style.display = 'block';
+            } else {
+                $detected.textContent = `Could not detect a clear pitch.`;
+                $gaugeCard.style.display = 'none';
+            }
+
+            $score.textContent = `${data.score} pts`;
+            $score.className = 'value ' + (data.hit ? 'hit' : 'miss');
+            $breakdown.textContent = data.breakdown.join('\n');
+            $resultCard.style.display = 'block';
+        }
+
+        pickChallenge();
+    </script>
+</body>
+
+</html>

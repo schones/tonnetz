@@ -1,0 +1,46 @@
+{
+    "metadata": {
+        "title": "My First Loop",
+        "bpm": 120,
+        "key": "G Major",
+        "signature": "4/4"
+    },
+    "blocks": [
+        {
+            "id": "block_1",
+            "type": "verse",
+            "bars": 1,
+            "tracks": {
+                "melody": [
+                    {
+                        "note": "G4",
+                        "time": "0:0:0",
+                        "duration": "4n"
+                    },
+                    {
+                        "note": "B4",
+                        "time": "0:1:0",
+                        "duration": "4n"
+                    },
+                    {
+                        "note": "D5",
+                        "time": "0:2:0",
+                        "duration": "4n"
+                    },
+                    {
+                        "note": "G5",
+                        "time": "0:3:0",
+                        "duration": "4n"
+                    }
+                ],
+                "bass": [
+                    {
+                        "note": "G3",
+                        "time": "0:0:0",
+                        "duration": "1n"
+                    }
+                ]
+            }
+        }
+    ]
+}
