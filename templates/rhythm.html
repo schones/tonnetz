@@ -11,12 +11,12 @@
 
 <body>
   <header class="mtt-header">
-    <a href="../index.html" class="mtt-header__logo" style="text-decoration:none">
+    <a href="/" class="mtt-header__logo" style="text-decoration:none">
       <span aria-hidden="true">&#9835;</span> Music Theory Games
     </a>
     <nav class="mtt-header__nav">
-      <a href="../index.html" class="mtt-header__link">Home</a>
-      <a href="../harmony/index.html" class="mtt-header__link">Intervals</a>
+      <a href="/" class="mtt-header__link">Home</a>
+      <a href="/harmony" class="mtt-header__link">Intervals</a>
       <a href="#" class="mtt-header__link mtt-header__link--active">Rhythm</a>
     </nav>
   </header>
@@ -195,7 +195,7 @@
           <button id="btn-play-again" class="btn btn--primary btn--large">
             Play Again
           </button>
-          <a href="../index.html" class="btn btn--secondary btn--large" style="margin-left: var(--space-md);">
+          <a href="/" class="btn btn--secondary btn--large" style="margin-left: var(--space-md);">
             Home
           </a>
         </div>
@@ -203,7 +203,7 @@
     </section>
   </main>
 
-  <script type="module" src="/static/rhythm/rhythm.js"></script>
+  <script type="module" src="{{ url_for('static', filename='rhythm/rhythm.js') }}"></script>
 </body>
 
 </html>
