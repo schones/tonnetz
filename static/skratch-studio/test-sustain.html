@@ -1,31 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sustain Pedal Test — All Instruments</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; background: #1e1e2e; color: #cdd6f4; padding: 2rem; max-width: 800px; margin: 0 auto; }
-    h1 { color: #a29bfe; }
-    h2 { color: #89b4fa; margin-top: 2rem; }
-    .instrument-section { background: #181825; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
-    button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 4px; }
-    .btn-note-on { background: #a6e3a1; color: #1e1e2e; }
-    .btn-note-off { background: #f38ba8; color: #1e1e2e; }
-    .btn-sustain-on { background: #f9e2af; color: #1e1e2e; }
-    .btn-sustain-off { background: #fab387; color: #1e1e2e; }
-    .btn-release-all { background: #b4befe; color: #1e1e2e; }
-    .status { margin-top: 0.5rem; padding: 0.5rem; background: #11111b; border-radius: 4px; font-family: monospace; font-size: 13px; min-height: 20px; }
-    .log { margin-top: 1rem; padding: 1rem; background: #11111b; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
-    .log-entry { margin: 2px 0; }
-    .log-entry.pass { color: #a6e3a1; }
-    .log-entry.fail { color: #f38ba8; }
-    .log-entry.info { color: #89b4fa; }
-    .instructions { background: #313244; border-radius: 8px; padding: 1rem; margin: 1rem 0; line-height: 1.6; }
-    .instructions ol { padding-left: 1.5rem; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #a29bfe;
+    }
+
+    h2 {
+      color: #89b4fa;
+      margin-top: 2rem;
+    }
+
+    .instrument-section {
+      background: #181825;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 4px;
+    }
+
+    .btn-note-on {
+      background: #a6e3a1;
+      color: #1e1e2e;
+    }
+
+    .btn-note-off {
+      background: #f38ba8;
+      color: #1e1e2e;
+    }
+
+    .btn-sustain-on {
+      background: #f9e2af;
+      color: #1e1e2e;
+    }
+
+    .btn-sustain-off {
+      background: #fab387;
+      color: #1e1e2e;
+    }
+
+    .btn-release-all {
+      background: #b4befe;
+      color: #1e1e2e;
+    }
+
+    .status {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: #11111b;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      min-height: 20px;
+    }
+
+    .log {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #11111b;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      margin: 2px 0;
+    }
+
+    .log-entry.pass {
+      color: #a6e3a1;
+    }
+
+    .log-entry.fail {
+      color: #f38ba8;
+    }
+
+    .log-entry.info {
+      color: #89b4fa;
+    }
+
+    .instructions {
+      background: #313244;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      line-height: 1.6;
+    }
+
+    .instructions ol {
+      padding-left: 1.5rem;
+    }
   </style>
 </head>
+
 <body>
   <h1>Sustain Pedal Test</h1>
 
@@ -48,6 +139,7 @@
 
   <script type="module">
     import { AudioBridge } from './audio-bridge.js';
+    import { Piano } from '../shared/ui/piano.js';
 
     const INSTRUMENTS = ['piano', 'organ', 'synth'];
     const logEl = document.getElementById('log');
@@ -154,47 +246,66 @@
       btn.disabled = true;
       btn.textContent = 'Testing...';
 
-      await bridge.ensureTone();
-
-      for (const type of INSTRUMENTS) {
-        log(`--- Automated test: ${type} ---`, 'info');
-
-        bridge.setSoundType(type);
-        log(`[${type}] Set instrument type`);
-
-        // Step 1: Sustain ON
-        bridge.sustainOn();
-        log(`[${type}] Sustain ON`);
-
-        // Step 2: Note On
-        await bridge.noteOn('C4');
-        log(`[${type}] Note On: C4 — playing...`);
-        await delay(1000);
-
-        // Step 3: Note Off (should sustain)
-        bridge.noteOff('C4');
-        const sustained = bridge._sustainedNotes.has('C4');
-        if (sustained) {
-          log(`[${type}] Note Off: C4 — note correctly moved to sustained set`, 'pass');
-        } else {
-          log(`[${type}] Note Off: C4 — FAIL: note NOT in sustained set!`, 'fail');
-        }
-
-        // Wait 2s — note should still be audible
-        log(`[${type}] Waiting 2s — note should still be audible...`);
-        await delay(2000);
-
-        // Step 4: Sustain OFF
-        bridge.sustainOff();
-        log(`[${type}] Sustain OFF — note should now fade out`);
-        await delay(1500);
-
-        bridge.releaseAll();
-        log(`[${type}] Cleanup complete`);
-        await delay(500);
+      const resultsDiv = document.getElementById('testResults');
+      if (!resultsDiv) {
+        const div = document.createElement('div');
+        div.id = 'testResults';
+        document.body.appendChild(div);
       }
+      const results = document.getElementById('testResults');
+      results.innerHTML = 'Running...<br>';
 
-      log('=== All automated tests complete ===', 'pass');
+      const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+      // Need a piano instance to test against
+      const pianoContainer = document.createElement('div');
+      pianoContainer.id = 'pianoContainer';
+      document.body.appendChild(pianoContainer);
+
+      const dummyEl = document.createElement('div');
+      dummyEl.id = 'sustainIndicator';
+      document.body.appendChild(dummyEl);
+
+      const piano = new Piano(pianoContainer, {
+        onNoteOn: () => { },
+        onNoteOff: () => { },
+        onSustainChange: (on) => {
+          dummyEl.textContent = on ? 'Sustain: ON' : 'Sustain: OFF';
+        }
+      });
+
+      await wait(100);
+
+      // 1. Shift Down
+      const shiftDown = new KeyboardEvent('keydown', { key: 'Shift', code: 'ShiftLeft', shiftKey: true, bubbles: true, cancelable: true });
+      shiftDown.getModifierState = function (key) { return key === 'Shift'; };
+      document.dispatchEvent(shiftDown);
+      await wait(100);
+      results.innerHTML += `Shift Down: ${dummyEl.textContent}<br>`;
+
+      // 2. Shift Up
+      const shiftUp = new KeyboardEvent('keyup', { key: 'Shift', code: 'ShiftLeft', shiftKey: false, bubbles: true, cancelable: true });
+      shiftUp.getModifierState = function (key) { return false; };
+      document.dispatchEvent(shiftUp);
+      await wait(100);
+      results.innerHTML += `Shift Up: ${dummyEl.textContent}<br>`;
+
+      // 3. Caps Lock Down (ON)
+      const capsDown = new KeyboardEvent('keydown', { key: 'CapsLock', code: 'CapsLock', bubbles: true, cancelable: true });
+      capsDown.getModifierState = function (key) { return key === 'CapsLock'; };
+      document.dispatchEvent(capsDown);
+      await wait(100);
+      results.innerHTML += `Caps on: ${dummyEl.textContent}<br>`;
+
+      // 4. Caps Lock Down (OFF)
+      const capsOff = new KeyboardEvent('keydown', { key: 'CapsLock', code: 'CapsLock', bubbles: true, cancelable: true });
+      capsOff.getModifierState = function (key) { return false; };
+      document.dispatchEvent(capsOff);
+      await wait(100);
+      results.innerHTML += `Caps off: ${dummyEl.textContent}<br>`;
+
+      results.innerHTML += '<div id="testComplete">Done</div>';
+
       btn.disabled = false;
       btn.textContent = 'Run Automated Test';
     });
@@ -204,4 +315,5 @@
     }
   </script>
 </body>
+
 </html>

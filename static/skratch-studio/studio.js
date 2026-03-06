@@ -8,7 +8,6 @@ import { MusicEngine } from './music-engine.js';
 import { Sandbox } from './sandbox.js';
 import { AudioBridge } from './audio-bridge.js';
 import { Piano } from '../shared/ui/piano.js';
-import songSchema from '../shared/songSchema.json' with { type: 'json' };
 
 const STORAGE_KEY = 'skratch-studio-workspace';
 
@@ -608,36 +607,17 @@ export function init() {
     onSustainChange: (on) => {
       if (on) {
         audioBridge.sustainOn();
+        if (musicEngine) musicEngine.setSustain(true);
         sustainIndicator.textContent = 'Sustain: ON';
         sustainIndicator.classList.add('active');
       } else {
         audioBridge.sustainOff();
+        if (musicEngine) musicEngine.setSustain(false);
         sustainIndicator.textContent = 'Sustain: OFF';
         sustainIndicator.classList.remove('active');
       }
     },
   });
-  // Add the listener for the Play button here
-  const btnPlay = document.getElementById('btnPlay');
-  const btnStop = document.getElementById('btnStop');
-
-  if (btnPlay) {
-    btnPlay.addEventListener('click', () => {
-      // Toggle button states to prevent multiple clicks
-      btnPlay.disabled = true;
-      if (btnStop) btnStop.disabled = false;
-
-      // Start the melody sequence from the schema
-      playLoop(songSchema, audioBridge, piano);
-
-      // Reset buttons after the 1-bar loop finishes
-      setTimeout(() => {
-        btnPlay.disabled = false;
-        if (btnStop) btnStop.disabled = true;
-      }, 2500);
-    });
-  }
-
   // Sound selector
   const soundSelect = document.getElementById('soundSelect');
   soundSelect.addEventListener('change', () => {
@@ -1104,92 +1084,3 @@ function drawCanvasGrid(canvas) {
   }
 }
 
-// Play Logic function for the loop architect
-function playLoop() {
-  const verse = songSchema.blocks.find(b => b.type === 'verse');
-
-  verse.tracks.melody.forEach(event => {
-    // This uses your audioBridge to trigger the piano sound
-    setTimeout(() => {
-      audioBridge.noteOn(event.note);
-      piano.highlightNote(event.note); // Visual feedback on your new keyboard!
-
-      setTimeout(() => {
-        audioBridge.noteOff(event.note);
-        piano.highlightNote(null);
-      }, 500); // Hold note for 500ms
-    }, parseTimeToMs(event.time));
-  });
-}
-
-/**
- * Converts Tone.js time format (Bar:Beat:Sixteenth) to milliseconds
- * based on the current BPM in the schema.
- */
-function parseTimeToMs(timeStr, bpm) {
-  const [bars, beats, sixteenths] = timeStr.split(':').map(Number);
-  const beatDurationMs = (60 / bpm) * 1000;
-  const sixteenthDurationMs = beatDurationMs / 4;
-
-  return (bars * 4 * beatDurationMs) +
-    (beats * beatDurationMs) +
-    (sixteenths * sixteenthDurationMs);
-}
-
-function playLoop(schema) {
-  const bpm = schema.metadata.bpm;
-  const verse = schema.blocks.find(b => b.type === 'verse');
-
-  verse.tracks.melody.forEach(event => {
-    const delay = parseTimeToMs(event.time, bpm);
-
-    setTimeout(() => {
-      // Triggers the actual sound
-      audioBridge.noteOn(event.note);
-
-      // Provides the visual highlight on your piano component
-      piano.highlightNote(event.note);
-
-      // Turns the note and highlight off after the duration
-      setTimeout(() => {
-        audioBridge.noteOff(event.note);
-        piano.highlightNote(null);
-      }, 400);
-    }, delay);
-  });
-}
-
-/**
- * Converts Tone.js time format (Bar:Beat:Sixteenth) to milliseconds.
- */
-function parseTimeToMs(timeStr, bpm) {
-  const [bars, beats, sixteenths] = timeStr.split(':').map(Number);
-  const beatDurationMs = (60 / bpm) * 1000;
-  const sixteenthDurationMs = beatDurationMs / 4;
-
-  return (bars * 4 * beatDurationMs) +
-    (beats * beatDurationMs) +
-    (sixteenths * sixteenthDurationMs);
-}
-
-/**
- * Iterates through the schema and triggers audio + visual piano highlights.
- */
-function playLoop(schema, audioBridge, piano) {
-  const bpm = schema.metadata.bpm;
-  const verse = schema.blocks.find(b => b.type === 'verse');
-
-  verse.tracks.melody.forEach(event => {
-    const delay = parseTimeToMs(event.time, bpm);
-
-    setTimeout(() => {
-      audioBridge.noteOn(event.note);
-      piano.highlightNote(event.note); // Visual feedback per BLOCKLY_STANDARDS
-
-      setTimeout(() => {
-        audioBridge.noteOff(event.note);
-        piano.highlightNote(null);
-      }, 400);
-    }, delay);
-  });
-}

@@ -11,6 +11,11 @@ export class MusicEngine {
     this._loopEndBar = 1; // tracks the end of the last scheduled measure
     this._loopCallback = null;
     this._rescheduleCallback = null;
+
+    // Sustain intercept for transport-scheduled notes
+    this._sustain = false;
+    this._sustainedTransportNotes = [];
+
     this._boundLoopHandler = (time) => {
       // Synchronous reschedule fires first — clears & re-schedules events
       // before the transport plays the next loop iteration
@@ -165,6 +170,28 @@ export class MusicEngine {
     this._scheduledIds = [];
     this._loopEndBar = 1;
     this._stopBeatLoop();
+    this.releaseSustainedNotes();
+  }
+
+  // --- Sustain Control ---
+  setSustain(isSustained) {
+    this._sustain = isSustained;
+    if (!isSustained) {
+      this.releaseSustainedNotes();
+    }
+  }
+
+  releaseSustainedNotes() {
+    for (const record of this._sustainedTransportNotes) {
+      try {
+        if (record.notes) {
+          record.instrument.triggerRelease(record.notes, Tone.now());
+        } else {
+          record.instrument.triggerRelease(Tone.now());
+        }
+      } catch (e) { /* ignore */ }
+    }
+    this._sustainedTransportNotes = [];
   }
 
   // --- Scheduling API (called by compiled music code) ---
@@ -201,26 +228,62 @@ export class MusicEngine {
 
   scheduleBass(note, duration, time) {
     this._trackTime(time);
-    const id = Tone.Transport.schedule((t) => {
-      this._instruments.bass.triggerAttackRelease(note, duration, t);
+
+    const attackId = Tone.Transport.schedule((t) => {
+      this._instruments.bass.triggerAttack(note, t);
     }, time);
-    this._scheduledIds.push(id);
+    this._scheduledIds.push(attackId);
+
+    const durSec = Tone.Time(duration).toSeconds();
+    const releaseTime = Tone.Time(time).toSeconds() + durSec;
+    const releaseId = Tone.Transport.schedule((t) => {
+      if (this._sustain) {
+        this._sustainedTransportNotes.push({ instrument: this._instruments.bass, notes: note });
+      } else {
+        this._instruments.bass.triggerRelease(t);
+      }
+    }, releaseTime);
+    this._scheduledIds.push(releaseId);
   }
 
   scheduleMelody(note, duration, time) {
     this._trackTime(time);
-    const id = Tone.Transport.schedule((t) => {
-      this._instruments.melody.triggerAttackRelease(note, duration, t);
+
+    const attackId = Tone.Transport.schedule((t) => {
+      this._instruments.melody.triggerAttack(note, t);
     }, time);
-    this._scheduledIds.push(id);
+    this._scheduledIds.push(attackId);
+
+    const durSec = Tone.Time(duration).toSeconds();
+    const releaseTime = Tone.Time(time).toSeconds() + durSec;
+    const releaseId = Tone.Transport.schedule((t) => {
+      if (this._sustain) {
+        this._sustainedTransportNotes.push({ instrument: this._instruments.melody, notes: note });
+      } else {
+        this._instruments.melody.triggerRelease(t);
+      }
+    }, releaseTime);
+    this._scheduledIds.push(releaseId);
   }
 
   scheduleChord(notes, duration, time) {
     this._trackTime(time);
-    const id = Tone.Transport.schedule((t) => {
-      this._instruments.chords.triggerAttackRelease(notes, duration, t);
+
+    const attackId = Tone.Transport.schedule((t) => {
+      this._instruments.chords.triggerAttack(notes, t);
     }, time);
-    this._scheduledIds.push(id);
+    this._scheduledIds.push(attackId);
+
+    const durSec = Tone.Time(duration).toSeconds();
+    const releaseTime = Tone.Time(time).toSeconds() + durSec;
+    const releaseId = Tone.Transport.schedule((t) => {
+      if (this._sustain) {
+        this._sustainedTransportNotes.push({ instrument: this._instruments.chords, notes: notes });
+      } else {
+        this._instruments.chords.triggerRelease(notes, t);
+      }
+    }, releaseTime);
+    this._scheduledIds.push(releaseId);
   }
 
   // --- Loop scheduling (repeating patterns) ---

@@ -2,31 +2,31 @@
 // Range: G3–G5 (two full octaves), with computer keyboard mapping
 
 const KEYS = [
-  { note: 'G3',  white: true },
+  { note: 'G3', white: true },
   { note: 'G#3', white: false },
-  { note: 'A3',  white: true },
+  { note: 'A3', white: true },
   { note: 'A#3', white: false },
-  { note: 'B3',  white: true },
-  { note: 'C4',  white: true },
+  { note: 'B3', white: true },
+  { note: 'C4', white: true },
   { note: 'C#4', white: false },
-  { note: 'D4',  white: true },
+  { note: 'D4', white: true },
   { note: 'D#4', white: false },
-  { note: 'E4',  white: true },
-  { note: 'F4',  white: true },
+  { note: 'E4', white: true },
+  { note: 'F4', white: true },
   { note: 'F#4', white: false },
-  { note: 'G4',  white: true },
+  { note: 'G4', white: true },
   { note: 'G#4', white: false },
-  { note: 'A4',  white: true },
+  { note: 'A4', white: true },
   { note: 'A#4', white: false },
-  { note: 'B4',  white: true },
-  { note: 'C5',  white: true },
+  { note: 'B4', white: true },
+  { note: 'C5', white: true },
   { note: 'C#5', white: false },
-  { note: 'D5',  white: true },
+  { note: 'D5', white: true },
   { note: 'D#5', white: false },
-  { note: 'E5',  white: true },
-  { note: 'F5',  white: true },
+  { note: 'E5', white: true },
+  { note: 'F5', white: true },
   { note: 'F#5', white: false },
-  { note: 'G5',  white: true },
+  { note: 'G5', white: true },
 ];
 
 // Computer keyboard → note mapping
@@ -55,14 +55,14 @@ for (const [key, note] of Object.entries(KEY_MAP)) {
 export class Piano {
   constructor(container, { onNoteOn, onNoteOff, onSustainChange }) {
     this.container = container;
-    this.onNoteOn = onNoteOn || (() => {});
-    this.onNoteOff = onNoteOff || (() => {});
-    this.onSustainChange = onSustainChange || (() => {});
+    this.onNoteOn = onNoteOn || (() => { });
+    this.onNoteOff = onNoteOff || (() => { });
+    this.onSustainChange = onSustainChange || (() => { });
     this._keyEls = {};
     this._highlightedKey = null;
     this._pressedComputerKeys = new Set();
     this._mouseNote = null;
-    this._capsLockSustain = false;
+    this._isSustained = false;
 
     this._injectStyles();
     this._build();
@@ -236,15 +236,25 @@ export class Piano {
       // Don't capture when typing in inputs or in Blockly
       const tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
-          e.target.isContentEditable || e.target.closest('#blocklyDiv')) {
+        e.target.isContentEditable || e.target.closest('#blocklyDiv')) {
         return;
       }
 
-      // Sustain pedal — Caps Lock toggle
-      if (e.code === 'CapsLock') {
+      // Sustain pedal — Shift (momentary) or Caps Lock (toggle)
+      const isShift = e.getModifierState('Shift');
+      const isCaps = e.getModifierState('CapsLock');
+      const shouldSustain = isShift || isCaps;
+
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'CapsLock') {
         e.preventDefault();
-        this._capsLockSustain = !this._capsLockSustain;
-        this.onSustainChange(this._capsLockSustain);
+      }
+
+      if (this._isSustained !== shouldSustain) {
+        this._isSustained = shouldSustain;
+        this.onSustainChange(this._isSustained);
+      }
+
+      if (e.code === 'CapsLock' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         return;
       }
 
@@ -264,6 +274,20 @@ export class Piano {
     };
 
     this._onKeyUp = (e) => {
+      // Re-evaluate sustain on any key up (in case Shift was released)
+      const isShift = e.getModifierState('Shift');
+      const isCaps = e.getModifierState('CapsLock');
+      const shouldSustain = isShift || isCaps;
+
+      if (this._isSustained !== shouldSustain) {
+        this._isSustained = shouldSustain;
+        this.onSustainChange(this._isSustained);
+      }
+
+      if (e.code === 'CapsLock' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        return;
+      }
+
       const key = e.key.toLowerCase();
       const note = KEY_MAP[key];
       if (!note) return;

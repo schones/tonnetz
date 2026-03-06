@@ -18,23 +18,25 @@ const SOUND_PRESETS = {
   },
   organ: {
     options: {
-      oscillator: { type: 'fatsine', spread: 20, count: 3 },
+      oscillator: { type: 'sine' },
       envelope: { attack: 0.05, decay: 0.1, sustain: 0.95, release: 0.3 },
     },
     buildEffects() {
+      const chorus = new Tone.Chorus(4, 2.5, 0.5).start();
       const dist = new Tone.Distortion(0.15);
       const trem = new Tone.Tremolo(5.5, 0.35).start();
-      return [dist, trem];
+      return [chorus, dist, trem];
     },
   },
   synth: {
     options: {
-      oscillator: { type: 'fatsawtooth', spread: 30, count: 3 },
+      oscillator: { type: 'sawtooth' },
       envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.4 },
     },
     buildEffects() {
+      const chorus = new Tone.Chorus(4, 2.5, 0.5).start();
       const filt = new Tone.Filter(2500, 'lowpass');
-      return [filt];
+      return [chorus, filt];
     },
   },
 };
@@ -107,11 +109,11 @@ export class AudioBridge {
     const voice = this._voiceMap.get(noteName);
     if (!voice) return;
     this._voiceMap.delete(noteName);
-    try { voice.triggerRelease(); } catch (_) {}
+    try { voice.triggerRelease(); } catch (_) { }
     // Dispose after the release envelope completes (with generous margin)
     const releaseMs = ((this._voiceOptions.envelope && this._voiceOptions.envelope.release) || 1) * 1000 + 500;
     setTimeout(() => {
-      try { voice.disconnect(); voice.dispose(); } catch (_) {}
+      try { voice.disconnect(); voice.dispose(); } catch (_) { }
     }, releaseMs);
   }
 
@@ -119,16 +121,16 @@ export class AudioBridge {
   _disposeAll() {
     if (this._voiceMap) {
       for (const [, voice] of this._voiceMap) {
-        try { voice.disconnect(); voice.dispose(); } catch (_) {}
+        try { voice.disconnect(); voice.dispose(); } catch (_) { }
       }
       this._voiceMap.clear();
     }
     for (const fx of this._effects) {
-      try { fx.dispose(); } catch (_) {}
+      try { fx.dispose(); } catch (_) { }
     }
     this._effects = [];
     if (this._outputBus) {
-      try { this._outputBus.dispose(); } catch (_) {}
+      try { this._outputBus.dispose(); } catch (_) { }
       this._outputBus = null;
     }
   }
@@ -148,7 +150,7 @@ export class AudioBridge {
     voice.triggerAttackRelease(noteName, '8n');
     // Auto-dispose after note finishes
     setTimeout(() => {
-      try { voice.disconnect(); voice.dispose(); } catch (_) {}
+      try { voice.disconnect(); voice.dispose(); } catch (_) { }
     }, 2000);
 
     this.state.lastNotePlayed = noteName;
@@ -174,8 +176,8 @@ export class AudioBridge {
     if (this._voiceMap.has(noteName)) {
       const old = this._voiceMap.get(noteName);
       this._voiceMap.delete(noteName);
-      try { old.triggerRelease(); } catch (_) {}
-      setTimeout(() => { try { old.disconnect(); old.dispose(); } catch (_) {} }, 1000);
+      try { old.triggerRelease(); } catch (_) { }
+      setTimeout(() => { try { old.disconnect(); old.dispose(); } catch (_) { } }, 1000);
     }
 
     // Create a dedicated voice for this note
