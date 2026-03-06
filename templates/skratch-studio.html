@@ -26,6 +26,8 @@
     <nav class="mtt-header__nav">
       <a href="/" class="mtt-header__link">Home</a>
       <a href="#" class="mtt-header__link mtt-header__link--active">Skratch Studio</a>
+      <a href="/skratch/help" class="mtt-header__link" target="_blank" rel="noopener"
+         title="Open help guide in a new tab">&#10067; Help</a>
     </nav>
   </header>
 
@@ -98,6 +100,36 @@
             </select>
             <div id="pianoContainer" class="piano-container"></div>
             <span id="sustainIndicator" class="sustain-indicator">Sustain: OFF</span>
+          </div>
+        </div>
+
+        <!-- ── Loop Pedal ── -->
+        <div class="loop-pedal-panel">
+          <div class="loop-pedal__header">
+            <span class="loop-pedal__title">&#127927; Loop Pedal</span>
+            <label class="loop-toggle" title="Snap loop length to nearest bar">
+              <input type="checkbox" id="chkQuantize">
+              <span class="loop-toggle__label">Quantize to bar</span>
+            </label>
+          </div>
+          <div class="loop-pedal__controls">
+            <button id="btnLoopRecord"  class="btn btn--loop-record">&#9679; Rec [1]</button>
+            <button id="btnLoopStopRec" class="btn btn--loop-stoprec" disabled>&#9632; Stop</button>
+            <button id="btnLoopOverdub" class="btn btn--loop-overdub" disabled>&#8853; Overdub [2]</button>
+            <button id="btnLoopPlay"    class="btn btn--loop-play"    disabled>&#9654; Play [3]</button>
+            <button id="btnClearL1"     class="btn btn--clear"        disabled>Clear L1</button>
+            <button id="btnClearL2"     class="btn btn--clear"        disabled>Clear L2</button>
+            <button id="btnLoopClearAll" class="btn btn--clear"       disabled>Clear All</button>
+          </div>
+          <div class="loop-pedal__info">
+            <span id="loopPedalStatus" class="loop-pedal__status">Ready &#8212; press Record [1] to start</span>
+            <span id="loopLengthDisplay" class="loop-pedal__length"></span>
+          </div>
+          <div class="loop-pedal__viz">
+            <canvas id="loopPianoRoll" class="loop-viz-canvas" width="800" height="80"
+              title="Piano roll: time → pitch, colored by layer"></canvas>
+            <canvas id="loopBarViz"    class="loop-viz-canvas" width="800" height="44"
+              title="Bar timeline: colored bars per layer"></canvas>
           </div>
         </div>
       </div>

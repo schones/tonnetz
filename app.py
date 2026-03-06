@@ -114,6 +114,10 @@ def strumming():
 def skratch():
     return render_template("skratch-studio.html")
 
+@app.route("/skratch/help")
+def skratch_help():
+    return render_template("skratch-studio-help.html")
+
 @app.route("/test_sustain")
 def test_sustain():
     return app.send_static_file("skratch-studio/test-sustain.html")

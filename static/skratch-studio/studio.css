@@ -407,6 +407,132 @@
   }
 }
 
+/* --- Loop Pedal Panel --- */
+
+.loop-pedal-panel {
+  width: 100%;
+  background: #181825;
+  border-top: 1px solid #3a3a50;
+  padding: var(--space-sm) var(--space-sm) var(--space-xs);
+  box-sizing: border-box;
+  align-self: stretch;
+}
+
+.loop-pedal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+
+.loop-pedal__title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.loop-pedal__controls {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-xs);
+}
+
+/* Override base .btn sizing for the compact loop pedal row */
+.loop-pedal__controls .btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  min-width: 0;
+}
+
+/* Record — red, blinks while recording */
+.btn--loop-record {
+  background: #c0392b;
+  color: #fff;
+  border: 1px solid #c0392b;
+}
+.btn--loop-record:hover:not(:disabled) {
+  background: #e74c3c;
+  border-color: #e74c3c;
+}
+.btn--loop-record.active {
+  animation: lp-blink 0.9s ease-in-out infinite;
+}
+
+/* Stop Rec — neutral */
+.btn--loop-stoprec {
+  background: #2a2a3e;
+  color: #cdd6f4;
+  border: 1px solid #3a3a50;
+}
+.btn--loop-stoprec:hover:not(:disabled) {
+  border-color: #cdd6f4;
+}
+
+/* Overdub — orange, blinks while overdubbing */
+.btn--loop-overdub {
+  background: #b85c00;
+  color: #fff;
+  border: 1px solid #b85c00;
+}
+.btn--loop-overdub:hover:not(:disabled) {
+  background: #d46a00;
+  border-color: #d46a00;
+}
+.btn--loop-overdub.active {
+  background: #d46a00;
+  animation: lp-blink 0.9s ease-in-out infinite;
+}
+
+/* Play/Stop — green → red when playing */
+.btn--loop-play {
+  background: var(--color-success);
+  color: #fff;
+  border: none;
+}
+.btn--loop-play:hover:not(:disabled) {
+  background: var(--color-secondary-dark);
+}
+
+@keyframes lp-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+.loop-pedal__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: 4px;
+  min-height: 16px;
+}
+
+.loop-pedal__status {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.loop-pedal__length {
+  font-size: var(--font-size-xs);
+  color: var(--color-accent);
+  font-family: var(--font-family-mono);
+}
+
+.loop-pedal__viz {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.loop-viz-canvas {
+  width: 100%;
+  display: block;
+  border-radius: 3px;
+  background: #1e1e2e;
+}
+
 /* --- Responsive --- */
 @media (max-width: 900px) {
   .studio-layout {

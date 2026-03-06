@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skratch Studio Help — Music Theory Games</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+  <style>
+    /* ── Help page layout ─────────────────────────────────────────────────── */
+    .help-main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: var(--space-xl) var(--space-lg) var(--space-3xl);
+    }
+
+    .help-hero {
+      text-align: center;
+      padding: var(--space-xl) 0 var(--space-lg);
+    }
+    .help-hero__emoji { font-size: 3.5rem; display: block; margin-bottom: var(--space-sm); }
+    .help-hero__title { font-size: var(--font-size-3xl); color: var(--color-primary); margin-bottom: var(--space-sm); }
+    .help-hero__sub   { font-size: var(--font-size-lg); color: var(--color-text-light); }
+
+    /* Table of contents */
+    .toc {
+      background: var(--color-bg-card);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-2xl);
+    }
+    .toc__title { font-size: var(--font-size-lg); margin-bottom: var(--space-md); color: var(--color-primary); }
+    .toc__list  { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xs) var(--space-lg); }
+    .toc__list a { color: var(--color-text-light); font-size: var(--font-size-sm); }
+    .toc__list a:hover { color: var(--color-primary); }
+    @media (max-width: 540px) { .toc__list { grid-template-columns: 1fr; } }
+
+    /* Section cards */
+    .help-section {
+      margin-bottom: var(--space-2xl);
+      scroll-margin-top: calc(var(--header-height) + 16px);
+    }
+    .help-section__heading {
+      font-size: var(--font-size-2xl);
+      color: var(--color-primary);
+      margin-bottom: var(--space-md);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding-bottom: var(--space-sm);
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    /* Subsection */
+    .help-sub {
+      background: var(--color-bg-card);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      padding: var(--space-md) var(--space-lg);
+      margin-bottom: var(--space-md);
+    }
+    .help-sub__title {
+      font-size: var(--font-size-lg);
+      margin-bottom: var(--space-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    /* Block list — colored badges + descriptions */
+    .block-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-xs); }
+    .block-list li { display: flex; align-items: baseline; gap: var(--space-sm); font-size: var(--font-size-sm); line-height: 1.5; }
+    .block-badge {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Block category accent colors */
+    .badge-visual  { background: #ede9fe; color: #5b21b6; }
+    .badge-motion  { background: #dbeafe; color: #1d4ed8; }
+    .badge-math    { background: #dcfce7; color: #15803d; }
+    .badge-event   { background: #fef3c7; color: #92400e; }
+    .badge-sound   { background: #d1fae5; color: #065f46; }
+    .badge-control { background: #ffedd5; color: #9a3412; }
+    .badge-drum    { background: #fee2e2; color: #991b1b; }
+    .badge-bass    { background: #dbeafe; color: #1e40af; }
+    .badge-melody  { background: #fce7f3; color: #9d174d; }
+    .badge-struct  { background: #ccfbf1; color: #134e4a; }
+    .badge-timing  { background: #fef9c3; color: #713f12; }
+
+    /* Keyboard layout */
+    .kb-diagram {
+      background: #f1f3f5;
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      margin: var(--space-md) 0;
+      overflow-x: auto;
+    }
+    .kb-row { display: flex; gap: 3px; margin-bottom: 3px; align-items: flex-end; }
+    .kb-key {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      border-radius: 4px;
+      padding-bottom: 5px;
+      font-weight: var(--font-weight-bold);
+      font-family: var(--font-family-mono);
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .kb-key .kn { /* note label */ font-size: 9px; font-weight: normal; margin-top: 2px; opacity: 0.8; }
+    .kb-white {
+      width: 38px; height: 72px;
+      background: #fff;
+      border: 2px solid #adb5bd;
+      color: #2d3436;
+      font-size: 13px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    .kb-black {
+      width: 26px; height: 46px;
+      background: #2d3436;
+      border: 1px solid #000;
+      color: #fff;
+      font-size: 11px;
+      margin: 0 -13px;
+      z-index: 1;
+      position: relative;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    }
+    .kb-black .kn { color: #adb5bd; }
+    .kb-gap { width: 38px; flex-shrink: 0; } /* spacer for missing black keys */
+    .kb-legend { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: var(--space-xs); text-align: center; }
+
+    /* Sustain / shortcuts callout */
+    .callout {
+      background: rgba(108, 92, 231, 0.07);
+      border-left: 4px solid var(--color-primary);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: var(--space-sm) var(--space-md);
+      margin: var(--space-sm) 0;
+      font-size: var(--font-size-sm);
+      line-height: 1.6;
+    }
+    .callout--green  { background: rgba(0,184,148,0.07); border-color: var(--color-success); }
+    .callout--yellow { background: rgba(253,203,110,0.15); border-color: var(--color-accent-dark); }
+
+    /* Key chip */
+    .key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      height: 22px;
+      padding: 0 6px;
+      background: #fff;
+      border: 2px solid #adb5bd;
+      border-bottom-width: 3px;
+      border-radius: 4px;
+      font-family: var(--font-family-mono);
+      font-size: 12px;
+      font-weight: var(--font-weight-bold);
+      color: #2d3436;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    /* Loop pedal steps */
+    .steps { counter-reset: step; list-style: none; display: flex; flex-direction: column; gap: var(--space-sm); }
+    .steps li {
+      display: flex;
+      gap: var(--space-md);
+      align-items: flex-start;
+      counter-increment: step;
+      font-size: var(--font-size-sm);
+      line-height: 1.6;
+    }
+    .steps li::before {
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      color: #fff;
+      font-weight: var(--font-weight-bold);
+      font-size: var(--font-size-sm);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Starter grid */
+    .starter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: var(--space-md);
+      margin-top: var(--space-sm);
+    }
+    .starter-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+    }
+    .starter-card__name { font-weight: var(--font-weight-bold); margin-bottom: 4px; font-size: var(--font-size-sm); }
+    .starter-card__desc { font-size: var(--font-size-xs); color: var(--color-text-light); line-height: 1.5; }
+    .starter-card--visual { border-top: 3px solid var(--color-primary); }
+    .starter-card--music  { border-top: 3px solid #e91e63; }
+
+    /* Tips */
+    .tips-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-md); }
+    .tips-list li {
+      display: flex; gap: var(--space-md); align-items: flex-start;
+      font-size: var(--font-size-sm); line-height: 1.6;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+    }
+    .tips-list .tip-emoji { font-size: 1.5rem; flex-shrink: 0; }
+  </style>
+</head>
+
+<body>
+  <header class="mtt-header">
+    <a href="/" class="mtt-header__logo" style="text-decoration: none;">
+      <span aria-hidden="true">&#9835;</span> Music Theory Games
+    </a>
+    <nav class="mtt-header__nav">
+      <a href="/" class="mtt-header__link">Home</a>
+      <a href="/skratch" class="mtt-header__link">Skratch Studio</a>
+      <a href="/skratch/help" class="mtt-header__link mtt-header__link--active">Help</a>
+    </nav>
+  </header>
+
+  <main class="help-main">
+
+    <!-- ── Hero ────────────────────────────────────────────────────────────── -->
+    <div class="help-hero">
+      <span class="help-hero__emoji">🎛️</span>
+      <h1 class="help-hero__title">Skratch Studio Help</h1>
+      <p class="help-hero__sub">Everything you need to make music, art, and code — all at once!</p>
+      <a href="/skratch" class="btn btn--primary mt-md" style="margin-top: 1rem;">&#8592; Back to Studio</a>
+    </div>
+
+    <!-- ── Table of contents ─────────────────────────────────────────────── -->
+    <nav class="toc" aria-label="Table of contents">
+      <div class="toc__title">📋 What's in this guide</div>
+      <ul class="toc__list">
+        <li><a href="#overview">🎵 What is Skratch Studio?</a></li>
+        <li><a href="#blockly">🧩 How the Block Editor Works</a></li>
+        <li><a href="#visual-blocks">🎨 Visual Blocks</a></li>
+        <li><a href="#music-blocks">🎵 Music Blocks</a></li>
+        <li><a href="#keyboard">🎹 The Keyboard</a></li>
+        <li><a href="#loop-pedal">🎛️ Loop Pedal</a></li>
+        <li><a href="#starters">📚 Starter Programs</a></li>
+        <li><a href="#tips">💡 Tips &amp; Tricks</a></li>
+      </ul>
+    </nav>
+
+    <!-- ── 1. Overview ───────────────────────────────────────────────────── -->
+    <section class="help-section" id="overview">
+      <h2 class="help-section__heading">🎵 What is Skratch Studio?</h2>
+      <p style="margin-bottom: var(--space-md); line-height: 1.7;">
+        Skratch Studio is a creative playground where you can make <strong>music</strong> and <strong>art</strong>
+        at the same time using real code — but instead of typing, you snap colorful blocks together like puzzle pieces!
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
+        <div class="help-sub" style="margin-bottom: 0;">
+          <div class="help-sub__title">🧩 Block Editor</div>
+          <p style="font-size: var(--font-size-sm); color: var(--color-text-light);">Drag-and-drop visual programming. Your blocks turn into real JavaScript code!</p>
+        </div>
+        <div class="help-sub" style="margin-bottom: 0;">
+          <div class="help-sub__title">🖼️ Canvas</div>
+          <p style="font-size: var(--font-size-sm); color: var(--color-text-light);">A drawing area where your code creates shapes, animations, and visual effects.</p>
+        </div>
+        <div class="help-sub" style="margin-bottom: 0;">
+          <div class="help-sub__title">🎹 Keyboard</div>
+          <p style="font-size: var(--font-size-sm); color: var(--color-text-light);">A two-octave piano you can play with mouse clicks or your computer keyboard.</p>
+        </div>
+        <div class="help-sub" style="margin-bottom: 0;">
+          <div class="help-sub__title">🎛️ Loop Pedal</div>
+          <p style="font-size: var(--font-size-sm); color: var(--color-text-light);">Record what you play on the keyboard and loop it! Layer two recordings on top of each other.</p>
+        </div>
+      </div>
+      <div class="callout">
+        💡 <strong>The coolest part:</strong> You can connect music to visuals! Play a note and a circle grows.
+        Set the background to change with your pitch. Your blocks and your keyboard all work together.
+      </div>
+    </section>
+
+    <!-- ── 2. Block Editor ───────────────────────────────────────────────── -->
+    <section class="help-section" id="blockly">
+      <h2 class="help-section__heading">🧩 How the Block Editor Works</h2>
+      <p style="margin-bottom: var(--space-md); line-height: 1.7;">
+        The big area on the left is your <strong>Block Editor</strong>. On the left side of that area you'll see the
+        <strong>toolbox</strong> — categories full of blocks to choose from.
+      </p>
+      <ul class="block-list" style="margin-bottom: var(--space-md);">
+        <li>Click a category name to see its blocks.</li>
+        <li>Drag a block into the workspace to use it.</li>
+        <li>Snap blocks together — they click into place like puzzle pieces.</li>
+        <li>Blocks with a <strong>rounded top</strong> (hat blocks &#x1F3A9;) are <em>event</em> blocks — they decide when your code starts running.</li>
+        <li>Right-click a block to copy, delete, or get help.</li>
+      </ul>
+      <div class="callout--green callout">
+        🖥️ <strong>See the Code panel</strong> (bottom right) shows the real JavaScript that your blocks create.
+        You can click <strong>Copy</strong> to copy it! Press <strong>▶ Play</strong> to run your program,
+        and <strong>■ Stop</strong> to stop it.
+      </div>
+    </section>
+
+    <!-- ── 3. Visual Blocks ──────────────────────────────────────────────── -->
+    <section class="help-section" id="visual-blocks">
+      <h2 class="help-section__heading">🎨 Visual Blocks</h2>
+      <p style="margin-bottom: var(--space-md); line-height: 1.7;">
+        Visual blocks draw things on the canvas. The canvas redraws itself <strong>60 times per second</strong>,
+        so your code can create smooth animations!
+      </p>
+
+      <!-- Visuals -->
+      <div class="help-sub">
+        <div class="help-sub__title">🎨 Visuals — Drawing shapes</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-visual">Draw Circle</span> Draw a circle at position (x, y) with a given size.</li>
+          <li><span class="block-badge badge-visual">Draw Rectangle</span> Draw a rectangle at (x, y) with width and height.</li>
+          <li><span class="block-badge badge-visual">Draw Star</span> Draw a 5-pointed star at (x, y) with a given size.</li>
+          <li><span class="block-badge badge-visual">Draw Line</span> Draw a straight line between two points.</li>
+          <li><span class="block-badge badge-visual">Set Fill</span> Pick the color to fill the inside of shapes.</li>
+          <li><span class="block-badge badge-visual">Set Stroke</span> Pick the outline color for shapes.</li>
+          <li><span class="block-badge badge-visual">No Fill</span> Make shapes hollow — outline only, no inside color.</li>
+          <li><span class="block-badge badge-visual">Stroke Weight</span> How thick the outline is (0–50 pixels).</li>
+          <li><span class="block-badge badge-visual">Set Background</span> Fill the whole canvas with a single color.</li>
+          <li><span class="block-badge badge-visual">Clear Canvas</span> Erase everything on the canvas.</li>
+          <li><span class="block-badge badge-visual">Draw Trail</span> Instead of clearing each frame, shapes leave a slowly fading trail. Great for psychedelic effects!</li>
+        </ul>
+        <div class="callout" style="margin-top: var(--space-sm);">
+          💡 Tip: The canvas is 400×400 pixels. Position (0, 0) is the top-left corner. Position (200, 200) is the center.
+        </div>
+      </div>
+
+      <!-- Motion -->
+      <div class="help-sub">
+        <div class="help-sub__title">📐 Motion — Moving and rotating</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-motion">Move To</span> Jump the drawing cursor to any (x, y) position on the canvas.</li>
+          <li><span class="block-badge badge-motion">Move to Center</span> Jump directly to the center of the canvas (200, 200).</li>
+          <li><span class="block-badge badge-motion">Rotate By</span> Spin the entire drawing system by a number of degrees (–360 to +360). Everything you draw after this will be rotated!</li>
+          <li><span class="block-badge badge-motion">Grow By</span> Scale the drawing system up by a percentage — makes the next shapes bigger.</li>
+          <li><span class="block-badge badge-motion">Shrink By</span> Scale the drawing system down by a percentage (0–99%).</li>
+          <li><span class="block-badge badge-motion">Save Position</span> Save your current drawing position, rotation, and colors.</li>
+          <li><span class="block-badge badge-motion">Restore Position</span> Snap back to the last saved position and settings.</li>
+        </ul>
+        <div class="callout" style="margin-top: var(--space-sm);">
+          💡 Tip: Always use <strong>Save Position</strong> before rotating or moving, then <strong>Restore Position</strong> when done — that way other parts of your code aren't affected.
+        </div>
+      </div>
+
+      <!-- Math -->
+      <div class="help-sub">
+        <div class="help-sub__title">🔢 Math — Numbers and calculations</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-math">Map Value</span> Re-scale a number from one range to another. For example: map pitch (200–800 Hz) to circle size (10–200 pixels).</li>
+          <li><span class="block-badge badge-math">Random Number</span> Pick a random number between two values. Great for randomized art!</li>
+          <li><span class="block-badge badge-math">Canvas Width</span> Returns 400 — the width of the canvas in pixels.</li>
+          <li><span class="block-badge badge-math">Canvas Height</span> Returns 400 — the height of the canvas in pixels.</li>
+          <li><span class="block-badge badge-math">Frame Count</span> A number that increases by 1 every frame (60× per second). Perfect for smooth animations over time.</li>
+          <li><span class="block-badge badge-math">Arithmetic</span> Add (+), subtract (−), multiply (×), or divide (÷) numbers.</li>
+        </ul>
+      </div>
+
+      <!-- Events -->
+      <div class="help-sub">
+        <div class="help-sub__title">⚡ Events — When things happen</div>
+        <p style="font-size: var(--font-size-sm); color: var(--color-text-light); margin-bottom: var(--space-sm);">
+          Event blocks (with rounded tops) tell your code <em>when</em> to run. You can have multiple event blocks running at the same time!
+        </p>
+        <ul class="block-list">
+          <li><span class="block-badge badge-event">When Start Clicked</span> Runs once when you press the ▶ Play button.</li>
+          <li><span class="block-badge badge-event">When Note Played</span> Runs every time any note is played — on the keyboard or detected by the mic.</li>
+          <li><span class="block-badge badge-event">When Specific Note</span> Runs only when a certain note (C through B) is played.</li>
+          <li><span class="block-badge badge-event">When Pitch Is</span> Runs when the detected pitch goes above or below a frequency (in Hz).</li>
+          <li><span class="block-badge badge-event">Every N Beats</span> Repeats at a regular interval — every 1, 2, 4 beats (or fractions like 0.5). The speed follows your BPM setting.</li>
+        </ul>
+      </div>
+
+      <!-- Sound Data -->
+      <div class="help-sub">
+        <div class="help-sub__title">🎵 Sound Data — Reading music info</div>
+        <p style="font-size: var(--font-size-sm); color: var(--color-text-light); margin-bottom: var(--space-sm);">
+          These blocks let you read the current state of the music — great for making visuals react to sound!
+        </p>
+        <ul class="block-list">
+          <li><span class="block-badge badge-sound">Current Pitch</span> The pitch being played right now, in Hz (0 if silent). Great for controlling size or position with your voice or keyboard.</li>
+          <li><span class="block-badge badge-sound">Current Note Name</span> The current note as text, like "C4" or "A#3". Use it in an <em>If</em> block to check what note is being played.</li>
+          <li><span class="block-badge badge-sound">Volume Level</span> How loud the sound is, from 0 (silent) to 100 (full volume).</li>
+          <li><span class="block-badge badge-sound">Note Is Playing</span> True or false — is a note currently being played? Use inside an <em>If</em> block.</li>
+        </ul>
+      </div>
+
+      <!-- Control -->
+      <div class="help-sub">
+        <div class="help-sub__title">🔄 Control — Loops and decisions</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-control">Repeat N Times</span> Run the blocks inside it a certain number of times (1–1000). Great for drawing patterns!</li>
+          <li><span class="block-badge badge-control">If</span> Only run the blocks inside if a condition is true — for example, "if note is playing" then draw a circle.</li>
+          <li><span class="block-badge badge-control">Set Variable</span> Save a value with a name so you can use it later. Variables keep their value between frames!</li>
+          <li><span class="block-badge badge-control">Compare / Logic</span> Check if numbers are equal, greater than, or less than. Combine with AND / OR.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── 4. Music Blocks ───────────────────────────────────────────────── -->
+    <section class="help-section" id="music-blocks">
+      <h2 class="help-section__heading">🎵 Music Blocks</h2>
+      <p style="margin-bottom: var(--space-md); line-height: 1.7;">
+        Music blocks create beats and melodies that play in perfect time using the BPM you set.
+        Put all music blocks inside the <strong>🎵 Music Start</strong> block — it's like the "on/off switch" for your song.
+      </p>
+      <div class="callout--yellow callout" style="margin-bottom: var(--space-md);">
+        🎵 <strong>Beat positions</strong> use numbers like 1, 1+, 2, 2+, 3, 3+, 4, 4+.
+        The number is the beat, and <strong>+</strong> means "the and" — halfway between two beats.
+        So 2+ is the "&" in "1 and 2 and 3 and 4"!
+      </div>
+
+      <div class="help-sub">
+        <div class="help-sub__title">🥁 Drums</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-drum">Play Kick</span> The big, boomy bass drum. Put it on beats 1 and 3 for a classic rock feel.</li>
+          <li><span class="block-badge badge-drum">Play Snare</span> The snappy cracking drum. Usually on beats 2 and 4.</li>
+          <li><span class="block-badge badge-drum">Play Hi-Hat</span> The shimmery cymbal. Try it on every beat or every half beat for energy.</li>
+          <li><span class="block-badge badge-drum">Drum Pattern</span> Load a ready-made drum pattern: <strong>Rock Beat</strong>, <strong>Disco</strong>, <strong>Hip Hop</strong>, or <strong>Four on Floor</strong>.</li>
+        </ul>
+      </div>
+
+      <div class="help-sub">
+        <div class="help-sub__title">🎸 Bass</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-bass">Play Bass Note</span> Play a low note (C2 to B2) for a chosen duration at a beat position. Duration choices: whole, half, quarter, eighth, sixteenth notes, or dotted quarter.</li>
+          <li><span class="block-badge badge-bass">Bass Pattern</span> A ready-made bass line in any key (C–B). Styles: <strong>Root Notes</strong>, <strong>Walking Bass</strong>, <strong>Octave Bounce</strong>, or <strong>Funky</strong>.</li>
+        </ul>
+      </div>
+
+      <div class="help-sub">
+        <div class="help-sub__title">🎹 Melody</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-melody">Play Melody Note</span> Play a melody note (C4 to E5, including sharps) with a duration and beat position.</li>
+          <li><span class="block-badge badge-melody">Play Chord</span> Play three notes at once — choose a root note (C–B) and quality: <strong>Major</strong> (happy), <strong>Minor</strong> (moody), or <strong>Diminished</strong> (tense).</li>
+          <li><span class="block-badge badge-melody">Rest</span> A moment of silence for a chosen duration.</li>
+        </ul>
+      </div>
+
+      <div class="help-sub">
+        <div class="help-sub__title">🏗️ Song Structure</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-struct">Section</span> A named block of music — Intro, Verse, Chorus, Bridge, or Outro — that repeats for 1, 2, 4, or 8 bars. Organize your song into parts!</li>
+          <li><span class="block-badge badge-struct">Repeat</span> Run music blocks multiple times (1–16 times) without having to copy and paste them.</li>
+        </ul>
+      </div>
+
+      <div class="help-sub">
+        <div class="help-sub__title">⏱️ Timing</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-timing">Set Tempo</span> Set the song speed in BPM (beats per minute). 60 BPM = slow ballad. 120 BPM = medium. 160 BPM = fast! Also controls the BPM slider in the studio.</li>
+          <li><span class="block-badge badge-timing">Music Start</span> The starting hat block — all your music blocks go inside this one.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── 5. Keyboard ───────────────────────────────────────────────────── -->
+    <section class="help-section" id="keyboard">
+      <h2 class="help-section__heading">🎹 The Keyboard</h2>
+      <p style="margin-bottom: var(--space-md); line-height: 1.7;">
+        The on-screen piano covers two octaves — from <strong>G3</strong> to <strong>G5</strong>.
+        Click the keys with your mouse, or use your computer keyboard!
+      </p>
+
+      <!-- Keyboard diagram -->
+      <div class="kb-diagram" aria-label="Piano keyboard layout showing computer key to note mappings">
+        <!-- Upper row: Q-row (upper octave white) + 2/3/5 (upper octave black) -->
+        <div class="kb-row">
+          <!-- spacer to align upper keys with lower octave -->
+          <div style="width: calc(38px * 4 + 3px * 3 + 13px * 2); flex-shrink:0;"></div>
+          <!-- Q = B4 -->
+          <div class="kb-key kb-white"><span>Q</span><span class="kn">B4</span></div>
+          <!-- 2 = C#5 (black, after W) -->
+          <div class="kb-black"><span>2</span><span class="kn">C#5</span></div>
+          <!-- W = C5 -->
+          <div class="kb-key kb-white"><span>W</span><span class="kn">C5</span></div>
+          <!-- 3 = D#5 (black, after E) -->
+          <div class="kb-black"><span>3</span><span class="kn">D#5</span></div>
+          <!-- E = D5 -->
+          <div class="kb-key kb-white"><span>E</span><span class="kn">D5</span></div>
+          <!-- gap: E5 has no black after -->
+          <div class="kb-gap"></div>
+          <!-- R = E5 -->
+          <div class="kb-key kb-white"><span>R</span><span class="kn">E5</span></div>
+          <!-- 5 = F#5 (black, after T) -->
+          <div class="kb-black"><span>5</span><span class="kn">F#5</span></div>
+          <!-- T = F5 -->
+          <div class="kb-key kb-white"><span>T</span><span class="kn">F5</span></div>
+          <!-- gap: no black after G -->
+          <div class="kb-gap"></div>
+          <!-- Y = G5 -->
+          <div class="kb-key kb-white"><span>Y</span><span class="kn">G5</span></div>
+        </div>
+
+        <!-- Lower row: A-row (white keys) and Z/X/C/V/B/N/M (black keys) interleaved -->
+        <div class="kb-row">
+          <!-- A = G3 -->
+          <div class="kb-key kb-white"><span>A</span><span class="kn">G3</span></div>
+          <!-- Z = G#3 -->
+          <div class="kb-black"><span>Z</span><span class="kn">G#3</span></div>
+          <!-- S = A3 -->
+          <div class="kb-key kb-white"><span>S</span><span class="kn">A3</span></div>
+          <!-- X = A#3 -->
+          <div class="kb-black"><span>X</span><span class="kn">A#3</span></div>
+          <!-- D = B3 -->
+          <div class="kb-key kb-white"><span>D</span><span class="kn">B3</span></div>
+          <!-- gap: B3 has no black after (B→C) -->
+          <div class="kb-gap"></div>
+          <!-- F = C4 -->
+          <div class="kb-key kb-white"><span>F</span><span class="kn">C4</span></div>
+          <!-- C = C#4 -->
+          <div class="kb-black"><span>C</span><span class="kn">C#4</span></div>
+          <!-- G = D4 -->
+          <div class="kb-key kb-white"><span>G</span><span class="kn">D4</span></div>
+          <!-- V = D#4 -->
+          <div class="kb-black"><span>V</span><span class="kn">D#4</span></div>
+          <!-- H = E4 -->
+          <div class="kb-key kb-white"><span>H</span><span class="kn">E4</span></div>
+          <!-- gap: E has no black -->
+          <div class="kb-gap"></div>
+          <!-- J = F4 -->
+          <div class="kb-key kb-white"><span>J</span><span class="kn">F4</span></div>
+          <!-- B = F#4 -->
+          <div class="kb-black"><span>B</span><span class="kn">F#4</span></div>
+          <!-- K = G4 -->
+          <div class="kb-key kb-white"><span>K</span><span class="kn">G4</span></div>
+          <!-- N = G#4 -->
+          <div class="kb-black"><span>N</span><span class="kn">G#4</span></div>
+          <!-- L = A4 -->
+          <div class="kb-key kb-white"><span>L</span><span class="kn">A4</span></div>
+          <!-- M = A#4 -->
+          <div class="kb-black"><span>M</span><span class="kn">A#4</span></div>
+        </div>
+        <p class="kb-legend">White keys = A–L row &amp; Q–Y row &nbsp;|&nbsp; Black keys = Z X C V B N M &amp; 2 3 5</p>
+      </div>
+
+      <!-- Instrument selector -->
+      <div class="help-sub">
+        <div class="help-sub__title">🔊 Instrument Selector</div>
+        <p style="font-size: var(--font-size-sm); color: var(--color-text-light); margin-bottom: var(--space-sm);">
+          The dropdown next to the keyboard changes how the piano sounds:
+        </p>
+        <ul class="block-list">
+          <li><span class="block-badge badge-visual">Piano</span> A warm, mellow triangle wave sound that fades naturally — like a real piano.</li>
+          <li><span class="block-badge badge-visual">Organ</span> A smooth, sustaining sound with chorus, tremolo, and a bit of grit — like a vintage electric organ.</li>
+          <li><span class="block-badge badge-visual">Synth</span> A buzzy sawtooth sound with a filter — a classic electronic synthesizer tone.</li>
+        </ul>
+        <div class="callout" style="margin-top: var(--space-sm);">
+          🎛️ The Loop Pedal remembers which instrument you were using when you recorded each layer!
+          Layer 1 and Layer 2 can use different instruments.
+        </div>
+      </div>
+
+      <!-- Sustain -->
+      <div class="help-sub">
+        <div class="help-sub__title">🦶 Sustain Pedal</div>
+        <p style="font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-sm);">
+          The sustain pedal keeps notes ringing even after you lift your finger off the key — just like the right pedal on a real piano!
+        </p>
+        <ul class="block-list">
+          <li><span class="block-badge badge-event">Hold Shift</span> Momentary sustain — notes ring as long as you hold <kbd>Shift</kbd>.</li>
+          <li><span class="block-badge badge-event">Caps Lock</span> Toggle sustain on or off. The <strong>Sustain: ON</strong> indicator lights up green when it's active.</li>
+        </ul>
+      </div>
+
+      <!-- Mic -->
+      <div class="help-sub">
+        <div class="help-sub__title">🎤 Microphone Mode</div>
+        <p style="font-size: var(--font-size-sm); line-height: 1.6;">
+          Click <strong>🎤 Mic Off</strong> to turn on pitch detection from your microphone. Sing or hum and the studio will detect your pitch in real time!
+          The piano key for the detected note lights up in cyan.
+          Your sound data blocks (<em>Current Pitch</em>, <em>Note Is Playing</em>, etc.) will react to whatever you sing.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── 6. Loop Pedal ─────────────────────────────────────────────────── -->
+    <section class="help-section" id="loop-pedal">
+      <h2 class="help-section__heading">🎛️ Loop Pedal</h2>
+      <p style="margin-bottom: var(--space-md); line-height: 1.7;">
+        The Loop Pedal lets you record yourself playing the keyboard and repeat it automatically!
+        You can build up two layers of playing — like having two musicians playing together.
+      </p>
+
+      <!-- Basic workflow -->
+      <div class="help-sub">
+        <div class="help-sub__title">▶ How to Make a Loop</div>
+        <ol class="steps">
+          <li>Press <strong>● Rec [1]</strong> (or press <span class="key">1</span> on your keyboard). The button blinks red — you're recording! Play some notes on the keyboard.</li>
+          <li>Press <strong>■ Stop</strong> when you're done. The loop length is set and your recording immediately starts playing back on repeat.</li>
+          <li>Optional: Press <strong>⊕ Overdub [2]</strong> (or press <span class="key">2</span>) while it's playing to record a second layer on top. Play more notes!</li>
+          <li>Press <strong>■ Stop</strong> again to end the overdub. Now both layers play together.</li>
+          <li>Press <strong>■ Stop [3]</strong> (or press <span class="key">3</span>) at any time to pause playback. Press <strong>▶ Play [3]</strong> to resume.</li>
+        </ol>
+      </div>
+
+      <!-- Keyboard shortcuts -->
+      <div class="help-sub">
+        <div class="help-sub__title">⌨️ Keyboard Shortcuts</div>
+        <div style="display: flex; gap: var(--space-lg); flex-wrap: wrap; font-size: var(--font-size-sm);">
+          <div><span class="key">1</span> &nbsp;Record Layer 1</div>
+          <div><span class="key">2</span> &nbsp;Overdub Layer 2</div>
+          <div><span class="key">3</span> &nbsp;Play / Stop</div>
+        </div>
+        <div class="callout" style="margin-top: var(--space-sm);">
+          ⚠️ These shortcut keys only work when you're not typing in a text box.
+        </div>
+      </div>
+
+      <!-- Quantize -->
+      <div class="help-sub">
+        <div class="help-sub__title">📏 Quantize to Bar</div>
+        <p style="font-size: var(--font-size-sm); line-height: 1.6;">
+          When the <strong>Quantize to bar</strong> checkbox is ticked, the loop length automatically snaps to the nearest complete bar based on the BPM.
+          This makes it easier to keep your loop in sync with the music blocks in the Block Editor!
+        </p>
+        <p style="font-size: var(--font-size-sm); line-height: 1.6; margin-top: var(--space-xs);">
+          When <em>unchecked</em>, the loop ends exactly when you press Stop — even if it's mid-bar.
+        </p>
+      </div>
+
+      <!-- Visualization -->
+      <div class="help-sub">
+        <div class="help-sub__title">👀 Visualization</div>
+        <p style="font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-sm);">
+          The Loop Pedal shows two views of your recording:
+        </p>
+        <ul class="block-list">
+          <li><span class="block-badge" style="background:#ede9fe;color:#5b21b6;">Piano Roll</span> Time goes left→right. Pitch goes bottom→top. Each note is a colored rectangle. The white line is the playhead moving in real time.</li>
+          <li><span class="block-badge" style="background:#fce7f3;color:#9d174d;">Bar Timeline</span> A simpler view — one horizontal track per layer. Note durations appear as colored bars. The white line shows where you are in the loop.</li>
+        </ul>
+        <p style="font-size: var(--font-size-sm); margin-top: var(--space-sm);">
+          <strong style="color:#a29bfe;">■</strong> Purple = Layer 1 &nbsp;&nbsp; <strong style="color:#fd79a8;">■</strong> Pink = Layer 2
+        </p>
+      </div>
+
+      <!-- Clear -->
+      <div class="help-sub">
+        <div class="help-sub__title">🗑️ Clear Buttons</div>
+        <ul class="block-list">
+          <li><span class="block-badge badge-control">Clear L1</span> Erase Layer 1 but keep Layer 2 and the loop playing.</li>
+          <li><span class="block-badge badge-control">Clear L2</span> Erase Layer 2 but keep Layer 1.</li>
+          <li><span class="block-badge badge-control">Clear All</span> Erase everything and go back to the beginning.</li>
+        </ul>
+      </div>
+
+      <div class="callout--green callout">
+        🔗 <strong>Works with music blocks!</strong> The BPM slider affects both the Block Editor music and
+        the Loop Pedal's Quantize feature. Try running a drum pattern in the Block Editor, then
+        use the Loop Pedal with Quantize on to record a melody that stays in sync.
+        Note: only one can play at a time — starting one pauses the other.
+      </div>
+    </section>
+
+    <!-- ── 7. Starter Programs ───────────────────────────────────────────── -->
+    <section class="help-section" id="starters">
+      <h2 class="help-section__heading">📚 Starter Programs</h2>
+      <p style="margin-bottom: var(--space-md); line-height: 1.7;">
+        Click <strong>"Load a starter..."</strong> in the studio to load a ready-made example. Each one demonstrates a different idea — a great way to learn!
+      </p>
+
+      <h3 style="font-size: var(--font-size-lg); margin-bottom: var(--space-sm); color: var(--color-primary);">🎨 Visual Starters</h3>
+      <div class="starter-grid" style="margin-bottom: var(--space-lg);">
+        <div class="starter-card starter-card--visual">
+          <div class="starter-card__name">Blank Canvas</div>
+          <div class="starter-card__desc">An empty workspace — start from scratch! Great when you have your own idea.</div>
+        </div>
+        <div class="starter-card starter-card--visual">
+          <div class="starter-card__name">Circles</div>
+          <div class="starter-card__desc">Six concentric circles that grow outward. Shows how to use Repeat, Grow By, and Save/Restore Position.</div>
+        </div>
+        <div class="starter-card starter-card--visual">
+          <div class="starter-card__name">Rainbow Grid</div>
+          <div class="starter-card__desc">An 8×8 grid of rectangles drawn with nested Repeat loops. See how to build patterns!</div>
+        </div>
+        <div class="starter-card starter-card--visual">
+          <div class="starter-card__name">Spiral</div>
+          <div class="starter-card__desc">36 circles that rotate by 10° and grow by 3% each time — creating a beautiful spiral.</div>
+        </div>
+        <div class="starter-card starter-card--visual">
+          <div class="starter-card__name">Sound Circles</div>
+          <div class="starter-card__desc">Three circles appear when you play a note on the keyboard. Try it with a drum beat!</div>
+        </div>
+        <div class="starter-card starter-card--visual">
+          <div class="starter-card__name">Note Garden</div>
+          <div class="starter-card__desc">Each note C–B triggers a different shape at a different spot on the canvas. Play a melody to paint a garden!</div>
+        </div>
+        <div class="starter-card starter-card--visual">
+          <div class="starter-card__name">Bounce</div>
+          <div class="starter-card__desc">A ball that turns red when you play a note, with colored ripple rings expanding outward on each hit.</div>
+        </div>
+      </div>
+
+      <h3 style="font-size: var(--font-size-lg); margin-bottom: var(--space-sm); color: #e91e63;">🎵 Music Starters</h3>
+      <div class="starter-grid">
+        <div class="starter-card starter-card--music">
+          <div class="starter-card__name">First Beat</div>
+          <div class="starter-card__desc">A simple drum pattern at 100 BPM — kick, hi-hat, snare, hi-hat. A classic intro to rhythm!</div>
+        </div>
+        <div class="starter-card starter-card--music">
+          <div class="starter-card__name">Bass Groove</div>
+          <div class="starter-card__desc">A rock drum pattern with a 5-note bass line (C2, E2, G2, F2) at 110 BPM.</div>
+        </div>
+        <div class="starter-card starter-card--music">
+          <div class="starter-card__name">My First Song</div>
+          <div class="starter-card__desc">A full song with Verse and Chorus sections, drums, bass, melody, and chords all working together at 120 BPM.</div>
+        </div>
+        <div class="starter-card starter-card--music">
+          <div class="starter-card__name">Beat Painter</div>
+          <div class="starter-card__desc">Music blocks AND visual blocks combined! Shapes appear on every beat and every two beats, in sync with the hip-hop drum pattern.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 8. Tips ────────────────────────────────────────────────────────── -->
+    <section class="help-section" id="tips">
+      <h2 class="help-section__heading">💡 Tips &amp; Tricks</h2>
+      <ul class="tips-list">
+        <li>
+          <span class="tip-emoji">🎨</span>
+          <div>
+            <strong>Make music visible!</strong> Connect sound to shapes using the <em>Map Value</em> block.
+            Try: Map <em>Current Pitch</em> (200–800 Hz) to <em>Draw Circle</em>'s size (10–200).
+            Now the circle grows as you sing higher!
+          </div>
+        </li>
+        <li>
+          <span class="tip-emoji">🌈</span>
+          <div>
+            <strong>Animate with Frame Count.</strong> Use <em>Frame Count ÷ 60</em> to get a slowly increasing number.
+            Plug it into rotation or size to make things spin or pulse automatically.
+          </div>
+        </li>
+        <li>
+          <span class="tip-emoji">🥁</span>
+          <div>
+            <strong>Start with a drum pattern.</strong> Drag a <em>Drum Pattern</em> block set to "Rock Beat" into a
+            <em>Music Start</em> block and press Play. Then add bass and melody notes on top one at a time.
+          </div>
+        </li>
+        <li>
+          <span class="tip-emoji">🔁</span>
+          <div>
+            <strong>Use the Loop checkbox.</strong> The <strong>🔁 Loop</strong> checkbox at the top makes your
+            Blockly music repeat forever. Great for trying out different keyboard lines on top of a steady beat.
+          </div>
+        </li>
+        <li>
+          <span class="tip-emoji">🎛️</span>
+          <div>
+            <strong>Layer your loop pedal.</strong> Record a simple bass line on Layer 1 (try notes F, J, K on your keyboard).
+            Then overdub a melody on Layer 2. Change instruments between layers for contrast!
+          </div>
+        </li>
+        <li>
+          <span class="tip-emoji">📋</span>
+          <div>
+            <strong>See the code!</strong> Click the "See the Code" panel to watch your blocks turn into JavaScript.
+            If you're curious about programming, try reading it — it's the same code that runs in real apps!
+          </div>
+        </li>
+        <li>
+          <span class="tip-emoji">💾</span>
+          <div>
+            <strong>Auto-save.</strong> Your block workspace is automatically saved in the browser.
+            When you come back to the studio later, your blocks will still be there!
+          </div>
+        </li>
+        <li>
+          <span class="tip-emoji">🎯</span>
+          <div>
+            <strong>Right-click in the workspace</strong> to undo, redo, clean up blocks, or zoom in and out.
+            You can also use the scroll wheel to zoom the block editor.
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ── Back to studio ─────────────────────────────────────────────────── -->
+    <div style="text-align: center; padding: var(--space-xl) 0;">
+      <a href="/skratch" class="btn btn--primary btn--large">&#8592; Back to Skratch Studio</a>
+    </div>
+
+  </main>
+</body>
+</html>

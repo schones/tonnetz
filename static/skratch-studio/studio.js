@@ -8,6 +8,7 @@ import { MusicEngine } from './music-engine.js';
 import { Sandbox } from './sandbox.js';
 import { AudioBridge } from './audio-bridge.js';
 import { Piano } from '../shared/ui/piano.js';
+import { LoopPedal } from './loop-pedal.js';
 
 const STORAGE_KEY = 'skratch-studio-workspace';
 
@@ -485,7 +486,7 @@ let sandbox = null;
 let audioBridge = null;
 let musicEngine = null;
 let piano = null;
-let _beatIndicatorTimeout = null;
+let loopPedal = null;
 let _highlightEnabled = false;
 let _workspaceDirty = false;
 let _isPlaying = false;
@@ -602,8 +603,14 @@ export function init() {
   const pianoContainer = document.getElementById('pianoContainer');
   const sustainIndicator = document.getElementById('sustainIndicator');
   piano = new Piano(pianoContainer, {
-    onNoteOn: (noteName) => audioBridge.noteOn(noteName),
-    onNoteOff: (noteName) => audioBridge.noteOff(noteName),
+    onNoteOn: (noteName) => {
+      audioBridge.noteOn(noteName);
+      if (loopPedal) loopPedal.onNoteOn(noteName, document.getElementById('soundSelect').value);
+    },
+    onNoteOff: (noteName) => {
+      audioBridge.noteOff(noteName);
+      if (loopPedal) loopPedal.onNoteOff(noteName);
+    },
     onSustainChange: (on) => {
       if (on) {
         audioBridge.sustainOn();
@@ -623,6 +630,35 @@ export function init() {
   soundSelect.addEventListener('change', () => {
     audioBridge.setSoundType(soundSelect.value);
   });
+
+  // --- Loop Pedal ---
+  loopPedal = new LoopPedal({
+    getBpm: () => parseInt(document.getElementById('bpmSlider').value, 10),
+    pianoRollCanvas:   document.getElementById('loopPianoRoll'),
+    barVizCanvas:      document.getElementById('loopBarViz'),
+    statusEl:          document.getElementById('loopPedalStatus'),
+    lengthEl:          document.getElementById('loopLengthDisplay'),
+    quantizeCheckbox:  document.getElementById('chkQuantize'),
+    buttons: {
+      record:   document.getElementById('btnLoopRecord'),
+      stopRec:  document.getElementById('btnLoopStopRec'),
+      overdub:  document.getElementById('btnLoopOverdub'),
+      play:     document.getElementById('btnLoopPlay'),
+      clearL1:  document.getElementById('btnClearL1'),
+      clearL2:  document.getElementById('btnClearL2'),
+      clearAll: document.getElementById('btnLoopClearAll'),
+    },
+    // When loop pedal takes the Transport, pause any running Blockly music
+    onTakeoverTransport: () => { if (_isPlaying) handleStop(); },
+  });
+
+  document.getElementById('btnLoopRecord').addEventListener('click',   () => loopPedal.startRecording());
+  document.getElementById('btnLoopStopRec').addEventListener('click',  () => loopPedal.stopRecording());
+  document.getElementById('btnLoopOverdub').addEventListener('click',  () => loopPedal.startOverdub());
+  document.getElementById('btnLoopPlay').addEventListener('click',     () => loopPedal.togglePlayback());
+  document.getElementById('btnClearL1').addEventListener('click',      () => loopPedal.clearLayer(0));
+  document.getElementById('btnClearL2').addEventListener('click',      () => loopPedal.clearLayer(1));
+  document.getElementById('btnLoopClearAll').addEventListener('click', () => loopPedal.clearAll());
 
   // Clear Blocks button — clears only the Blockly workspace
   document.getElementById('btnClearBlocks').addEventListener('click', () => {
@@ -733,10 +769,11 @@ export function init() {
 
   // Cleanup on unload
   window.addEventListener('beforeunload', () => {
+    if (loopPedal)   loopPedal.destroy();
     if (musicEngine) musicEngine.destroy();
     if (audioBridge) audioBridge.destroy();
-    if (piano) piano.destroy();
-    if (sandbox) sandbox.destroy();
+    if (piano)       piano.destroy();
+    if (sandbox)     sandbox.destroy();
   });
 }
 
@@ -753,6 +790,9 @@ function buildCombinedToolbox() {
 }
 
 async function handlePlay() {
+  // If loop pedal is active, yield the Transport back to MusicEngine
+  if (loopPedal) loopPedal.notifyTransportTakeover();
+
   // Ensure Tone.js is started (requires user gesture)
   await musicEngine.ensureTone();
 
