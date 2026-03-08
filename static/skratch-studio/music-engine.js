@@ -179,6 +179,20 @@ export class MusicEngine {
     this._loopEndBar = 1;
     this._stopBeatLoop();
     this.releaseSustainedNotes();
+    this.releaseAllInstruments(); // cut any notes whose release was cancelled with the Transport
+  }
+
+  /** Immediately silence all instrument voices (called after Transport.cancel()). */
+  releaseAllInstruments() {
+    for (const inst of Object.values(this._instruments)) {
+      try {
+        if (typeof inst.releaseAll === 'function') {
+          inst.releaseAll();          // PolySynth (chords, loop)
+        } else {
+          inst.triggerRelease(Tone.now()); // Synth, MonoSynth, MembraneSynth, etc.
+        }
+      } catch (_) {}
+    }
   }
 
   // --- Sustain Control ---

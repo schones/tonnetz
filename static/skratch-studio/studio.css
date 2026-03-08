@@ -565,6 +565,52 @@
   background: #1e1e2e;
 }
 
+/* --- Loop name modal --- */
+.loop-name-modal {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border: 1px solid #3a3a50;
+  border-radius: var(--radius-md);
+  padding: 20px;
+  min-width: 280px;
+}
+
+.loop-name-modal::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.loop-name-modal__title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.loop-name-modal__input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: #2a2a3e;
+  color: #cdd6f4;
+  border: 1px solid #3a3a50;
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: var(--font-family);
+  margin-bottom: 12px;
+}
+
+.loop-name-modal__input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.loop-name-modal__buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* --- Responsive --- */
 @media (max-width: 900px) {
   .studio-layout {

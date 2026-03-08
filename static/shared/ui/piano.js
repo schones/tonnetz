@@ -233,9 +233,10 @@ export class Piano {
 
   _bindKeyboard() {
     this._onKeyDown = (e) => {
-      // Don't capture when typing in inputs or in Blockly
+      // Don't capture when a modal dialog is open or when typing in inputs/Blockly
+      if (document.querySelector('dialog[open]')) return;
       const tag = e.target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' ||
         e.target.isContentEditable || e.target.closest('#blocklyDiv')) {
         return;
       }
@@ -274,6 +275,12 @@ export class Piano {
     };
 
     this._onKeyUp = (e) => {
+      if (document.querySelector('dialog[open]')) return;
+      const _tag = e.target.tagName;
+      if (_tag === 'INPUT' || _tag === 'TEXTAREA' || _tag === 'SELECT' || _tag === 'BUTTON' ||
+        e.target.isContentEditable || e.target.closest('#blocklyDiv')) {
+        return;
+      }
       // Re-evaluate sustain on any key up (in case Shift was released)
       const isShift = e.getModifierState('Shift');
       const isCaps = e.getModifierState('CapsLock');

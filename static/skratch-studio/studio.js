@@ -13,6 +13,7 @@ import { LoopPedal } from './loop-pedal.js';
 const STORAGE_KEY = 'skratch-studio-workspace';
 const LOOPS_STORAGE_KEY = 'skratch_loops';
 const _loopRegistry = new Map();
+let _loopMicPlayers = []; // active Tone.Player instances from __playLoop mic layers
 
 // --- Helper: build a chain of next-linked blocks for JSON serialization ---
 function chain(...blocks) {
@@ -793,6 +794,65 @@ export function init() {
 
 // ── Saved Loop Library ────────────────────────────────────────────────────
 
+// Mic layer serialization: AudioBuffer → mono 16-bit WAV → base64 string (synchronous).
+function audioBufferToWavBase64(audioBuffer) {
+  const sampleRate = audioBuffer.sampleRate;
+  const numFrames  = audioBuffer.length;
+  const channels   = audioBuffer.numberOfChannels;
+  // Downmix to mono
+  const mono = new Float32Array(numFrames);
+  for (let ch = 0; ch < channels; ch++) {
+    const data = audioBuffer.getChannelData(ch);
+    for (let i = 0; i < numFrames; i++) mono[i] += data[i] / channels;
+  }
+  const dataSize  = numFrames * 2; // 16-bit samples
+  const buf       = new ArrayBuffer(44 + dataSize);
+  const v         = new DataView(buf);
+  const ws        = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); v.setUint32(4,  36 + dataSize, true);
+  ws(8, 'WAVE'); ws(12, 'fmt ');
+  v.setUint32(16, 16, true);           // fmt chunk size
+  v.setUint16(20, 1,  true);           // PCM
+  v.setUint16(22, 1,  true);           // mono
+  v.setUint32(24, sampleRate, true);
+  v.setUint32(28, sampleRate * 2, true); // byte rate
+  v.setUint16(32, 2,  true);           // block align
+  v.setUint16(34, 16, true);           // bits per sample
+  ws(36, 'data'); v.setUint32(40, dataSize, true);
+  let off = 44;
+  for (let i = 0; i < numFrames; i++) {
+    const s = Math.max(-1, Math.min(1, mono[i]));
+    v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    off += 2;
+  }
+  const u8 = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+  return btoa(bin);
+}
+
+// Mic layer deserialization: base64 WAV string → AudioBuffer (async).
+async function wavBase64ToAudioBuffer(b64) {
+  const bin = atob(b64);
+  const u8  = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const audioCtx = Tone.context.rawContext || Tone.context;
+  return audioCtx.decodeAudioData(u8.buffer.slice(0));
+}
+
+// Decode mic WAV layers for a registered loopData entry (runs in background after page load).
+async function _decodeMicLayers(loopData) {
+  const entry = _loopRegistry.get(loopData.id);
+  if (!entry || !loopData.micWav) return;
+  entry._audioBuffers = [null, null, null];
+  for (let i = 0; i < 3; i++) {
+    if (loopData.micWav[i]) {
+      try { entry._audioBuffers[i] = await wavBase64ToAudioBuffer(loopData.micWav[i]); }
+      catch (err) { console.warn('[LoopBlock] mic decode error layer', i, err); }
+    }
+  }
+}
+
 function loadLoopsFromStorage() {
   try {
     return JSON.parse(localStorage.getItem(LOOPS_STORAGE_KEY) || '[]');
@@ -801,9 +861,12 @@ function loadLoopsFromStorage() {
 
 function registerLoopBlock(loopData) {
   const blockType = 'loop_saved_' + loopData.id;
-  const allNotes = [...loopData.layers[0], ...loopData.layers[1]];
-  const noteCount = allNotes.length;
-  const durLabel = loopData.loopLength.toFixed(1) + 's';
+  const noteCount = loopData.layers.flat().length; // all 3 keyboard layers
+  const micCount  = loopData.micWav ? loopData.micWav.filter(Boolean).length : 0;
+  const durLabel  = loopData.loopLength.toFixed(1) + 's';
+  const infoLabel = micCount > 0
+    ? `  (${noteCount} notes · ${micCount} mic · ${durLabel})`
+    : `  (${noteCount} notes · ${durLabel})`;
 
   _loopRegistry.set(loopData.id, loopData);
 
@@ -811,7 +874,7 @@ function registerLoopBlock(loopData) {
     init() {
       this.appendDummyInput()
         .appendField('🎵 ' + loopData.name)
-        .appendField(new Blockly.FieldLabel(`  (${noteCount} notes · ${durLabel})`));
+        .appendField(new Blockly.FieldLabel(infoLabel));
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(160);
@@ -842,17 +905,68 @@ function rebuildToolbox() {
 
 function loadSavedLoops() {
   for (const loopData of loadLoopsFromStorage()) {
-    registerLoopBlock(loopData);
+    registerLoopBlock(loopData); // synchronous — must complete before toolbox is built
+    if (loopData.micWav && loopData.micWav.some(Boolean)) {
+      _decodeMicLayers(loopData); // async in background; ready before user can click Play
+    }
   }
 }
 
 function handleSaveAsBlock() {
   if (!loopPedal) return;
-  const allNotes = [...loopPedal.layers[0], ...loopPedal.layers[1], ...loopPedal.layers[2]];
-  if (allNotes.length === 0) { alert('No keyboard notes recorded yet! (Mic-recorded layers cannot be saved as blocks.)'); return; }
+  const hasAny = loopPedal.layers.some(l => l.length > 0) || loopPedal._layerAudio.some(a => a !== null);
+  if (!hasAny) { alert('Nothing recorded yet!'); return; }
 
-  const name = prompt('Name your loop:', 'My Loop');
-  if (!name || !name.trim()) return;
+  const modal  = document.getElementById('loopNameModal');
+  const input  = document.getElementById('loopNameInput');
+  const okBtn  = document.getElementById('loopNameOk');
+  const canBtn = document.getElementById('loopNameCancel');
+
+  // Disable all keyboard shortcuts before the dialog opens so no shortcut
+  // (1/2/3 loop keys or Caps Lock sustain) can fire while the user types.
+  loopPedal.setShortcutsEnabled(false);
+
+  input.value = 'My Loop';
+  modal.showModal();
+  // autofocus attribute handles initial focus; select() highlights the default text
+  requestAnimationFrame(() => { input.select(); });
+
+  function finish(save) {
+    // Re-enable shortcuts before any side-effects so state is consistent
+    loopPedal.setShortcutsEnabled(true);
+    okBtn.removeEventListener('click', onOk);
+    canBtn.removeEventListener('click', onCancel);
+    input.removeEventListener('keydown', onInputKey);
+    modal.removeEventListener('close', onModalClose);
+    if (modal.open) modal.close();
+    if (save) {
+      const name = input.value.trim();
+      if (name) _commitSaveAsBlock(name);
+    }
+  }
+
+  function onOk()         { finish(true);  }
+  function onCancel()     { finish(false); }
+  function onModalClose() { finish(false); }
+  function onInputKey(e)  {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+  }
+
+  okBtn.addEventListener('click',   onOk);
+  canBtn.addEventListener('click',  onCancel);
+  input.addEventListener('keydown', onInputKey);
+  modal.addEventListener('close',   onModalClose);
+}
+
+function _commitSaveAsBlock(name) {
+  // Serialize mic layers as mono 16-bit WAV base64 (null for keyboard-only layers)
+  const micWav = [null, null, null];
+  for (let i = 0; i < 3; i++) {
+    if (loopPedal._layerAudio[i]) {
+      try { micWav[i] = audioBufferToWavBase64(loopPedal._layerAudio[i]); }
+      catch (err) { console.warn('[SaveBlock] mic serialize error layer', i, err); }
+    }
+  }
 
   const loopData = {
     id: String(Date.now()),
@@ -864,6 +978,7 @@ function handleSaveAsBlock() {
     ],
     loopLength: loopPedal.loopLength,
     bpm: parseInt(document.getElementById('bpmSlider').value, 10),
+    micWav,
   };
 
   const loops = loadLoopsFromStorage();
@@ -1019,14 +1134,33 @@ function executeMusicCode(code) {
       _currentMusicBlockId = id;
     };
 
-    // Saved loop playback — schedules all notes from a stored loop (all keyboard layers)
+    // Saved loop playback — schedules keyboard notes + starts mic layer players
     const __playLoopFn = (id) => {
       const loopData = _loopRegistry.get(id);
       if (!loopData) return;
       musicEngine.updateLoopEnd(loopData.loopLength);
+
+      // Keyboard layers — Transport-scheduled via MusicEngine
       const allNotes = loopData.layers.flat();
       for (const ev of allNotes) {
         musicEngine.scheduleLoopNote(ev.note, ev.duration, ev.startTime);
+      }
+
+      // Mic layers — Tone.Player synced to Transport (created before Transport.start)
+      if (loopData._audioBuffers) {
+        for (const buf of loopData._audioBuffers) {
+          if (!buf) continue;
+          try {
+            const player = new Tone.Player(buf).toDestination();
+            player.loop    = true;
+            player.loopEnd = Math.min(loopData.loopLength, player.buffer.duration);
+            player.sync();
+            player.start(0);
+            _loopMicPlayers.push(player);
+          } catch (err) {
+            console.warn('[PlayLoop] mic player error:', err);
+          }
+        }
       }
     };
 
@@ -1152,6 +1286,13 @@ function handleStop() {
   _workspaceDirty = false;
   sandbox.stop();
   musicEngine.stop();
+  audioBridge.releaseAll(); // release any live piano notes held through sustain or mid-note
+
+  // Stop and dispose any mic layer players started by __playLoop blocks
+  for (const p of _loopMicPlayers) {
+    try { p.stop(); p.unsync(); p.dispose(); } catch (_) {}
+  }
+  _loopMicPlayers = [];
 
   // Clear all block highlights
   workspace.highlightBlock(null);

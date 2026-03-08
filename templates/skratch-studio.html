@@ -126,7 +126,7 @@
             <button id="btnClearL1"     class="btn btn--clear"        disabled>Clear L1</button>
             <button id="btnClearL2"     class="btn btn--clear"        disabled>Clear L2</button>
             <button id="btnClearL3"     class="btn btn--clear"        disabled>Clear L3</button>
-            <button id="btnLoopClearAll" class="btn btn--clear"       disabled>Clear All</button>
+            <button id="btnLoopClearAll" class="btn btn--clear"       disabled>&#8856; Clear All Loops</button>
             <button id="btnSaveAsBlock"  class="btn btn--save-block"  disabled>&#128190; Save as Block</button>
           </div>
           <div class="loop-pedal__info">
@@ -160,6 +160,17 @@
       </div>
     </div>
   </main>
+
+  <!-- Loop name modal — replaces browser prompt() for "Save as Block" -->
+  <dialog id="loopNameModal" class="loop-name-modal">
+    <p class="loop-name-modal__title">&#128190; Name Your Loop</p>
+    <input type="text" id="loopNameInput" class="loop-name-modal__input"
+           maxlength="40" autocomplete="off" spellcheck="false" autofocus>
+    <div class="loop-name-modal__buttons">
+      <button id="loopNameOk"     class="btn btn--save-block">Save</button>
+      <button id="loopNameCancel" class="btn btn--loop-stoprec">Cancel</button>
+    </div>
+  </dialog>
 
   <script type="module">
     import { init } from '/static/skratch-studio/studio.js';

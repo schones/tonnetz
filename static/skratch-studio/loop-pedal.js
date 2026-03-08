@@ -91,6 +91,7 @@ export class LoopPedal {
     this._playheadRaf = null;
 
     // Keyboard shortcuts
+    this._shortcutsEnabled = true;
     this._keyListener = this._onKeyDown.bind(this);
     document.addEventListener('keydown', this._keyListener);
 
@@ -105,10 +106,15 @@ export class LoopPedal {
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
 
+  /** Disable (false) or re-enable (true) keyboard shortcuts 1/2/3.
+   *  Called by studio.js to suppress shortcuts while a modal is open. */
+  setShortcutsEnabled(v) { this._shortcutsEnabled = v; }
+
   _onKeyDown(e) {
     if (e.repeat) return;
+    if (!this._shortcutsEnabled) return;
     const tag = e.target.tagName;
-    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
     if (e.key === '1') this.startRecording();
     else if (e.key === '2') this.startOverdub();
     else if (e.key === '3') this.togglePlayback();
@@ -266,13 +272,13 @@ export class LoopPedal {
 
   async stopRecording() {
     if (this.state === 'recording1') {
+      const raw = Tone.now() - this._recordStart; // measure BEFORE async decode
       if (this._isMicMode()) {
         const audioBuffer = await this._stopMicRecording();
         if (audioBuffer) this._layerAudio[0] = audioBuffer;
       } else {
         this._finalizeLayer(0);
       }
-      const raw = Tone.now() - this._recordStart;
       this.loopLength = this._quantize(Math.max(raw, 0.1));
       this.state = 'playing';
       this._startPlayback();
@@ -418,12 +424,13 @@ export class LoopPedal {
     Tone.Transport.loop     = false;
     Tone.Transport.position = 0;
 
-    this._buildAndStartPart();
-    Tone.Transport.start();
+    const startAt = Tone.now() + 0.05;
+    this._buildAndStartPart(startAt, 0);
+    Tone.Transport.start(startAt);
     this._animatePlayhead();
   }
 
-  _buildAndStartPart() {
+  _buildAndStartPart(micStartAt, micBufferOffset) {
     // Keyboard layers → Tone.Part
     const events = [];
     for (let li = 0; li < NUM_LAYERS; li++) {
@@ -447,9 +454,8 @@ export class LoopPedal {
       try {
         const player = new Tone.Player(this._layerAudio[li]).toDestination();
         player.loop    = true;
-        player.loopEnd = this.loopLength;
-        player.sync();
-        player.start(0);
+        player.loopEnd = Math.min(this.loopLength, player.buffer.duration);
+        player.start(micStartAt, micBufferOffset);
         this._players.push({ layerIdx: li, player });
       } catch (err) {
         console.warn('[LoopPedal] Failed to create player for layer', li, err);
@@ -469,9 +475,10 @@ export class LoopPedal {
 
   /** Rebuild Part mid-playback (after overdub finalize or clear layer). */
   _rebuildPart() {
+    const offset = Math.max(0, Tone.Transport.seconds % this.loopLength);
     this._clearPart();
-    this._buildAndStartPart();
-    // Transport keeps running; Part/Players pick up at next loop start
+    this._buildAndStartPart(Tone.now() + 0.01, offset);
+    this._animatePlayhead();
   }
 
   _clearPart() {
@@ -483,6 +490,11 @@ export class LoopPedal {
       try { player.stop(); player.unsync(); player.dispose(); } catch (_) {}
     }
     this._players = [];
+    // Release any notes still sounding in the PolySynths whose scheduled
+    // release callbacks were cancelled along with the Part.
+    for (const synth of Object.values(this._synths)) {
+      try { synth.releaseAll(); } catch (_) {}
+    }
     if (this._playheadRaf !== null) {
       cancelAnimationFrame(this._playheadRaf);
       this._playheadRaf = null;
@@ -680,10 +692,8 @@ export class LoopPedal {
     if (b.clearL3) b.clearL3.disabled = s === 'idle' || s === 'recording1';
 
     if (b.saveAsBlock) {
-      // Save as Block only works for keyboard-only loops (AudioBuffer not serializable)
-      const hasMicLayers     = this._layerAudio.some(a => a !== null);
-      const hasKeyboardNotes = this.layers.some(l => l.length > 0);
-      b.saveAsBlock.disabled = !hasKeyboardNotes || hasMicLayers || s === 'recording1';
+      const hasAnyContent = this.layers.some(l => l.length > 0) || this._layerAudio.some(a => a !== null);
+      b.saveAsBlock.disabled = !hasAnyContent || s === 'recording1';
     }
 
     // Play/Stop button text toggles
