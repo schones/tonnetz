@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,14 +56,15 @@
             margin-bottom: 1.25rem;
             text-align: center;
         }
-        
+
         /* ── Input styling from Tonnetz ── */
-        .form-input, .form-select {
-            padding: 0.55rem 0.75rem; 
-            border: 2px solid #333; 
-            border-radius: 8px; 
-            background: #0f1529; 
-            color: #eee; 
+        .form-input,
+        .form-select {
+            padding: 0.55rem 0.75rem;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #0f1529;
+            color: #eee;
             font-size: 1rem;
         }
 
@@ -72,23 +74,26 @@
             margin: 0 auto;
             padding: 1rem 0;
         }
+
         .harmony-setup__grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
+
         .form-group {
             display: flex;
             flex-direction: column;
             text-align: left;
         }
+
         .form-label {
             margin-bottom: 0.5rem;
             color: #aaa;
             font-size: 0.9rem;
         }
-        
+
         /* ── Game screen ── */
         .harmony-game {
             max-width: 620px;
@@ -103,12 +108,14 @@
             flex-wrap: wrap;
             margin-bottom: 1.5rem;
         }
+
         .stat__value {
             font-size: 2rem;
             font-weight: 800;
             color: #90caf9;
             line-height: 1;
         }
+
         .stat__label {
             font-size: 0.75rem;
             color: #aaa;
@@ -131,6 +138,7 @@
             margin-bottom: 1.5rem;
             font-weight: bold;
         }
+
         .test-prompt__interval {
             color: #ffca28;
             font-size: 2rem;
@@ -143,18 +151,21 @@
             margin: 0 auto 1.5rem;
             position: relative;
         }
+
         .tuner-svg {
             width: 100%;
             max-width: 340px;
             margin: 0 auto;
             display: block;
         }
+
         .tuner-note {
             font-size: 2.5rem;
             font-weight: 800;
             color: #fff;
             margin-top: 0.25rem;
         }
+
         .tuner-detail {
             font-size: 0.9rem;
             color: #aaa;
@@ -192,8 +203,14 @@
             font-weight: bold;
             margin: 0.5rem 0;
         }
-        .feedback--success { color: #00e676; }
-        .feedback--miss { color: #ff1744; }
+
+        .feedback--success {
+            color: #00e676;
+        }
+
+        .feedback--miss {
+            color: #ff1744;
+        }
 
         /* ── Buttons ── */
         .btn {
@@ -205,14 +222,41 @@
             cursor: pointer;
             transition: opacity 0.15s, transform 0.1s;
         }
-        .btn:hover:not(:disabled) { transform: translateY(-2px); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        
-        .btn--primary { background: #1565c0; color: #fff; }
-        .btn--success { background: #00c853; color: #fff; }
-        .btn--danger { background: #d50000; color: #fff; }
-        .btn--secondary { background: #333; color: #eee; }
-        .btn--large { font-size: 1.2rem; padding: 1rem 2rem; }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn--primary {
+            background: #1565c0;
+            color: #fff;
+        }
+
+        .btn--success {
+            background: #00c853;
+            color: #fff;
+        }
+
+        .btn--danger {
+            background: #d50000;
+            color: #fff;
+        }
+
+        .btn--secondary {
+            background: #333;
+            color: #eee;
+        }
+
+        .btn--large {
+            font-size: 1.2rem;
+            padding: 1rem 2rem;
+        }
 
         /* ── Results ── */
         .harmony-results {
@@ -280,6 +324,10 @@
                         <div class="stat__value" id="stat-question">1/10</div>
                         <div class="stat__label">Question</div>
                     </div>
+                    <div class="stat" id="stat-countdown-wrap" hidden>
+                        <div class="stat__value" id="stat-countdown" style="color:#ff5722;">15</div>
+                        <div class="stat__label">Seconds</div>
+                    </div>
                 </div>
 
                 <!-- Practice controls -->
@@ -336,7 +384,7 @@
         <section id="screen-results" hidden>
             <div class="harmony-results card">
                 <h2 style="font-size: 2rem; margin-bottom: 2rem;">Test Complete!</h2>
-                
+
                 <div class="stats-bar">
                     <div class="stat">
                         <div class="stat__value" id="result-score">0</div>
@@ -354,7 +402,8 @@
 
                 <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
                     <button id="btn-again" class="btn btn--primary btn--large">Play Again</button>
-                    <a href="/" class="btn btn--secondary btn--large" style="text-decoration:none; display:flex; align-items:center;">Home</a>
+                    <a href="/" class="btn btn--secondary btn--large"
+                        style="text-decoration:none; display:flex; align-items:center;">Home</a>
                 </div>
             </div>
         </section>
@@ -385,10 +434,10 @@
             const midiFloat = 12 * Math.log2(freq / A4_FREQ) + A4_MIDI;
             const midi = Math.round(midiFloat);
             let cents = Math.round((midiFloat - midi) * 100);
-            
+
             // Pedagogical Grace Window for kids
             if (Math.abs(cents) <= 15) cents = 0;
-            
+
             const noteIndex = ((midi % 12) + 12) % 12;
             const octave = Math.floor(midi / 12) - 1;
             const noteName = NOTE_NAMES[noteIndex];
@@ -431,7 +480,7 @@
             const rootMidiFloat = 12 * Math.log2(rootFreq / A4_FREQ) + A4_MIDI;
             const secondMidiFloat = rootMidiFloat + intervalSemitones;
             const secondFreq = A4_FREQ * Math.pow(2, (secondMidiFloat - A4_MIDI) / 12);
-            
+
             const now = Tone.now();
             if (mode === "harmonic") {
                 synth.triggerAttackRelease(rootFreq, noteDuration, now);
@@ -528,21 +577,25 @@
                 else if (d === 2) seg.setAttribute('opacity', '0.28');
                 else seg.setAttribute('opacity', '0.15');
             });
-            handleSuccess(cents); // hook for scoring
             const rotation = clamped * 80 / CENTS_RANGE;
             needleLine.style.transform = `rotate(${rotation}deg)`;
         }
 
         // --- 3. Game State & Logic ---
         const TOLERANCE = { easy: 50, medium: 30, hard: 15 };
+        const STABILITY_REQUIRED = { easy: 2000, medium: 1500, hard: 1000 };
+        const WRONG_PITCH_TIMEOUT = 2000;
+        const TEST_QUESTION_TIMEOUT = 15000;
         const TEST_SEMITONES = [0, 3, 4, 7, 12];
         const TEST_TOTAL = 10;
-        
+
         const state = {
             mode: 'practice', difficulty: 'easy', rootNote: 'C4', interval: 7, playerName: 'Player',
             listening: false, pollIntervalId: null,
             score: 0, streak: 0, bestStreak: 0, hits: 0,
-            testIndex: 0, testQueue: [], awaitingNext: false
+            testIndex: 0, testQueue: [], awaitingNext: false, survivalMode: false,
+            stableStartTime: null, wrongPitchStartTime: null,
+            questionTimerId: null, countdownIntervalId: null, questionStartTime: null
         };
 
         const $ = id => document.getElementById(id);
@@ -575,7 +628,12 @@
         function updateStats() {
             $('stat-score').textContent = state.score;
             $('stat-streak').textContent = state.streak;
-            if (state.mode === 'test') $('stat-question').textContent = `${Math.min(state.testIndex + 1, TEST_TOTAL)}/${TEST_TOTAL}`;
+            if (state.mode === 'test') {
+                const qNum = state.testIndex + 1;
+                $('stat-question').textContent = state.survivalMode
+                    ? `${qNum}`
+                    : `${Math.min(qNum, TEST_TOTAL)}/${TEST_TOTAL}`;
+            }
         }
 
         function updatePracticeInfo() {
@@ -586,21 +644,70 @@
             $('info-semitones').textContent = state.interval;
         }
 
+        function clearQuestionTimer() {
+            if (state.questionTimerId !== null) { clearTimeout(state.questionTimerId); state.questionTimerId = null; }
+            if (state.countdownIntervalId !== null) { clearInterval(state.countdownIntervalId); state.countdownIntervalId = null; }
+            state.questionStartTime = null;
+            $('stat-countdown-wrap').hidden = true;
+        }
+
+        function startQuestionTimer() {
+            clearQuestionTimer();
+            state.questionStartTime = performance.now();
+            $('stat-countdown-wrap').hidden = false;
+            state.countdownIntervalId = setInterval(() => {
+                const remaining = Math.max(0, TEST_QUESTION_TIMEOUT - (performance.now() - state.questionStartTime));
+                const secs = Math.ceil(remaining / 1000);
+                const el = $('stat-countdown');
+                el.textContent = secs;
+                el.style.color = secs <= 5 ? '#ff1744' : secs <= 10 ? '#ff9800' : '#ff5722';
+            }, 100);
+            state.questionTimerId = setTimeout(() => {
+                clearQuestionTimer();
+                handleMiss('time');
+            }, TEST_QUESTION_TIMEOUT);
+        }
+
+        function showResults() {
+            clearQuestionTimer();
+            doStopListening();
+            $('result-score').textContent = state.score;
+            $('result-correct').textContent = state.survivalMode
+                ? `${state.hits} ★`
+                : `${state.hits}/${TEST_TOTAL}`;
+            $('result-streak').textContent = state.bestStreak;
+            showScreen('results');
+        }
+
+        function handleMiss(reason) {
+            if (state.awaitingNext) return;
+            state.awaitingNext = true;
+            state.stableStartTime = null;
+            state.wrongPitchStartTime = null;
+            state.streak = 0;
+            const fb = $('feedback');
+            const target = getTargetName();
+            fb.textContent = reason === 'time' ? `⏱ Time's up! Target was ${target}`
+                : reason === 'wrong' ? `✗ Wrong note held — target was ${target}`
+                    : `Skipped — target was ${target}`;
+            fb.className = 'feedback feedback--miss';
+            updateStats();
+            setTimeout(showResults, 1500);
+        }
+
         function nextTestQuestion() {
-            if (state.testIndex >= TEST_TOTAL) {
-                showScreen('results');
-                $('result-score').textContent = state.score;
-                $('result-correct').textContent = `${state.hits}/${TEST_TOTAL}`;
-                $('result-streak').textContent = state.bestStreak;
-                doStopListening();
-                return;
+            if (state.testIndex >= TEST_TOTAL && !state.survivalMode) {
+                state.survivalMode = true;
+                $('stat-question').parentElement.querySelector('.stat__label').textContent = 'Survival';
             }
-            
+
             if (state.testIndex % TEST_SEMITONES.length === 0) {
                 state.testQueue = [...TEST_SEMITONES].sort(() => Math.random() - 0.5);
             }
             state.interval = state.testQueue[state.testIndex % TEST_SEMITONES.length];
             state.awaitingNext = false;
+            state.stableStartTime = null;
+            state.wrongPitchStartTime = null;
 
             $('test-interval-name').textContent = getIntervalName(state.interval);
             $('test-root-name').textContent = state.rootNote;
@@ -608,6 +715,7 @@
 
             setTimeout(() => playNote(state.rootNote, 1), 300);
             $('feedback').textContent = '';
+            startQuestionTimer();
         }
 
         // --- 4. Tonnetz Backend Integration ---
@@ -620,10 +728,10 @@
                 // Signal the Python backend to start the microphone thread
                 await fetch('/start_listen', { method: 'POST' });
                 state.listening = true;
-                
+
                 $('btn-listen').textContent = 'Stop Listening';
                 $('btn-listen').classList.replace('btn--success', 'btn--danger');
-                
+
                 // Start polling results
                 state.pollIntervalId = setInterval(pollBackend, 50); // ~20fps
             } catch (err) {
@@ -635,9 +743,9 @@
             if (!state.listening) return;
             state.listening = false;
             clearInterval(state.pollIntervalId);
-            
+
             await fetch('/stop_listen', { method: 'POST' });
-            
+
             $('btn-listen').textContent = 'Start Listening';
             $('btn-listen').classList.replace('btn--danger', 'btn--success');
             updateTuner(null);
@@ -647,22 +755,65 @@
 
         async function pollBackend() {
             if (!state.listening || state.awaitingNext) return;
-            
+
             try {
                 const res = await fetch('/poll_audio');
                 const data = await res.json();
-                
+
                 if (data.pitch && data.pitch.frequency > 0) {
                     const freq = data.pitch.frequency;
                     const noteInfo = frequencyToNote(freq);
-                    
                     const target = getTargetFreq();
                     const cents = 1200 * Math.log2(freq / target);
-                    
+
                     updateTuner(cents);
                     $('tuner-note').textContent = noteInfo.fullName;
-                    $('tuner-detail').textContent = `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)} cents`;
+
+                    const tol = TOLERANCE[state.difficulty];
+                    if (Math.abs(cents) <= tol) {
+                        // Within tolerance — reset wrong-pitch timer, run correct-pitch hold
+                        state.wrongPitchStartTime = null;
+                        if (state.stableStartTime === null) {
+                            state.stableStartTime = performance.now();
+                        }
+                        const held = performance.now() - state.stableStartTime;
+                        const required = STABILITY_REQUIRED[state.difficulty];
+                        const remaining = Math.max(0, required - held);
+                        $('tuner-detail').textContent =
+                            `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)}¢ — Hold ${(remaining / 1000).toFixed(1)}s`;
+
+                        if (held >= required) {
+                            state.stableStartTime = null;
+                            handleSuccess(cents);
+                        }
+                    } else {
+                        // Out of tolerance — reset correct-pitch timer
+                        state.stableStartTime = null;
+
+                        if (state.mode === 'test') {
+                            // Wrong-pitch stability timer: fail if held for WRONG_PITCH_TIMEOUT
+                            if (state.wrongPitchStartTime === null) {
+                                state.wrongPitchStartTime = performance.now();
+                            }
+                            const wrongHeld = performance.now() - state.wrongPitchStartTime;
+                            const wrongRemaining = Math.max(0, WRONG_PITCH_TIMEOUT - wrongHeld);
+                            $('tuner-detail').textContent =
+                                `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)}¢ — Wrong! ${(wrongRemaining / 1000).toFixed(1)}s`;
+
+                            if (wrongHeld >= WRONG_PITCH_TIMEOUT) {
+                                state.wrongPitchStartTime = null;
+                                handleMiss('wrong');
+                            }
+                        } else {
+                            state.wrongPitchStartTime = null;
+                            $('tuner-detail').textContent =
+                                `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)} cents`;
+                        }
+                    }
                 } else {
+                    // No signal — reset both timers
+                    state.stableStartTime = null;
+                    state.wrongPitchStartTime = null;
                     updateTuner(null);
                     $('tuner-note').textContent = '--';
                     $('tuner-detail').textContent = 'Listening...';
@@ -672,12 +823,22 @@
             }
         }
 
+        function selectRandomChallenge() {
+            const notes = getNoteRange(3, 'C5');
+            state.rootNote = notes[Math.floor(Math.random() * notes.length)];
+            state.interval = Math.floor(Math.random() * INTERVAL_NAMES.length);
+            $('game-root').value = state.rootNote;
+            $('game-interval').value = state.interval;
+            updatePracticeInfo();
+            setTimeout(() => playInterval(state.rootNote, state.interval), 500);
+        }
+
         function handleSuccess(cents) {
             if (state.awaitingNext) return;
-            
+
             const tol = TOLERANCE[state.difficulty];
             if (Math.abs(cents) > tol) return;
-            
+
             state.hits++;
             state.streak++;
             if (state.streak > state.bestStreak) state.bestStreak = state.streak;
@@ -693,8 +854,14 @@
 
             if (state.mode === 'practice') {
                 updateStats();
-                doStopListening();
+                state.awaitingNext = true;
+                setTimeout(() => {
+                    state.awaitingNext = false;
+                    $('feedback').textContent = '';
+                    selectRandomChallenge();
+                }, 1500);
             } else {
+                clearQuestionTimer();
                 state.awaitingNext = true;
                 state.testIndex++;
                 updateStats();
@@ -712,20 +879,23 @@
             state.difficulty = $('select-difficulty').value;
             state.rootNote = $('select-root').value;
             state.playerName = $('input-name').value.trim() || 'Player';
-            
+
             state.score = 0; state.streak = 0; state.bestStreak = 0; state.hits = 0;
-            state.testIndex = 0; state.awaitingNext = false;
+            state.testIndex = 0; state.awaitingNext = false; state.survivalMode = false;
 
             $('game-root').value = state.rootNote;
 
             if (state.mode === 'practice') {
                 state.interval = parseInt($('game-interval').value, 10);
                 $('practice-controls').hidden = false; $('play-buttons').hidden = false;
+                $('btn-play-target').hidden = false; $('btn-play-both').hidden = false;
                 $('practice-info').hidden = false; $('test-prompt').hidden = true;
                 $('btn-skip').hidden = true; $('stat-q-wrap').hidden = true;
                 updatePracticeInfo();
             } else {
-                $('practice-controls').hidden = true; $('play-buttons').hidden = true;
+                $('practice-controls').hidden = true;
+                $('play-buttons').hidden = false;
+                $('btn-play-target').hidden = true; $('btn-play-both').hidden = true;
                 $('practice-info').hidden = true; $('test-prompt').hidden = false;
                 $('btn-skip').hidden = false; $('stat-q-wrap').hidden = false;
                 nextTestQuestion();
@@ -742,15 +912,12 @@
         $('game-interval').addEventListener('change', (e) => { state.interval = parseInt(e.target.value, 10); updatePracticeInfo(); });
 
         $('btn-listen').addEventListener('click', () => state.listening ? doStopListening() : doStartListening());
-        $('btn-quit').addEventListener('click', () => { doStopListening(); showScreen('setup'); });
-        
+        $('btn-quit').addEventListener('click', () => { clearQuestionTimer(); doStopListening(); showScreen('setup'); });
+
         $('btn-skip').addEventListener('click', () => {
             if (state.mode !== 'test' || state.awaitingNext) return;
-            state.awaitingNext = true; state.streak = 0; state.testIndex++;
-            $('feedback').textContent = `Skipped — target was ${getTargetName()}`;
-            $('feedback').className = 'feedback feedback--miss';
-            updateStats();
-            setTimeout(() => nextTestQuestion(), 1200);
+            clearQuestionTimer();
+            handleMiss('skip');
         });
 
         $('btn-play-root').addEventListener('click', () => playNote(state.rootNote, 1));
@@ -764,4 +931,5 @@
         buildTuner();
     </script>
 </body>
+
 </html>
