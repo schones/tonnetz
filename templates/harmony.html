@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Harmony Training (Tonnetz Edition)</title>
+    <title>Harmony Training — Tonnetz</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* Combine tonnetz dark theme with harmony layout */
         *,
@@ -32,32 +32,9 @@
             padding: 0 1rem;
         }
 
-        .card {
-            background: #16213e;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.25rem;
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 2rem;
-            margin: 1.5rem 0 0.25rem;
-            letter-spacing: 0.05em;
-            text-align: center;
-        }
-
-        h2 {
-            font-size: 1.1rem;
-            font-weight: 400;
-            color: #aaa;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
         .nav-links {
             text-align: center;
-            margin-bottom: 1rem;
+            margin: 1.5rem 0;
         }
 
         .nav-links a {
@@ -71,324 +48,720 @@
             text-decoration: underline;
         }
 
-        #prompt-area {
-            font-size: 1.35rem;
-            font-weight: 600;
-            min-height: 3.2rem;
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+            text-align: center;
+        }
+        
+        /* ── Input styling from Tonnetz ── */
+        .form-input, .form-select {
+            padding: 0.55rem 0.75rem; 
+            border: 2px solid #333; 
+            border-radius: 8px; 
+            background: #0f1529; 
+            color: #eee; 
+            font-size: 1rem;
+        }
+
+        /* ── Setup screen ── */
+        .harmony-setup {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1rem 0;
+        }
+        .harmony-setup__grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #ffca28;
+            text-align: left;
+        }
+        .form-label {
+            margin-bottom: 0.5rem;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        /* ── Game screen ── */
+        .harmony-game {
+            max-width: 620px;
+            margin: 0 auto;
+            text-align: center;
         }
 
-        #start-btn {
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .stat__value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #90caf9;
+            line-height: 1;
+        }
+        .stat__label {
+            font-size: 0.75rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 0.25rem;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .test-prompt {
+            font-size: 1.2rem;
+            color: #ccc;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+        .test-prompt__interval {
+            color: #ffca28;
+            font-size: 2rem;
             display: block;
+            margin-top: 0.25rem;
+        }
+
+        /* ── Tuner ── */
+        .tuner-container {
+            margin: 0 auto 1.5rem;
+            position: relative;
+        }
+        .tuner-svg {
             width: 100%;
             max-width: 340px;
-            margin: 0 auto 1.5rem;
-            padding: 1rem;
-            font-size: 1.3rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
+            margin: 0 auto;
+            display: block;
+        }
+        .tuner-note {
+            font-size: 2.5rem;
+            font-weight: 800;
             color: #fff;
-            background: linear-gradient(135deg, #1565c0, #5e35b1);
-            box-shadow: 0 4px 20px rgba(94, 53, 177, 0.4);
-            transition: opacity 0.15s, transform 0.1s;
+            margin-top: 0.25rem;
         }
-
-        #start-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-        }
-
-        #start-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        #status-text {
-            text-align: center;
-            font-size: 1.05rem;
-            min-height: 1.6rem;
-            margin-bottom: 1rem;
-            color: #90caf9;
-        }
-
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 0.75rem;
-        }
-
-        .result-header .label {
+        .tuner-detail {
             font-size: 0.9rem;
             color: #aaa;
         }
 
-        .result-header .value {
-            font-size: 1.6rem;
-            font-weight: 700;
+        /* ── Play buttons ── */
+        .play-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
         }
 
-        .result-header .value.hit {
-            color: #00e676;
-        }
-
-        .result-header .value.miss {
-            color: #ff1744;
-        }
-
-        #breakdown {
-            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-            font-size: 0.85rem;
-            line-height: 1.7;
-            color: #ccc;
-            white-space: pre;
+        /* ── Practice info panel ── */
+        .practice-info {
+            background: rgba(108, 92, 231, 0.1);
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin: 1rem auto;
+            max-width: 420px;
+            font-size: 0.9rem;
+            color: #bbb;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
             text-align: left;
         }
 
-        /* Pitch gauge */
-        .gauge-wrap {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 0.5rem;
+        /* ── Feedback ── */
+        .feedback {
+            min-height: 1.8em;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
         }
+        .feedback--success { color: #00e676; }
+        .feedback--miss { color: #ff1744; }
 
-        .gauge {
-            position: relative;
-            width: 220px;
-            height: 120px;
-            overflow: hidden;
-        }
-
-        .gauge-bg {
-            position: absolute;
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: conic-gradient(from 180deg, #ff1744 0deg, #ff1744 54deg, #ff9100 64deg, #00e676 72deg, #00e676 108deg, #ff9100 116deg, #ff1744 126deg, #ff1744 180deg);
-            mask: radial-gradient(circle at 50% 50%, transparent 60%, black 61%);
-            -webkit-mask: radial-gradient(circle at 50% 50%, transparent 60%, black 61%);
-        }
-
-        .gauge-needle {
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 3px;
-            height: 90px;
-            background: #fff;
-            transform-origin: bottom center;
-            transform: rotate(0deg);
-            transition: transform 0.5s ease-out;
-            border-radius: 2px;
-            margin-left: -1.5px;
-            z-index: 2;
-        }
-
-        .gauge-dot {
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            width: 12px;
-            height: 12px;
-            margin-left: -6px;
-            background: #fff;
-            border-radius: 50%;
-            z-index: 3;
-        }
-
-        .gauge-labels {
-            display: flex;
-            justify-content: space-between;
-            width: 220px;
-            font-size: 0.75rem;
-            color: #888;
-            margin-top: 2px;
-        }
-
-        #cents-readout {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-top: 0.5rem;
-            transition: color 0.3s;
-        }
-
-        #cents-readout.good {
-            color: #00e676;
-        }
-
-        #cents-readout.ok {
-            color: #ff9100;
-        }
-
-        #cents-readout.bad {
-            color: #ff1744;
-        }
-
-        #pitch-note {
+        /* ── Buttons ── */
+        .btn {
+            padding: 0.75rem 1.5rem;
             font-size: 1rem;
-            color: #aaa;
-            margin-top: 0.15rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .btn--primary { background: #1565c0; color: #fff; }
+        .btn--success { background: #00c853; color: #fff; }
+        .btn--danger { background: #d50000; color: #fff; }
+        .btn--secondary { background: #333; color: #eee; }
+        .btn--large { font-size: 1.2rem; padding: 1rem 2rem; }
+
+        /* ── Results ── */
+        .harmony-results {
+            max-width: 500px;
+            margin: 2rem auto;
         }
     </style>
 </head>
 
 <body>
-
-    <div class="nav-links mt-md">
+    <div class="nav-links">
         <a href="/">Hub</a> | <a href="/relative">Relative</a> | <a href="/chords">Chords</a> | <span>Harmony</span>
     </div>
 
-    <div class="container">
-        <h1>Harmony Training</h1>
-        <h2>Sing the requested interval</h2>
+    <main class="container">
+        <!-- ===== Setup Screen ===== -->
+        <section id="screen-setup">
+            <div class="harmony-setup card">
+                <h1 style="margin-top:0">Harmony Training</h1>
+                <p style="color:#aaa; margin-bottom:1.5rem">Sing or play intervals with real-time pitch feedback.</p>
 
-        <input id="player-input" type="text" placeholder="Your name" maxlength="24"
-            style="width:100%; padding: 0.55rem 0.75rem; border: 2px solid #333; border-radius: 8px; background: #0f1529; color: #eee; font-size: 1rem; margin-bottom: 1.25rem;" />
-
-        <div class="card">
-            <div id="prompt-area">Press Start to Begin</div>
-        </div>
-
-        <button id="start-btn" onclick="startChallenge()">START CHALLENGE</button>
-        <div id="status-text"></div>
-
-        <div class="card" id="gauge-card" style="display:none;">
-            <div class="gauge-wrap">
-                <div class="gauge">
-                    <div class="gauge-bg"></div>
-                    <div class="gauge-needle" id="gauge-needle"></div>
-                    <div class="gauge-dot"></div>
+                <div class="harmony-setup__grid">
+                    <div class="form-group">
+                        <label class="form-label" for="input-name">Your Name</label>
+                        <input type="text" id="input-name" class="form-input" value="Player" maxlength="30">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="select-mode">Mode</label>
+                        <select id="select-mode" class="form-select">
+                            <option value="practice">Practice</option>
+                            <option value="test">Test (10 questions)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="select-difficulty">Difficulty</label>
+                        <select id="select-difficulty" class="form-select">
+                            <option value="easy">Easy (&plusmn;50&cent;)</option>
+                            <option value="medium">Medium (&plusmn;30&cent;)</option>
+                            <option value="hard">Hard (&plusmn;15&cent;)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="select-root">Root Note</label>
+                        <select id="select-root" class="form-select"></select>
+                    </div>
                 </div>
-                <div class="gauge-labels"><span>-50c</span><span>0</span><span>+50c</span></div>
-                <div id="cents-readout">--</div>
-                <div id="pitch-note">&nbsp;</div>
-            </div>
-        </div>
 
-        <div class="card" id="result-card" style="display:none;">
-            <div class="result-header">
-                <span class="label" id="result-detected"></span>
-                <span class="value" id="result-score"></span>
+                <button id="btn-start" class="btn btn--primary btn--large" style="width:100%">Start Playing</button>
             </div>
-            <div id="breakdown"></div>
-        </div>
-    </div>
+        </section>
+
+        <!-- ===== Game Screen ===== -->
+        <section id="screen-game" hidden>
+            <div class="harmony-game card">
+                <div class="stats-bar">
+                    <div class="stat">
+                        <div class="stat__value" id="stat-score">0</div>
+                        <div class="stat__label">Score</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat__value" id="stat-streak">0</div>
+                        <div class="stat__label">Streak</div>
+                    </div>
+                    <div class="stat" id="stat-q-wrap" hidden>
+                        <div class="stat__value" id="stat-question">1/10</div>
+                        <div class="stat__label">Question</div>
+                    </div>
+                </div>
+
+                <!-- Practice controls -->
+                <div class="controls-row" id="practice-controls">
+                    <div class="form-group">
+                        <label class="form-label" for="game-root">Root</label>
+                        <select id="game-root" class="form-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="game-interval">Interval</label>
+                        <select id="game-interval" class="form-select"></select>
+                    </div>
+                </div>
+
+                <!-- Test mode prompt -->
+                <div id="test-prompt" class="test-prompt" hidden>
+                    Sing this interval above <span id="test-root-name">C4</span>
+                    <span id="test-interval-name" class="test-prompt__interval">Perfect 5th</span>
+                </div>
+
+                <!-- Tuner -->
+                <div class="tuner-container">
+                    <svg id="tuner-svg" class="tuner-svg" viewBox="0 0 300 195" aria-label="Pitch tuner gauge"></svg>
+                    <div class="tuner-note" id="tuner-note">--</div>
+                    <div class="tuner-detail" id="tuner-detail">Waiting for input...</div>
+                </div>
+
+                <!-- Play buttons (practice only) -->
+                <div class="play-buttons" id="play-buttons">
+                    <button id="btn-play-root" class="btn btn--secondary">Play Root</button>
+                    <button id="btn-play-target" class="btn btn--secondary">Play Target</button>
+                    <button id="btn-play-both" class="btn btn--primary">Play Both</button>
+                </div>
+
+                <!-- Practice info panel -->
+                <div class="practice-info" id="practice-info">
+                    <div>Root: <strong id="info-root">C4</strong></div>
+                    <div>Target: <strong id="info-target">G4</strong></div>
+                    <div>Interval: <strong id="info-interval">Perfect 5th</strong></div>
+                    <div>Semitones: <strong id="info-semitones">7</strong></div>
+                </div>
+
+                <div id="feedback" class="feedback" aria-live="polite"></div>
+
+                <div style="display:flex; gap:1rem; justify-content:center; margin-top:1.5rem">
+                    <button id="btn-listen" class="btn btn--success btn--large">Start Listening</button>
+                    <button id="btn-skip" class="btn btn--secondary" hidden>Skip</button>
+                    <button id="btn-quit" class="btn btn--secondary">Quit</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Results Screen ===== -->
+        <section id="screen-results" hidden>
+            <div class="harmony-results card">
+                <h2 style="font-size: 2rem; margin-bottom: 2rem;">Test Complete!</h2>
+                
+                <div class="stats-bar">
+                    <div class="stat">
+                        <div class="stat__value" id="result-score">0</div>
+                        <div class="stat__label">Score</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat__value" id="result-correct">0/10</div>
+                        <div class="stat__label">Correct</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat__value" id="result-streak">0</div>
+                        <div class="stat__label">Best Streak</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+                    <button id="btn-again" class="btn btn--primary btn--large">Play Again</button>
+                    <a href="/" class="btn btn--secondary btn--large" style="text-decoration:none; display:flex; align-items:center;">Home</a>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <script>
-        const INTERVALS = [
-            { name: 'Major 3rd', semitones: 4 },
-            { name: 'Perfect 5th', semitones: 7 },
-            { name: 'Minor 3rd', semitones: 3 },
-            { name: 'Octave', semitones: 12 }
-        ];
-        // simplified roots for basic training
-        const ROOTS = [{ name: 'C3', freq: 130.81 }, { name: 'E3', freq: 164.81 }, { name: 'G3', freq: 196.00 }, { name: 'C4', freq: 261.63 }];
+        // --- 1. Audio & Math Utilities (Ported from shared/audio.js) ---
+        const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const INTERVAL_NAMES = ["Unison", "Minor 2nd", "Major 2nd", "Minor 3rd", "Major 3rd", "Perfect 4th", "Tritone", "Perfect 5th", "Minor 6th", "Major 6th", "Minor 7th", "Major 7th", "Octave"];
+        const A4_FREQ = 440;
+        const A4_MIDI = 69;
 
-        let currentChallenge = null;
-        let busy = false;
+        let synth = null;
 
-        const $prompt = document.getElementById('prompt-area');
-        const $btn = document.getElementById('start-btn');
-        const $status = document.getElementById('status-text');
-        const $resultCard = document.getElementById('result-card');
-        const $detected = document.getElementById('result-detected');
-        const $score = document.getElementById('result-score');
-        const $breakdown = document.getElementById('breakdown');
-        const $gaugeCard = document.getElementById('gauge-card');
-        const $needle = document.getElementById('gauge-needle');
-        const $cents = document.getElementById('cents-readout');
-        const $note = document.getElementById('pitch-note');
-
-        function pickChallenge() {
-            const root = ROOTS[Math.floor(Math.random() * ROOTS.length)];
-            const interval = INTERVALS[Math.floor(Math.random() * INTERVALS.length)];
-            const expectedFreq = root.freq * Math.pow(2, interval.semitones / 12);
-
-            currentChallenge = {
-                root_name: root.name,
-                interval_name: interval.name,
-                expected_freq: expectedFreq
-            };
-            $prompt.innerHTML = `Sing a <strong>${interval.name}</strong> above <strong>${root.name}</strong>`;
+        async function initAudio() {
+            if (!synth) {
+                await Tone.start();
+                synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "triangle" },
+                    envelope: { attack: 0.02, decay: 0.3, sustain: 0.4, release: 0.8 },
+                    volume: -8
+                }).toDestination();
+            }
         }
 
-        function updateGauge(cents, noteName) {
-            const clamped = Math.max(-50, Math.min(50, cents));
-            const deg = (clamped / 50) * 90;
-            $needle.style.transform = `rotate(${deg}deg)`;
-            const absCents = Math.abs(cents);
-            $cents.textContent = (cents >= 0 ? '+' : '') + cents.toFixed(1) + ' cents';
-            if (absCents <= 10) $cents.className = 'good';
-            else if (absCents <= 20) $cents.className = 'ok';
-            else $cents.className = 'bad';
-            $note.textContent = noteName || '';
+        function frequencyToNote(freq) {
+            if (freq <= 0) return null;
+            const midiFloat = 12 * Math.log2(freq / A4_FREQ) + A4_MIDI;
+            const midi = Math.round(midiFloat);
+            let cents = Math.round((midiFloat - midi) * 100);
+            
+            // Pedagogical Grace Window for kids
+            if (Math.abs(cents) <= 15) cents = 0;
+            
+            const noteIndex = ((midi % 12) + 12) % 12;
+            const octave = Math.floor(midi / 12) - 1;
+            const noteName = NOTE_NAMES[noteIndex];
+            return { noteName, octave, cents, fullName: `${noteName}${octave}` };
         }
 
-        async function startChallenge() {
-            if (busy || !currentChallenge) return;
-            busy = true;
-            $btn.disabled = true;
-            $btn.textContent = 'RECORDING...';
-            $status.textContent = 'Recording 3 seconds — sing now!';
-            $resultCard.style.display = 'none';
-            $gaugeCard.style.display = 'none';
+        function noteToFrequency(name) {
+            const match = name.match(/^([A-G]#?)(\d+)$/);
+            if (!match) return 0;
+            const noteName = match[1];
+            const octave = parseInt(match[2], 10);
+            const noteIndex = NOTE_NAMES.indexOf(noteName);
+            const midi = (octave + 1) * 12 + noteIndex;
+            return A4_FREQ * Math.pow(2, (midi - A4_MIDI) / 12);
+        }
 
-            const player = document.getElementById('player-input').value.trim() || 'Anonymous';
+        function getIntervalName(semitones) {
+            return INTERVAL_NAMES[Math.abs(semitones) % 13] || `${semitones} semitones`;
+        }
 
-            try {
-                const res = await fetch('/play', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        mode: 'harmony',
-                        expected_pitch_freq: currentChallenge.expected_freq,
-                        player: player,
-                    }),
+        function getNoteRange(startOctave = 3, endNote = "C5") {
+            const notes = [];
+            for (let octave = startOctave; octave <= 5; octave++) {
+                for (const name of NOTE_NAMES) {
+                    const full = `${name}${octave}`;
+                    notes.push(full);
+                    if (full === endNote) return notes;
+                }
+            }
+            return notes;
+        }
+
+        function playNote(noteName, duration = 0.8) {
+            if (synth) synth.triggerAttackRelease(noteName, duration);
+        }
+
+        function playInterval(rootNote, intervalSemitones, mode = "melodic-up", noteDuration = 0.8) {
+            if (!synth) return;
+            const rootFreq = noteToFrequency(rootNote);
+            const rootMidiFloat = 12 * Math.log2(rootFreq / A4_FREQ) + A4_MIDI;
+            const secondMidiFloat = rootMidiFloat + intervalSemitones;
+            const secondFreq = A4_FREQ * Math.pow(2, (secondMidiFloat - A4_MIDI) / 12);
+            
+            const now = Tone.now();
+            if (mode === "harmonic") {
+                synth.triggerAttackRelease(rootFreq, noteDuration, now);
+                synth.triggerAttackRelease(secondFreq, noteDuration, now);
+            } else {
+                synth.triggerAttackRelease(rootFreq, noteDuration, now);
+                synth.triggerAttackRelease(secondFreq, noteDuration, now + noteDuration + 0.15);
+            }
+        }
+
+        // --- 2. Tuner Geometry ---
+        const T_CX = 150, T_CY = 160, T_IR = 90, T_OR = 128, T_SEGS = 31, T_CENTER = 15;
+        const T_START_DEG = 170, T_END_DEG = 10, T_GAP_DEG = 1, CENTS_RANGE = 50;
+        let segments = [], needleLine = null;
+
+        function arcPath(cx, cy, ir, or, a1, a2) {
+            const x1o = cx + or * Math.cos(a1), y1o = cy - or * Math.sin(a1);
+            const x2o = cx + or * Math.cos(a2), y2o = cy - or * Math.sin(a2);
+            const x2i = cx + ir * Math.cos(a2), y2i = cy - ir * Math.sin(a2);
+            const x1i = cx + ir * Math.cos(a1), y1i = cy - ir * Math.sin(a1);
+            return `M${x1o} ${y1o}A${or} ${or} 0 0 1 ${x2o} ${y2o}L${x2i} ${y2i}A${ir} ${ir} 0 0 0 ${x1i} ${y1i}Z`;
+        }
+
+        function segColor(dist) {
+            if (dist <= 1) return '#00e676'; if (dist <= 3) return '#4caf50';
+            if (dist <= 5) return '#8bc34a'; if (dist <= 7) return '#cddc39';
+            if (dist <= 9) return '#ffeb3b'; if (dist <= 11) return '#ff9800';
+            if (dist <= 13) return '#ff5722'; return '#f44336';
+        }
+
+        function buildTuner() {
+            const svg = document.getElementById('tuner-svg');
+            svg.innerHTML = '';
+            const totalArc = T_START_DEG - T_END_DEG;
+            const segDeg = (totalArc - (T_SEGS - 1) * T_GAP_DEG) / T_SEGS;
+            const stepDeg = segDeg + T_GAP_DEG;
+            const toRad = Math.PI / 180;
+
+            segments = [];
+            for (let i = 0; i < T_SEGS; i++) {
+                const a1 = (T_START_DEG - i * stepDeg) * toRad;
+                const a2 = a1 - segDeg * toRad;
+                const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                el.setAttribute('d', arcPath(T_CX, T_CY, T_IR, T_OR, a2, a1));
+                const dist = Math.abs(i - T_CENTER);
+                el.setAttribute('fill', segColor(dist));
+                el.setAttribute('opacity', '0.15');
+                el.style.transition = 'opacity 0.08s';
+                svg.appendChild(el);
+                segments.push(el);
+            }
+
+            [-50, -25, 0, 25, 50].forEach(c => {
+                const angle = (90 - c * 80 / CENTS_RANGE) * toRad;
+                const tx = T_CX + (T_OR + 12) * Math.cos(angle);
+                const ty = T_CY - (T_OR + 12) * Math.sin(angle);
+                const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                txt.setAttribute('x', tx); txt.setAttribute('y', ty);
+                txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'middle');
+                txt.setAttribute('fill', '#bbb'); txt.setAttribute('font-size', '10');
+                txt.textContent = c === 0 ? '0' : (c > 0 ? `+${c}` : `${c}`);
+                svg.appendChild(txt);
+            });
+
+            needleLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            needleLine.setAttribute('x1', T_CX); needleLine.setAttribute('y1', T_CY);
+            needleLine.setAttribute('x2', T_CX); needleLine.setAttribute('y2', T_CY - T_IR + 5);
+            needleLine.setAttribute('stroke', '#fff'); needleLine.setAttribute('stroke-width', '2.5');
+            needleLine.setAttribute('stroke-linecap', 'round');
+            needleLine.style.transition = 'transform 0.1s ease-out';
+            needleLine.style.transformOrigin = `${T_CX}px ${T_CY}px`;
+            svg.appendChild(needleLine);
+
+            const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot.setAttribute('cx', T_CX); dot.setAttribute('cy', T_CY);
+            dot.setAttribute('r', '7'); dot.setAttribute('fill', '#1565c0');
+            svg.appendChild(dot);
+        }
+
+        function updateTuner(cents) {
+            if (cents === null || cents === undefined) {
+                segments.forEach(s => s.setAttribute('opacity', '0.15'));
+                needleLine.style.transform = 'rotate(0deg)';
+                return;
+            }
+            const clamped = Math.max(-CENTS_RANGE, Math.min(CENTS_RANGE, cents));
+            const activeIdx = Math.round(T_CENTER + clamped * T_CENTER / CENTS_RANGE);
+            const idx = Math.max(0, Math.min(T_SEGS - 1, activeIdx));
+
+            segments.forEach((seg, i) => {
+                const d = Math.abs(i - idx);
+                if (d === 0) seg.setAttribute('opacity', '1');
+                else if (d === 1) seg.setAttribute('opacity', '0.55');
+                else if (d === 2) seg.setAttribute('opacity', '0.28');
+                else seg.setAttribute('opacity', '0.15');
+            });
+            handleSuccess(cents); // hook for scoring
+            const rotation = clamped * 80 / CENTS_RANGE;
+            needleLine.style.transform = `rotate(${rotation}deg)`;
+        }
+
+        // --- 3. Game State & Logic ---
+        const TOLERANCE = { easy: 50, medium: 30, hard: 15 };
+        const TEST_SEMITONES = [0, 3, 4, 7, 12];
+        const TEST_TOTAL = 10;
+        
+        const state = {
+            mode: 'practice', difficulty: 'easy', rootNote: 'C4', interval: 7, playerName: 'Player',
+            listening: false, pollIntervalId: null,
+            score: 0, streak: 0, bestStreak: 0, hits: 0,
+            testIndex: 0, testQueue: [], awaitingNext: false
+        };
+
+        const $ = id => document.getElementById(id);
+
+        function getTargetFreq() { return noteToFrequency(state.rootNote) * Math.pow(2, state.interval / 12); }
+        function getTargetName() { const info = frequencyToNote(getTargetFreq()); return info ? info.fullName : '?'; }
+
+        function populateSelectors() {
+            const notes = getNoteRange(3, 'C5');
+            [$('select-root'), $('game-root')].forEach(sel => {
+                sel.innerHTML = '';
+                notes.forEach(n => {
+                    const opt = document.createElement('option');
+                    opt.value = n; opt.textContent = n;
+                    if (n === 'C4') opt.selected = true;
+                    sel.appendChild(opt);
                 });
+            });
 
+            const iSel = $('game-interval');
+            iSel.innerHTML = '';
+            INTERVAL_NAMES.forEach((name, i) => {
+                const opt = document.createElement('option');
+                opt.value = i; opt.textContent = `${name} (${i} st)`;
+                if (i === 7) opt.selected = true;
+                iSel.appendChild(opt);
+            });
+        }
+
+        function updateStats() {
+            $('stat-score').textContent = state.score;
+            $('stat-streak').textContent = state.streak;
+            if (state.mode === 'test') $('stat-question').textContent = `${Math.min(state.testIndex + 1, TEST_TOTAL)}/${TEST_TOTAL}`;
+        }
+
+        function updatePracticeInfo() {
+            const targF = getTargetFreq();
+            $('info-root').textContent = `${state.rootNote}`;
+            $('info-target').textContent = `${getTargetName()}`;
+            $('info-interval').textContent = getIntervalName(state.interval);
+            $('info-semitones').textContent = state.interval;
+        }
+
+        function nextTestQuestion() {
+            if (state.testIndex >= TEST_TOTAL) {
+                showScreen('results');
+                $('result-score').textContent = state.score;
+                $('result-correct').textContent = `${state.hits}/${TEST_TOTAL}`;
+                $('result-streak').textContent = state.bestStreak;
+                doStopListening();
+                return;
+            }
+            
+            if (state.testIndex % TEST_SEMITONES.length === 0) {
+                state.testQueue = [...TEST_SEMITONES].sort(() => Math.random() - 0.5);
+            }
+            state.interval = state.testQueue[state.testIndex % TEST_SEMITONES.length];
+            state.awaitingNext = false;
+
+            $('test-interval-name').textContent = getIntervalName(state.interval);
+            $('test-root-name').textContent = state.rootNote;
+            updateStats();
+
+            setTimeout(() => playNote(state.rootNote, 1), 300);
+            $('feedback').textContent = '';
+        }
+
+        // --- 4. Tonnetz Backend Integration ---
+        async function doStartListening() {
+            if (state.listening) return;
+            try {
+                // Initialize audio context for Tone.js (must be user gesture)
+                await initAudio();
+
+                // Signal the Python backend to start the microphone thread
+                await fetch('/start_listen', { method: 'POST' });
+                state.listening = true;
+                
+                $('btn-listen').textContent = 'Stop Listening';
+                $('btn-listen').classList.replace('btn--success', 'btn--danger');
+                
+                // Start polling results
+                state.pollIntervalId = setInterval(pollBackend, 50); // ~20fps
+            } catch (err) {
+                $('feedback').textContent = 'Error starting mic: ' + err.message;
+            }
+        }
+
+        async function doStopListening() {
+            if (!state.listening) return;
+            state.listening = false;
+            clearInterval(state.pollIntervalId);
+            
+            await fetch('/stop_listen', { method: 'POST' });
+            
+            $('btn-listen').textContent = 'Start Listening';
+            $('btn-listen').classList.replace('btn--danger', 'btn--success');
+            updateTuner(null);
+            $('tuner-note').textContent = '--';
+            $('tuner-detail').textContent = 'Waiting for input...';
+        }
+
+        async function pollBackend() {
+            if (!state.listening || state.awaitingNext) return;
+            
+            try {
+                const res = await fetch('/poll_audio');
                 const data = await res.json();
-                if (data.error === 'no_sound') {
-                    $status.textContent = 'No sound detected — check your mic!';
+                
+                if (data.pitch && data.pitch.frequency > 0) {
+                    const freq = data.pitch.frequency;
+                    const noteInfo = frequencyToNote(freq);
+                    
+                    const target = getTargetFreq();
+                    const cents = 1200 * Math.log2(freq / target);
+                    
+                    updateTuner(cents);
+                    $('tuner-note').textContent = noteInfo.fullName;
+                    $('tuner-detail').textContent = `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)} cents`;
                 } else {
-                    showResult(data);
-                    $status.textContent = '';
+                    updateTuner(null);
+                    $('tuner-note').textContent = '--';
+                    $('tuner-detail').textContent = 'Listening...';
                 }
             } catch (err) {
-                $status.textContent = 'Server error — is app.py running?';
+                console.error("Polling error", err);
             }
-
-            busy = false;
-            $btn.disabled = false;
-            $btn.textContent = 'NEXT CHALLENGE';
-            pickChallenge();
         }
 
-        function showResult(data) {
-            if (data.pitch && data.pitch.note) {
-                $detected.textContent = `Detected Note: ${data.pitch.note}`;
-                updateGauge(data.pitch.cents_off, data.pitch.note);
-                $gaugeCard.style.display = 'block';
+        function handleSuccess(cents) {
+            if (state.awaitingNext) return;
+            
+            const tol = TOLERANCE[state.difficulty];
+            if (Math.abs(cents) > tol) return;
+            
+            state.hits++;
+            state.streak++;
+            if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+            const accBonus = Math.round((1 - Math.abs(cents) / tol) * 50);
+            const streakBonus = state.streak >= 5 ? 50 : state.streak >= 3 ? 25 : 0;
+            const points = 100 + accBonus + streakBonus;
+            state.score += points;
+
+            const fb = $('feedback');
+            fb.textContent = `+${points} points!`;
+            fb.className = 'feedback feedback--success';
+
+            if (state.mode === 'practice') {
+                updateStats();
+                doStopListening();
             } else {
-                $detected.textContent = `Could not detect a clear pitch.`;
-                $gaugeCard.style.display = 'none';
+                state.awaitingNext = true;
+                state.testIndex++;
+                updateStats();
+                setTimeout(() => nextTestQuestion(), 1500);
             }
-
-            $score.textContent = `${data.score} pts`;
-            $score.className = 'value ' + (data.hit ? 'hit' : 'miss');
-            $breakdown.textContent = data.breakdown.join('\n');
-            $resultCard.style.display = 'block';
         }
 
-        pickChallenge();
+        // --- 5. UI Wiring ---
+        function showScreen(name) {
+            ['setup', 'game', 'results'].forEach(s => $(`screen-${s}`).hidden = s !== name);
+        }
+
+        $('btn-start').addEventListener('click', async () => {
+            state.mode = $('select-mode').value;
+            state.difficulty = $('select-difficulty').value;
+            state.rootNote = $('select-root').value;
+            state.playerName = $('input-name').value.trim() || 'Player';
+            
+            state.score = 0; state.streak = 0; state.bestStreak = 0; state.hits = 0;
+            state.testIndex = 0; state.awaitingNext = false;
+
+            $('game-root').value = state.rootNote;
+
+            if (state.mode === 'practice') {
+                state.interval = parseInt($('game-interval').value, 10);
+                $('practice-controls').hidden = false; $('play-buttons').hidden = false;
+                $('practice-info').hidden = false; $('test-prompt').hidden = true;
+                $('btn-skip').hidden = true; $('stat-q-wrap').hidden = true;
+                updatePracticeInfo();
+            } else {
+                $('practice-controls').hidden = true; $('play-buttons').hidden = true;
+                $('practice-info').hidden = true; $('test-prompt').hidden = false;
+                $('btn-skip').hidden = false; $('stat-q-wrap').hidden = false;
+                nextTestQuestion();
+            }
+
+            $('feedback').textContent = '';
+            updateStats();
+            showScreen('game');
+            // Try to auto-start so user doesn't have to click another button
+            await doStartListening();
+        });
+
+        $('game-root').addEventListener('change', (e) => { state.rootNote = e.target.value; updatePracticeInfo(); });
+        $('game-interval').addEventListener('change', (e) => { state.interval = parseInt(e.target.value, 10); updatePracticeInfo(); });
+
+        $('btn-listen').addEventListener('click', () => state.listening ? doStopListening() : doStartListening());
+        $('btn-quit').addEventListener('click', () => { doStopListening(); showScreen('setup'); });
+        
+        $('btn-skip').addEventListener('click', () => {
+            if (state.mode !== 'test' || state.awaitingNext) return;
+            state.awaitingNext = true; state.streak = 0; state.testIndex++;
+            $('feedback').textContent = `Skipped — target was ${getTargetName()}`;
+            $('feedback').className = 'feedback feedback--miss';
+            updateStats();
+            setTimeout(() => nextTestQuestion(), 1200);
+        });
+
+        $('btn-play-root').addEventListener('click', () => playNote(state.rootNote, 1));
+        $('btn-play-target').addEventListener('click', () => playNote(getTargetName(), 1));
+        $('btn-play-both').addEventListener('click', () => playInterval(state.rootNote, state.interval));
+
+        $('btn-again').addEventListener('click', () => showScreen('setup'));
+
+        // Initialize on page load
+        populateSelectors();
+        buildTuner();
     </script>
 </body>
-
 </html>

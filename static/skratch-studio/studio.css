@@ -433,6 +433,27 @@
   letter-spacing: 0.06em;
 }
 
+.loop-pedal__header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.loop-input-select {
+  background: #2a2a3e;
+  color: #cdd6f4;
+  border: 1px solid #3a3a50;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: var(--font-family);
+  cursor: pointer;
+}
+.loop-input-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
 .loop-pedal__controls {
   display: flex;
   gap: 4px;
@@ -499,6 +520,17 @@
 @keyframes lp-blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.55; }
+}
+
+/* Save as Block — teal accent */
+.btn--save-block {
+  background: #00897b;
+  color: #fff;
+  border: 1px solid #00897b;
+}
+.btn--save-block:hover:not(:disabled) {
+  background: #00acc1;
+  border-color: #00acc1;
 }
 
 .loop-pedal__info {

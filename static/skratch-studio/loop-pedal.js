@@ -1,16 +1,18 @@
-// loop-pedal.js — Phase 1 Loop Pedal: records keyboard notes in 2 layers,
-// plays them back via Tone.Part (Tone.Transport-based, sample-accurate).
+// loop-pedal.js — Loop Pedal: records keyboard notes or microphone audio in 3 layers,
+// plays them back via Tone.Part / Tone.Player (Tone.Transport-based, sample-accurate).
 //
-// Data model: layers[n] = [{note, startTime, duration, instrument}]
+// Keyboard data model: layers[n] = [{note, startTime, duration, instrument}]
 //   startTime, duration: seconds relative to loop start.
-//   instrument: 'piano' | 'organ' | 'synth' (selected at time of recording).
+//   instrument: 'piano' | 'organ' | 'synth'
+//
+// Mic data model: _layerAudio[n] = AudioBuffer (null for keyboard layers)
 //
 // State machine: idle → recording1 → playing ↔ overdubbing / paused
 
-const LAYER_COLORS = ['#a29bfe', '#fd79a8']; // L1 purple, L2 pink
+const LAYER_COLORS = ['#a29bfe', '#fd79a8', '#74b9ff']; // L1 purple, L2 pink, L3 blue
+const NUM_LAYERS   = 3;
 
-// Synth options mirror AudioBridge SOUND_PRESETS (no complex effects — loop
-// playback synths are independent of the live keyboard synths).
+// Synth options mirror AudioBridge SOUND_PRESETS.
 const SYNTH_OPTIONS = {
   piano: {
     oscillator: { type: 'triangle' },
@@ -38,43 +40,54 @@ function noteToMidi(noteName) {
 export class LoopPedal {
   /**
    * @param {object} opts
-   * @param {() => number}    opts.getBpm
+   * @param {() => number}      opts.getBpm
    * @param {HTMLCanvasElement} opts.pianoRollCanvas
    * @param {HTMLCanvasElement} opts.barVizCanvas
    * @param {HTMLElement}       opts.statusEl
    * @param {HTMLElement}       opts.lengthEl
    * @param {HTMLInputElement}  opts.quantizeCheckbox
-   * @param {object}            opts.buttons  { record, stopRec, overdub, play, clearL1, clearL2, clearAll }
-   * @param {() => void}        [opts.onTakeoverTransport]  called when loop pedal takes the Transport
+   * @param {HTMLSelectElement} [opts.inputSourceEl]  keyboard | microphone
+   * @param {object}            opts.buttons  { record, stopRec, overdub, play,
+   *                                            clearL1, clearL2, clearL3, clearAll, saveAsBlock }
+   * @param {() => void}        [opts.onTakeoverTransport]
    */
   constructor({ getBpm, pianoRollCanvas, barVizCanvas, statusEl, lengthEl,
-                quantizeCheckbox, buttons, onTakeoverTransport }) {
+                quantizeCheckbox, inputSourceEl, buttons, onTakeoverTransport }) {
     this.getBpm = getBpm;
-    this._pianoRollCanvas = pianoRollCanvas;
-    this._barVizCanvas    = barVizCanvas;
-    this._statusEl        = statusEl;
-    this._lengthEl        = lengthEl;
+    this._pianoRollCanvas  = pianoRollCanvas;
+    this._barVizCanvas     = barVizCanvas;
+    this._statusEl         = statusEl;
+    this._lengthEl         = lengthEl;
     this._quantizeCheckbox = quantizeCheckbox;
-    this._buttons         = buttons;
+    this._inputSourceEl    = inputSourceEl || null;
+    this._buttons          = buttons;
     this._onTakeoverTransport = onTakeoverTransport || null;
 
-    // Public loop data (for future "Save as Block" integration)
-    this.layers     = [[], []]; // each: [{note, startTime, duration, instrument}]
-    this.loopLength = null;     // seconds
+    // Public loop data (keyboard notes + audio buffers for mic layers)
+    this.layers      = [[], [], []];      // each: [{note, startTime, duration, instrument}]
+    this._layerAudio = [null, null, null]; // AudioBuffer | null per layer
+    this.loopLength  = null;               // seconds
 
     // State machine
     this.state = 'idle'; // idle | recording1 | playing | overdubbing | paused
 
     // Recording internals
-    this._recordStart      = null;  // Tone.now() when layer-1 recording started
-    this._overdubAudioStart = null; // Tone.now() when overdub started
-    this._overdubOffset    = 0;     // loop-phase (sec) when overdub started
-    this._activeNotes      = new Map(); // noteName -> { startTime, instrument, _audioNoteOn }
+    this._recordStart       = null;
+    this._overdubAudioStart = null;
+    this._overdubOffset     = 0;
+    this._overdubLayerIdx   = 1;   // which layer index overdub currently targets
+    this._activeNotes       = new Map();
+
+    // Mic recording
+    this._micStream     = null;
+    this._mediaRecorder = null;
+    this._micChunks     = [];
 
     // Playback internals
-    this._synths    = {};
-    this._toneReady = false;
-    this._loopPart  = null;
+    this._synths      = {};
+    this._toneReady   = false;
+    this._loopPart    = null;
+    this._players     = [];  // [{ layerIdx, player }] for Tone.Player mic layers
     this._playheadRaf = null;
 
     // Keyboard shortcuts
@@ -82,6 +95,12 @@ export class LoopPedal {
     document.addEventListener('keydown', this._keyListener);
 
     this._redraw();
+  }
+
+  // ── Input source ──────────────────────────────────────────────────────────
+
+  _isMicMode() {
+    return this._inputSourceEl && this._inputSourceEl.value === 'microphone';
   }
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -110,14 +129,92 @@ export class LoopPedal {
     this._toneReady = true;
   }
 
+  // ── Mic recording ─────────────────────────────────────────────────────────
+
+  /** Request mic access and start MediaRecorder. Returns true on success. */
+  async _startMicRecording() {
+    try {
+      this._micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch (err) {
+      const msg = err.name === 'NotAllowedError'
+        ? 'Microphone access was denied. Please allow microphone access in your browser settings and try again.'
+        : `Could not access microphone: ${err.message}`;
+      alert(msg);
+      return false;
+    }
+
+    this._micChunks = [];
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+      ? 'audio/webm'
+      : '';
+    this._mediaRecorder = new MediaRecorder(this._micStream, mimeType ? { mimeType } : {});
+    this._mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) this._micChunks.push(e.data);
+    };
+    this._mediaRecorder.start();
+    return true;
+  }
+
+  /** Stop MediaRecorder and decode recorded audio. Returns AudioBuffer or null. */
+  _stopMicRecording() {
+    return new Promise((resolve) => {
+      if (!this._mediaRecorder || this._mediaRecorder.state === 'inactive') {
+        resolve(null);
+        return;
+      }
+      const mimeType = this._mediaRecorder.mimeType || 'audio/webm';
+
+      this._mediaRecorder.onstop = async () => {
+        let audioBuffer = null;
+        try {
+          if (this._micChunks.length > 0) {
+            const blob        = new Blob(this._micChunks, { type: mimeType });
+            const arrayBuffer = await blob.arrayBuffer();
+            // Use Tone.js's underlying AudioContext for decoding
+            const audioCtx = Tone.context.rawContext || Tone.context;
+            audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          }
+        } catch (err) {
+          console.warn('[LoopPedal] Failed to decode mic audio:', err);
+        }
+        if (this._micStream) {
+          this._micStream.getTracks().forEach(t => t.stop());
+          this._micStream = null;
+        }
+        this._mediaRecorder = null;
+        this._micChunks     = [];
+        resolve(audioBuffer);
+      };
+
+      try { this._mediaRecorder.stop(); } catch (_) { resolve(null); }
+    });
+  }
+
+  /** Cancel an in-progress mic recording without keeping the data. */
+  _cancelMicRecording() {
+    if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
+      this._mediaRecorder.onstop = null; // discard
+      try { this._mediaRecorder.stop(); } catch (_) {}
+    }
+    if (this._micStream) {
+      this._micStream.getTracks().forEach(t => t.stop());
+      this._micStream = null;
+    }
+    this._mediaRecorder = null;
+    this._micChunks     = [];
+  }
+
   // ── Piano event hooks (called from studio.js) ─────────────────────────────
 
   onNoteOn(noteName, instrumentType) {
+    if (this._isMicMode()) return; // keyboard notes ignored in mic mode
     if (this.state === 'recording1') {
       const startTime = Tone.now() - this._recordStart;
       this._activeNotes.set(noteName, { startTime, instrument: instrumentType, _audioNoteOn: Tone.now() });
     } else if (this.state === 'overdubbing') {
-      const elapsed  = Tone.now() - this._overdubAudioStart;
+      const elapsed   = Tone.now() - this._overdubAudioStart;
       const startTime = (this._overdubOffset + elapsed) % this.loopLength;
       this._activeNotes.set(noteName, { startTime, instrument: instrumentType, _audioNoteOn: Tone.now() });
     }
@@ -125,6 +222,7 @@ export class LoopPedal {
 
   onNoteOff(noteName) {
     if (this.state !== 'recording1' && this.state !== 'overdubbing') return;
+    if (this._isMicMode()) return;
     const rec = this._activeNotes.get(noteName);
     if (!rec) return;
     this._activeNotes.delete(noteName);
@@ -132,12 +230,12 @@ export class LoopPedal {
     const duration = Tone.now() - rec._audioNoteOn;
     if (duration < 0.02) return; // filter accidental taps
 
-    const layerIdx = this.state === 'recording1' ? 0 : 1;
+    const layerIdx = this.state === 'recording1' ? 0 : this._overdubLayerIdx;
     const maxDur   = this.loopLength ? this.loopLength - rec.startTime : Infinity;
     this.layers[layerIdx].push({
-      note:      noteName,
-      startTime: rec.startTime,
-      duration:  Math.min(duration, maxDur > 0 ? maxDur : duration),
+      note:       noteName,
+      startTime:  rec.startTime,
+      duration:   Math.min(duration, maxDur > 0 ? maxDur : duration),
       instrument: rec.instrument,
     });
     this._redraw();
@@ -148,26 +246,45 @@ export class LoopPedal {
   async startRecording() {
     if (this.state !== 'idle') return;
     await this._ensureTone();
-    this.layers    = [[], []];
-    this.loopLength = null;
+
+    this.layers      = [[], [], []];
+    this._layerAudio = [null, null, null];
+    this.loopLength  = null;
     this._activeNotes.clear();
+    this._overdubLayerIdx = 1;
+
+    if (this._isMicMode()) {
+      const ok = await this._startMicRecording();
+      if (!ok) return;
+    }
+
     this._recordStart = Tone.now();
     this.state = 'recording1';
     this._updateUI();
     this._redraw();
   }
 
-  stopRecording() {
+  async stopRecording() {
     if (this.state === 'recording1') {
-      this._finalizeLayer(0);
+      if (this._isMicMode()) {
+        const audioBuffer = await this._stopMicRecording();
+        if (audioBuffer) this._layerAudio[0] = audioBuffer;
+      } else {
+        this._finalizeLayer(0);
+      }
       const raw = Tone.now() - this._recordStart;
       this.loopLength = this._quantize(Math.max(raw, 0.1));
       this.state = 'playing';
       this._startPlayback();
     } else if (this.state === 'overdubbing') {
-      this._finalizeOverdub();
+      const li = this._overdubLayerIdx;
+      if (this._isMicMode()) {
+        const audioBuffer = await this._stopMicRecording();
+        if (audioBuffer) this._layerAudio[li] = audioBuffer;
+      } else {
+        this._finalizeOverdub(li);
+      }
       this.state = 'playing';
-      // Rebuild the Part to include newly finished layer-2 events
       this._rebuildPart();
     }
     this._updateUI();
@@ -176,7 +293,19 @@ export class LoopPedal {
 
   async startOverdub() {
     if (this.state !== 'playing') return;
-    this.layers[1] = [];
+    // Target L2 if empty, otherwise always target L3 (overwrite)
+    const targetIdx = (this.layers[1].length === 0 && !this._layerAudio[1]) ? 1 : 2;
+    this._overdubLayerIdx = targetIdx;
+    this.layers[targetIdx]      = [];
+    this._layerAudio[targetIdx] = null;
+    // Stop any existing player for that layer so old audio doesn't overlap
+    this._disposeLayerPlayer(targetIdx);
+
+    if (this._isMicMode()) {
+      const ok = await this._startMicRecording();
+      if (!ok) return;
+    }
+
     this._overdubAudioStart = Tone.now();
     const rawPos = Tone.Transport.seconds % this.loopLength;
     this._overdubOffset = rawPos < 0 ? 0 : rawPos;
@@ -185,10 +314,17 @@ export class LoopPedal {
     this._updateUI();
   }
 
-  togglePlayback() {
+  async togglePlayback() {
     if (this.state === 'playing' || this.state === 'overdubbing') {
       if (this.state === 'overdubbing') {
-        this._finalizeOverdub();
+        const li = this._overdubLayerIdx;
+        if (this._mediaRecorder) {
+          // Finalize mic overdub asynchronously
+          const audioBuffer = await this._stopMicRecording();
+          if (audioBuffer) this._layerAudio[li] = audioBuffer;
+        } else {
+          this._finalizeOverdub(li);
+        }
         this._rebuildPart();
       }
       this._stopPlayback();
@@ -203,7 +339,10 @@ export class LoopPedal {
   /** Called by studio.js when Blockly music takes the Transport. */
   notifyTransportTakeover() {
     if (this.state === 'playing' || this.state === 'overdubbing') {
-      if (this.state === 'overdubbing') this._finalizeOverdub();
+      if (this.state === 'overdubbing') {
+        this._cancelMicRecording();
+        this._finalizeOverdub(this._overdubLayerIdx);
+      }
       this._clearPart(); // relinquish part without stopping Transport
       this.state = 'paused';
       this._updateUI();
@@ -212,17 +351,21 @@ export class LoopPedal {
   }
 
   clearLayer(idx) {
-    this.layers[idx] = [];
-    if (this.state === 'playing') this._rebuildPart();
+    this.layers[idx]      = [];
+    this._layerAudio[idx] = null;
+    if (this.state === 'playing') this._rebuildPart(); // _clearPart inside disposes player
     this._redraw();
     this._updateUI();
   }
 
   clearAll() {
+    this._cancelMicRecording();
     this._stopPlayback();
-    this.layers    = [[], []];
-    this.loopLength = null;
+    this.layers      = [[], [], []];
+    this._layerAudio = [null, null, null];
+    this.loopLength  = null;
     this._activeNotes.clear();
+    this._overdubLayerIdx = 1;
     this.state = 'idle';
     this._updateUI();
     this._redraw();
@@ -240,12 +383,12 @@ export class LoopPedal {
     this._activeNotes.clear();
   }
 
-  _finalizeOverdub() {
+  _finalizeOverdub(layerIdx) {
     for (const [noteName, rec] of this._activeNotes) {
       const duration = Tone.now() - rec._audioNoteOn;
       if (duration >= 0.02) {
         const maxDur = this.loopLength - rec.startTime;
-        this.layers[1].push({
+        this.layers[layerIdx].push({
           note: noteName, startTime: rec.startTime,
           duration: Math.min(duration, maxDur > 0 ? maxDur : duration),
           instrument: rec.instrument,
@@ -281,31 +424,54 @@ export class LoopPedal {
   }
 
   _buildAndStartPart() {
+    // Keyboard layers → Tone.Part
     const events = [];
-    for (let li = 0; li < 2; li++) {
+    for (let li = 0; li < NUM_LAYERS; li++) {
       for (const ev of this.layers[li]) {
         events.push([ev.startTime, ev]);
       }
     }
-    if (events.length === 0) return;
+    if (events.length > 0) {
+      this._loopPart = new Tone.Part((time, ev) => {
+        const synth = this._synths[ev.instrument] || this._synths.piano;
+        synth.triggerAttackRelease(ev.note, ev.duration, time);
+      }, events);
+      this._loopPart.loop    = true;
+      this._loopPart.loopEnd = this.loopLength;
+      this._loopPart.start(0);
+    }
 
-    this._loopPart = new Tone.Part((time, ev) => {
-      const synth = this._synths[ev.instrument] || this._synths.piano;
-      synth.triggerAttackRelease(ev.note, ev.duration, time);
-    }, events);
+    // Mic layers → Tone.Player synced to Transport
+    for (let li = 0; li < NUM_LAYERS; li++) {
+      if (!this._layerAudio[li]) continue;
+      try {
+        const player = new Tone.Player(this._layerAudio[li]).toDestination();
+        player.loop    = true;
+        player.loopEnd = this.loopLength;
+        player.sync();
+        player.start(0);
+        this._players.push({ layerIdx: li, player });
+      } catch (err) {
+        console.warn('[LoopPedal] Failed to create player for layer', li, err);
+      }
+    }
+  }
 
-    this._loopPart.loop    = true;
-    this._loopPart.loopEnd = this.loopLength;
-    this._loopPart.start(0);
+  /** Dispose the Tone.Player associated with a specific layer index, if any. */
+  _disposeLayerPlayer(layerIdx) {
+    const idx = this._players.findIndex(p => p.layerIdx === layerIdx);
+    if (idx !== -1) {
+      const { player } = this._players[idx];
+      try { player.stop(); player.unsync(); player.dispose(); } catch (_) {}
+      this._players.splice(idx, 1);
+    }
   }
 
   /** Rebuild Part mid-playback (after overdub finalize or clear layer). */
   _rebuildPart() {
-    const pos = Tone.Transport.seconds; // current position in transport
     this._clearPart();
     this._buildAndStartPart();
-    // Transport keeps running; Part picks up on next iteration from pos
-    // (Tone.Part.start(0) replays from next loop start — acceptable for Phase 1)
+    // Transport keeps running; Part/Players pick up at next loop start
   }
 
   _clearPart() {
@@ -313,6 +479,10 @@ export class LoopPedal {
       try { this._loopPart.stop(); this._loopPart.dispose(); } catch (_) {}
       this._loopPart = null;
     }
+    for (const { player } of this._players) {
+      try { player.stop(); player.unsync(); player.dispose(); } catch (_) {}
+    }
+    this._players = [];
     if (this._playheadRaf !== null) {
       cancelAnimationFrame(this._playheadRaf);
       this._playheadRaf = null;
@@ -351,6 +521,32 @@ export class LoopPedal {
     this._drawBarViz();
   }
 
+  /**
+   * Draw a peak waveform for an AudioBuffer centered vertically in [x, y, w, h].
+   * Each pixel column shows the peak amplitude in the corresponding audio slice.
+   */
+  _drawWaveform(ctx, audioBuffer, x, y, w, h, color) {
+    const channelData  = audioBuffer.getChannelData(0);
+    const totalSamples = channelData.length;
+    if (totalSamples === 0 || w <= 0) return;
+
+    ctx.fillStyle   = color;
+    ctx.globalAlpha = 0.70;
+
+    for (let px = 0; px < w; px++) {
+      const s0 = Math.floor((px / w) * totalSamples);
+      const s1 = Math.min(totalSamples, Math.floor(((px + 1) / w) * totalSamples));
+      let peak = 0;
+      for (let i = s0; i < s1; i++) {
+        const a = Math.abs(channelData[i]);
+        if (a > peak) peak = a;
+      }
+      const barH = Math.max(1, Math.round(peak * h));
+      ctx.fillRect(x + px, y + Math.round((h - barH) / 2), 1, barH);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   _drawPianoRoll() {
     const canvas = this._pianoRollCanvas;
     if (!canvas) return;
@@ -370,27 +566,38 @@ export class LoopPedal {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
     }
 
-    const all = [...this.layers[0], ...this.layers[1]];
-    if (all.length === 0) return;
+    // Calculate pitch range across all keyboard layers
+    const keyboardNotes = [];
+    for (let li = 0; li < NUM_LAYERS; li++) {
+      if (!this._layerAudio[li]) keyboardNotes.push(...this.layers[li]);
+    }
+    let lo = 48, hi = 72, span = 24, rowH = 4; // safe defaults
+    if (keyboardNotes.length > 0) {
+      const midis = keyboardNotes.map(e => noteToMidi(e.note));
+      lo   = Math.min(...midis) - 1;
+      hi   = Math.max(...midis) + 1;
+      span = Math.max(hi - lo, 8);
+      rowH = Math.max(2, Math.floor(H / span) - 1);
+    }
 
-    const midis = all.map(e => noteToMidi(e.note));
-    const lo    = Math.min(...midis) - 1;
-    const hi    = Math.max(...midis) + 1;
-    const span  = Math.max(hi - lo, 8);
-    const rowH  = Math.max(2, Math.floor(H / span) - 1);
-
-    for (let li = 0; li < 2; li++) {
-      ctx.fillStyle  = LAYER_COLORS[li];
-      ctx.globalAlpha = 0.85;
-      for (const ev of this.layers[li]) {
-        const x = Math.floor((ev.startTime / totalLen) * W);
-        const w = Math.max(2, Math.floor((ev.duration / totalLen) * W));
-        const yFrac = (noteToMidi(ev.note) - lo) / span;
-        const y = H - Math.round(yFrac * H) - rowH;
-        ctx.fillRect(x, Math.max(0, y), w, rowH);
+    for (let li = 0; li < NUM_LAYERS; li++) {
+      if (this._layerAudio[li]) {
+        // Mic layer — draw waveform spanning the full canvas height
+        this._drawWaveform(ctx, this._layerAudio[li], 0, 0, W, H, LAYER_COLORS[li]);
+      } else if (this.layers[li].length > 0) {
+        // Keyboard layer — note rectangles
+        ctx.fillStyle   = LAYER_COLORS[li];
+        ctx.globalAlpha = 0.85;
+        for (const ev of this.layers[li]) {
+          const x     = Math.floor((ev.startTime / totalLen) * W);
+          const w     = Math.max(2, Math.floor((ev.duration / totalLen) * W));
+          const yFrac = (noteToMidi(ev.note) - lo) / span;
+          const y     = H - Math.round(yFrac * H) - rowH;
+          ctx.fillRect(x, Math.max(0, y), w, rowH);
+        }
+        ctx.globalAlpha = 1;
       }
     }
-    ctx.globalAlpha = 1;
 
     // Playhead
     const ph = this._playheadFrac();
@@ -411,13 +618,14 @@ export class LoopPedal {
     ctx.fillStyle = '#181825';
     ctx.fillRect(0, 0, W, H);
 
-    const LABEL_W = 24;
-    const trackW  = W - LABEL_W;
+    const LABEL_W  = 24;
+    const trackW   = W - LABEL_W;
     const totalLen = this.loopLength || 4;
-    const lh = Math.floor((H - 6) / 2);
+    const gap      = 3;
+    const lh       = Math.floor((H - gap * (NUM_LAYERS + 1)) / NUM_LAYERS);
 
-    for (let li = 0; li < 2; li++) {
-      const y = 3 + li * (lh + 3);
+    for (let li = 0; li < NUM_LAYERS; li++) {
+      const y = gap + li * (lh + gap);
 
       // Track background
       ctx.fillStyle = '#2a2a3e';
@@ -429,15 +637,20 @@ export class LoopPedal {
       ctx.textBaseline = 'middle';
       ctx.fillText(`L${li + 1}`, 4, y + lh / 2);
 
-      // Note bars
-      ctx.globalAlpha = 0.75;
-      for (const ev of this.layers[li]) {
-        const x = LABEL_W + Math.floor((ev.startTime / totalLen) * trackW);
-        const w = Math.max(2, Math.floor((ev.duration / totalLen) * trackW));
-        ctx.fillStyle = LAYER_COLORS[li];
-        ctx.fillRect(x, y + 2, w, lh - 4);
+      if (this._layerAudio[li]) {
+        // Mic layer — waveform in the track band
+        this._drawWaveform(ctx, this._layerAudio[li], LABEL_W, y + 2, trackW, lh - 4, LAYER_COLORS[li]);
+      } else {
+        // Keyboard layer — note bars
+        ctx.globalAlpha = 0.75;
+        for (const ev of this.layers[li]) {
+          const x = LABEL_W + Math.floor((ev.startTime / totalLen) * trackW);
+          const w = Math.max(2, Math.floor((ev.duration / totalLen) * trackW));
+          ctx.fillStyle = LAYER_COLORS[li];
+          ctx.fillRect(x, y + 2, w, lh - 4);
+        }
+        ctx.globalAlpha = 1;
       }
-      ctx.globalAlpha = 1;
     }
 
     // Playhead
@@ -456,13 +669,22 @@ export class LoopPedal {
     const s = this.state;
     const b = this._buttons;
 
-    b.record.disabled  = s !== 'idle';
-    b.stopRec.disabled = s !== 'recording1' && s !== 'overdubbing';
-    b.overdub.disabled = s !== 'playing';
-    b.play.disabled    = s === 'idle' || s === 'recording1';
-    b.clearL1.disabled = s === 'idle' || s === 'recording1';
-    b.clearL2.disabled = s === 'idle' || s === 'recording1';
+    b.record.disabled   = s !== 'idle';
+    b.stopRec.disabled  = s !== 'recording1' && s !== 'overdubbing';
+    b.overdub.disabled  = s !== 'playing';
+    b.play.disabled     = s === 'idle' || s === 'recording1';
+    b.clearL1.disabled  = s === 'idle' || s === 'recording1';
+    b.clearL2.disabled  = s === 'idle' || s === 'recording1';
     b.clearAll.disabled = s === 'idle';
+
+    if (b.clearL3) b.clearL3.disabled = s === 'idle' || s === 'recording1';
+
+    if (b.saveAsBlock) {
+      // Save as Block only works for keyboard-only loops (AudioBuffer not serializable)
+      const hasMicLayers     = this._layerAudio.some(a => a !== null);
+      const hasKeyboardNotes = this.layers.some(l => l.length > 0);
+      b.saveAsBlock.disabled = !hasKeyboardNotes || hasMicLayers || s === 'recording1';
+    }
 
     // Play/Stop button text toggles
     b.play.textContent = (s === 'paused') ? '▶ Play [3]' : '■ Stop [3]';
@@ -471,12 +693,21 @@ export class LoopPedal {
     b.record.classList.toggle('active', s === 'recording1');
     b.overdub.classList.toggle('active', s === 'overdubbing');
 
+    // Overdub button shows which layer it will target
+    if (s === 'overdubbing') {
+      b.overdub.textContent = `⊕ Overdubbing L${this._overdubLayerIdx + 1}…`;
+    } else {
+      const nextOverdubLayer = (this.layers[1].length === 0 && !this._layerAudio[1]) ? 2 : 3;
+      b.overdub.textContent = `⊕ Overdub L${nextOverdubLayer} [2]`;
+    }
+
     // Status label
+    const inputMode = this._isMicMode() ? '🎤 mic' : '⌨️ keys';
     const STATUS = {
       idle:       'Ready — press Record [1] to start',
-      recording1: '⏺ Recording L1...',
+      recording1: `⏺ Recording L1 (${inputMode})…`,
       playing:    '▶ Playing',
-      overdubbing:'⏺ Overdubbing L2...',
+      overdubbing:`⏺ Overdubbing L${this._overdubLayerIdx + 1} (${inputMode})…`,
       paused:     '⏸ Paused',
     };
     if (this._statusEl) this._statusEl.textContent = STATUS[s] || s;
@@ -497,6 +728,7 @@ export class LoopPedal {
 
   destroy() {
     document.removeEventListener('keydown', this._keyListener);
+    this._cancelMicRecording();
     this._stopPlayback();
     for (const synth of Object.values(this._synths)) {
       try { synth.dispose(); } catch (_) {}

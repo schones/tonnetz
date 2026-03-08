@@ -287,7 +287,7 @@
         </div>
         <div class="help-sub" style="margin-bottom: 0;">
           <div class="help-sub__title">🎛️ Loop Pedal</div>
-          <p style="font-size: var(--font-size-sm); color: var(--color-text-light);">Record what you play on the keyboard and loop it! Layer two recordings on top of each other.</p>
+          <p style="font-size: var(--font-size-sm); color: var(--color-text-light);">Record keyboard playing or mic audio and loop it! Stack up to three layers and even save loops as reusable blocks.</p>
         </div>
       </div>
       <div class="callout">
@@ -567,7 +567,7 @@
         </ul>
         <div class="callout" style="margin-top: var(--space-sm);">
           🎛️ The Loop Pedal remembers which instrument you were using when you recorded each layer!
-          Layer 1 and Layer 2 can use different instruments.
+          All three layers can use different instruments.
         </div>
       </div>
 
@@ -598,20 +598,41 @@
     <section class="help-section" id="loop-pedal">
       <h2 class="help-section__heading">🎛️ Loop Pedal</h2>
       <p style="margin-bottom: var(--space-md); line-height: 1.7;">
-        The Loop Pedal lets you record yourself playing the keyboard and repeat it automatically!
-        You can build up two layers of playing — like having two musicians playing together.
+        The Loop Pedal lets you record yourself playing the keyboard (or your microphone!) and repeat it automatically.
+        You can stack up to <strong>three layers</strong> — like three musicians playing together.
       </p>
 
       <!-- Basic workflow -->
       <div class="help-sub">
         <div class="help-sub__title">▶ How to Make a Loop</div>
         <ol class="steps">
-          <li>Press <strong>● Rec [1]</strong> (or press <span class="key">1</span> on your keyboard). The button blinks red — you're recording! Play some notes on the keyboard.</li>
-          <li>Press <strong>■ Stop</strong> when you're done. The loop length is set and your recording immediately starts playing back on repeat.</li>
-          <li>Optional: Press <strong>⊕ Overdub [2]</strong> (or press <span class="key">2</span>) while it's playing to record a second layer on top. Play more notes!</li>
+          <li>Press <strong>● Rec [1]</strong> (or press <span class="key">1</span> on your keyboard). The button blinks red — you're recording! Play some notes on the keyboard (or sing into your mic if Microphone is selected).</li>
+          <li>Press <strong>■ Stop</strong> when you're done. The loop length is locked and your recording immediately starts playing back on repeat.</li>
+          <li>Optional: Press <strong>⊕ Overdub L2 [2]</strong> (or press <span class="key">2</span>) while it's playing to record a second layer on top. Play more notes!</li>
           <li>Press <strong>■ Stop</strong> again to end the overdub. Now both layers play together.</li>
-          <li>Press <strong>■ Stop [3]</strong> (or press <span class="key">3</span>) at any time to pause playback. Press <strong>▶ Play [3]</strong> to resume.</li>
+          <li>Optional: Press <strong>⊕ Overdub L3 [2]</strong> again to add a third layer on top of the first two.</li>
+          <li>Press <strong>▶ Play / ■ Stop [3]</strong> (or press <span class="key">3</span>) at any time to pause or resume playback.</li>
         </ol>
+      </div>
+
+      <!-- Input source -->
+      <div class="help-sub">
+        <div class="help-sub__title">🎤 Input Source: Keyboard vs Microphone</div>
+        <p style="font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-sm);">
+          The <strong>Input source</strong> dropdown in the Loop Pedal header lets you choose what gets recorded each time you press Rec or Overdub:
+        </p>
+        <ul class="block-list">
+          <li><span class="block-badge badge-visual">⌨️ Keyboard</span> Records notes you play on the on-screen piano. Timing and pitch are stored as MIDI-like events — precise and sample-accurate.</li>
+          <li><span class="block-badge badge-melody">🎤 Microphone</span> Records raw audio from your microphone using your browser's built-in recorder. Sing, hum, beatbox, or play a real instrument!</li>
+        </ul>
+        <div class="callout" style="margin-top: var(--space-sm);">
+          🔒 <strong>First time using the mic?</strong> Your browser will ask for microphone permission. Click <em>Allow</em> and you're set.
+          If you accidentally clicked <em>Deny</em>, you can reset it in your browser's address-bar site settings (🔒 icon → Microphone → Allow).
+        </div>
+        <div class="callout callout--yellow" style="margin-top: var(--space-sm);">
+          📝 <strong>Mixing is fine!</strong> You can record Layer 1 with the keyboard and Layer 2 with the mic, or any other combination.
+          Each layer remembers its own source. Note: layers with mic audio cannot be saved as Blockly blocks (they're raw audio, not note data).
+        </div>
       </div>
 
       <!-- Keyboard shortcuts -->
@@ -619,7 +640,7 @@
         <div class="help-sub__title">⌨️ Keyboard Shortcuts</div>
         <div style="display: flex; gap: var(--space-lg); flex-wrap: wrap; font-size: var(--font-size-sm);">
           <div><span class="key">1</span> &nbsp;Record Layer 1</div>
-          <div><span class="key">2</span> &nbsp;Overdub Layer 2</div>
+          <div><span class="key">2</span> &nbsp;Overdub next layer (L2 then L3)</div>
           <div><span class="key">3</span> &nbsp;Play / Stop</div>
         </div>
         <div class="callout" style="margin-top: var(--space-sm);">
@@ -646,11 +667,13 @@
           The Loop Pedal shows two views of your recording:
         </p>
         <ul class="block-list">
-          <li><span class="block-badge" style="background:#ede9fe;color:#5b21b6;">Piano Roll</span> Time goes left→right. Pitch goes bottom→top. Each note is a colored rectangle. The white line is the playhead moving in real time.</li>
-          <li><span class="block-badge" style="background:#fce7f3;color:#9d174d;">Bar Timeline</span> A simpler view — one horizontal track per layer. Note durations appear as colored bars. The white line shows where you are in the loop.</li>
+          <li><span class="block-badge" style="background:#ede9fe;color:#5b21b6;">Piano Roll</span> Time goes left→right. Pitch goes bottom→top. Keyboard notes appear as colored rectangles; mic layers show as a waveform bar. The white line is the playhead moving in real time.</li>
+          <li><span class="block-badge" style="background:#fce7f3;color:#9d174d;">Bar Timeline</span> One horizontal track per layer. Keyboard notes appear as colored bars; mic layers display an audio waveform. The white line shows where you are in the loop.</li>
         </ul>
         <p style="font-size: var(--font-size-sm); margin-top: var(--space-sm);">
-          <strong style="color:#a29bfe;">■</strong> Purple = Layer 1 &nbsp;&nbsp; <strong style="color:#fd79a8;">■</strong> Pink = Layer 2
+          <strong style="color:#a29bfe;">■</strong> Purple = Layer 1 &nbsp;&nbsp;
+          <strong style="color:#fd79a8;">■</strong> Pink = Layer 2 &nbsp;&nbsp;
+          <strong style="color:#74b9ff;">■</strong> Blue = Layer 3
         </p>
       </div>
 
@@ -658,10 +681,28 @@
       <div class="help-sub">
         <div class="help-sub__title">🗑️ Clear Buttons</div>
         <ul class="block-list">
-          <li><span class="block-badge badge-control">Clear L1</span> Erase Layer 1 but keep Layer 2 and the loop playing.</li>
-          <li><span class="block-badge badge-control">Clear L2</span> Erase Layer 2 but keep Layer 1.</li>
+          <li><span class="block-badge badge-control">Clear L1</span> Erase Layer 1 but keep the other layers and the loop playing.</li>
+          <li><span class="block-badge badge-control">Clear L2</span> Erase Layer 2 but keep Layers 1 and 3.</li>
+          <li><span class="block-badge badge-control">Clear L3</span> Erase Layer 3 but keep Layers 1 and 2.</li>
           <li><span class="block-badge badge-control">Clear All</span> Erase everything and go back to the beginning.</li>
         </ul>
+      </div>
+
+      <!-- Save as Block -->
+      <div class="help-sub">
+        <div class="help-sub__title">💾 Save as Block</div>
+        <p style="font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-sm);">
+          Once you have a keyboard loop you love, click <strong>💾 Save as Block</strong> to turn it into a reusable Blockly block!
+        </p>
+        <ol class="steps">
+          <li>Record a loop using the keyboard (mic layers can't be saved as blocks).</li>
+          <li>Click <strong>💾 Save as Block</strong> and give your loop a name (e.g. "My Bass Line").</li>
+          <li>A new block appears in the <strong>My Loops</strong> category of the toolbox.</li>
+          <li>Drag it into your program — when Play is pressed, your loop plays back in perfect sync.</li>
+        </ol>
+        <div class="callout" style="margin-top: var(--space-sm);">
+          🔁 Saved loops are stored in the browser and survive page reloads. To remove one, right-click the block in the toolbox and choose <em>Remove from Library</em>.
+        </div>
       </div>
 
       <div class="callout--green callout">
@@ -769,7 +810,15 @@
           <span class="tip-emoji">🎛️</span>
           <div>
             <strong>Layer your loop pedal.</strong> Record a simple bass line on Layer 1 (try notes F, J, K on your keyboard).
-            Then overdub a melody on Layer 2. Change instruments between layers for contrast!
+            Overdub a melody on Layer 2. Then switch to Microphone and overdub beatboxing on Layer 3!
+            Change instruments between keyboard layers for extra contrast.
+          </div>
+        </li>
+        <li>
+          <span class="tip-emoji">💾</span>
+          <div>
+            <strong>Save loops as blocks.</strong> After recording a keyboard loop you like, click <em>Save as Block</em>.
+            Now drag it into the Block Editor and combine it with drum patterns and visual effects — all in perfect sync!
           </div>
         </li>
         <li>

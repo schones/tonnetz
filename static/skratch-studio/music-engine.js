@@ -88,6 +88,14 @@ export class MusicEngine {
       envelope: { attack: 0.05, decay: 0.3, sustain: 0.5, release: 0.8 },
       volume: -10,
     }).connect(this._volume);
+
+    // Loop playback — dedicated PolySynth for saved loop blocks
+    this._instruments.loop = new Tone.PolySynth(Tone.Synth, {
+      maxPolyphony: 8,
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.02, decay: 0.3, sustain: 0.3, release: 0.6 },
+      volume: -8,
+    }).connect(this._volume);
   }
 
   // --- Transport controls ---
@@ -284,6 +292,29 @@ export class MusicEngine {
       }
     }, releaseTime);
     this._scheduledIds.push(releaseId);
+  }
+
+  scheduleLoopNote(note, durationSec, startTimeSec) {
+    const attackId = Tone.Transport.schedule((t) => {
+      this._instruments.loop.triggerAttack(note, t);
+    }, startTimeSec);
+    this._scheduledIds.push(attackId);
+
+    const releaseId = Tone.Transport.schedule((t) => {
+      if (this._sustain) {
+        this._sustainedTransportNotes.push({ instrument: this._instruments.loop, notes: note });
+      } else {
+        this._instruments.loop.triggerRelease(note, t);
+      }
+    }, startTimeSec + durationSec);
+    this._scheduledIds.push(releaseId);
+  }
+
+  updateLoopEnd(loopLengthSec) {
+    const bpm = Tone.Transport.bpm.value;
+    const secPerBar = (60 / bpm) * 4;
+    const bars = Math.ceil(loopLengthSec / secPerBar);
+    if (bars > this._loopEndBar) this._loopEndBar = bars;
   }
 
   // --- Loop scheduling (repeating patterns) ---

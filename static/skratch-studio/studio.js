@@ -11,6 +11,8 @@ import { Piano } from '../shared/ui/piano.js';
 import { LoopPedal } from './loop-pedal.js';
 
 const STORAGE_KEY = 'skratch-studio-workspace';
+const LOOPS_STORAGE_KEY = 'skratch_loops';
+const _loopRegistry = new Map();
 
 // --- Helper: build a chain of next-linked blocks for JSON serialization ---
 function chain(...blocks) {
@@ -506,7 +508,11 @@ export function init() {
   registerMusicBlocks();
   registerMusicGenerators();
 
-  // Build combined toolbox XML (visual categories + music categories)
+  // Load saved loops from localStorage and register their blocks/generators
+  // (must happen before buildCombinedToolbox so My Loops category is included)
+  loadSavedLoops();
+
+  // Build combined toolbox XML (visual categories + music categories + my loops)
   const combinedToolboxXml = buildCombinedToolbox();
   const toolboxContainer = document.createElement('div');
   toolboxContainer.innerHTML = combinedToolboxXml;
@@ -639,26 +645,33 @@ export function init() {
     statusEl:          document.getElementById('loopPedalStatus'),
     lengthEl:          document.getElementById('loopLengthDisplay'),
     quantizeCheckbox:  document.getElementById('chkQuantize'),
+    inputSourceEl: document.getElementById('loopInputSource'),
     buttons: {
-      record:   document.getElementById('btnLoopRecord'),
-      stopRec:  document.getElementById('btnLoopStopRec'),
-      overdub:  document.getElementById('btnLoopOverdub'),
-      play:     document.getElementById('btnLoopPlay'),
-      clearL1:  document.getElementById('btnClearL1'),
-      clearL2:  document.getElementById('btnClearL2'),
-      clearAll: document.getElementById('btnLoopClearAll'),
+      record:      document.getElementById('btnLoopRecord'),
+      stopRec:     document.getElementById('btnLoopStopRec'),
+      overdub:     document.getElementById('btnLoopOverdub'),
+      play:        document.getElementById('btnLoopPlay'),
+      clearL1:     document.getElementById('btnClearL1'),
+      clearL2:     document.getElementById('btnClearL2'),
+      clearL3:     document.getElementById('btnClearL3'),
+      clearAll:    document.getElementById('btnLoopClearAll'),
+      saveAsBlock: document.getElementById('btnSaveAsBlock'),
     },
     // When loop pedal takes the Transport, pause any running Blockly music
     onTakeoverTransport: () => { if (_isPlaying) handleStop(); },
   });
 
   document.getElementById('btnLoopRecord').addEventListener('click',   () => loopPedal.startRecording());
-  document.getElementById('btnLoopStopRec').addEventListener('click',  () => loopPedal.stopRecording());
+  document.getElementById('btnLoopStopRec').addEventListener('click',  async () => { await loopPedal.stopRecording(); });
   document.getElementById('btnLoopOverdub').addEventListener('click',  () => loopPedal.startOverdub());
   document.getElementById('btnLoopPlay').addEventListener('click',     () => loopPedal.togglePlayback());
   document.getElementById('btnClearL1').addEventListener('click',      () => loopPedal.clearLayer(0));
   document.getElementById('btnClearL2').addEventListener('click',      () => loopPedal.clearLayer(1));
+  document.getElementById('btnClearL3').addEventListener('click',      () => loopPedal.clearLayer(2));
   document.getElementById('btnLoopClearAll').addEventListener('click', () => loopPedal.clearAll());
+  document.getElementById('btnSaveAsBlock').addEventListener('click',  () => handleSaveAsBlock());
+
+  registerLoopContextMenu();
 
   // Clear Blocks button — clears only the Blockly workspace
   document.getElementById('btnClearBlocks').addEventListener('click', () => {
@@ -731,7 +744,8 @@ export function init() {
           _workspaceDirty = false;
           console.log('[LiveEdit] Rescheduling — workspace changed');
           const newCode = generateCode();
-          const newHasMusic = /\b(kick|snare|hihat|bass|melody|chords)\.(trigger|Tone\.Transport)/.test(newCode);
+          const newHasMusic = /\b(kick|snare|hihat|bass|melody|chords)\.(trigger|Tone\.Transport)/.test(newCode)
+            || /__playLoop\(/.test(newCode);
           musicEngine.clearScheduledEvents();
           if (newHasMusic) executeMusicCode(newCode);
           musicEngine.setLoop(true);
@@ -777,15 +791,135 @@ export function init() {
   });
 }
 
+// ── Saved Loop Library ────────────────────────────────────────────────────
+
+function loadLoopsFromStorage() {
+  try {
+    return JSON.parse(localStorage.getItem(LOOPS_STORAGE_KEY) || '[]');
+  } catch { return []; }
+}
+
+function registerLoopBlock(loopData) {
+  const blockType = 'loop_saved_' + loopData.id;
+  const allNotes = [...loopData.layers[0], ...loopData.layers[1]];
+  const noteCount = allNotes.length;
+  const durLabel = loopData.loopLength.toFixed(1) + 's';
+
+  _loopRegistry.set(loopData.id, loopData);
+
+  Blockly.Blocks[blockType] = {
+    init() {
+      this.appendDummyInput()
+        .appendField('🎵 ' + loopData.name)
+        .appendField(new Blockly.FieldLabel(`  (${noteCount} notes · ${durLabel})`));
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(160);
+      this.setTooltip(`Play saved loop: ${loopData.name}`);
+    }
+  };
+
+  Blockly.JavaScript.forBlock[blockType] = function() {
+    return `__playLoop('${loopData.id}');\n`;
+  };
+}
+
+function buildMyLoopsToolboxXml() {
+  const loops = loadLoopsFromStorage();
+  if (loops.length === 0) return '';
+  let xml = `<category name="🎵 My Loops" colour="160">`;
+  for (const loop of loops) {
+    xml += `<block type="loop_saved_${loop.id}"></block>`;
+  }
+  xml += `</category>`;
+  return xml;
+}
+
+function rebuildToolbox() {
+  if (!workspace) return;
+  workspace.updateToolbox(buildCombinedToolbox());
+}
+
+function loadSavedLoops() {
+  for (const loopData of loadLoopsFromStorage()) {
+    registerLoopBlock(loopData);
+  }
+}
+
+function handleSaveAsBlock() {
+  if (!loopPedal) return;
+  const allNotes = [...loopPedal.layers[0], ...loopPedal.layers[1], ...loopPedal.layers[2]];
+  if (allNotes.length === 0) { alert('No keyboard notes recorded yet! (Mic-recorded layers cannot be saved as blocks.)'); return; }
+
+  const name = prompt('Name your loop:', 'My Loop');
+  if (!name || !name.trim()) return;
+
+  const loopData = {
+    id: String(Date.now()),
+    name: name.trim(),
+    layers: [
+      loopPedal.layers[0].map(ev => ({ ...ev })),
+      loopPedal.layers[1].map(ev => ({ ...ev })),
+      loopPedal.layers[2].map(ev => ({ ...ev })),
+    ],
+    loopLength: loopPedal.loopLength,
+    bpm: parseInt(document.getElementById('bpmSlider').value, 10),
+  };
+
+  const loops = loadLoopsFromStorage();
+  loops.push(loopData);
+  localStorage.setItem(LOOPS_STORAGE_KEY, JSON.stringify(loops));
+
+  registerLoopBlock(loopData);
+  rebuildToolbox();
+}
+
+function registerLoopContextMenu() {
+  Blockly.ContextMenuRegistry.registry.register({
+    id: 'delete_loop_from_library',
+    displayText(scope) {
+      const id = scope.block.type.replace('loop_saved_', '');
+      const loopData = _loopRegistry.get(id);
+      return loopData ? `Remove "${loopData.name}" from Library` : 'Remove from My Loops';
+    },
+    scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+    weight: 6,
+    preconditionFn(scope) {
+      return scope.block.type.startsWith('loop_saved_') ? 'enabled' : 'hidden';
+    },
+    callback(scope) {
+      const block = scope.block;
+      const id = block.type.replace('loop_saved_', '');
+      const loopData = _loopRegistry.get(id);
+      const name = loopData ? loopData.name : 'this loop';
+      if (!confirm(`Remove "${name}" from the loop library?`)) return;
+
+      const loops = loadLoopsFromStorage().filter(l => l.id !== id);
+      localStorage.setItem(LOOPS_STORAGE_KEY, JSON.stringify(loops));
+
+      _loopRegistry.delete(id);
+      delete Blockly.Blocks['loop_saved_' + id];
+      delete Blockly.JavaScript.forBlock['loop_saved_' + id];
+
+      for (const b of workspace.getAllBlocks(false)) {
+        if (b.type === 'loop_saved_' + id) b.dispose(true);
+      }
+
+      rebuildToolbox();
+    }
+  });
+}
+
+// ── Toolbox assembly ──────────────────────────────────────────────────────
+
 function buildCombinedToolbox() {
-  // Get the existing visual toolbox XML and inject music categories before closing </xml>
   const visualXml = getToolboxXml();
   const musicXml = getMusicToolboxXml();
+  const myLoopsXml = buildMyLoopsToolboxXml();
 
-  // Insert a separator and music categories before the closing </xml>
   return visualXml.replace(
     '</xml>',
-    `  <sep gap="32"></sep>\n${musicXml}\n</xml>`
+    `  <sep gap="32"></sep>\n${musicXml}\n${myLoopsXml}\n</xml>`
   );
 }
 
@@ -804,8 +938,9 @@ async function handlePlay() {
   _workspaceDirty = false;
   _isPlaying = true;
 
-  // Check if code contains music blocks (Tone.js instrument calls)
-  const hasMusic = /\b(kick|snare|hihat|bass|melody|chords)\.(trigger|Tone\.Transport)/.test(code);
+  // Check if code contains music blocks (Tone.js instrument calls or saved loop blocks)
+  const hasMusic = /\b(kick|snare|hihat|bass|melody|chords)\.(trigger|Tone\.Transport)/.test(code)
+    || /__playLoop\(/.test(code);
 
   // Set up block highlighting — visual blocks highlight every frame,
   // beat-synced music blocks are handled separately by executeMusicCode()
@@ -882,6 +1017,17 @@ function executeMusicCode(code) {
     let _currentMusicBlockId = null;
     const musicHighlight = (id) => {
       _currentMusicBlockId = id;
+    };
+
+    // Saved loop playback — schedules all notes from a stored loop (all keyboard layers)
+    const __playLoopFn = (id) => {
+      const loopData = _loopRegistry.get(id);
+      if (!loopData) return;
+      musicEngine.updateLoopEnd(loopData.loopLength);
+      const allNotes = loopData.layers.flat();
+      for (const ev of allNotes) {
+        musicEngine.scheduleLoopNote(ev.note, ev.duration, ev.startTime);
+      }
     };
 
     // Build proxy instruments that forward .triggerAttackRelease() to MusicEngine scheduling
@@ -961,7 +1107,7 @@ function executeMusicCode(code) {
       'Math', 'PI',
       'currentPitch', 'currentNoteName', 'currentVolume', 'noteIsPlaying',
       'onNotePlayed', 'everyNBeats',
-      'highlightBlock',
+      'highlightBlock', '__playLoop',
       code
     );
 
@@ -975,7 +1121,7 @@ function executeMusicCode(code) {
       Math, Math.PI,
       0, '--', 0, false,
       noop, noop,
-      musicHighlight
+      musicHighlight, __playLoopFn
     );
   } catch (e) {
     // Music code errors shown in error bar
