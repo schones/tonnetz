@@ -12,12 +12,8 @@
 const LAYER_COLORS = ['#a29bfe', '#fd79a8', '#74b9ff']; // L1 purple, L2 pink, L3 blue
 const NUM_LAYERS   = 3;
 
-// Synth options mirror AudioBridge SOUND_PRESETS.
+// Synth options for organ/synth. Piano is handled by Tone.Sampler below.
 const SYNTH_OPTIONS = {
-  piano: {
-    oscillator: { type: 'triangle' },
-    envelope: { attack: 0.02, decay: 0.3, sustain: 0.3, release: 0.6 },
-  },
   organ: {
     oscillator: { type: 'sine' },
     envelope: { attack: 0.05, decay: 0.1, sustain: 0.95, release: 0.3 },
@@ -26,6 +22,19 @@ const SYNTH_OPTIONS = {
     oscillator: { type: 'sawtooth' },
     envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.4 },
   },
+};
+
+// Salamander Grand Piano — same sample set as AudioBridge (served from browser cache).
+const SALAMANDER_BASE_URL = 'https://tonejs.github.io/audio/salamander/';
+const SALAMANDER_URLS = {
+  A0: 'A0.mp3',  C1: 'C1.mp3',  'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3',
+  A1: 'A1.mp3',  C2: 'C2.mp3',  'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3',
+  A2: 'A2.mp3',  C3: 'C3.mp3',  'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3',
+  A3: 'A3.mp3',  C4: 'C4.mp3',  'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3',
+  A4: 'A4.mp3',  C5: 'C5.mp3',  'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3',
+  A5: 'A5.mp3',  C6: 'C6.mp3',  'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3',
+  A6: 'A6.mp3',  C7: 'C7.mp3',  'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3',
+  A7: 'A7.mp3',
 };
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -125,6 +134,16 @@ export class LoopPedal {
   async _ensureTone() {
     if (this._toneReady) return;
     await Tone.start();
+
+    // Piano: Salamander Grand Piano sampler. Files are already cached by AudioBridge.
+    this._synths.piano = new Tone.Sampler({
+      urls:    SALAMANDER_URLS,
+      baseUrl: SALAMANDER_BASE_URL,
+      release: 1,
+      volume:  -8,
+    }).toDestination();
+
+    // Organ and Synth: PolySynth (unchanged)
     for (const [name, opts] of Object.entries(SYNTH_OPTIONS)) {
       this._synths[name] = new Tone.PolySynth(Tone.Synth, {
         maxPolyphony: 8,

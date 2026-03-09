@@ -118,6 +118,10 @@ def skratch():
 def skratch_help():
     return render_template("skratch-studio-help.html")
 
+@app.route("/skratch/piano-popout")
+def skratch_piano_popout():
+    return render_template("piano-popout.html")
+
 @app.route("/test_sustain")
 def test_sustain():
     return app.send_static_file("skratch-studio/test-sustain.html")

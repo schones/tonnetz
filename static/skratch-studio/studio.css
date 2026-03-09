@@ -303,6 +303,64 @@
   align-self: center;
 }
 
+.piano-loading {
+  font-size: var(--font-size-xs);
+  color: #fab387;
+  white-space: nowrap;
+  align-self: center;
+  padding: 2px 6px;
+  background: rgba(250, 179, 135, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Piano annotation row (labels + mark controls) ── */
+.piano-meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-top: 4px;
+}
+
+.piano-meta-select {
+  padding: 3px 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #3a3a50;
+  background: #2a2a3e;
+  color: #cdd6f4;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family);
+  cursor: pointer;
+}
+
+.btn--mark {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid #3a3a50;
+  font-size: var(--font-size-xs);
+  padding: 3px 8px;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.btn--mark.active {
+  color: #a29bfe;
+  border-color: #a29bfe;
+  background: rgba(162, 155, 254, 0.12);
+}
+
+.btn--popout {
+  background: transparent;
+  color: #74c7ec;
+  border: 1px solid #74c7ec;
+  font-size: var(--font-size-xs);
+  padding: 3px 8px;
+  white-space: nowrap;
+  margin-left: auto;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.btn--popout:hover {
+  background: rgba(116, 199, 236, 0.12);
+}
+
 .sustain-indicator {
   font-size: var(--font-size-xs);
   color: #888;

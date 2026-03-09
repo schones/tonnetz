@@ -98,8 +98,20 @@
               <option value="organ">Organ</option>
               <option value="synth">Synth</option>
             </select>
+            <span id="pianoLoadingIndicator" class="piano-loading">Loading piano…</span>
             <div id="pianoContainer" class="piano-container"></div>
             <span id="sustainIndicator" class="sustain-indicator">Sustain: OFF</span>
+          </div>
+          <div class="piano-meta-row">
+            <select id="pianoLabelSelect" class="piano-meta-select" aria-label="Piano key labels"
+                    title="Show labels on piano keys">
+              <option value="none">Labels: Off</option>
+              <option value="note">Note Names</option>
+              <option value="solfege">Solfège</option>
+            </select>
+            <button id="btnMarkMode"   class="btn btn--mark"  title="Click keys to place or remove red dot markers">✎ Mark</button>
+            <button id="btnClearMarks" class="btn btn--clear" title="Remove all markers">✕ Clear Marks</button>
+            <button id="btnPopOut" class="btn btn--popout" title="Open keyboard in a separate window">⇱ Pop Out</button>
           </div>
         </div>
 

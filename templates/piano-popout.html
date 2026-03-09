@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skratch Studio — Keyboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+  <!-- Tone.js — needed for BroadcastChannel message types that reference instrument names -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #11111b;
+      color: #cdd6f4;
+      font-family: var(--font-family);
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .popout-header {
+      background: #181825;
+      border-bottom: 1px solid #3a3a50;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .popout-header__title {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-accent);
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .popout-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .popout-select {
+      padding: 3px 6px;
+      border-radius: var(--radius-sm);
+      border: 1px solid #3a3a50;
+      background: #2a2a3e;
+      color: #cdd6f4;
+      font-size: var(--font-size-xs);
+      font-family: var(--font-family);
+      cursor: pointer;
+    }
+
+    .popout-slider-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .popout-slider-label {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      font-weight: var(--font-weight-bold);
+      white-space: nowrap;
+    }
+
+    .popout-slider {
+      width: 80px;
+      accent-color: var(--color-accent);
+      height: 4px;
+      cursor: pointer;
+    }
+
+    .popout-slider-value {
+      font-size: var(--font-size-xs);
+      color: #cdd6f4;
+      font-family: var(--font-family-mono);
+      min-width: 26px;
+      text-align: right;
+    }
+
+    .sustain-indicator {
+      font-size: var(--font-size-xs);
+      color: #888;
+      font-weight: var(--font-weight-bold);
+      white-space: nowrap;
+      padding: 2px 6px;
+      background: rgba(136, 136, 136, 0.1);
+      border-radius: var(--radius-sm);
+      transition: color 0.15s, background 0.15s;
+    }
+    .sustain-indicator.active {
+      color: #a6e3a1;
+      background: rgba(166, 227, 161, 0.15);
+    }
+
+    /* Reuse shared .btn pattern with minimal local overrides */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-xs);
+      font-family: var(--font-family);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn--mark {
+      background: transparent;
+      color: var(--color-text-muted);
+      border: 1px solid #3a3a50;
+    }
+    .btn--mark.active {
+      color: #a29bfe;
+      border-color: #a29bfe;
+      background: rgba(162, 155, 254, 0.12);
+    }
+
+    .btn--clear {
+      background: transparent;
+      color: var(--color-text-muted);
+      border: 1px solid #3a3a50;
+    }
+    .btn--clear:hover {
+      color: var(--color-error);
+      border-color: var(--color-error);
+    }
+
+    /* Piano area */
+    .popout-piano-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 12px 12px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #pianoContainer {
+      display: flex;
+      justify-content: center;
+    }
+
+    .popout-status {
+      text-align: center;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      padding: 4px 12px 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="popout-header">
+    <span class="popout-header__title">&#9835; Skratch Studio — Keyboard</span>
+    <div class="popout-controls">
+      <select id="soundSelect" class="popout-select" aria-label="Instrument">
+        <option value="piano">Piano</option>
+        <option value="organ">Organ</option>
+        <option value="synth">Synth</option>
+      </select>
+
+      <div class="popout-slider-group">
+        <span class="popout-slider-label">BPM</span>
+        <input id="bpmSlider" type="range" min="60" max="180" value="120" class="popout-slider" aria-label="BPM">
+        <span id="bpmValue" class="popout-slider-value">120</span>
+      </div>
+
+      <div class="popout-slider-group">
+        <span class="popout-slider-label">VOL</span>
+        <input id="volumeSlider" type="range" min="0" max="100" value="75" class="popout-slider" aria-label="Volume">
+        <span id="volumeValue" class="popout-slider-value">75%</span>
+      </div>
+
+      <span id="sustainIndicator" class="sustain-indicator">Sustain: OFF</span>
+
+      <select id="labelSelect" class="popout-select" aria-label="Key labels">
+        <option value="none">Labels: Off</option>
+        <option value="note">Note Names</option>
+        <option value="solfege">Solfège</option>
+      </select>
+
+      <button id="btnMarkMode" class="btn btn--mark" title="Click keys to place or remove markers">✎ Mark</button>
+      <button id="btnClearMarks" class="btn btn--clear" title="Remove all markers">✕ Clear Marks</button>
+    </div>
+  </div>
+
+  <div class="popout-piano-area">
+    <div id="pianoContainer"></div>
+  </div>
+
+  <div class="popout-status" id="statusMsg">Connecting to Skratch Studio…</div>
+
+  <script type="module" src="{{ url_for('static', filename='skratch-studio/piano-popout.js') }}"></script>
+</body>
+
+</html>

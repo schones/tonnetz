@@ -493,6 +493,9 @@ let loopPedal = null;
 let _highlightEnabled = false;
 let _workspaceDirty = false;
 let _isPlaying = false;
+let _pianoSyncChannel = null;
+let _popoutWindow = null;
+let _applyingPianoSync = false;
 
 // Music blocks whose highlights should be scheduled on-beat via Tone.Transport
 // rather than highlighted every frame in the visual sandbox loop
@@ -600,6 +603,12 @@ export function init() {
   // --- Audio Integration ---
   audioBridge = new AudioBridge();
 
+  // Hide the loading indicator once piano samples are ready
+  const pianoLoadingEl = document.getElementById('pianoLoadingIndicator');
+  audioBridge.onSamplerLoad(() => {
+    if (pianoLoadingEl) pianoLoadingEl.hidden = true;
+  });
+
   // Connect audio state to sandbox so generated code can read pitch/volume
   sandbox.setAudioState(audioBridge.state);
 
@@ -631,11 +640,151 @@ export function init() {
         sustainIndicator.classList.remove('active');
       }
     },
+    onMarkChange: (note, add) => {
+      if (_pianoSyncChannel && !_applyingPianoSync) {
+        _pianoSyncChannel.postMessage({ type: 'mark-toggle', note, add });
+      }
+    },
   });
   // Sound selector
   const soundSelect = document.getElementById('soundSelect');
   soundSelect.addEventListener('change', () => {
     audioBridge.setSoundType(soundSelect.value);
+  });
+
+  // Piano label mode selector
+  const pianoLabelSelect = document.getElementById('pianoLabelSelect');
+  pianoLabelSelect.addEventListener('change', () => {
+    piano.setLabelMode(pianoLabelSelect.value);
+  });
+
+  // Mark mode toggle
+  const btnMarkMode = document.getElementById('btnMarkMode');
+  btnMarkMode.addEventListener('click', () => {
+    const active = btnMarkMode.classList.toggle('active');
+    piano.setMarkMode(active);
+  });
+
+  // Clear all marks
+  document.getElementById('btnClearMarks').addEventListener('click', () => {
+    piano.clearMarks();
+    if (_pianoSyncChannel && !_applyingPianoSync) {
+      _pianoSyncChannel.postMessage({ type: 'clear-marks' });
+    }
+  });
+
+  // ── Pop-out keyboard ───────────────────────────────────────────────────────
+  _pianoSyncChannel = new BroadcastChannel('skratch-piano-sync');
+
+  _pianoSyncChannel.onmessage = (e) => {
+    const msg = e.data;
+    _applyingPianoSync = true;
+    try {
+      switch (msg.type) {
+        case 'popout-ready':
+          _pianoSyncChannel.postMessage({
+            type: 'state-dump',
+            instrument: soundSelect.value,
+            bpm: parseInt(document.getElementById('bpmSlider').value, 10),
+            volume: parseInt(document.getElementById('volumeSlider').value, 10),
+            labelMode: pianoLabelSelect.value,
+            markedNotes: [...piano._markedNotes],
+            markModeActive: document.getElementById('btnMarkMode').classList.contains('active'),
+          });
+          break;
+        case 'note-on':
+          audioBridge.noteOn(msg.note);
+          if (loopPedal) loopPedal.onNoteOn(msg.note, msg.instrument || soundSelect.value);
+          break;
+        case 'note-off':
+          audioBridge.noteOff(msg.note);
+          if (loopPedal) loopPedal.onNoteOff(msg.note);
+          break;
+        case 'sustain-change':
+          if (msg.on) {
+            audioBridge.sustainOn();
+            if (musicEngine) musicEngine.setSustain(true);
+            sustainIndicator.textContent = 'Sustain: ON';
+            sustainIndicator.classList.add('active');
+          } else {
+            audioBridge.sustainOff();
+            if (musicEngine) musicEngine.setSustain(false);
+            sustainIndicator.textContent = 'Sustain: OFF';
+            sustainIndicator.classList.remove('active');
+          }
+          break;
+        case 'instrument':
+          soundSelect.value = msg.value;
+          audioBridge.setSoundType(msg.value);
+          break;
+        case 'bpm': {
+          const bpmEl = document.getElementById('bpmSlider');
+          const bpmDispEl = document.getElementById('bpmValue');
+          bpmEl.value = msg.value;
+          bpmDispEl.textContent = msg.value;
+          sandbox.setBpm(msg.value);
+          if (musicEngine) musicEngine.setBpm(msg.value);
+          break;
+        }
+        case 'volume': {
+          const volEl = document.getElementById('volumeSlider');
+          const volDispEl = document.getElementById('volumeValue');
+          volEl.value = msg.value;
+          volDispEl.textContent = msg.value + '%';
+          const db = msg.value === 0 ? -Infinity : -40 + (msg.value / 100) * 40;
+          if (musicEngine) musicEngine.setVolume(db);
+          break;
+        }
+        case 'label-mode':
+          pianoLabelSelect.value = msg.value;
+          piano.setLabelMode(msg.value);
+          break;
+        case 'mark-toggle':
+          piano.applyMark(msg.note, msg.add);
+          break;
+        case 'clear-marks':
+          piano.clearMarks();
+          break;
+      }
+    } finally {
+      _applyingPianoSync = false;
+    }
+  };
+
+  // Sync main-window control changes to any open pop-out
+  const _syncToPopout = (msg) => {
+    if (_pianoSyncChannel && !_applyingPianoSync) {
+      _pianoSyncChannel.postMessage(msg);
+    }
+  };
+
+  document.getElementById('bpmSlider').addEventListener('input', (e) => {
+    _syncToPopout({ type: 'bpm', value: parseInt(e.target.value, 10) });
+  });
+
+  document.getElementById('volumeSlider').addEventListener('input', (e) => {
+    _syncToPopout({ type: 'volume', value: parseInt(e.target.value, 10) });
+  });
+
+  soundSelect.addEventListener('change', () => {
+    _syncToPopout({ type: 'instrument', value: soundSelect.value });
+  });
+
+  pianoLabelSelect.addEventListener('change', () => {
+    _syncToPopout({ type: 'label-mode', value: pianoLabelSelect.value });
+  });
+
+  // Pop Out button
+  document.getElementById('btnPopOut').addEventListener('click', () => {
+    if (_popoutWindow && !_popoutWindow.closed) {
+      _popoutWindow.focus();
+      return;
+    }
+    _popoutWindow = window.open(
+      '/skratch/piano-popout',
+      'skratch-piano-popout',
+      'width=900,height=280,resizable=yes,scrollbars=no'
+    );
   });
 
   // --- Loop Pedal ---
@@ -784,6 +933,7 @@ export function init() {
 
   // Cleanup on unload
   window.addEventListener('beforeunload', () => {
+    if (_pianoSyncChannel) { try { _pianoSyncChannel.close(); } catch (_) {} }
     if (loopPedal)   loopPedal.destroy();
     if (musicEngine) musicEngine.destroy();
     if (audioBridge) audioBridge.destroy();
