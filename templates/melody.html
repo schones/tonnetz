@@ -311,6 +311,7 @@
               <option value="easy">Easy (stepwise)</option>
               <option value="medium">Medium (+ 3rds)</option>
               <option value="hard">Hard (+ leaps)</option>
+              <option value="adaptive">Adaptive</option>
             </select>
           </div>
           <div class="form-group">
@@ -470,6 +471,8 @@
     const state = {
       mode: 'practice',
       difficulty: 'easy',
+      adaptiveLevel: 'easy',
+      consecutiveHits: 0,
       rootNote: 'C4',
       melodyLength: 3,
       playerName: 'Player',
@@ -494,6 +497,10 @@
 
     /* ── DOM helper ── */
     const $ = (id) => document.getElementById(id);
+
+    function getEffectiveDifficulty() {
+      return state.difficulty === 'adaptive' ? state.adaptiveLevel : state.difficulty;
+    }
 
     /* ── Utility ── */
     function delay(ms) {
@@ -525,8 +532,9 @@
       melody.push(scale[startIdx]);
       let idx = startIdx;
 
-      const maxStep = state.difficulty === 'easy' ? 1
-        : state.difficulty === 'medium' ? 2
+      const eff = getEffectiveDifficulty();
+      const maxStep = eff === 'easy' ? 1
+        : eff === 'medium' ? 2
           : 3;
 
       for (let i = 1; i < length; i++) {
@@ -830,8 +838,22 @@
         melodyScore += 50 * state.melody.length;
         state.streak++;
         if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+        if (state.difficulty === 'adaptive') {
+          state.consecutiveHits++;
+          if (state.consecutiveHits >= 3) {
+            state.consecutiveHits = 0;
+            if (state.adaptiveLevel === 'easy') state.adaptiveLevel = 'medium';
+            else if (state.adaptiveLevel === 'medium') state.adaptiveLevel = 'hard';
+          }
+        }
       } else {
         state.streak = 0;
+        if (state.difficulty === 'adaptive') {
+          state.consecutiveHits = 0;
+          if (state.adaptiveLevel === 'hard') state.adaptiveLevel = 'medium';
+          else if (state.adaptiveLevel === 'medium') state.adaptiveLevel = 'easy';
+        }
       }
 
       // Streak bonus
@@ -839,7 +861,7 @@
       else if (state.streak >= 3) melodyScore += 50;
 
       // Difficulty multiplier
-      melodyScore = Math.round(melodyScore * DIFFICULTY_MULT[state.difficulty]);
+      melodyScore = Math.round(melodyScore * DIFFICULTY_MULT[getEffectiveDifficulty()]);
 
       state.score += melodyScore;
       state.attempts++;
@@ -963,6 +985,8 @@
       state.testIndex = 0;
       state.passedAtLength = 0;
       state.perSkill = {};
+      state.adaptiveLevel = 'easy';
+      state.consecutiveHits = 0;
 
       try {
         await initAudio();

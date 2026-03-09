@@ -525,6 +525,7 @@
               <option value="easy">Easy (&plusmn;100ms)</option>
               <option value="medium" selected>Medium (&plusmn;60ms)</option>
               <option value="hard">Hard (&plusmn;30ms)</option>
+              <option value="adaptive">Adaptive</option>
             </select>
           </div>
 
@@ -799,6 +800,10 @@
 
     const $ = (id) => document.getElementById(id);
 
+    function getEffectiveDifficulty() {
+      return state.difficulty === 'adaptive' ? state.adaptiveLevel : state.difficulty;
+    }
+
     const screens = {
       setup: $('screen-setup'),
       game: $('screen-game'),
@@ -813,6 +818,8 @@
       screen: 'setup',
       mode: 'practice',        // 'practice' | 'test'
       difficulty: 'medium',
+      adaptiveLevel: 'easy',
+      consecutiveHits: 0,
       pattern: null,           // current StrumPattern
       bpm: 80,
       playerName: 'Player',
@@ -1088,6 +1095,8 @@
       state.detectedStrums = [];
       state.timingHistory = [];
       state.currentMeasure = 0;
+      state.adaptiveLevel = 'easy';
+      state.consecutiveHits = 0;
       state.loopHits = 0;
       state.loopTotal = 0;
       state.loopMeasureStart = 0;
@@ -1360,7 +1369,7 @@
       state.detectedStrums.push({ time });
 
       // Find nearest unmatched expected strum
-      const tolerance = TOLERANCE[state.difficulty];
+      const tolerance = TOLERANCE[getEffectiveDifficulty()];
       let bestIdx = -1;
       let bestDelta = Infinity;
 
@@ -1399,6 +1408,15 @@
         state.streak++;
         if (state.streak > state.bestStreak) state.bestStreak = state.streak;
 
+        if (state.difficulty === 'adaptive') {
+          state.consecutiveHits++;
+          if (state.consecutiveHits >= 3) {
+            state.consecutiveHits = 0;
+            if (state.adaptiveLevel === 'easy') state.adaptiveLevel = 'medium';
+            else if (state.adaptiveLevel === 'medium') state.adaptiveLevel = 'hard';
+          }
+        }
+
         state.results.push({
           expected: exp.time,
           actual: time,
@@ -1430,7 +1448,7 @@
 
     function checkMissedStrums() {
       const now = performance.now();
-      const tolerance = TOLERANCE[state.difficulty];
+      const tolerance = TOLERANCE[getEffectiveDifficulty()];
       let changed = false;
 
       for (const exp of state.expectedStrums) {
@@ -1443,6 +1461,12 @@
           state.streak = 0;
           state.loopTotal++;
           changed = true;
+
+          if (state.difficulty === 'adaptive') {
+            state.consecutiveHits = 0;
+            if (state.adaptiveLevel === 'hard') state.adaptiveLevel = 'medium';
+            else if (state.adaptiveLevel === 'medium') state.adaptiveLevel = 'easy';
+          }
 
           recordAttempt(GAME_ID, state.pattern.name, { hit: false });
         }
@@ -1461,7 +1485,7 @@
       // This counts every D/U slot that should have been played by now, whether or
       // not checkMissedStrums has explicitly marked it yet. Rests are never included.
       const now = performance.now();
-      const tolerance = TOLERANCE[state.difficulty];
+      const tolerance = TOLERANCE[getEffectiveDifficulty()];
       const cutoff = now - tolerance * 2;
       const due = state.expectedStrums.filter((e) => e.time < cutoff);
       const hits = due.filter((e) => e.matched).length;
@@ -1478,7 +1502,7 @@
       if (state.timingHistory.length === 0) return;
 
       const avg = state.timingHistory.reduce((s, v) => s + v, 0) / state.timingHistory.length;
-      const tolerance = TOLERANCE[state.difficulty];
+      const tolerance = TOLERANCE[getEffectiveDifficulty()];
 
       // Map avg to 0-100% where 50% = center (on beat)
       const pct = 50 + (avg / tolerance) * 40; // ±40% swing
@@ -1541,7 +1565,7 @@
       const pxPerMs = W / (state.measureMs * 2.5); // show ~2.5 measures across the screen
 
       // Lookahead
-      const lookaheadMs = (state.mode === 'test' ? 1 : DIFFICULTY_LOOKAHEAD_MEASURES[state.difficulty]) * state.measureMs + state.measureMs;
+      const lookaheadMs = (state.mode === 'test' ? 1 : DIFFICULTY_LOOKAHEAD_MEASURES[getEffectiveDifficulty()]) * state.measureMs + state.measureMs;
 
       // Timeline reference
       const gameStartTime = state.isCountIn ? state.countInStartTime : state.startTime;
@@ -1793,7 +1817,7 @@
 
     function showPracticeSummary() {
       const now = performance.now();
-      const tolerance = TOLERANCE[state.difficulty];
+      const tolerance = TOLERANCE[getEffectiveDifficulty()];
       const cutoff = now - tolerance * 2;
 
       // Count all expected strum slots whose window has fully passed
@@ -1920,7 +1944,7 @@
 
       const W = rect.width;
       const H = rect.height;
-      const tolerance = TOLERANCE[state.difficulty];
+      const tolerance = TOLERANCE[getEffectiveDifficulty()];
 
       // Collect timing deltas (only matched strums)
       const deltas = state.results

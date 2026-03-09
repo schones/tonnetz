@@ -296,6 +296,7 @@
                             <option value="easy">Easy (&plusmn;50&cent;)</option>
                             <option value="medium">Medium (&plusmn;30&cent;)</option>
                             <option value="hard">Hard (&plusmn;15&cent;)</option>
+                            <option value="adaptive">Adaptive</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -586,11 +587,16 @@
         const STABILITY_REQUIRED = { easy: 2000, medium: 1500, hard: 1000 };
         const WRONG_PITCH_TIMEOUT = 2000;
         const TEST_QUESTION_TIMEOUT = 15000;
-        const TEST_SEMITONES = [0, 3, 4, 7, 12];
+        function getTestIntervals(difficulty) {
+            if (difficulty === 'hard') return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+            if (difficulty === 'medium') return [0, 2, 3, 4, 5, 7, 9, 12];
+            return [0, 3, 4, 7, 12];
+        }
         const TEST_TOTAL = 10;
 
         const state = {
             mode: 'practice', difficulty: 'easy', rootNote: 'C4', interval: 7, playerName: 'Player',
+            adaptiveLevel: 'easy', consecutiveHits: 0,
             listening: false, pollIntervalId: null,
             score: 0, streak: 0, bestStreak: 0, hits: 0,
             testIndex: 0, testQueue: [], awaitingNext: false, survivalMode: false,
@@ -599,6 +605,10 @@
         };
 
         const $ = id => document.getElementById(id);
+
+        function getEffectiveDifficulty() {
+            return state.difficulty === 'adaptive' ? state.adaptiveLevel : state.difficulty;
+        }
 
         function getTargetFreq() { return noteToFrequency(state.rootNote) * Math.pow(2, state.interval / 12); }
         function getTargetName() { const info = frequencyToNote(getTargetFreq()); return info ? info.fullName : '?'; }
@@ -685,6 +695,11 @@
             state.stableStartTime = null;
             state.wrongPitchStartTime = null;
             state.streak = 0;
+            if (state.difficulty === 'adaptive') {
+                state.consecutiveHits = 0;
+                if (state.adaptiveLevel === 'hard') state.adaptiveLevel = 'medium';
+                else if (state.adaptiveLevel === 'medium') state.adaptiveLevel = 'easy';
+            }
             const fb = $('feedback');
             const target = getTargetName();
             fb.textContent = reason === 'time' ? `⏱ Time's up! Target was ${target}`
@@ -701,10 +716,11 @@
                 $('stat-question').parentElement.querySelector('.stat__label').textContent = 'Survival';
             }
 
-            if (state.testIndex % TEST_SEMITONES.length === 0) {
-                state.testQueue = [...TEST_SEMITONES].sort(() => Math.random() - 0.5);
+            const intervals = getTestIntervals(getEffectiveDifficulty());
+            if (state.testIndex % intervals.length === 0) {
+                state.testQueue = [...intervals].sort(() => Math.random() - 0.5);
             }
-            state.interval = state.testQueue[state.testIndex % TEST_SEMITONES.length];
+            state.interval = state.testQueue[state.testIndex % intervals.length];
             state.awaitingNext = false;
             state.stableStartTime = null;
             state.wrongPitchStartTime = null;
@@ -769,7 +785,7 @@
                     updateTuner(cents);
                     $('tuner-note').textContent = noteInfo.fullName;
 
-                    const tol = TOLERANCE[state.difficulty];
+                    const tol = TOLERANCE[getEffectiveDifficulty()];
                     if (Math.abs(cents) <= tol) {
                         // Within tolerance — reset wrong-pitch timer, run correct-pitch hold
                         state.wrongPitchStartTime = null;
@@ -777,7 +793,7 @@
                             state.stableStartTime = performance.now();
                         }
                         const held = performance.now() - state.stableStartTime;
-                        const required = STABILITY_REQUIRED[state.difficulty];
+                        const required = STABILITY_REQUIRED[getEffectiveDifficulty()];
                         const remaining = Math.max(0, required - held);
                         $('tuner-detail').textContent =
                             `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)}¢ — Hold ${(remaining / 1000).toFixed(1)}s`;
@@ -836,12 +852,21 @@
         function handleSuccess(cents) {
             if (state.awaitingNext) return;
 
-            const tol = TOLERANCE[state.difficulty];
+            const tol = TOLERANCE[getEffectiveDifficulty()];
             if (Math.abs(cents) > tol) return;
 
             state.hits++;
             state.streak++;
             if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+            if (state.difficulty === 'adaptive') {
+                state.consecutiveHits++;
+                if (state.consecutiveHits >= 3) {
+                    state.consecutiveHits = 0;
+                    if (state.adaptiveLevel === 'easy') state.adaptiveLevel = 'medium';
+                    else if (state.adaptiveLevel === 'medium') state.adaptiveLevel = 'hard';
+                }
+            }
 
             const accBonus = Math.round((1 - Math.abs(cents) / tol) * 50);
             const streakBonus = state.streak >= 5 ? 50 : state.streak >= 3 ? 25 : 0;
@@ -882,6 +907,7 @@
 
             state.score = 0; state.streak = 0; state.bestStreak = 0; state.hits = 0;
             state.testIndex = 0; state.awaitingNext = false; state.survivalMode = false;
+            state.adaptiveLevel = 'easy'; state.consecutiveHits = 0;
 
             $('game-root').value = state.rootNote;
 
