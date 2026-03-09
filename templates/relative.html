@@ -1,9 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Relative Key Trainer</title>
+{% extends "base.html" %}
+{% block title %}Relative Key Trainer — Tonnetz{% endblock %}
+
+{% block head %}
 <style>
 /* ------------------------------------------------------------------ */
 /*  Base                                                               */
@@ -302,9 +300,9 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
 #player-input:focus { outline: none; border-color: #5c6bc0; }
 #player-input::placeholder { color: #555; }
 </style>
-</head>
-<body>
+{% endblock %}
 
+{% block content %}
 <div class="container">
 
   <h1>Relative Key Trainer</h1>
@@ -372,7 +370,9 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   </div>
 
 </div><!-- /container -->
+{% endblock %}
 
+{% block scripts %}
 <script>
 /* ================================================================== */
 /*  State                                                              */
@@ -605,5 +605,4 @@ async function fetchLeaderboard() {
 /* ================================================================== */
 fetchLeaderboard();
 </script>
-</body>
-</html>
+{% endblock %}

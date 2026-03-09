@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Tonnetz{% endblock %}</title>
+
+  <!-- Google Fonts: Nunito -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- Shared design system -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+
+  <style>
+    :root {
+      --bg-primary:     #ffffff;
+      --bg-secondary:   #f8f7f4;
+      --text-primary:   #1a1a2e;
+      --text-secondary: #6b7280;
+      --accent:         #6c63ff;
+      --accent-soft:    #f0eeff;
+      --border:         #e8e6f0;
+      --font-main:      'Nunito', sans-serif;
+    }
+    [data-theme="dark"] {
+      --bg-primary:     #1e1e2e;
+      --bg-secondary:   #12111f;
+      --text-primary:   #e8e6ff;
+      --text-secondary: #6b7280;
+      --accent:         #7c75ff;
+      --accent-soft:    #1e1b38;
+      --border:         #2a2847;
+    }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+  </style>
+
+  {% block head %}{% endblock %}
+</head>
+
+<body>
+  <nav style="display:flex; align-items:center; justify-content:space-between;
+              padding:0.75rem 1.5rem; border-bottom:1px solid var(--border);">
+    <a href="/" style="text-decoration:none;">
+      <img id="site-logo"
+           src="{{ url_for('static', filename='shared/tonnetz-logo-light.svg') }}"
+           alt="Tonnetz" height="44" style="display:block;">
+    </a>
+    <button id="theme-toggle" aria-label="Toggle dark mode"
+            style="background:none;border:none;cursor:pointer;
+                   font-size:20px;padding:4px 8px;">🌙</button>
+  </nav>
+
+  {% block content %}{% endblock %}
+
+  {% block scripts %}{% endblock %}
+
+  <script>
+    (function() {
+      const saved = localStorage.getItem('tonnetz-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', saved);
+      updateLogo(saved);
+      updateToggleIcon(saved);
+
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('tonnetz-theme', next);
+        updateLogo(next);
+        updateToggleIcon(next);
+      });
+
+      function updateLogo(theme) {
+        const logo = document.getElementById('site-logo');
+        if (!logo) return;
+        logo.src = theme === 'dark'
+          ? "{{ url_for('static', filename='shared/tonnetz-logo-dark.svg') }}"
+          : "{{ url_for('static', filename='shared/tonnetz-logo-light.svg') }}";
+      }
+
+      function updateToggleIcon(theme) {
+        const btn = document.getElementById('theme-toggle');
+        if (!btn) return;
+        btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+
+</html>

@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}Chord Identification — Tonnetz{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chord Identification (Tonnetz Edition)</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+{% block head %}
     <style>
         /* Combine tonnetz dark theme with chords layout */
         *,
@@ -53,22 +49,6 @@
             color: #aaa;
             margin-bottom: 1.5rem;
             text-align: center;
-        }
-
-        .nav-links {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-
-        .nav-links a {
-            color: #90caf9;
-            text-decoration: none;
-            margin: 0 10px;
-            font-weight: bold;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
         }
 
         #prompt-area {
@@ -151,14 +131,9 @@
             text-align: left;
         }
     </style>
-</head>
+{% endblock %}
 
-<body>
-
-    <div class="nav-links mt-md">
-        <a href="/">Hub</a> | <a href="/relative">Relative</a> | <span>Chords</span> | <a href="/harmony">Harmony</a>
-    </div>
-
+{% block content %}
     <div class="container">
         <h1>Chord Identification</h1>
         <h2>Play the requested chord type</h2>
@@ -181,7 +156,9 @@
             <div id="breakdown"></div>
         </div>
     </div>
+{% endblock %}
 
+{% block scripts %}
     <script>
         let currentChallenge = null;
         let busy = false;
@@ -251,6 +228,4 @@
 
         pickChallenge();
     </script>
-</body>
-
-</html>
+{% endblock %}

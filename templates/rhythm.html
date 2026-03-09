@@ -1,26 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}Rhythm Training — Tonnetz{% endblock %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rhythm Training — Music Theory Games</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+{% block head %}
   <link rel="stylesheet" href="{{ url_for('static', filename='rhythm/styles.css') }}">
-</head>
+{% endblock %}
 
-<body>
-  <header class="mtt-header">
-    <a href="/" class="mtt-header__logo" style="text-decoration:none">
-      <span aria-hidden="true">&#9835;</span> Music Theory Games
-    </a>
-    <nav class="mtt-header__nav">
-      <a href="/" class="mtt-header__link">Home</a>
-      <a href="/harmony" class="mtt-header__link">Intervals</a>
-      <a href="#" class="mtt-header__link mtt-header__link--active">Rhythm</a>
-    </nav>
-  </header>
-
+{% block content %}
   <main class="container">
     <!-- ===== Setup Screen ===== -->
     <section id="screen-setup" class="rhythm-screen">
@@ -202,8 +187,8 @@
       </div>
     </section>
   </main>
+{% endblock %}
 
+{% block scripts %}
   <script type="module" src="{{ url_for('static', filename='rhythm/rhythm.js') }}"></script>
-</body>
-
-</html>
+{% endblock %}

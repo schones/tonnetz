@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}Guitar Strumming — Tonnetz{% endblock %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Guitar Strumming — Music Theory Games</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+{% block head %}
   <style>
     /* ============================================================
        Guitar Strumming Game — Styles
@@ -472,20 +468,9 @@
       }
     }
   </style>
-</head>
+{% endblock %}
 
-<body>
-  <header class="mtt-header">
-    <a href="/" class="mtt-header__logo" style="text-decoration:none">
-      <span aria-hidden="true">&#9835;</span> Music Theory Games
-    </a>
-    <nav class="mtt-header__nav">
-      <a href="/" class="mtt-header__link">Home</a>
-      <a href="/rhythm" class="mtt-header__link">Rhythm</a>
-      <a href="#" class="mtt-header__link mtt-header__link--active">Strumming</a>
-    </nav>
-  </header>
-
+{% block content %}
   <main class="container">
     <!-- ===== Setup Screen ===== -->
     <section id="screen-setup" class="strum-screen">
@@ -756,7 +741,9 @@
     </section>
 
   </main>
+{% endblock %}
 
+{% block scripts %}
   <script type="module">
     // ============================================================
     //  Guitar Strumming Game — Main Logic
@@ -2028,6 +2015,4 @@
 
     init();
   </script>
-</body>
-
-</html>
+{% endblock %}

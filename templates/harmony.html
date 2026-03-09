@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}Harmony Training — Tonnetz{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Harmony Training — Tonnetz</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
+{% block head %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* Combine tonnetz dark theme with harmony layout */
@@ -31,22 +27,6 @@
             width: 100%;
             max-width: 640px;
             padding: 0 1rem;
-        }
-
-        .nav-links {
-            text-align: center;
-            margin: 1.5rem 0;
-        }
-
-        .nav-links a {
-            color: #90caf9;
-            text-decoration: none;
-            margin: 0 10px;
-            font-weight: bold;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
         }
 
         .card {
@@ -264,13 +244,9 @@
             margin: 2rem auto;
         }
     </style>
-</head>
+{% endblock %}
 
-<body>
-    <div class="nav-links">
-        <a href="/">Hub</a> | <a href="/relative">Relative</a> | <a href="/chords">Chords</a> | <span>Harmony</span>
-    </div>
-
+{% block content %}
     <main class="container">
         <!-- ===== Setup Screen ===== -->
         <section id="screen-setup">
@@ -409,7 +385,9 @@
             </div>
         </section>
     </main>
+{% endblock %}
 
+{% block scripts %}
     <script>
         // --- 1. Audio & Math Utilities (Ported from shared/audio.js) ---
         const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -956,6 +934,4 @@
         populateSelectors();
         buildTuner();
     </script>
-</body>
-
-</html>
+{% endblock %}
