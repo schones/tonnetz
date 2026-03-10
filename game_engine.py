@@ -19,7 +19,11 @@ import random
 from datetime import datetime
 
 import numpy as np
-import sounddevice as sd
+
+try:
+    import sounddevice as sd
+except ImportError:
+    sd = None
 
 from chord_detector import ChordDetector
 from pitch_matcher import PitchMatcher
@@ -106,6 +110,9 @@ def _display_root(root):
 
 def _record_buffer():
     """Record RECORD_SECONDS of audio.  Returns 1-D float32 array or None."""
+    if sd is None:
+        print("  !! sounddevice not available (headless server).\n")
+        return None
     print()
     print("  --- RECORDING NOW (Play!) ---")
     print()

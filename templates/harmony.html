@@ -702,22 +702,32 @@
             startQuestionTimer();
         }
 
-        // --- 4. Tonnetz Backend Integration ---
+        // --- 4. Browser Mic → /process_audio_chunk Integration ---
+        let micStream = null;
+        let micAudioCtx = null;
+        let micSourceNode = null;
+        let micProcessorNode = null;
+        let sendingChunk = false;   // throttle: one request at a time
+
         async function doStartListening() {
             if (state.listening) return;
             try {
-                // Initialize audio context for Tone.js (must be user gesture)
                 await initAudio();
 
-                // Signal the Python backend to start the microphone thread
-                await fetch('/start_listen', { method: 'POST' });
-                state.listening = true;
+                // Get browser mic
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                micAudioCtx = new AudioContext({ sampleRate: 44100 });
+                micSourceNode = micAudioCtx.createMediaStreamSource(micStream);
 
+                // ScriptProcessorNode captures raw Float32 chunks (4096 samples ≈ 93 ms)
+                micProcessorNode = micAudioCtx.createScriptProcessor(4096, 1, 1);
+                micProcessorNode.onaudioprocess = onAudioProcess;
+                micSourceNode.connect(micProcessorNode);
+                micProcessorNode.connect(micAudioCtx.destination);
+
+                state.listening = true;
                 $('btn-listen').textContent = 'Stop Listening';
                 $('btn-listen').classList.replace('btn--success', 'btn--danger');
-
-                // Start polling results
-                state.pollIntervalId = setInterval(pollBackend, 50); // ~20fps
             } catch (err) {
                 $('feedback').textContent = 'Error starting mic: ' + err.message;
             }
@@ -726,9 +736,11 @@
         async function doStopListening() {
             if (!state.listening) return;
             state.listening = false;
-            clearInterval(state.pollIntervalId);
 
-            await fetch('/stop_listen', { method: 'POST' });
+            if (micProcessorNode) { micProcessorNode.disconnect(); micProcessorNode = null; }
+            if (micSourceNode) { micSourceNode.disconnect(); micSourceNode = null; }
+            if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }
+            if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
 
             $('btn-listen').textContent = 'Start Listening';
             $('btn-listen').classList.replace('btn--danger', 'btn--success');
@@ -737,73 +749,81 @@
             $('tuner-detail').textContent = 'Waiting for input...';
         }
 
-        async function pollBackend() {
+        function onAudioProcess(e) {
+            if (!state.listening || state.awaitingNext || sendingChunk) return;
+
+            const samples = e.inputBuffer.getChannelData(0);
+            // Pack Float32Array into raw bytes for upload
+            const buf = new Float32Array(samples);
+            const blob = new Blob([buf.buffer], { type: 'application/octet-stream' });
+
+            sendingChunk = true;
+            const form = new FormData();
+            form.append('chunk', blob, 'chunk.raw');
+
+            fetch('/process_audio_chunk', { method: 'POST', body: form })
+                .then(r => r.json())
+                .then(data => handlePitchData(data))
+                .catch(err => console.error('Chunk error', err))
+                .finally(() => { sendingChunk = false; });
+        }
+
+        function handlePitchData(data) {
             if (!state.listening || state.awaitingNext) return;
 
-            try {
-                const res = await fetch('/poll_audio');
-                const data = await res.json();
+            if (data.pitch && data.pitch.frequency > 0) {
+                const freq = data.pitch.frequency;
+                const noteInfo = frequencyToNote(freq);
+                const target = getTargetFreq();
+                const cents = 1200 * Math.log2(freq / target);
 
-                if (data.pitch && data.pitch.frequency > 0) {
-                    const freq = data.pitch.frequency;
-                    const noteInfo = frequencyToNote(freq);
-                    const target = getTargetFreq();
-                    const cents = 1200 * Math.log2(freq / target);
+                updateTuner(cents);
+                $('tuner-note').textContent = noteInfo.fullName;
 
-                    updateTuner(cents);
-                    $('tuner-note').textContent = noteInfo.fullName;
+                const tol = TOLERANCE[getEffectiveDifficulty()];
+                if (Math.abs(cents) <= tol) {
+                    state.wrongPitchStartTime = null;
+                    if (state.stableStartTime === null) {
+                        state.stableStartTime = performance.now();
+                    }
+                    const held = performance.now() - state.stableStartTime;
+                    const required = STABILITY_REQUIRED[getEffectiveDifficulty()];
+                    const remaining = Math.max(0, required - held);
+                    $('tuner-detail').textContent =
+                        `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)}¢ — Hold ${(remaining / 1000).toFixed(1)}s`;
 
-                    const tol = TOLERANCE[getEffectiveDifficulty()];
-                    if (Math.abs(cents) <= tol) {
-                        // Within tolerance — reset wrong-pitch timer, run correct-pitch hold
-                        state.wrongPitchStartTime = null;
-                        if (state.stableStartTime === null) {
-                            state.stableStartTime = performance.now();
-                        }
-                        const held = performance.now() - state.stableStartTime;
-                        const required = STABILITY_REQUIRED[getEffectiveDifficulty()];
-                        const remaining = Math.max(0, required - held);
-                        $('tuner-detail').textContent =
-                            `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)}¢ — Hold ${(remaining / 1000).toFixed(1)}s`;
-
-                        if (held >= required) {
-                            state.stableStartTime = null;
-                            handleSuccess(cents);
-                        }
-                    } else {
-                        // Out of tolerance — reset correct-pitch timer
+                    if (held >= required) {
                         state.stableStartTime = null;
-
-                        if (state.mode === 'test') {
-                            // Wrong-pitch stability timer: fail if held for WRONG_PITCH_TIMEOUT
-                            if (state.wrongPitchStartTime === null) {
-                                state.wrongPitchStartTime = performance.now();
-                            }
-                            const wrongHeld = performance.now() - state.wrongPitchStartTime;
-                            const wrongRemaining = Math.max(0, WRONG_PITCH_TIMEOUT - wrongHeld);
-                            $('tuner-detail').textContent =
-                                `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)}¢ — Wrong! ${(wrongRemaining / 1000).toFixed(1)}s`;
-
-                            if (wrongHeld >= WRONG_PITCH_TIMEOUT) {
-                                state.wrongPitchStartTime = null;
-                                handleMiss('wrong');
-                            }
-                        } else {
-                            state.wrongPitchStartTime = null;
-                            $('tuner-detail').textContent =
-                                `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)} cents`;
-                        }
+                        handleSuccess(cents);
                     }
                 } else {
-                    // No signal — reset both timers
                     state.stableStartTime = null;
-                    state.wrongPitchStartTime = null;
-                    updateTuner(null);
-                    $('tuner-note').textContent = '--';
-                    $('tuner-detail').textContent = 'Listening...';
+
+                    if (state.mode === 'test') {
+                        if (state.wrongPitchStartTime === null) {
+                            state.wrongPitchStartTime = performance.now();
+                        }
+                        const wrongHeld = performance.now() - state.wrongPitchStartTime;
+                        const wrongRemaining = Math.max(0, WRONG_PITCH_TIMEOUT - wrongHeld);
+                        $('tuner-detail').textContent =
+                            `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)}¢ — Wrong! ${(wrongRemaining / 1000).toFixed(1)}s`;
+
+                        if (wrongHeld >= WRONG_PITCH_TIMEOUT) {
+                            state.wrongPitchStartTime = null;
+                            handleMiss('wrong');
+                        }
+                    } else {
+                        state.wrongPitchStartTime = null;
+                        $('tuner-detail').textContent =
+                            `${freq.toFixed(1)} Hz | ${cents >= 0 ? '+' : ''}${Math.round(cents)} cents`;
+                    }
                 }
-            } catch (err) {
-                console.error("Polling error", err);
+            } else {
+                state.stableStartTime = null;
+                state.wrongPitchStartTime = null;
+                updateTuner(null);
+                $('tuner-note').textContent = '--';
+                $('tuner-detail').textContent = 'Listening...';
             }
         }
 

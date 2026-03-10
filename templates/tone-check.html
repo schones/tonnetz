@@ -329,13 +329,32 @@
             $prompt.textContent = `Play any ${quality} chord`;
         }
 
+        /* ── Browser mic recording helpers ── */
+        let micStream = null;
+
+        async function getMicStream() {
+            if (micStream) return micStream;
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            return micStream;
+        }
+
+        function recordBlob(stream, durationMs) {
+            return new Promise((resolve, reject) => {
+                const recorder = new MediaRecorder(stream);
+                const chunks = [];
+                recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType }));
+                recorder.onerror = e => reject(e.error || new Error('Recording failed'));
+                recorder.start();
+                setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, durationMs);
+            });
+        }
+
         /* ── Record & score via /play ── */
         async function startChallenge() {
             if (busy || !currentChallenge) return;
             busy = true;
             $btn.disabled = true;
-            $btn.textContent = 'RECORDING...';
-            $status.textContent = 'Recording 3 seconds \u2014 play now!';
             $resultCard.style.display = 'none';
 
             if (!state.started) {
@@ -351,26 +370,50 @@
                 updateBadge();
             }
 
+            /* Get mic permission (first time prompts user) */
+            let stream;
+            try {
+                $btn.textContent = 'REQUESTING MIC...';
+                $status.textContent = '';
+                stream = await getMicStream();
+            } catch (err) {
+                $status.textContent = 'Microphone access denied \u2014 check browser permissions.';
+                busy = false;
+                $btn.disabled = false;
+                $btn.textContent = 'RETRY';
+                return;
+            }
+
+            /* Record 3 seconds */
+            $btn.textContent = 'RECORDING...';
+            $status.textContent = 'Recording 3 seconds \u2014 play now!';
             state.round++;
             updateStats();
 
             const player = document.getElementById('player-input').value.trim() || 'Anonymous';
 
             try {
-                const res = await fetch('/play', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        mode: 'tone-check',
-                        expected_quality: currentChallenge.expected_quality,
-                        player: player,
-                    }),
-                });
+                const blob = await recordBlob(stream, 3000);
 
+                /* Upload as multipart/form-data */
+                const form = new FormData();
+                form.append('audio', blob, 'recording.webm');
+                form.append('mode', 'tone-check');
+                form.append('expected_quality', currentChallenge.expected_quality);
+                form.append('player', player);
+
+                $btn.textContent = 'ANALYZING...';
+                $status.textContent = 'Processing audio...';
+
+                const res = await fetch('/play', { method: 'POST', body: form });
                 const data = await res.json();
+
                 if (data.error === 'no_sound') {
                     $status.textContent = 'No sound detected \u2014 check your mic!';
-                    state.round--;  // don't count silent rounds
+                    state.round--;
+                } else if (data.error) {
+                    $status.textContent = data.message || 'Server error';
+                    state.round--;
                 } else {
                     showResult(data);
                     $status.textContent = '';

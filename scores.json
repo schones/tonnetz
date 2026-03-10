@@ -1,5 +1,20 @@
 {
-  "identify": [],
+  "identify": [
+    {
+      "player": "Anonymous",
+      "score": 0,
+      "rounds": 1,
+      "mode": "identify",
+      "date": "2026-03-09 20:40"
+    },
+    {
+      "player": "Anonymous",
+      "score": 0,
+      "rounds": 1,
+      "mode": "identify",
+      "date": "2026-03-09 20:40"
+    }
+  ],
   "clarity": [],
   "chords": [
     {

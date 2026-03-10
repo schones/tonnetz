@@ -27,7 +27,7 @@
       <a href="/" class="mtt-header__link">Home</a>
       <a href="#" class="mtt-header__link mtt-header__link--active">Skratch Studio</a>
       <a href="/skratch/help" class="mtt-header__link" target="_blank" rel="noopener"
-         title="Open help guide in a new tab">&#10067; Help</a>
+        title="Open help guide in a new tab">&#10067; Help</a>
     </nav>
   </header>
 
@@ -42,10 +42,7 @@
     <!-- Right: Canvas + Controls + Code Preview -->
     <div class="studio-right">
       <div class="canvas-panel">
-        <div class="canvas-wrapper canvas-grid-bg">
-          <canvas id="skratchCanvas" width="400" height="400"></canvas>
-        </div>
-        <div id="errorBar" class="error-bar" hidden></div>
+        <!-- Canvas moved to the bottom of this panel for better visibility of controls -->
         <div class="studio-controls">
           <button id="btnPlay" class="btn btn--play" aria-label="Play">&#9654; Play</button>
           <button id="btnStop" class="btn btn--stop" disabled aria-label="Stop">&#9632; Stop</button>
@@ -54,7 +51,13 @@
             <span class="loop-toggle__label">&#x1F501; Loop</span>
           </label>
           <div id="beatIndicator" class="beat-indicator" aria-label="Beat indicator"></div>
-          <select id="starterSelect" class="starter-select" aria-label="Load a starter program">
+          <select id="canvasSizeSelect" class="starter-select" aria-label="Canvas Size"
+            style="margin-left: auto; margin-right: 8px;">
+            <option value="400">Size: Medium (400)</option>
+            <option value="200">Size: Small (200)</option>
+            <option value="600">Size: Large (600)</option>
+          </select>
+          <select id="starterSelect" class="starter-select" aria-label="Load a starter program" style="margin-left: 0;">
             <option value="">Load a starter...</option>
             <optgroup label="Visual">
               <option value="circles">Circles</option>
@@ -104,12 +107,13 @@
           </div>
           <div class="piano-meta-row">
             <select id="pianoLabelSelect" class="piano-meta-select" aria-label="Piano key labels"
-                    title="Show labels on piano keys">
+              title="Show labels on piano keys">
               <option value="none">Labels: Off</option>
               <option value="note">Note Names</option>
               <option value="solfege">Solfège</option>
             </select>
-            <button id="btnMarkMode"   class="btn btn--mark"  title="Click keys to place or remove red dot markers">✎ Mark</button>
+            <button id="btnMarkMode" class="btn btn--mark" title="Click keys to place or remove red dot markers">✎
+              Mark</button>
             <button id="btnClearMarks" class="btn btn--clear" title="Remove all markers">✕ Clear Marks</button>
             <button id="btnPopOut" class="btn btn--popout" title="Open keyboard in a separate window">⇱ Pop Out</button>
           </div>
@@ -131,15 +135,15 @@
             </div>
           </div>
           <div class="loop-pedal__controls">
-            <button id="btnLoopRecord"  class="btn btn--loop-record">&#9679; Rec [1]</button>
+            <button id="btnLoopRecord" class="btn btn--loop-record">&#9679; Rec [1]</button>
             <button id="btnLoopStopRec" class="btn btn--loop-stoprec" disabled>&#9632; Stop</button>
             <button id="btnLoopOverdub" class="btn btn--loop-overdub" disabled>&#8853; Overdub L2 [2]</button>
-            <button id="btnLoopPlay"    class="btn btn--loop-play"    disabled>&#9654; Play [3]</button>
-            <button id="btnClearL1"     class="btn btn--clear"        disabled>Clear L1</button>
-            <button id="btnClearL2"     class="btn btn--clear"        disabled>Clear L2</button>
-            <button id="btnClearL3"     class="btn btn--clear"        disabled>Clear L3</button>
-            <button id="btnLoopClearAll" class="btn btn--clear"       disabled>&#8856; Clear All Loops</button>
-            <button id="btnSaveAsBlock"  class="btn btn--save-block"  disabled>&#128190; Save as Block</button>
+            <button id="btnLoopPlay" class="btn btn--loop-play" disabled>&#9654; Play [3]</button>
+            <button id="btnClearL1" class="btn btn--clear" disabled>Clear L1</button>
+            <button id="btnClearL2" class="btn btn--clear" disabled>Clear L2</button>
+            <button id="btnClearL3" class="btn btn--clear" disabled>Clear L3</button>
+            <button id="btnLoopClearAll" class="btn btn--clear" disabled>&#8856; Clear All Loops</button>
+            <button id="btnSaveAsBlock" class="btn btn--save-block" disabled>&#128190; Save as Block</button>
           </div>
           <div class="loop-pedal__info">
             <span id="loopPedalStatus" class="loop-pedal__status">Ready &#8212; press Record [1] to start</span>
@@ -148,10 +152,15 @@
           <div class="loop-pedal__viz">
             <canvas id="loopPianoRoll" class="loop-viz-canvas" width="800" height="80"
               title="Piano roll: time → pitch, colored by layer"></canvas>
-            <canvas id="loopBarViz"    class="loop-viz-canvas" width="800" height="72"
+            <canvas id="loopBarViz" class="loop-viz-canvas" width="800" height="72"
               title="Bar timeline: colored bars per layer (L1/L2/L3)"></canvas>
           </div>
         </div>
+
+        <div class="canvas-wrapper canvas-grid-bg" style="margin-top: 16px;">
+          <canvas id="skratchCanvas" width="400" height="400"></canvas>
+        </div>
+        <div id="errorBar" class="error-bar" hidden></div>
       </div>
 
       <div class="code-preview">
@@ -176,10 +185,10 @@
   <!-- Loop name modal — replaces browser prompt() for "Save as Block" -->
   <dialog id="loopNameModal" class="loop-name-modal">
     <p class="loop-name-modal__title">&#128190; Name Your Loop</p>
-    <input type="text" id="loopNameInput" class="loop-name-modal__input"
-           maxlength="40" autocomplete="off" spellcheck="false" autofocus>
+    <input type="text" id="loopNameInput" class="loop-name-modal__input" maxlength="40" autocomplete="off"
+      spellcheck="false" autofocus>
     <div class="loop-name-modal__buttons">
-      <button id="loopNameOk"     class="btn btn--save-block">Save</button>
+      <button id="loopNameOk" class="btn btn--save-block">Save</button>
       <button id="loopNameCancel" class="btn btn--loop-stoprec">Cancel</button>
     </div>
   </dialog>

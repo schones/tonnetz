@@ -600,6 +600,23 @@ export function init() {
     }
   });
 
+  // Canvas size dropdown
+  const canvasSizeSelect = document.getElementById('canvasSizeSelect');
+  if (canvasSizeSelect) {
+    canvasSizeSelect.addEventListener('change', (e) => {
+      const newSize = parseInt(e.target.value, 10);
+      if (newSize && canvas) {
+        canvas.width = newSize;
+        canvas.height = newSize;
+        canvas.parentElement.style.maxWidth = newSize + 'px';
+        // Redraw grid if sandbox doesn't automatically maintain it
+        if (typeof drawCanvasGrid === 'function') {
+          drawCanvasGrid(canvas);
+        }
+      }
+    });
+  }
+
   // --- Audio Integration ---
   audioBridge = new AudioBridge();
 
@@ -790,36 +807,36 @@ export function init() {
   // --- Loop Pedal ---
   loopPedal = new LoopPedal({
     getBpm: () => parseInt(document.getElementById('bpmSlider').value, 10),
-    pianoRollCanvas:   document.getElementById('loopPianoRoll'),
-    barVizCanvas:      document.getElementById('loopBarViz'),
-    statusEl:          document.getElementById('loopPedalStatus'),
-    lengthEl:          document.getElementById('loopLengthDisplay'),
-    quantizeCheckbox:  document.getElementById('chkQuantize'),
+    pianoRollCanvas: document.getElementById('loopPianoRoll'),
+    barVizCanvas: document.getElementById('loopBarViz'),
+    statusEl: document.getElementById('loopPedalStatus'),
+    lengthEl: document.getElementById('loopLengthDisplay'),
+    quantizeCheckbox: document.getElementById('chkQuantize'),
     inputSourceEl: document.getElementById('loopInputSource'),
     buttons: {
-      record:      document.getElementById('btnLoopRecord'),
-      stopRec:     document.getElementById('btnLoopStopRec'),
-      overdub:     document.getElementById('btnLoopOverdub'),
-      play:        document.getElementById('btnLoopPlay'),
-      clearL1:     document.getElementById('btnClearL1'),
-      clearL2:     document.getElementById('btnClearL2'),
-      clearL3:     document.getElementById('btnClearL3'),
-      clearAll:    document.getElementById('btnLoopClearAll'),
+      record: document.getElementById('btnLoopRecord'),
+      stopRec: document.getElementById('btnLoopStopRec'),
+      overdub: document.getElementById('btnLoopOverdub'),
+      play: document.getElementById('btnLoopPlay'),
+      clearL1: document.getElementById('btnClearL1'),
+      clearL2: document.getElementById('btnClearL2'),
+      clearL3: document.getElementById('btnClearL3'),
+      clearAll: document.getElementById('btnLoopClearAll'),
       saveAsBlock: document.getElementById('btnSaveAsBlock'),
     },
     // When loop pedal takes the Transport, pause any running Blockly music
     onTakeoverTransport: () => { if (_isPlaying) handleStop(); },
   });
 
-  document.getElementById('btnLoopRecord').addEventListener('click',   () => loopPedal.startRecording());
-  document.getElementById('btnLoopStopRec').addEventListener('click',  async () => { await loopPedal.stopRecording(); });
-  document.getElementById('btnLoopOverdub').addEventListener('click',  () => loopPedal.startOverdub());
-  document.getElementById('btnLoopPlay').addEventListener('click',     () => loopPedal.togglePlayback());
-  document.getElementById('btnClearL1').addEventListener('click',      () => loopPedal.clearLayer(0));
-  document.getElementById('btnClearL2').addEventListener('click',      () => loopPedal.clearLayer(1));
-  document.getElementById('btnClearL3').addEventListener('click',      () => loopPedal.clearLayer(2));
+  document.getElementById('btnLoopRecord').addEventListener('click', () => loopPedal.startRecording());
+  document.getElementById('btnLoopStopRec').addEventListener('click', async () => { await loopPedal.stopRecording(); });
+  document.getElementById('btnLoopOverdub').addEventListener('click', () => loopPedal.startOverdub());
+  document.getElementById('btnLoopPlay').addEventListener('click', () => loopPedal.togglePlayback());
+  document.getElementById('btnClearL1').addEventListener('click', () => loopPedal.clearLayer(0));
+  document.getElementById('btnClearL2').addEventListener('click', () => loopPedal.clearLayer(1));
+  document.getElementById('btnClearL3').addEventListener('click', () => loopPedal.clearLayer(2));
   document.getElementById('btnLoopClearAll').addEventListener('click', () => loopPedal.clearAll());
-  document.getElementById('btnSaveAsBlock').addEventListener('click',  () => handleSaveAsBlock());
+  document.getElementById('btnSaveAsBlock').addEventListener('click', () => handleSaveAsBlock());
 
   registerLoopContextMenu();
 
@@ -933,12 +950,12 @@ export function init() {
 
   // Cleanup on unload
   window.addEventListener('beforeunload', () => {
-    if (_pianoSyncChannel) { try { _pianoSyncChannel.close(); } catch (_) {} }
-    if (loopPedal)   loopPedal.destroy();
+    if (_pianoSyncChannel) { try { _pianoSyncChannel.close(); } catch (_) { } }
+    if (loopPedal) loopPedal.destroy();
     if (musicEngine) musicEngine.destroy();
     if (audioBridge) audioBridge.destroy();
-    if (piano)       piano.destroy();
-    if (sandbox)     sandbox.destroy();
+    if (piano) piano.destroy();
+    if (sandbox) sandbox.destroy();
   });
 }
 
@@ -947,26 +964,26 @@ export function init() {
 // Mic layer serialization: AudioBuffer → mono 16-bit WAV → base64 string (synchronous).
 function audioBufferToWavBase64(audioBuffer) {
   const sampleRate = audioBuffer.sampleRate;
-  const numFrames  = audioBuffer.length;
-  const channels   = audioBuffer.numberOfChannels;
+  const numFrames = audioBuffer.length;
+  const channels = audioBuffer.numberOfChannels;
   // Downmix to mono
   const mono = new Float32Array(numFrames);
   for (let ch = 0; ch < channels; ch++) {
     const data = audioBuffer.getChannelData(ch);
     for (let i = 0; i < numFrames; i++) mono[i] += data[i] / channels;
   }
-  const dataSize  = numFrames * 2; // 16-bit samples
-  const buf       = new ArrayBuffer(44 + dataSize);
-  const v         = new DataView(buf);
-  const ws        = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
-  ws(0, 'RIFF'); v.setUint32(4,  36 + dataSize, true);
+  const dataSize = numFrames * 2; // 16-bit samples
+  const buf = new ArrayBuffer(44 + dataSize);
+  const v = new DataView(buf);
+  const ws = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); v.setUint32(4, 36 + dataSize, true);
   ws(8, 'WAVE'); ws(12, 'fmt ');
   v.setUint32(16, 16, true);           // fmt chunk size
-  v.setUint16(20, 1,  true);           // PCM
-  v.setUint16(22, 1,  true);           // mono
+  v.setUint16(20, 1, true);           // PCM
+  v.setUint16(22, 1, true);           // mono
   v.setUint32(24, sampleRate, true);
   v.setUint32(28, sampleRate * 2, true); // byte rate
-  v.setUint16(32, 2,  true);           // block align
+  v.setUint16(32, 2, true);           // block align
   v.setUint16(34, 16, true);           // bits per sample
   ws(36, 'data'); v.setUint32(40, dataSize, true);
   let off = 44;
@@ -984,7 +1001,7 @@ function audioBufferToWavBase64(audioBuffer) {
 // Mic layer deserialization: base64 WAV string → AudioBuffer (async).
 async function wavBase64ToAudioBuffer(b64) {
   const bin = atob(b64);
-  const u8  = new Uint8Array(bin.length);
+  const u8 = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   const audioCtx = Tone.context.rawContext || Tone.context;
   return audioCtx.decodeAudioData(u8.buffer.slice(0));
@@ -1012,8 +1029,8 @@ function loadLoopsFromStorage() {
 function registerLoopBlock(loopData) {
   const blockType = 'loop_saved_' + loopData.id;
   const noteCount = loopData.layers.flat().length; // all 3 keyboard layers
-  const micCount  = loopData.micWav ? loopData.micWav.filter(Boolean).length : 0;
-  const durLabel  = loopData.loopLength.toFixed(1) + 's';
+  const micCount = loopData.micWav ? loopData.micWav.filter(Boolean).length : 0;
+  const durLabel = loopData.loopLength.toFixed(1) + 's';
   const infoLabel = micCount > 0
     ? `  (${noteCount} notes · ${micCount} mic · ${durLabel})`
     : `  (${noteCount} notes · ${durLabel})`;
@@ -1032,7 +1049,7 @@ function registerLoopBlock(loopData) {
     }
   };
 
-  Blockly.JavaScript.forBlock[blockType] = function() {
+  Blockly.JavaScript.forBlock[blockType] = function () {
     return `__playLoop('${loopData.id}');\n`;
   };
 }
@@ -1067,9 +1084,9 @@ function handleSaveAsBlock() {
   const hasAny = loopPedal.layers.some(l => l.length > 0) || loopPedal._layerAudio.some(a => a !== null);
   if (!hasAny) { alert('Nothing recorded yet!'); return; }
 
-  const modal  = document.getElementById('loopNameModal');
-  const input  = document.getElementById('loopNameInput');
-  const okBtn  = document.getElementById('loopNameOk');
+  const modal = document.getElementById('loopNameModal');
+  const input = document.getElementById('loopNameInput');
+  const okBtn = document.getElementById('loopNameOk');
   const canBtn = document.getElementById('loopNameCancel');
 
   // Disable all keyboard shortcuts before the dialog opens so no shortcut
@@ -1095,17 +1112,17 @@ function handleSaveAsBlock() {
     }
   }
 
-  function onOk()         { finish(true);  }
-  function onCancel()     { finish(false); }
+  function onOk() { finish(true); }
+  function onCancel() { finish(false); }
   function onModalClose() { finish(false); }
-  function onInputKey(e)  {
+  function onInputKey(e) {
     if (e.key === 'Enter') { e.preventDefault(); finish(true); }
   }
 
-  okBtn.addEventListener('click',   onOk);
-  canBtn.addEventListener('click',  onCancel);
+  okBtn.addEventListener('click', onOk);
+  canBtn.addEventListener('click', onCancel);
   input.addEventListener('keydown', onInputKey);
-  modal.addEventListener('close',   onModalClose);
+  modal.addEventListener('close', onModalClose);
 }
 
 function _commitSaveAsBlock(name) {
@@ -1302,7 +1319,7 @@ function executeMusicCode(code) {
           if (!buf) continue;
           try {
             const player = new Tone.Player(buf).toDestination();
-            player.loop    = true;
+            player.loop = true;
             player.loopEnd = Math.min(loopData.loopLength, player.buffer.duration);
             player.sync();
             player.start(0);
@@ -1440,7 +1457,7 @@ function handleStop() {
 
   // Stop and dispose any mic layer players started by __playLoop blocks
   for (const p of _loopMicPlayers) {
-    try { p.stop(); p.unsync(); p.dispose(); } catch (_) {}
+    try { p.stop(); p.unsync(); p.dispose(); } catch (_) { }
   }
   _loopMicPlayers = [];
 

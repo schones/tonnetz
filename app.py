@@ -1,27 +1,27 @@
 """
 Flask Web UI for the Relative Key Trainer.
 
-All audio recording and processing happens server-side via sounddevice,
-keeping the browser lightweight (no Web Audio API / getUserMedia needed).
+Audio recording happens in the browser via Web Audio API / MediaRecorder.
+The browser uploads audio files to the backend for DSP processing.
 
 Routes:
-    GET  /       — Dashboard (single-page app)
-    POST /play   — Record 3 s → detect chord + pitch → score → JSON
-    GET  /status — Leaderboard + challenges dict
+    GET  /                  — Dashboard (single-page app)
+    POST /play              — Receive uploaded audio → detect chord + pitch → score → JSON
+    POST /process_audio_chunk — Receive raw Float32 audio chunk → detect pitch → JSON
+    GET  /status            — Leaderboard + challenges dict
 """
 
 from datetime import datetime
+import io
+import struct
 
 import numpy as np
-import sounddevice as sd
+import librosa
 from flask import Flask, jsonify, render_template, request
 
 from chord_detector import ChordDetector
-from audio_processor import AudioProcessor
-import threading
 from game_engine import (
     CHALLENGES,
-    RECORD_SECONDS,
     SAMPLE_RATE,
     SILENCE_RMS,
     _compute_score,
@@ -38,45 +38,39 @@ app = Flask(__name__)
 
 detector = ChordDetector(sample_rate=SAMPLE_RATE)
 matcher = PitchMatcher(sample_rate=SAMPLE_RATE)
-audio_proc = AudioProcessor(sample_rate=SAMPLE_RATE)
 
-listen_stream = None
-latest_audio_state = {"pitch": None, "volume": 0, "active": False}
 
-def audio_callback(indata, frames, time, status):
-    buf = indata.flatten()
-    audio_proc.ingest_stream_buffer(buf)
-    
+# ---------------------------------------------------------------------------
+# Audio chunk processing (replaces sounddevice background thread)
+# ---------------------------------------------------------------------------
+@app.route("/process_audio_chunk", methods=["POST"])
+def process_audio_chunk():
+    """
+    Receive a raw Float32 audio chunk from the browser and return pitch info.
+
+    Expects multipart/form-data with a 'chunk' file containing raw
+    little-endian Float32 PCM samples, or a JSON body with a 'samples' array.
+    """
+    buf = None
+
+    if "chunk" in request.files:
+        raw = request.files["chunk"].read()
+        n_samples = len(raw) // 4  # 4 bytes per float32
+        buf = np.array(struct.unpack(f"<{n_samples}f", raw), dtype=np.float32)
+    elif request.is_json:
+        data = request.get_json(force=True)
+        samples = data.get("samples", [])
+        buf = np.array(samples, dtype=np.float32)
+
+    if buf is None or len(buf) == 0:
+        return jsonify({"pitch": None, "volume": 0})
+
     rms = float(np.sqrt(np.mean(buf ** 2)))
-    latest_audio_state["volume"] = rms
-    if rms > SILENCE_RMS:
-        pitch = matcher.detect_pitch(buf)
-        latest_audio_state["pitch"] = pitch
-    else:
-        latest_audio_state["pitch"] = None
+    if rms < SILENCE_RMS:
+        return jsonify({"pitch": None, "volume": rms})
 
-@app.route("/start_listen", methods=["POST"])
-def start_listen():
-    global listen_stream
-    if listen_stream is None:
-        listen_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, callback=audio_callback, blocksize=2048)
-        listen_stream.start()
-        latest_audio_state["active"] = True
-    return jsonify({"status": "started"})
-
-@app.route("/stop_listen", methods=["POST"])
-def stop_listen():
-    global listen_stream
-    if listen_stream is not None:
-        listen_stream.stop()
-        listen_stream.close()
-        listen_stream = None
-        latest_audio_state["active"] = False
-    return jsonify({"status": "stopped"})
-
-@app.route("/poll_audio", methods=["GET"])
-def poll_audio():
-    return jsonify(latest_audio_state)
+    pitch = matcher.detect_pitch(buf)
+    return jsonify({"pitch": pitch, "volume": rms})
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -134,29 +128,33 @@ def test_sustain():
 @app.route("/play", methods=["POST"])
 def play():
     """
-    Record audio from the host mic, run chord + pitch detection, score it.
+    Receive an uploaded audio recording from the browser, run chord + pitch
+    detection, and score it.
 
-    Expects JSON body:
-        mode             — "identify" or "clarity"
+    Expects multipart/form-data:
+        audio            — The audio file (WAV/WebM/OGG blob from MediaRecorder)
+        mode             — "identify", "clarity", "tone-check", etc.
         expected_root    — e.g. "E"
         expected_quality — "Major" or "Minor"
         player           — player name (optional, defaults to "Anonymous")
     """
-    data = request.get_json(force=True)
-    mode = data.get("mode", "identify")
-    expected_root = data.get("expected_root")
-    expected_quality = data.get("expected_quality")
-    player = data.get("player", "Anonymous") or "Anonymous"
+    mode = request.form.get("mode", "identify")
+    expected_root = request.form.get("expected_root")
+    expected_quality = request.form.get("expected_quality")
+    player = request.form.get("player", "Anonymous") or "Anonymous"
 
-    # --- Record ---
-    audio = sd.rec(
-        frames=int(SAMPLE_RATE * RECORD_SECONDS),
-        samplerate=SAMPLE_RATE,
-        channels=1,
-        dtype="float32",
-    )
-    sd.wait()
-    buf = audio.flatten()
+    # --- Load uploaded audio ---
+    audio_file = request.files.get("audio")
+    if audio_file is None:
+        return jsonify({"error": "no_audio",
+                        "message": "No audio file uploaded."}), 400
+
+    try:
+        buf, _ = librosa.load(io.BytesIO(audio_file.read()),
+                              sr=SAMPLE_RATE, mono=True)
+    except Exception as e:
+        return jsonify({"error": "bad_audio",
+                        "message": f"Could not decode audio: {e}"}), 400
 
     rms = float(np.sqrt(np.mean(buf ** 2)))
     if rms < SILENCE_RMS:
@@ -175,7 +173,8 @@ def play():
         hit = bool(chord["quality"].lower() == expected_quality.lower())
     elif mode == "harmony":
         # Check if the detected pitch is close to the expected harmony note
-        expected_pitch_freq = data.get("expected_pitch_freq")
+        raw_freq = request.form.get("expected_pitch_freq")
+        expected_pitch_freq = float(raw_freq) if raw_freq else None
         if pitch and pitch.get("note") and expected_pitch_freq:
             cents_from_expected = 1200 * np.log2(pitch["frequency"] / expected_pitch_freq)
             # Within 50 cents (half a semitone) is considered a hit
