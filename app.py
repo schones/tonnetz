@@ -237,10 +237,9 @@ def status():
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
-if __name__ == "__main__":
+if __name__ == '__main__':
     import os
     debug = os.environ.get('FLASK_DEBUG', 'true').lower() == 'true'
     host = os.environ.get('HOST', '127.0.0.1')
     port = int(os.environ.get('PORT', 5000))
-    print(f"\n  Relative Key Trainer — http://{host}:{port}\n")
     app.run(host=host, port=port, debug=debug)
