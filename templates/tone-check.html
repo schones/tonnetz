@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+{% block title %}Tone Check — Tonnetz{% endblock %}
+
+{% block head %}
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+            padding: 0 1rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin: 1.5rem 0 0.25rem;
+            letter-spacing: 0.05em;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-bottom: 1.25rem;
+            text-align: center;
+        }
+
+        /* ── Setup controls ── */
+        .tc-setup {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        @media (max-width: 480px) {
+            .tc-setup { grid-template-columns: 1fr; }
+        }
+
+        .tc-setup .form-group {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .tc-setup .form-label {
+            margin-bottom: 0.4rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .tc-setup .form-select,
+        .tc-setup .form-input {
+            padding: 0.55rem 0.75rem;
+            border: 2px solid var(--border-input);
+            border-radius: 8px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        /* ── Difficulty badge ── */
+        .tc-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 2px 10px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        /* ── Prompt ── */
+        #prompt-area {
+            font-size: 1.35rem;
+            font-weight: 600;
+            min-height: 3.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-highlight);
+        }
+
+        /* ── Big button ── */
+        #start-btn {
+            display: block;
+            width: 100%;
+            max-width: 340px;
+            margin: 0 auto 1.5rem;
+            padding: 1rem;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: var(--btn-primary-text);
+            background: var(--btn-primary-bg);
+            box-shadow: 0 4px 20px rgba(94, 53, 177, 0.4);
+            transition: opacity 0.15s, transform 0.1s;
+        }
+
+        #start-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        #start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Status / stats ── */
+        #status-text {
+            text-align: center;
+            font-size: 1.05rem;
+            min-height: 1.6rem;
+            margin-bottom: 1rem;
+            color: var(--text-info);
+        }
+
+        .tc-stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .tc-stat__value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .tc-stat__label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 0.2rem;
+        }
+
+        /* ── Result card ── */
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-header .label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .result-header .value {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .result-header .value.hit {
+            color: var(--text-success);
+        }
+
+        .result-header .value.miss {
+            color: var(--text-error);
+        }
+
+        #breakdown {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: var(--text-primary);
+            white-space: pre;
+            text-align: left;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <h1>Tone Check</h1>
+        <h2>Play the requested chord into your mic</h2>
+
+        <!-- Setup controls -->
+        <div class="tc-setup">
+            <div class="form-group">
+                <label class="form-label" for="player-input">Your Name</label>
+                <input id="player-input" type="text" class="form-input" placeholder="Your name" maxlength="24" value="Player" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="select-difficulty">Difficulty</label>
+                <select id="select-difficulty" class="form-select">
+                    <option value="easy">Easy (Major, Minor)</option>
+                    <option value="medium">Medium (+ Dim, 7ths)</option>
+                    <option value="hard">Hard (+ Aug, sus, m7b5)</option>
+                    <option value="adaptive">Adaptive</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Stats bar (visible during play) -->
+        <div class="tc-stats" id="stats-bar" hidden>
+            <div>
+                <div class="tc-stat__value" id="stat-score">0</div>
+                <div class="tc-stat__label">Score</div>
+            </div>
+            <div>
+                <div class="tc-stat__value" id="stat-streak">0</div>
+                <div class="tc-stat__label">Streak</div>
+            </div>
+            <div>
+                <div class="tc-stat__value" id="stat-round">1</div>
+                <div class="tc-stat__label">Round</div>
+            </div>
+        </div>
+
+        <div class="tc-badge" id="diff-badge">Easy</div>
+
+        <div class="card">
+            <div id="prompt-area">Press Start to Begin</div>
+        </div>
+
+        <button id="start-btn">START CHALLENGE</button>
+        <div id="status-text"></div>
+
+        <div class="card" id="result-card" style="display:none;">
+            <div class="result-header">
+                <span class="label" id="result-detected"></span>
+                <span class="value" id="result-score"></span>
+            </div>
+            <div id="breakdown"></div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        /* ================================================================
+           Tone Check — Tonnetz
+           Server-side DSP: user plays a chord into mic, backend detects it.
+           ================================================================ */
+
+        /* ── Difficulty pools (must match chord_detector.py qualities) ── */
+        const DIFFICULTY_POOLS = {
+            easy:   ['Major', 'Minor'],
+            medium: ['Major', 'Minor', 'Diminished', 'Dom7', 'Maj7', 'Min7'],
+            hard:   ['Major', 'Minor', 'Diminished', 'Dom7', 'Maj7', 'Min7',
+                     'Augmented', 'sus2', 'sus4', 'm7b5'],
+        };
+
+        const DIFFICULTY_ORDER = ['easy', 'medium', 'hard'];
+        const ADAPTIVE_PROMOTE = 4;
+        const ADAPTIVE_DEMOTE  = 2;
+
+        /* ── State ── */
+        let currentChallenge = null;
+        let busy = false;
+
+        const state = {
+            difficulty: 'easy',
+            adaptiveLevel: 'easy',
+            adaptiveStreak: 0,
+            adaptiveWrong: 0,
+            score: 0,
+            streak: 0,
+            round: 0,
+            started: false,
+        };
+
+        /* ── DOM refs ── */
+        const $prompt    = document.getElementById('prompt-area');
+        const $btn       = document.getElementById('start-btn');
+        const $status    = document.getElementById('status-text');
+        const $resultCard = document.getElementById('result-card');
+        const $detected  = document.getElementById('result-detected');
+        const $score     = document.getElementById('result-score');
+        const $breakdown = document.getElementById('breakdown');
+        const $statsBar  = document.getElementById('stats-bar');
+        const $badge     = document.getElementById('diff-badge');
+
+        /* ── Helpers ── */
+        function effectiveDifficulty() {
+            return state.difficulty === 'adaptive' ? state.adaptiveLevel : state.difficulty;
+        }
+
+        function activePool() {
+            return DIFFICULTY_POOLS[effectiveDifficulty()];
+        }
+
+        function updateBadge() {
+            const eff = effectiveDifficulty();
+            const label = eff.charAt(0).toUpperCase() + eff.slice(1);
+            $badge.textContent = state.difficulty === 'adaptive'
+                ? `Adaptive \u2014 ${label}` : label;
+        }
+
+        function updateStats() {
+            document.getElementById('stat-score').textContent = state.score;
+            document.getElementById('stat-streak').textContent = state.streak;
+            document.getElementById('stat-round').textContent = state.round;
+        }
+
+        /* ── Pick a challenge from the active pool ── */
+        function pickChallenge() {
+            const pool = activePool();
+            const quality = pool[Math.floor(Math.random() * pool.length)];
+            currentChallenge = { expected_quality: quality };
+            $prompt.textContent = `Play any ${quality} chord`;
+        }
+
+        /* ── Record & score via /play ── */
+        async function startChallenge() {
+            if (busy || !currentChallenge) return;
+            busy = true;
+            $btn.disabled = true;
+            $btn.textContent = 'RECORDING...';
+            $status.textContent = 'Recording 3 seconds \u2014 play now!';
+            $resultCard.style.display = 'none';
+
+            if (!state.started) {
+                state.started = true;
+                state.difficulty = document.getElementById('select-difficulty').value;
+                state.adaptiveLevel = 'easy';
+                state.adaptiveStreak = 0;
+                state.adaptiveWrong = 0;
+                state.score = 0;
+                state.streak = 0;
+                state.round = 0;
+                $statsBar.hidden = false;
+                updateBadge();
+            }
+
+            state.round++;
+            updateStats();
+
+            const player = document.getElementById('player-input').value.trim() || 'Anonymous';
+
+            try {
+                const res = await fetch('/play', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'tone-check',
+                        expected_quality: currentChallenge.expected_quality,
+                        player: player,
+                    }),
+                });
+
+                const data = await res.json();
+                if (data.error === 'no_sound') {
+                    $status.textContent = 'No sound detected \u2014 check your mic!';
+                    state.round--;  // don't count silent rounds
+                } else {
+                    showResult(data);
+                    $status.textContent = '';
+                }
+            } catch (err) {
+                $status.textContent = 'Server error \u2014 is app.py running?';
+                state.round--;
+            }
+
+            busy = false;
+            $btn.disabled = false;
+            $btn.textContent = 'NEXT CHALLENGE';
+            updateStats();
+            pickChallenge();
+        }
+
+        /* ── Display result + adaptive logic ── */
+        function showResult(data) {
+            const chordLabel = `${data.chord.root} ${data.chord.quality} (${Math.round(data.chord.confidence * 100)}%)`;
+            $detected.textContent = `Detected: ${chordLabel}`;
+            $score.textContent = `${data.score} pts`;
+            $score.className = 'value ' + (data.hit ? 'hit' : 'miss');
+            $breakdown.textContent = data.breakdown.join('\n');
+            $resultCard.style.display = 'block';
+
+            if (data.hit) {
+                state.score += data.score;
+                state.streak++;
+
+                if (state.difficulty === 'adaptive') {
+                    state.adaptiveStreak++;
+                    state.adaptiveWrong = 0;
+                    if (state.adaptiveStreak >= ADAPTIVE_PROMOTE) {
+                        state.adaptiveStreak = 0;
+                        const idx = DIFFICULTY_ORDER.indexOf(state.adaptiveLevel);
+                        if (idx < DIFFICULTY_ORDER.length - 1) {
+                            state.adaptiveLevel = DIFFICULTY_ORDER[idx + 1];
+                        }
+                    }
+                }
+            } else {
+                state.streak = 0;
+
+                if (state.difficulty === 'adaptive') {
+                    state.adaptiveStreak = 0;
+                    state.adaptiveWrong++;
+                    if (state.adaptiveWrong >= ADAPTIVE_DEMOTE) {
+                        state.adaptiveWrong = 0;
+                        const idx = DIFFICULTY_ORDER.indexOf(state.adaptiveLevel);
+                        if (idx > 0) {
+                            state.adaptiveLevel = DIFFICULTY_ORDER[idx - 1];
+                        }
+                    }
+                }
+            }
+
+            updateStats();
+            updateBadge();
+        }
+
+        /* ── Init ── */
+        $btn.addEventListener('click', startChallenge);
+        pickChallenge();
+    </script>
+{% endblock %}

@@ -13,16 +13,6 @@
             padding: 0;
         }
 
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
         .container {
             width: 100%;
             max-width: 640px;
@@ -30,7 +20,7 @@
         }
 
         .card {
-            background: #16213e;
+            background: var(--bg-card);
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 1.25rem;
@@ -41,10 +31,10 @@
         .form-input,
         .form-select {
             padding: 0.55rem 0.75rem;
-            border: 2px solid #333;
+            border: 2px solid var(--border-input);
             border-radius: 8px;
-            background: #0f1529;
-            color: #eee;
+            background: var(--bg-input);
+            color: var(--text-primary);
             font-size: 1rem;
         }
 
@@ -70,7 +60,7 @@
 
         .form-label {
             margin-bottom: 0.5rem;
-            color: #aaa;
+            color: var(--text-muted);
             font-size: 0.9rem;
         }
 
@@ -92,13 +82,13 @@
         .stat__value {
             font-size: 2rem;
             font-weight: 800;
-            color: #90caf9;
+            color: var(--text-info);
             line-height: 1;
         }
 
         .stat__label {
             font-size: 0.75rem;
-            color: #aaa;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.1em;
             margin-top: 0.25rem;
@@ -114,13 +104,13 @@
 
         .test-prompt {
             font-size: 1.2rem;
-            color: #ccc;
+            color: var(--text-primary);
             margin-bottom: 1.5rem;
             font-weight: bold;
         }
 
         .test-prompt__interval {
-            color: #ffca28;
+            color: var(--text-highlight);
             font-size: 2rem;
             display: block;
             margin-top: 0.25rem;
@@ -142,13 +132,13 @@
         .tuner-note {
             font-size: 2.5rem;
             font-weight: 800;
-            color: #fff;
+            color: var(--text-primary);
             margin-top: 0.25rem;
         }
 
         .tuner-detail {
             font-size: 0.9rem;
-            color: #aaa;
+            color: var(--text-muted);
         }
 
         /* ── Play buttons ── */
@@ -169,7 +159,7 @@
             margin: 1rem auto;
             max-width: 420px;
             font-size: 0.9rem;
-            color: #bbb;
+            color: var(--text-muted);
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 0.5rem;
@@ -185,11 +175,11 @@
         }
 
         .feedback--success {
-            color: #00e676;
+            color: var(--text-success);
         }
 
         .feedback--miss {
-            color: #ff1744;
+            color: var(--text-error);
         }
 
         /* ── Buttons ── */
@@ -215,22 +205,22 @@
 
         .btn--primary {
             background: #1565c0;
-            color: #fff;
+            color: var(--btn-primary-text);
         }
 
         .btn--success {
             background: #00c853;
-            color: #fff;
+            color: var(--btn-primary-text);
         }
 
         .btn--danger {
             background: #d50000;
-            color: #fff;
+            color: var(--btn-primary-text);
         }
 
         .btn--secondary {
-            background: #333;
-            color: #eee;
+            background: var(--border);
+            color: var(--text-primary);
         }
 
         .btn--large {
@@ -252,7 +242,7 @@
         <section id="screen-setup">
             <div class="harmony-setup card">
                 <h1 style="margin-top:0">Harmony Training</h1>
-                <p style="color:#aaa; margin-bottom:1.5rem">Sing or play intervals with real-time pitch feedback.</p>
+                <p style="color:var(--text-muted); margin-bottom:1.5rem">Sing or play intervals with real-time pitch feedback.</p>
 
                 <div class="harmony-setup__grid">
                     <div class="form-group">
@@ -302,7 +292,7 @@
                         <div class="stat__label">Question</div>
                     </div>
                     <div class="stat" id="stat-countdown-wrap" hidden>
-                        <div class="stat__value" id="stat-countdown" style="color:#ff5722;">15</div>
+                        <div class="stat__value" id="stat-countdown" style="color:var(--text-accent-warm);">15</div>
                         <div class="stat__label">Seconds</div>
                     </div>
                 </div>
@@ -648,7 +638,7 @@
                 const secs = Math.ceil(remaining / 1000);
                 const el = $('stat-countdown');
                 el.textContent = secs;
-                el.style.color = secs <= 5 ? '#ff1744' : secs <= 10 ? '#ff9800' : '#ff5722';
+                el.style.color = secs <= 5 ? 'var(--text-error)' : secs <= 10 ? 'var(--text-warning)' : 'var(--text-accent-warm)';
             }, 100);
             state.questionTimerId = setTimeout(() => {
                 clearQuestionTimer();

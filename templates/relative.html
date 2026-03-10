@@ -8,18 +8,8 @@
 /* ------------------------------------------------------------------ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: #1a1a2e;
-  color: #eee;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
 h1 { font-size: 2rem; margin: 1.5rem 0 0.25rem; letter-spacing: 0.05em; }
-h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
+h2 { font-size: 1.1rem; font-weight: 400; color: var(--text-muted); margin-bottom: 1.5rem; }
 
 /* ------------------------------------------------------------------ */
 /*  Layout                                                             */
@@ -27,7 +17,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
 .container { width: 100%; max-width: 640px; padding: 0 1rem; }
 
 .card {
-  background: #16213e;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.25rem;
@@ -45,20 +35,20 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
 .mode-btn {
   flex: 1;
   padding: 0.65rem;
-  border: 2px solid #444;
+  border: 2px solid var(--border);
   border-radius: 8px;
   background: transparent;
-  color: #ccc;
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 }
-.mode-btn:hover { border-color: #888; }
+.mode-btn:hover { border-color: var(--text-muted); }
 .mode-btn.active {
   border-color: #5c6bc0;
   background: #283593;
-  color: #fff;
+  color: var(--btn-primary-text);
 }
 
 /* ------------------------------------------------------------------ */
@@ -72,7 +62,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffca28;
+  color: var(--text-highlight);
 }
 
 /* ------------------------------------------------------------------ */
@@ -90,8 +80,8 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  color: #fff;
-  background: linear-gradient(135deg, #1565c0, #5e35b1);
+  color: var(--btn-primary-text);
+  background: var(--btn-primary-bg);
   box-shadow: 0 4px 20px rgba(94, 53, 177, 0.4);
   transition: opacity 0.15s, transform 0.1s;
 }
@@ -110,7 +100,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   font-size: 1.05rem;
   min-height: 1.6rem;
   margin-bottom: 1rem;
-  color: #90caf9;
+  color: var(--text-info);
 }
 
 /* ------------------------------------------------------------------ */
@@ -157,7 +147,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   left: 50%;
   width: 3px;
   height: 90px;
-  background: #fff;
+  background: var(--text-primary);
   transform-origin: bottom center;
   transform: rotate(0deg);
   transition: transform 0.5s ease-out;
@@ -173,7 +163,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   width: 12px;
   height: 12px;
   margin-left: -6px;
-  background: #fff;
+  background: var(--text-primary);
   border-radius: 50%;
   z-index: 3;
 }
@@ -183,7 +173,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   justify-content: space-between;
   width: 220px;
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
@@ -193,13 +183,13 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   margin-top: 0.5rem;
   transition: color 0.3s;
 }
-#cents-readout.good { color: #00e676; }
-#cents-readout.ok   { color: #ff9100; }
-#cents-readout.bad  { color: #ff1744; }
+#cents-readout.good { color: var(--text-success); }
+#cents-readout.ok   { color: var(--text-warning); }
+#cents-readout.bad  { color: var(--text-error); }
 
 #pitch-note {
   font-size: 1rem;
-  color: #aaa;
+  color: var(--text-muted);
   margin-top: 0.15rem;
 }
 
@@ -215,16 +205,16 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   margin-bottom: 0.75rem;
 }
 
-.result-header .label { font-size: 0.9rem; color: #aaa; }
+.result-header .label { font-size: 0.9rem; color: var(--text-muted); }
 .result-header .value { font-size: 1.6rem; font-weight: 700; }
-.result-header .value.hit  { color: #00e676; }
-.result-header .value.miss { color: #ff1744; }
+.result-header .value.hit  { color: var(--text-success); }
+.result-header .value.miss { color: var(--text-error); }
 
 #breakdown {
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   font-size: 0.85rem;
   line-height: 1.7;
-  color: #ccc;
+  color: var(--text-primary);
   white-space: pre;
 }
 
@@ -242,7 +232,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
   display: inline-block;
   width: 120px;
   height: 8px;
-  background: #333;
+  background: var(--border);
   border-radius: 4px;
   vertical-align: middle;
   overflow: hidden;
@@ -251,7 +241,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
 .amb-pair .bar-fill {
   height: 100%;
   border-radius: 4px;
-  background: #ff9100;
+  background: var(--text-warning);
 }
 
 /* ------------------------------------------------------------------ */
@@ -260,7 +250,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
 .lb-section { margin-bottom: 0.5rem; }
 .lb-section h3 {
   font-size: 0.85rem;
-  color: #aaa;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: 0.4rem;
@@ -273,16 +263,16 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
 }
 .lb-table th {
   text-align: left;
-  color: #666;
+  color: var(--text-muted);
   font-weight: 400;
   padding: 0.25rem 0.5rem;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border);
 }
 .lb-table td {
   padding: 0.3rem 0.5rem;
 }
-.lb-table tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
-.lb-empty { color: #555; font-style: italic; padding: 0.4rem 0; }
+.lb-table tr:nth-child(even) td { background: var(--table-row-alt); }
+.lb-empty { color: var(--text-muted); font-style: italic; padding: 0.4rem 0; }
 
 /* ------------------------------------------------------------------ */
 /*  Player name                                                        */
@@ -290,15 +280,15 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
 #player-input {
   width: 100%;
   padding: 0.55rem 0.75rem;
-  border: 2px solid #333;
+  border: 2px solid var(--border-input);
   border-radius: 8px;
-  background: #0f1529;
-  color: #eee;
+  background: var(--bg-input);
+  color: var(--text-primary);
   font-size: 1rem;
   margin-bottom: 1.25rem;
 }
 #player-input:focus { outline: none; border-color: #5c6bc0; }
-#player-input::placeholder { color: #555; }
+#player-input::placeholder { color: var(--text-muted); }
 </style>
 {% endblock %}
 
@@ -353,7 +343,7 @@ h2 { font-size: 1.1rem; font-weight: 400; color: #aaa; margin-bottom: 1.5rem; }
 
   <!-- Ambiguity panel -->
   <div class="card" id="ambiguity-panel">
-    <div style="font-size:0.85rem;color:#aaa;margin-bottom:0.5rem;">AMBIGUITY ANALYSIS</div>
+    <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">AMBIGUITY ANALYSIS</div>
     <div id="ambiguity-body"></div>
   </div>
 

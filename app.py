@@ -90,9 +90,13 @@ def index():
 def relative():
     return render_template("relative.html")
 
-@app.route("/chords")
-def chords():
-    return render_template("chords.html")
+@app.route("/tone-check")
+def tone_check():
+    return render_template("tone-check.html")
+
+@app.route("/chord-identification")
+def chord_identification():
+    return render_template("chord-identification.html")
 
 @app.route("/harmony")
 def harmony():
@@ -160,14 +164,14 @@ def play():
                         "message": "No sound detected — check your mic."}), 200
 
     # --- Detect ---
-    chord = detector.identify_triad(buf)
+    chord = detector.identify_chord(buf)
     pitch = matcher.detect_pitch(buf)
     ambiguity = chord.get("ambiguity", {})
     
     # --- Mode Support ---
     hit = False
     
-    if mode == "chords":
+    if mode in ("chords", "tone-check"):
         hit = bool(chord["quality"].lower() == expected_quality.lower())
     elif mode == "harmony":
         # Check if the detected pitch is close to the expected harmony note

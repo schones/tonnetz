@@ -4,13 +4,30 @@ from audio_processor import AudioProcessor
 
 class ChordDetector(AudioProcessor):
     """
-    ChordDetector module that inherits from AudioProcessor to identify triads
+    ChordDetector module that inherits from AudioProcessor to identify chords
     from an audio buffer using chroma features.
+
+    Supports: Major, Minor, Diminished, Augmented, Dom7, Maj7, Min7,
+              sus2, sus4, m7b5 (half-diminished).
     """
-    
+
     def __init__(self, sample_rate=44100, buffer_size=2048):
         super().__init__(sample_rate, buffer_size)
         self.note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+    # Chord interval templates: semitones above root
+    CHORD_TEMPLATES = {
+        "Major":      [0, 4, 7],
+        "Minor":      [0, 3, 7],
+        "Diminished": [0, 3, 6],
+        "Augmented":  [0, 4, 8],
+        "Dom7":       [0, 4, 7, 10],
+        "Maj7":       [0, 4, 7, 11],
+        "Min7":       [0, 3, 7, 10],
+        "sus2":       [0, 2, 7],
+        "sus4":       [0, 5, 7],
+        "m7b5":       [0, 3, 6, 10],
+    }
 
     # Relative major/minor pairs: (major_root_idx, minor_root_idx)
     # Each major key's relative minor is 9 semitones up (or 3 down).
@@ -32,8 +49,8 @@ class ChordDetector(AudioProcessor):
     def _detect_bass_note(self, buffer):
         """
         Detect the lowest fundamental frequency in the buffer and return
-        its chroma index (0–11) and strength. Uses a band-limited FFT
-        focused on the bass register (C2–C4, ~65–262 Hz).
+        its chroma index (0-11) and strength. Uses a band-limited FFT
+        focused on the bass register (C2-C4, ~65-262 Hz).
 
         Returns:
             tuple: (chroma_index, strength) or (None, 0.0) if nothing found.
@@ -64,25 +81,47 @@ class ChordDetector(AudioProcessor):
 
         return chroma_idx, strength
 
-    def _score_triad(self, chroma, root_idx, quality):
-        """Score a single triad against a chroma vector.
+    def _score_chord(self, chroma, root_idx, quality):
+        """Score a chord quality against a chroma vector.
+
+        Sums chroma energy at the chord tones and subtracts a penalty for
+        energy at non-chord chromatic neighbours, weighted by how many
+        tones the chord has so triads and 7ths are comparable.
 
         Args:
             chroma: Normalized 12-bin chroma vector.
             root_idx: Chroma index of the root (0 = C).
-            quality: "Major" or "Minor".
+            quality: One of the keys in CHORD_TEMPLATES.
 
         Returns:
             float: Heuristic score (higher = better fit).
         """
-        third_offset = 4 if quality == "Major" else 3
-        competing_offset = 3 if quality == "Major" else 4
-        fifth_idx = (root_idx + 7) % 12
-        third_idx = (root_idx + third_offset) % 12
-        competing_idx = (root_idx + competing_offset) % 12
+        intervals = self.CHORD_TEMPLATES[quality]
+        chord_bins = set()
+        score = 0.0
 
-        score = chroma[root_idx] + chroma[third_idx] + chroma[fifth_idx]
-        score -= chroma[competing_idx] * 0.5
+        for iv in intervals:
+            idx = (root_idx + iv) % 12
+            chord_bins.add(idx)
+            score += chroma[idx]
+
+        # Penalise non-chord tones that are chromatic neighbours of chord
+        # tones (these are the bins most likely to cause mis-identification).
+        penalty = 0.0
+        for idx in chord_bins:
+            for neighbour in [(idx - 1) % 12, (idx + 1) % 12]:
+                if neighbour not in chord_bins:
+                    penalty += chroma[neighbour]
+
+        # Scale penalty relative to the number of chord tones so that
+        # triads and 7th chords get comparable scores.
+        n_tones = len(intervals)
+        score -= penalty * (0.3 / n_tones)
+
+        # Normalise by number of tones so a 4-note chord doesn't
+        # automatically outscore a 3-note chord.
+        score /= n_tones
+
         return float(score)
 
     def check_relative_ambiguity(self, chroma):
@@ -100,23 +139,23 @@ class ChordDetector(AudioProcessor):
 
         Returns:
             dict with keys:
-                ambiguous  — True if a relative pair is close enough to flag.
-                pairs      — List of flagged pairs, each a dict:
-                    major  — {"root": str, "score": float}
-                    minor  — {"root": str, "score": float}
-                    distance — 0.0 (identical scores) to 1.0 (clearly one chord).
+                ambiguous  -- True if a relative pair is close enough to flag.
+                pairs      -- List of flagged pairs, each a dict:
+                    major  -- {"root": str, "score": float}
+                    minor  -- {"root": str, "score": float}
+                    distance -- 0.0 (identical scores) to 1.0 (clearly one chord).
                               Computed as |major_score - minor_score| / max(scores).
         """
         result = {"ambiguous": False, "pairs": []}
 
-        # Minimum score for a triad to be considered "present" in the signal.
-        presence_threshold = 0.6
+        # Minimum score for a chord to be considered "present" in the signal.
+        presence_threshold = 0.2
 
         for maj_root, min_root in self.RELATIVE_PAIRS:
-            maj_score = self._score_triad(chroma, maj_root, "Major")
-            min_score = self._score_triad(chroma, min_root, "Minor")
+            maj_score = self._score_chord(chroma, maj_root, "Major")
+            min_score = self._score_chord(chroma, min_root, "Minor")
 
-            # Both triads must have meaningful energy to be ambiguous
+            # Both chords must have meaningful energy to be ambiguous
             if maj_score < presence_threshold and min_score < presence_threshold:
                 continue
 
@@ -127,7 +166,7 @@ class ChordDetector(AudioProcessor):
 
             distance = abs(maj_score - min_score) / peak
 
-            # Flag as ambiguous when the two triads are within 30% of each other
+            # Flag as ambiguous when the two chords are within 30% of each other
             if distance < 0.30:
                 result["ambiguous"] = True
                 result["pairs"].append({
@@ -144,18 +183,19 @@ class ChordDetector(AudioProcessor):
 
         return result
 
-    def identify_triad(self, buffer):
+    def identify_chord(self, buffer):
         """
-        Maps chroma peaks to note names, detects the root note, and determines Major vs. Minor qualities.
-        Uses chroma_cqt to handle overtone interference common in guitar recordings.
-        Applies bass-note weighting and relative-pair disambiguation to reduce
-        misidentification of relative major/minor chords (e.g. G Major vs E Minor).
+        Identify the chord in an audio buffer by scoring all 12 roots against
+        every chord quality template.
+
+        Uses chroma_cqt for overtone-robust analysis, bass-note weighting,
+        and relative-pair disambiguation.
 
         Args:
             buffer (np.ndarray): The audio data buffer.
 
         Returns:
-            dict: Containing 'root', 'quality', 'confidence', 'candidates' (top 2),
+            dict: Containing 'root', 'quality', 'confidence', 'candidates' (top 3),
                   and 'ambiguity' (from check_relative_ambiguity).
         """
         empty = {
@@ -166,18 +206,19 @@ class ChordDetector(AudioProcessor):
             return empty
 
         # Use chroma_cqt which resolves overtones better due to log-frequency spaced bins
-        # fmin=librosa.note_to_hz('C2') provides a good baseline for guitars
         fmin = librosa.note_to_hz('C2')
         hop_length = 512
         if len(buffer) < hop_length:
             return empty
 
         try:
-            # chroma_cqt is robust to overtones
-            chromagram = librosa.feature.chroma_cqt(y=buffer, sr=self.sample_rate, fmin=fmin, hop_length=hop_length)
+            chromagram = librosa.feature.chroma_cqt(
+                y=buffer, sr=self.sample_rate, fmin=fmin, hop_length=hop_length
+            )
         except Exception:
-            # Fallback to chroma_stft if buffer is too small for CQT
-            chromagram = librosa.feature.chroma_stft(y=buffer, sr=self.sample_rate, hop_length=hop_length)
+            chromagram = librosa.feature.chroma_stft(
+                y=buffer, sr=self.sample_rate, hop_length=hop_length
+            )
 
         # Average chroma across time frames
         chroma_vector = np.mean(chromagram, axis=1)
@@ -187,10 +228,8 @@ class ChordDetector(AudioProcessor):
             chroma_vector = chroma_vector / np.max(chroma_vector)
 
         # --- Bass emphasis weighting ---
-        # Boost the chroma bin of the lowest detected pitch so the root of
-        # open-position chords (which have a bass note) gets extra weight.
         bass_idx, bass_strength = self._detect_bass_note(buffer)
-        bass_boost = 0.3  # max additional weight for the bass note
+        bass_boost = 0.3
         if bass_idx is not None:
             chroma_vector[bass_idx] += bass_boost * bass_strength
 
@@ -201,30 +240,13 @@ class ChordDetector(AudioProcessor):
         # --- Relative-key ambiguity analysis ---
         ambiguity = self.check_relative_ambiguity(chroma_vector)
 
-        # --- Score every possible root × quality combination ---
-        scored = []  # list of (score, root_idx, quality)
+        # --- Score every possible root x quality combination ---
+        scored = []
 
         for root_idx in range(12):
-            root_chroma = chroma_vector[root_idx]
-
-            # Major triad: Root, Major 3rd (+4 semitones), Perfect 5th (+7 semitones)
-            maj3_idx = (root_idx + 4) % 12
-            perf5_idx = (root_idx + 7) % 12
-
-            # Minor triad: Root, Minor 3rd (+3 semitones), Perfect 5th (+7 semitones)
-            min3_idx = (root_idx + 3) % 12
-
-            # Heuristic score for Major
-            maj_score = root_chroma + chroma_vector[maj3_idx] + chroma_vector[perf5_idx]
-            # Heuristic score for Minor
-            min_score = root_chroma + chroma_vector[min3_idx] + chroma_vector[perf5_idx]
-
-            # Subtract evidence of the competing third to increase confidence
-            maj_score -= (chroma_vector[min3_idx] * 0.5)
-            min_score -= (chroma_vector[maj3_idx] * 0.5)
-
-            scored.append((maj_score, root_idx, "Major"))
-            scored.append((min_score, root_idx, "Minor"))
+            for quality in self.CHORD_TEMPLATES:
+                sc = self._score_chord(chroma_vector, root_idx, quality)
+                scored.append((sc, root_idx, quality))
 
         # Sort descending by score
         scored.sort(key=lambda x: x[0], reverse=True)
@@ -232,40 +254,40 @@ class ChordDetector(AudioProcessor):
         best_score, best_root_idx, best_quality = scored[0]
 
         # --- Relative major/minor disambiguation ---
-        # For every known relative pair, if the winner is the minor chord,
-        # check whether the minor root's chroma energy is truly dominant.
-        for maj_root, min_root in self.RELATIVE_PAIRS:
-            if best_root_idx == min_root and best_quality == "Minor":
-                energy_minor_root = chroma_vector[min_root]
-                energy_major_root = chroma_vector[maj_root]
-                # Only keep the Minor label if its root energy is ≥20% stronger
-                if energy_minor_root < energy_major_root * 1.2:
-                    # Find the corresponding Major chord in scored list and swap
-                    for i, (sc, ri, qu) in enumerate(scored):
-                        if ri == maj_root and qu == "Major":
-                            best_score, best_root_idx, best_quality = sc, ri, qu
-                            # Move this entry to the front for candidate list
-                            scored.insert(0, scored.pop(i))
-                            break
-                break  # only one pair can match
+        # If the winner is a minor triad, check whether the minor root's
+        # chroma energy is truly dominant vs its relative major.
+        if best_quality == "Minor":
+            for maj_root, min_root in self.RELATIVE_PAIRS:
+                if best_root_idx == min_root:
+                    energy_minor_root = chroma_vector[min_root]
+                    energy_major_root = chroma_vector[maj_root]
+                    if energy_minor_root < energy_major_root * 1.2:
+                        for i, (sc, ri, qu) in enumerate(scored):
+                            if ri == maj_root and qu == "Major":
+                                best_score, best_root_idx, best_quality = sc, ri, qu
+                                scored.insert(0, scored.pop(i))
+                                break
+                    break
 
-        # Build top-2 candidates (deduplicated)
+        # Build top-3 candidates (deduplicated)
         candidates = []
         seen = set()
         for sc, ri, qu in scored:
             key = (ri, qu)
             if key not in seen:
-                conf = float(np.clip(sc / 3.0, 0.0, 1.0))
+                # Normalise confidence: for triads max theoretical ~1.0,
+                # for 7ths similar due to per-tone normalisation.
+                conf = float(np.clip(sc, 0.0, 1.0))
                 candidates.append({
                     "root": self.note_names[ri],
                     "quality": qu,
                     "confidence": round(conf, 2),
                 })
                 seen.add(key)
-            if len(candidates) == 2:
+            if len(candidates) == 3:
                 break
 
-        confidence = float(np.clip(best_score / 3.0, 0.0, 1.0))
+        confidence = float(np.clip(best_score, 0.0, 1.0))
         root_name = self.note_names[best_root_idx]
 
         return {
@@ -275,3 +297,7 @@ class ChordDetector(AudioProcessor):
             "candidates": candidates,
             "ambiguity": ambiguity,
         }
+
+    # Backwards-compatible alias
+    def identify_triad(self, buffer):
+        return self.identify_chord(buffer)
