@@ -99,7 +99,7 @@ export const THEORY = {
       tier: "beginner",
       tags: ["notation", "reading", "fundamentals"],
       visualizationKey: "staff_explorer",
-      prerequisites: ["sound_basics"],
+      prerequisites: ["sound_basics", "note_names"],
 
       summary: "Five lines and four spaces encode pitch visually. Clefs tell you which pitches.",
 
@@ -133,13 +133,56 @@ export const THEORY = {
       connections: ["note_names", "rhythm", "ledger_lines"],
     },
 
+    ledger_lines: {
+      id: "ledger_lines",
+      title: "Ledger Lines",
+      tier: "beginner",
+      tags: ["notation", "reading", "fundamentals"],
+      visualizationKey: "staff_explorer",
+      prerequisites: ["the_staff"],
+
+      summary: "Short lines above or below the staff that extend its range. Middle C lives on a ledger line.",
+
+      levels: {
+        musician: `
+          The staff only has five lines, but music goes much higher and lower than that.
+          Ledger lines are tiny extra lines drawn above or below the staff for notes that don't fit.
+          Middle C is the most famous ledger line note — it sits just below the treble clef
+          or just above the bass clef. Rather than memorizing dozens of ledger lines,
+          most musicians learn the common ones (middle C, A above treble staff) and count from there.
+          If a passage uses many ledger lines, composers often switch clefs or use 8va markings instead.
+        `,
+        theorist: `
+          Ledger lines extend the five-line staff in both directions, preserving the diatonic pitch mapping.
+          Each ledger line or space follows the same pattern as the staff itself.
+          Common ledger line notes: middle C (C4) = one ledger line below treble, one above bass.
+          A5 = two ledger lines above treble staff. C3 = two ledger lines below bass staff.
+          Ottava markings (8va, 8vb, 15ma) transpose notation by one or two octaves to reduce ledger lines.
+          In orchestral scores, instrument transpositions also minimize ledger line usage.
+        `,
+        math: `
+          Ledger lines extend the staff mapping function: position p → pitch, for p outside [0, 8].
+          Each additional line adds 2 diatonic steps (one line + one space).
+          Ledger line count from staff edge to note: ⌈(|n - staff_edge|) / 2⌉.
+          Readability degrades roughly linearly with ledger line count —
+          studies show >3 ledger lines significantly slow sight-reading.
+          The decision to use 8va vs. ledger lines is an optimization problem:
+          minimize cognitive load while preserving pitch clarity.
+        `,
+      },
+
+      practical: "Start by memorizing just middle C as a ledger line in both clefs. From there, count up or down by step to find other ledger line notes.",
+
+      connections: ["the_staff", "note_names", "octave"],
+    },
+
     note_names: {
       id: "note_names",
       title: "Note Names & the Musical Alphabet",
       tier: "beginner",
       tags: ["notation", "pitch", "fundamentals"],
       visualizationKey: "keyboard_explorer",
-      prerequisites: ["the_staff"],
+      prerequisites: [],
 
       summary: "Seven letters (A–G), twelve pitches. Sharps and flats fill the gaps.",
 
@@ -180,7 +223,7 @@ export const THEORY = {
       tier: "beginner",
       tags: ["rhythm", "notation", "time"],
       visualizationKey: "rhythm_grid",
-      prerequisites: ["the_staff"],
+      prerequisites: ["sound_basics"],
 
       summary: "Notes have duration. Time signatures organize beats into measures.",
 
@@ -205,7 +248,7 @@ export const THEORY = {
           Dotted note: d' = d × (3/2). Double-dotted: d'' = d × (7/4).
           Tempo (BPM) converts rhythmic values to time:
           t_seconds = (60 / BPM) × duration_in_quarter_notes
-          A triplet subdivides a beat by 2/3: three triplet-eighths = one quarter note.
+          A triplet eighth has 2/3 the duration of a regular eighth note: three triplet-eighths = one quarter note.
           Time signature n/d: measure duration = n × (1/d) whole notes.
         `,
       },
@@ -213,6 +256,53 @@ export const THEORY = {
       practical: "Clap along to music and count out loud. Physical beat internalization precedes reading.",
       
       connections: ["the_staff", "meter_and_groove"],
+    },
+
+    meter_and_groove: {
+      id: "meter_and_groove",
+      title: "Meter & Groove",
+      tier: "intermediate",
+      tags: ["rhythm", "feel", "meter", "groove"],
+      visualizationKey: "rhythm_grid",
+      prerequisites: ["rhythm"],
+
+      summary: "Meter organizes beats into patterns. Groove is how those beats are felt — the difference between a march and a waltz.",
+
+      levels: {
+        musician: `
+          Meter is the recurring pattern of strong and weak beats.
+          4/4 feels like: STRONG weak medium weak. 3/4 feels like: STRONG weak weak (waltz).
+          6/8 groups beats in threes: STRONG weak weak medium weak weak — a galloping, rolling feel.
+          Groove is what happens when musicians interpret the meter with personality.
+          A swing groove delays the offbeats slightly. A funk groove emphasizes the "and" beats.
+          The same time signature can feel completely different depending on where the accents land
+          and how the subdivisions are pushed or pulled.
+        `,
+        theorist: `
+          Meter is hierarchical beat grouping: beats group into measures, subdivisions group into beats.
+          Simple meters (2/4, 3/4, 4/4): beats subdivide by 2 (duple subdivision).
+          Compound meters (6/8, 9/8, 12/8): beats subdivide by 3 (triple subdivision).
+          Asymmetric meters (5/4, 7/8): unequal beat groupings (e.g., 7/8 = 2+2+3 or 3+2+2).
+          Swing feel: tuplet-based subdivision where pairs of eighth notes are played ~2:1 ratio.
+          Polyrhythm: two independent meters simultaneously (e.g., 3 against 2).
+          Hemiola: temporary metric shift, usually 3×2 against 2×3 within the same span.
+        `,
+        math: `
+          Meter defines a hierarchical grouping on a time grid of resolution r.
+          Simple n/d: measure = n beats, each beat = d⁻¹ whole notes, subdivision = 2.
+          Compound n/d: measure = n/3 beats, each beat = 3×d⁻¹ whole notes, subdivision = 3.
+          Swing ratio s: pairs of notes with durations (s·d, (2-s)·d) where s ∈ [1, 2].
+          s=1 is straight, s=2.0 is pure triplet swing (2:1 ratio).
+          Empirical jazz performance averages s≈1.6–1.7, lighter than a strict triplet feel.
+          Polyrhythm p:q: p evenly-spaced events against q evenly-spaced events.
+          LCM(p,q) determines the minimum resolution grid needed to notate both patterns.
+          Metric modulation: tempo₂ = tempo₁ × (sub₁ / sub₂), preserving pulse continuity.
+        `,
+      },
+
+      practical: "Listen to the same song drumless, then with drums. The groove is everything the drummer adds beyond the bare meter. Try conducting in 3/4 vs 4/4 — feel the difference in your body.",
+
+      connections: ["rhythm", "blues_scale"],
     },
 
     // ── TIER 2: PITCH RELATIONSHIPS ───────────────────────────────
@@ -358,6 +448,48 @@ export const THEORY = {
       connections: ["semitones_whole_tones", "intervals", "chromatic_scale"],
     },
 
+    chromatic_scale: {
+      id: "chromatic_scale",
+      title: "The Chromatic Scale",
+      tier: "beginner",
+      tags: ["scales", "pitch", "fundamentals"],
+      visualizationKey: "chromatic_clock",
+      prerequisites: ["semitones_whole_tones"],
+
+      summary: "All 12 notes in order, each a semitone apart. The complete palette of Western pitch.",
+
+      levels: {
+        musician: `
+          The chromatic scale is every note, one semitone at a time: C C# D D# E F F# G G# A A# B → C.
+          It's not really used as a "key" — it's the complete catalog of available pitches.
+          Play all the keys on a piano in order (black and white) and you're playing chromatically.
+          Chromatic passages in music create tension, excitement, or a sense of slithering motion.
+          Think of the creepy ascending chromatic line in a horror movie — that's the chromatic scale at work.
+          It's the raw material from which all other scales are carved.
+        `,
+        theorist: `
+          The chromatic scale contains all 12 pitch classes: {0,1,2,3,4,5,6,7,8,9,10,11}.
+          Interval pattern: H-H-H-H-H-H-H-H-H-H-H-H (12 consecutive semitones).
+          It is symmetric — starting from any pitch class produces the same intervals.
+          Chromatic notes in a diatonic context are "accidentals" — notes outside the current key.
+          Chromatic passing tones, neighbor tones, and approach notes add color to diatonic melody.
+          Total chromaticism (all 12 notes treated equally) leads to atonality and serialism.
+        `,
+        math: `
+          The chromatic scale = the full cyclic group ℤ₁₂ = {0, 1, 2, ..., 11}.
+          Every other scale is a proper subset of the chromatic scale.
+          Interval vector: [12,12,12,12,12,6] — maximally uniform distribution of interval classes.
+          Chromatic transposition T_n: maps every pitch class x → x+n (mod 12).
+          The group of transpositions ⟨T₁⟩ ≅ ℤ₁₂ acts simply transitively on the chromatic scale.
+          In frequency space: consecutive chromatic pitches have ratio 2^(1/12) ≈ 1.05946.
+        `,
+      },
+
+      practical: "Play every key on a piano from C to C, white and black, in order. That's the chromatic scale — the entire pitch universe of Western music in one octave.",
+
+      connections: ["semitones_whole_tones", "note_names", "major_scale", "octave"],
+    },
+
     // ── TIER 3: SCALES ────────────────────────────────────────────
 
     major_scale: {
@@ -450,6 +582,97 @@ export const THEORY = {
       connections: ["major_scale", "modes", "relative_minor_major", "harmonic_minor"],
     },
 
+    relative_minor_major: {
+      id: "relative_minor_major",
+      title: "Relative Major & Minor",
+      tier: "beginner",
+      tags: ["keys", "tonality", "scales", "relationships"],
+      visualizationKey: "circle_of_fifths",
+      prerequisites: ["major_scale", "minor_scale"],
+
+      summary: "Every major key has a minor twin using the same notes. C major and A minor are relatives.",
+
+      levels: {
+        musician: `
+          C major and A minor use exactly the same notes — all white keys.
+          But they sound completely different because "home" is different (C vs A).
+          Every major key has a "relative minor" that shares its key signature:
+          G major ↔ E minor, D major ↔ B minor, F major ↔ D minor.
+          The relative minor starts on the 6th degree of the major scale.
+          This is why you see songs that feel like they shift from happy to sad
+          without actually changing the notes — they're moving between relatives.
+        `,
+        theorist: `
+          Relative keys share identical pitch class content (key signature) but different tonal centers.
+          Relative minor root = major root − 3 semitones (minor third below).
+          Major scale degree 6̂ = relative minor tonic. Minor scale degree 3̂ = relative major tonic.
+          Common pivot: the vi chord in major = i chord in relative minor.
+          This relationship is visible on the circle of fifths: relative pairs share the same position
+          (major on the outside ring, minor on the inside).
+          Vs. parallel keys: same root, different mode (C major ↔ C minor — different notes, same tonic).
+        `,
+        math: `
+          Relative minor of key k: k − 3 (mod 12), i.e., T₉(k).
+          Pitch class sets are identical: Scale(C major) = Scale(A minor) = {0,2,4,5,7,9,11}.
+          The tonic mapping shifts the "origin" in the same set: 0 (C) → 9 (A).
+          On the circle of fifths, relative pairs are co-located —
+          the minor circle is rotated 3 positions (90°) from the major circle.
+          Diatonic chord functions reassign: I(major) → ♭III(minor), vi(major) → i(minor).
+          The relative relation is an involution on key-pairs: rel(rel(k)) = k.
+        `,
+      },
+
+      practical: "Take any song in C major. Play the same notes but treat A as home — start and end on A. Notice how the mood darkens instantly. Same notes, different story.",
+
+      connections: ["major_scale", "minor_scale", "circle_of_fifths"],
+    },
+
+    harmonic_minor: {
+      id: "harmonic_minor",
+      title: "The Harmonic Minor Scale",
+      tier: "intermediate",
+      tags: ["scales", "tonality", "tension", "classical"],
+      visualizationKey: "scale_dna",
+      prerequisites: ["minor_scale"],
+
+      summary: "Natural minor with a raised 7th. Creates the leading tone needed for strong resolution in minor keys.",
+
+      levels: {
+        musician: `
+          Natural minor has a problem: its 7th degree is a whole step below the tonic,
+          so it doesn't "pull" toward home the way the major scale's 7th does.
+          The fix: raise the 7th by one semitone. In A minor: G becomes G#.
+          Now you get that strong pull from G# up to A — the "leading tone" effect.
+          The trade-off: an exotic-sounding gap opens between the 6th and 7th degrees (F to G#).
+          That augmented second gives harmonic minor its distinctive Middle Eastern or classical flavor.
+          Most minor key classical music relies on this scale for its cadences.
+        `,
+        theorist: `
+          Harmonic minor: W-H-W-W-H-A2-H (2-1-2-2-1-3-1 semitones).
+          Pitch class set from A: {9,11,0,2,4,5,8} = A B C D E F G#.
+          The raised 7̂ (G#) creates a leading tone → tonic resolution (7̂→1̂ by semitone).
+          This enables the dominant triad (E major: E-G#-B) and V7 (E7: E-G#-B-D) in minor keys.
+          Without the raised 7th, v is minor (Em), lacking dominant function strength.
+          The augmented second (A2, 3 semitones) between ♭6̂ and ♮7̂ is the scale's signature sound.
+          Diatonic chords: i, ii°, III+, iv, V, VI, vii° (note the augmented III and major V).
+        `,
+        math: `
+          Harmonic minor pitch class set (from C): {0, 2, 3, 5, 7, 8, 11}.
+          Compared to natural minor {0,2,3,5,7,8,10}: element 10 → 11 (raised 7th).
+          Interval vector: [3,3,5,4,4,2] — different from major [2,5,4,3,6,1].
+          The augmented second between degrees 6 and 7 = 3 semitones.
+          The scale is NOT maximally even (unlike major/natural minor) —
+          the 3-semitone gap breaks the near-uniform distribution.
+          Generates unique chord structures: the diminished 7th on 7̂ (vii°7) is a symmetric chord
+          {11,2,5,8} (mod 12), invariant under T₃.
+        `,
+      },
+
+      practical: "Play A natural minor (all white keys from A), then play it again but change every G to G#. Hear how the G# creates urgency to resolve up to A? That's the leading tone in action.",
+
+      connections: ["minor_scale", "chord_function", "seventh_chords"],
+    },
+
     modes: {
       id: "modes",
       title: "Modes",
@@ -500,6 +723,53 @@ export const THEORY = {
       connections: ["major_scale", "minor_scale", "diatonic_chords", "modal_interchange"],
     },
 
+    modal_interchange: {
+      id: "modal_interchange",
+      title: "Modal Interchange (Borrowed Chords)",
+      tier: "advanced",
+      tags: ["harmony", "modes", "chords", "color"],
+      visualizationKey: null,
+      prerequisites: ["modes", "diatonic_chords"],
+
+      summary: "Borrowing chords from parallel modes adds color. The ♭VII in rock? That's borrowed from Mixolydian.",
+
+      levels: {
+        musician: `
+          Modal interchange means borrowing chords from a parallel mode — same root, different scale.
+          You're in C major but grab a chord from C minor? That's modal interchange.
+          The most common borrowed chord: ♭VII (B♭ major in the key of C) — straight from Mixolydian.
+          Other favorites: iv (Fm instead of F — gives a bittersweet "Radiohead" feel),
+          ♭VI (A♭ major — dramatic, cinematic), and ♭III (E♭ major — bright surprise).
+          It's why some progressions sound familiar but slightly "off" in a beautiful way.
+          The Beatles were masters of this — "In My Life" borrows from minor for emotional depth.
+        `,
+        theorist: `
+          Modal interchange: using chords diatonic to a parallel mode (same tonic, different mode).
+          Most common source: parallel minor (Aeolian) → provides ♭III, iv, ♭VI, ♭VII.
+          From Dorian: the natural-6 minor chords (e.g., IV in Dorian minor context).
+          From Mixolydian: ♭VII (very common in rock, pop, and folk).
+          From Lydian: #IV° or II (bright, uplifting color).
+          Chord function is reinterpreted: ♭VII acts as a "soft dominant" (plagal-adjacent).
+          ♭VI → ♭VII → I is the "Mario cadence" / backdoor progression —
+          resolves to tonic without traditional V→I motion.
+        `,
+        math: `
+          Modal interchange draws chords from the union of diatonic collections sharing a tonic.
+          For tonic C: Ionian {0,2,4,5,7,9,11}, Aeolian {0,2,3,5,7,8,10}, Dorian {0,2,3,5,7,9,10}, etc.
+          The available chord palette expands from 7 diatonic triads to potentially all triads,
+          though in practice only a subset sounds coherent.
+          Voice leading efficiency governs which borrowed chords sound smooth:
+          ♭VI → ♭VII → I in C: {8,0,3} → {10,2,5} → {0,4,7} — each voice moves ≤ 4 semitones.
+          The "brightness" metric of modes (Lydian brightest, Locrian darkest)
+          predicts which borrowed chords add brightness vs. darkness to a progression.
+        `,
+      },
+
+      practical: "In a I-IV-V-I progression in C major, try replacing IV (F) with iv (Fm). That one lowered note (A→A♭) transforms the feel from bright to bittersweet.",
+
+      connections: ["modes", "diatonic_chords", "chord_function", "common_progressions"],
+    },
+
     pentatonic: {
       id: "pentatonic",
       title: "Pentatonic Scales",
@@ -528,8 +798,8 @@ export const THEORY = {
           "Anhemitonic" (no half steps) — the absence of semitones eliminates all dissonant neighbor relationships.
         `,
         math: `
-          Major pentatonic {0,2,4,7,9}: interval vector [0,2,3,2,2,1].
-          Note: interval class 1 count = 0 (no semitones — "anhemitonic").
+          Major pentatonic {0,2,4,7,9}: interval vector [0,3,2,1,4,0].
+          Note: interval class 1 count = 0 (no semitones) and ic6 count = 0 (no tritones) — "anhemitonic" and "atritonic."
           As a subset of ℤ₁₂, the major pentatonic is a 5-element maximally even set.
           The 5 notes of pentatonic can be generated by stacking P5s:
           C → G → D → A → E (5 steps on the circle of fifths) = {C, D, E, G, A}.
@@ -585,6 +855,55 @@ export const THEORY = {
       practical: "The blues scale is meant to be *bent*. On guitar, physically bend strings to slide between notes. That glide is the soul of the sound.",
       
       connections: ["pentatonic", "modes", "seventh_chords", "twelve_bar_blues"],
+    },
+
+    twelve_bar_blues: {
+      id: "twelve_bar_blues",
+      title: "The 12-Bar Blues",
+      tier: "intermediate",
+      tags: ["form", "blues", "progression", "improvisation"],
+      visualizationKey: null,
+      prerequisites: ["blues_scale", "diatonic_chords"],
+
+      summary: "Twelve measures, three chords, infinite expression. The most influential form in popular music.",
+
+      levels: {
+        musician: `
+          The 12-bar blues is a 12-measure chord pattern that repeats:
+          | I  | I  | I  | I  |
+          | IV | IV | I  | I  |
+          | V  | IV | I  | V  |
+          In the key of A: A(4 bars), D(2 bars), A(2 bars), E(1), D(1), A(1), E(1 turnaround).
+          This simple form is the foundation of blues, early rock & roll, jazz blues, and countless pop songs.
+          "Johnny B. Goode," "Hound Dog," countless B.B. King songs — all 12-bar blues.
+          The turnaround (bar 12) sets up the loop back to the beginning.
+        `,
+        theorist: `
+          Standard 12-bar blues form using dominant 7th chords:
+          | I7  | I7   | I7   | I7  |
+          | IV7 | IV7  | I7   | I7  |
+          | V7  | IV7  | I7   | V7  |
+          All chords are dominant 7ths — unusual in functional harmony (normally only V is dominant).
+          This "non-functional" use of dominant 7ths is a defining feature of blues harmony.
+          Common variations: quick-change (IV7 in bar 2), jazz blues (adds ii-V motion),
+          minor blues (i-iv-v with adjustments), 8-bar blues, 16-bar blues.
+          The turnaround (last 2 bars) often uses chromatic voice leading: I-I7-IV-#IV°-I/5-V7.
+        `,
+        math: `
+          The 12-bar form as a formal structure: 3 phrases of 4 bars (AAB lyric form, T-S-D harmonic form).
+          Phrase 1 (T): [I, I, I, I] — establishes tonic.
+          Phrase 2 (S): [IV, IV, I, I] — subdominant departure and return.
+          Phrase 3 (D): [V, IV, I, V] — dominant tension, resolution, turnaround.
+          Dominant 7ths on every degree: I7, IV7, V7 all contain tritones.
+          The I7 chord (e.g., C-E-G-B♭) is harmonically ambiguous —
+          it has dominant function relative to IV, explaining the I7→IV7 motion in bar 5.
+          12 bars × 4 beats = 48 beats per cycle. At 120 BPM, one chorus ≈ 24 seconds.
+        `,
+      },
+
+      practical: "Learn a 12-bar blues in A on any instrument. It's the universal jam session language — walk into any blues jam, call '12-bar in A,' and everyone can play along.",
+
+      connections: ["blues_scale", "diatonic_chords", "chord_function", "common_progressions"],
     },
 
     // ── TIER 4: CHORDS ────────────────────────────────────────────
@@ -680,6 +999,53 @@ export const THEORY = {
       practical: "Learn G7→C and D7→G progressions. Play them repeatedly. Feel how the 7th chord *wants* to resolve — that pull is harmonic gravity.",
       
       connections: ["triads", "chord_function", "cadences", "jazz_harmony"],
+    },
+
+    jazz_harmony: {
+      id: "jazz_harmony",
+      title: "Jazz Harmony Basics",
+      tier: "advanced",
+      tags: ["jazz", "harmony", "chords", "improvisation"],
+      visualizationKey: "chord_construction",
+      prerequisites: ["seventh_chords", "chord_function"],
+
+      summary: "ii–V–I, extended chords, tritone subs. Jazz expands harmonic vocabulary beyond classical limits.",
+
+      levels: {
+        musician: `
+          Jazz takes the basic chords of classical harmony and extends them.
+          The ii-V-I progression is the backbone of jazz: Dm7-G7-Cmaj7 in C major.
+          Where classical music uses triads, jazz uses seventh chords as the default.
+          Then it goes further: 9ths, 11ths, 13ths add "color" notes above the seventh.
+          Tritone substitution: replace V7 with a dominant 7th a tritone away (G7 → D♭7).
+          This works because both chords share the same tritone interval (B and F).
+          Jazz harmony is about maximum color with smooth voice leading.
+        `,
+        theorist: `
+          Jazz harmonic principles:
+          ii-V-I is the core cadential motion. In minor: iiø7-V7-i (half-diminished to dominant to minor).
+          Extended chords: 9th = 7th + M2 above octave. 11th = 9th + P4. 13th = 11th + M3.
+          Chord-scale theory: each chord implies a compatible scale for improvisation.
+            Cmaj7 → Ionian or Lydian. Dm7 → Dorian. G7 → Mixolydian.
+          Tritone substitution: V7 → ♭II7. Works because the guide tones (3rd and 7th) are identical:
+            G7 has B and F; D♭7 has F and C♭(=B). Shared tritone: B–F.
+          Reharmonization: replacing chords with substitutes that serve the same harmonic function.
+        `,
+        math: `
+          ii-V-I voice leading in C: {2,5,9,0} → {7,11,2,5} → {0,4,7,11}.
+          Tritone sub: V7 at root r → ♭II7 at root r+6 (mod 12).
+          Shared tritone: G7 = {7,11,2,5}, D♭7 = {1,5,8,11}. Common = {5,11} = {F, B}.
+          Extended chord voicings as subsets of chord-scales:
+          Cmaj9 = {0,4,7,11,2} = 5 of the 7 notes of C Ionian.
+          The "avoid note" concept: notes creating ♭9 with chord tones are excluded.
+          For Cmaj7: the avoid note is F (=5), because F creates ♭9 with E (=4).
+          ii-V-I root motion: 2 → 7 → 0. Each step = P4 ascent (5 semitones), the strongest resolution.
+        `,
+      },
+
+      practical: "Learn the ii-V-I in three keys: C, F, and B♭. Those three keys cover most jazz standards. Once you can hear ii-V-I, you'll recognize it everywhere — it IS the sound of jazz.",
+
+      connections: ["seventh_chords", "chord_function", "secondary_dominants", "modes", "common_progressions"],
     },
 
     // ── TIER 5: HARMONIC SYSTEMS ──────────────────────────────────
@@ -823,6 +1189,101 @@ export const THEORY = {
       connections: ["diatonic_chords", "cadences", "common_progressions", "tonnetz_transforms"],
     },
 
+    cadences: {
+      id: "cadences",
+      title: "Cadences",
+      tier: "intermediate",
+      tags: ["harmony", "resolution", "phrase", "function"],
+      visualizationKey: "tension_meter",
+      prerequisites: ["chord_function"],
+
+      summary: "Harmonic punctuation marks. How chord pairs create endings, pauses, and surprises.",
+
+      levels: {
+        musician: `
+          A cadence is how a musical phrase ends — the harmonic equivalent of punctuation.
+          Authentic cadence (V→I): the period. Complete, final, resolved. "The End."
+          Plagal cadence (IV→I): the "Amen" cadence. Gentle, church-like closure.
+          Half cadence (anything→V): the comma. Pauses on tension, expects more.
+          Deceptive cadence (V→vi): the plot twist. You expect resolution but get surprise.
+          Every song you know uses cadences to shape phrases. The reason a chorus feels "finished"
+          at the end is almost always an authentic cadence.
+        `,
+        theorist: `
+          Four primary cadence types:
+          Perfect authentic cadence (PAC): V→I, both in root position, melody ends on 1̂. Strongest closure.
+          Imperfect authentic cadence (IAC): V→I with inversions or melody on 3̂/5̂. Weaker closure.
+          Half cadence (HC): phrase ends on V. Open, expectant — "to be continued."
+          Plagal cadence (PC): IV→I. Mild closure, often used as a tag after an authentic cadence.
+          Deceptive cadence (DC): V→vi (or V→♭VI). Subverts expectation — vi shares two notes with I.
+          Phrygian half cadence: iv⁶→V in minor. The ♭2̂→1̂ bass motion gives a distinctive falling quality.
+        `,
+        math: `
+          Cadential strength correlates with voice leading efficiency to tonic:
+          V→I: total voice leading distance ≈ 4 semitones (B→C, D→C/E, G→G).
+          V7→I: tritone resolution {11,5} → {0,4} = 1+1 = 2 semitones for the tritone voices.
+          Deceptive cadence V→vi: {7,11,2} → {9,0,4}. Distance = 2+1+2 = 5 (slightly less efficient than V→I).
+          The shared pitch classes between V and vi explain why vi is the
+          most convincing deception — it shares maximum common tones with I.
+          Cadential closure perception is modeled as a function of
+          (1) bass motion by P4/P5, (2) leading tone resolution, (3) metric position (downbeat).
+        `,
+      },
+
+      practical: "Play C-G-Am-F, then C-G-C. Feel how G→C is satisfying and final (authentic), while G→Am is a surprise (deceptive). Cadences are the grammar of musical storytelling.",
+
+      connections: ["chord_function", "diatonic_chords", "common_progressions", "seventh_chords"],
+    },
+
+    common_progressions: {
+      id: "common_progressions",
+      title: "Common Chord Progressions",
+      tier: "intermediate",
+      tags: ["harmony", "songwriting", "progressions", "pop"],
+      visualizationKey: null,
+      prerequisites: ["diatonic_chords", "chord_function"],
+
+      summary: "I–V–vi–IV, ii–V–I, I–IV–V — the building blocks behind thousands of songs.",
+
+      levels: {
+        musician: `
+          A few chord progressions dominate popular music:
+          I-V-vi-IV: "Let It Be," "No Woman No Cry," "Someone Like You." The most common pop progression.
+          I-IV-V-I: Rock and folk backbone. "Twist and Shout," "La Bamba."
+          vi-IV-I-V: Same chords rotated. "Despacito," "Africa."
+          ii-V-I: The jazz standard. Nearly every jazz song uses this somewhere.
+          I-vi-IV-V: '50s doo-wop. "Stand By Me," "Earth Angel."
+          The magic is that these work in ANY key — learn the roman numerals, not just the letter names.
+        `,
+        theorist: `
+          Common progressions follow functional harmonic logic (T→S→D→T):
+          I-V-vi-IV: T→D→T→S (deceptive turn to vi keeps it cycling).
+          I-IV-V-I: T→S→D→T (textbook functional motion).
+          ii-V-I: S→D→T (the strongest cadential motion in jazz).
+          I-vi-IV-V: T→T→S→D (the '50s progression — builds tension gradually).
+          ♭VI-♭VII-I: borrowed chord approach ("Mario cadence," backdoor resolution).
+          i-♭VII-♭VI-V: Andalusian cadence (descending bass in minor — "Hit the Road Jack").
+          Progression recycling is not plagiarism — harmonic patterns are shared vocabulary,
+          like sentence structures in language.
+        `,
+        math: `
+          The I-V-vi-IV loop in pitch class sets (C major):
+          {0,4,7} → {7,11,2} → {9,0,4} → {5,9,0}.
+          Voice leading distances between consecutive chords:
+          I→V: 7+7+7=21 (root position), or 3+1+2=6 (optimal voicing).
+          The popularity of I-V-vi-IV may relate to its balanced voice leading:
+          each step moves minimal total distance while visiting all three harmonic functions.
+          Jazz ii-V-I: {2,5,9} → {7,11,2} → {0,4,7}. Tritone in V7 resolves by contrary semitone motion.
+          Markov chain models of pop harmony show I-V and I-IV as highest-probability transitions,
+          with vi-IV as the most common "surprising" transition (high entropy, high usage).
+        `,
+      },
+
+      practical: "Learn I-V-vi-IV in three keys (C, G, D). You can now play along with hundreds of pop songs. Seriously — try it with any playlist.",
+
+      connections: ["diatonic_chords", "chord_function", "cadences", "twelve_bar_blues", "modal_interchange"],
+    },
+
     circle_of_fifths_advanced: {
       id: "circle_of_fifths_advanced",
       title: "Modulation & Key Relationships",
@@ -867,6 +1328,99 @@ export const THEORY = {
       practical: "Find a song you love that has a dramatic key change. Listen for the moment it happens. Did it feel smooth or jarring? That tells you how far the modulation was on the circle.",
       
       connections: ["circle_of_fifths", "chord_function", "secondary_dominants"],
+    },
+
+    modulation: {
+      id: "modulation",
+      title: "Modulation",
+      tier: "intermediate",
+      tags: ["harmony", "keys", "transitions", "composition"],
+      visualizationKey: "circle_of_fifths",
+      prerequisites: ["circle_of_fifths", "chord_function"],
+
+      summary: "Changing key mid-song. Close keys feel smooth; distant keys feel dramatic.",
+
+      levels: {
+        musician: `
+          Modulation is changing key during a piece — shifting the entire tonal center.
+          The most common modulation: up to the key of the dominant (C major → G major).
+          In pop music, the "key change" near the end of a song lifts the energy
+          (think the final chorus of "Love on Top" by Beyoncé — it modulates FOUR times).
+          Smooth modulations use a "pivot chord" that belongs to both the old and new key.
+          Abrupt modulations (just jump to the new key) are dramatic and attention-grabbing.
+          Composers use modulation to create large-scale emotional arcs across an entire piece.
+        `,
+        theorist: `
+          Modulation types by smoothness:
+          Pivot chord (diatonic): a chord common to both keys serves as a bridge.
+          Chromatic pivot: alter one note of a diatonic chord to target the new key.
+          Direct/phrase modulation: new key starts at a phrase boundary with no preparation.
+          Sequential: a pattern repeats at successively different pitch levels.
+          Enharmonic: a chord is respelled to function differently (e.g., Ger⁶ → V7).
+          Closely related keys (±1 on circle of fifths) share 6/7 notes — easiest to modulate between.
+          Remote keys (tritone apart) share the fewest notes — most dramatic.
+        `,
+        math: `
+          Modulation = changing the tonic reference within ℤ₁₂.
+          Key distance d(k₁, k₂) on circle of fifths: min(|k₁-k₂|, 12-|k₁-k₂|) steps.
+          Common tones between keys k₁ and k₂: |Scale(k₁) ∩ Scale(k₂)| = 7 - d(k₁, k₂) for d ≤ 6.
+          Pivot chord set: Chords(k₁) ∩ Chords(k₂) — larger for closer keys.
+          Adjacent keys share 4 common triads; keys a tritone apart share 0 common triads.
+          The modulation graph (nodes = keys, edges = smooth modulations) is
+          the circle of fifths, with edge weight inversely proportional to key distance.
+        `,
+      },
+
+      practical: "Find a song with a key change (Beyoncé's 'Love on Top' or Whitney Houston's 'I Wanna Dance with Somebody'). Listen for the exact moment — your ears will tell you when the floor shifts.",
+
+      connections: ["circle_of_fifths", "circle_of_fifths_advanced", "chord_function", "cadences"],
+    },
+
+    secondary_dominants: {
+      id: "secondary_dominants",
+      title: "Secondary Dominants",
+      tier: "advanced",
+      tags: ["harmony", "chromaticism", "tension", "tonicization"],
+      visualizationKey: "tension_meter",
+      prerequisites: ["chord_function", "seventh_chords"],
+
+      summary: "V/V, V/ii, V/vi — dominant chords that temporarily point to a non-tonic chord, adding chromatic color.",
+
+      levels: {
+        musician: `
+          A secondary dominant is a temporary "pointing" chord — it makes any chord feel like a temporary tonic.
+          In C major, the chord D7 doesn't belong. But D7→G sounds like V→I in G major.
+          So D7 is "V of V" (V/V) — it dominantizes the V chord.
+          Similarly, E7→Am is "V of vi" — it tonicizes the vi chord.
+          Secondary dominants add color and direction to progressions without fully changing key.
+          They're everywhere: Beatles songs, jazz standards, classical development sections.
+          Any major or minor chord in the key can be "tonicized" by its own dominant.
+        `,
+        theorist: `
+          Secondary dominant: V(7)/x, where x is any diatonic chord (except vii°, which lacks a stable root).
+          In C major: V/ii = A(7), V/iii = B(7), V/IV = C(7), V/V = D(7), V/vi = E(7).
+          Each introduces a chromatic note (the leading tone of the target chord):
+          V/V = D7 introduces F#. V/vi = E7 introduces G#.
+          These are "tonicizations" — momentary key shifts, not full modulations.
+          Extended secondary function: vii°/x, ii-V/x chains.
+          Applied chords resolve by P5 descent (or P4 ascent) to their target, just like V→I.
+          When a secondary dominant doesn't resolve to its target: deceptive secondary resolution.
+        `,
+        math: `
+          Secondary dominant V7/x: the dominant 7th chord whose root is P5 above x's root.
+          V7/V in C: root = 7+7 = 14 ≡ 2 (mod 12) = D. Chord = {2, 6, 9, 0} = D7 (D, F#, A, C).
+          The chromatic note introduced: the leading tone of target x = (root_x - 1) mod 12.
+          For V7/V: leading tone of G = F# = 6 (not in C major diatonic set {0,2,4,5,7,9,11}).
+          Tonicization creates a local pitch class expansion:
+          diatonic set ∪ {chromatic leading tone} temporarily.
+          Chain of secondary dominants: V7/vi → V7/ii → V7/V → V7 → I follows the circle of fifths
+          backward through the diatonic chords — each resolving down a P5.
+        `,
+      },
+
+      practical: "In a C major progression, replace the plain G chord with D7→G. That D7 (V/V) adds a spark of tension that makes the G arrival more satisfying. It's a one-chord upgrade to any basic progression.",
+
+      connections: ["chord_function", "seventh_chords", "circle_of_fifths_advanced", "modulation"],
     },
 
     // ── TIER 6: THE TONNETZ ───────────────────────────────────────
@@ -973,6 +1527,106 @@ export const THEORY = {
       practical: "In the Tonnetz explorer: pick any chord, apply P, then L, then R. Hear how each move shifts just one note. That's voice leading efficiency made visible.",
       
       connections: ["tonnetz_geometry", "triads", "chord_function", "hexatonic_cycles"],
+    },
+
+    neo_riemannian: {
+      id: "neo_riemannian",
+      title: "Neo-Riemannian Theory",
+      tier: "advanced",
+      tags: ["theory", "neo-riemannian", "chromaticism", "film-music"],
+      visualizationKey: "chord_morphing",
+      prerequisites: ["tonnetz_geometry", "tonnetz_transforms"],
+
+      summary: "A framework for chromatic harmony that doesn't need keys. Geometry replaces function.",
+
+      levels: {
+        musician: `
+          Traditional harmony asks "what key are we in?" Neo-Riemannian theory asks
+          "how did we get from one chord to the next?"
+          It explains music that drifts through chords without settling in a key —
+          like film scores, late Romantic music, and some progressive rock.
+          Instead of keys and functions, it tracks which notes move and by how much.
+          The result: an elegant geometric model where smooth chord changes = small movements on the Tonnetz.
+          This is why filmmakers can score emotional scenes with chord progressions
+          that don't follow any textbook rules — they follow geometric efficiency instead.
+        `,
+        theorist: `
+          Neo-Riemannian theory (NRT) originated with David Lewin (1982), Brian Hyer, and Richard Cohn (1990s).
+          It extends Hugo Riemann's dualistic harmony to explain chromatic progressions
+          that resist functional tonal analysis.
+          Core principle: parsimonious voice leading — chords connected by minimal note movement.
+          The three basic transforms (P, L, R) are contextual inversions, each preserving two common tones.
+          NRT excels at analyzing: Schubert, Wagner, Liszt, film scores, video game music.
+          Compound transforms (PL, PR, LR) create closed cycles —
+          harmonic motion without tonal resolution.
+          Extended NRT: SLIDE transform, hexatonic poles, Weitzmann regions.
+        `,
+        math: `
+          NRT formalizes chromatic harmony using group actions on the set of 24 consonant triads.
+          The PLR group ≅ D₁₂ (dihedral group of order 24) acting on {major, minor} × ℤ₁₂.
+          Each generator is a contextual inversion: the inversion axis depends on the input chord's quality.
+          P: inversion fixing the P5 (preserves root and fifth).
+          L: inversion fixing the m3 (preserves third and fifth).
+          R: inversion fixing the M3 (preserves root and third).
+          Tymoczko's orbifold model: triads as points in T³/S₃ (3-torus modulo permutation).
+          NRT transforms = short geodesics in this orbifold.
+          Cohn's hexatonic systems partition the 24 triads into 4 hexatonic sets of 6,
+          each closed under PL. Between sets: LR transitions.
+        `,
+      },
+
+      practical: "Watch any dramatic film scene — notice how the music moves between chords that don't seem to belong to any key. That's neo-Riemannian harmony at work. The Tonnetz makes it visible.",
+
+      connections: ["tonnetz_geometry", "tonnetz_transforms", "hexatonic_cycles", "chord_function"],
+    },
+
+    hexatonic_cycles: {
+      id: "hexatonic_cycles",
+      title: "Hexatonic Cycles",
+      tier: "advanced",
+      tags: ["tonnetz", "neo-riemannian", "cycles", "chromaticism"],
+      visualizationKey: "chord_morphing",
+      prerequisites: ["tonnetz_transforms"],
+
+      summary: "Six chords cycling through P and L transforms. Maximally smooth voice leading in a closed loop.",
+
+      levels: {
+        musician: `
+          A hexatonic cycle is a loop of six chords created by alternating P and L transforms:
+          C major → C minor → A♭ major → A♭ minor → E major → E minor → back to C major.
+          Each step changes just one note by one semitone — the smoothest possible chord changes.
+          The six chords use only six of the twelve pitch classes (hence "hexatonic").
+          This cycle sounds dreamlike, floating, and otherworldly — no sense of key, just smooth motion.
+          Composers like Brahms, Wagner, and film composer Howard Shore use hexatonic cycles
+          for passages that feel suspended between worlds.
+        `,
+        theorist: `
+          Hexatonic cycle = (PL)³ = identity. Alternating P (parallel) and L (leading-tone) transforms.
+          Starting from C major: C+ →P c →L A♭+ →P a♭ →L E+ →P e →L C+.
+          The 6 chords use exactly 6 pitch classes: one of the four "hexatonic collections."
+          Four hexatonic systems (Cohn, 1996):
+          H₀: {C+, c, A♭+, a♭, E+, e} — pitch classes {0, 3, 4, 7, 8, 11}
+          H₁: {G+, g, E♭+, e♭, B+, b} — pitch classes {2, 3, 6, 7, 10, 11}
+          H₂: {D+, d, B♭+, b♭, F#+, f#} — pitch classes {1, 2, 5, 6, 9, 10}
+          H₃: {A+, a, F+, f, D♭+, d♭} — pitch classes {0, 1, 4, 5, 8, 9}
+          Hexatonic poles: the pair of chords in each system with NO common tones (e.g., C+ and a♭).
+        `,
+        math: `
+          The hexatonic cycle is the orbit of a triad under the compound operation PL (order 3).
+          (PL)³ = identity: period 6 on triads (alternating major/minor), period 3 on roots (cycle of M3s).
+          Root motion: 0 → 0 → 8 → 8 → 4 → 4 → 0 (mod 12). Major third cycle: {0, 4, 8}.
+          Hexatonic pitch class set: complement of an augmented triad's complement.
+          H₀ = {0,3,4,7,8,11} = ℤ₁₂ \\ {1,2,5,6,9,10}.
+          Each hexatonic set is the union of two augmented triads a semitone apart: {0,4,8} ∪ {3,7,11}.
+          Interval vector of a hexatonic collection: [3,0,3,6,3,0] — no ic1 or ic5.
+          The four hexatonic systems partition all 24 consonant triads into 4 groups of 6.
+          The "hyper-hexatonic system" connects the 4 groups via LR transforms.
+        `,
+      },
+
+      practical: "On a keyboard, play: C major → C minor → A♭ major → A♭ minor → E major → E minor → C major. Each change is just one note moving by one semitone. It sounds like the music is breathing.",
+
+      connections: ["tonnetz_transforms", "neo_riemannian", "tonnetz_geometry"],
     },
   }, // end topics
 
@@ -1141,6 +1795,19 @@ export const THEORY = {
         "Click any line or space to hear the note",
         "Toggle treble / bass / grand staff",
         "Drag a note to see its name change",
+      ],
+    },
+
+    rhythm_grid: {
+      id: "rhythm_grid",
+      title: "Rhythm Grid",
+      componentClass: "RhythmGrid",
+      relatedTopics: ["rhythm", "meter_and_groove"],
+      description: "A beat grid showing subdivisions. Tap to place notes. Hear how meter and groove shape rhythmic feel.",
+      interactionHints: [
+        "Click grid cells to place or remove notes",
+        "Switch between 4/4, 3/4, and 6/8 time signatures",
+        "Adjust the swing amount to hear groove changes",
       ],
     },
   }, // end visualizations
