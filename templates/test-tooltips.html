@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Theory Tooltips — Tonnetz{% endblock %}
+
+{% block head %}
+<style>
+  .tt-demo {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1.5rem 4rem;
+  }
+  .tt-demo h1 {
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+  }
+  .tt-demo__subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 2.5rem;
+    font-size: 0.95rem;
+  }
+
+  .tt-demo__section {
+    margin-bottom: 2.5rem;
+  }
+  .tt-demo__section h2 {
+    font-size: 1.15rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+  }
+
+  .tt-demo__prose {
+    font-size: 1.05rem;
+    line-height: 1.75;
+    color: var(--text-primary);
+    max-width: 65ch;
+  }
+
+  .tt-demo__card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .tt-demo__card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.125rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .tt-demo__card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+  [data-theme="dark"] .tt-demo__card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+  .tt-demo__card h3 {
+    font-size: 0.95rem;
+    margin: 0 0 0.2rem;
+  }
+  .tt-demo__card p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="tt-demo">
+  <h1>Theory Tooltips</h1>
+  <p class="tt-demo__subtitle">Click any highlighted term to open a theory tooltip. Switch depth levels inside.</p>
+
+  <!-- ── Inline terms ──────────────────────────────────────────────── -->
+  <div class="tt-demo__section">
+    <h2>Inline Terms</h2>
+    <p class="tt-demo__prose">
+      Music begins with <span data-theory="sound_basics">sound</span> &mdash;
+      vibrations that we organize into pitch using
+      <span data-theory="note_names">note names</span> and notate on
+      <span data-theory="the_staff">the staff</span>. The distance between any two
+      pitches is called an <span data-theory="intervals">interval</span>, and when you
+      stack intervals in thirds you get <span data-theory="triads">triads</span> &mdash;
+      the building blocks of harmony. These relationships wrap elegantly around the
+      <span data-theory="circle_of_fifths">Circle of Fifths</span>, which maps every
+      key to its neighbors.
+    </p>
+  </div>
+
+  <!-- ── Topic cards ───────────────────────────────────────────────── -->
+  <div class="tt-demo__section">
+    <h2>Topic Cards</h2>
+    <div class="tt-demo__card-grid">
+      <div class="tt-demo__card" data-theory="major_scale">
+        <h3>Major Scale</h3>
+        <p>The W-W-H-W-W-W-H foundation</p>
+      </div>
+      <div class="tt-demo__card" data-theory="minor_scale">
+        <h3>Minor Scale</h3>
+        <p>Same notes, different home</p>
+      </div>
+      <div class="tt-demo__card" data-theory="modes">
+        <h3>Modes</h3>
+        <p>Seven flavors from one scale</p>
+      </div>
+      <div class="tt-demo__card" data-theory="tonnetz_geometry">
+        <h3>Tonnetz Geometry</h3>
+        <p>Harmony as a 2D lattice</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Advanced concepts ─────────────────────────────────────────── -->
+  <div class="tt-demo__section">
+    <h2>Advanced Concepts</h2>
+    <p class="tt-demo__prose">
+      The <span data-theory="tonnetz_transforms">PLR transforms</span> let you morph
+      between triads by moving a single note. These operations form the basis of
+      <span data-theory="neo_riemannian">neo-Riemannian theory</span>, which explains
+      the lush chromatic chord progressions found in film scores and late Romantic music.
+    </p>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { initTheoryTooltips } from '/static/shared/theory-engine.js';
+  initTheoryTooltips();
+</script>
+{% endblock %}

@@ -124,6 +124,10 @@ def skratch_piano_popout():
 def test_sustain():
     return app.send_static_file("skratch-studio/test-sustain.html")
 
+@app.route("/test-tooltips")
+def test_tooltips():
+    return render_template("test-tooltips.html")
+
 
 @app.route("/play", methods=["POST"])
 def play():
