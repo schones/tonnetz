@@ -84,6 +84,59 @@ const TOOLTIP_CSS = /* css */ `
   flex: 1;
 }
 
+.tt-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary, #6b7280);
+  font-size: 1.1rem;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.tt-close:hover,
+.tt-close:focus-visible {
+  background: var(--accent-soft, rgba(108,99,255,0.1));
+  color: var(--text-primary);
+}
+
+.tt-back {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary, #6b7280);
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.tt-back--visible {
+  display: flex;
+}
+.tt-back:hover,
+.tt-back:focus-visible {
+  background: var(--accent-soft, rgba(108,99,255,0.1));
+  color: var(--text-primary);
+}
+
 .tt-badge {
   display: inline-flex;
   align-items: center;
@@ -275,6 +328,8 @@ export class TheoryTooltip {
     this._backdrop = null;
     this._currentTopicId = null;
     this._lastAnchor = null;
+    this._triggerEl = null;  // the element that opened the tooltip (for focus restore)
+    this._history = [];      // stack of {topicId} for Back navigation
 
     this._injectCSS();
     this._build();
@@ -303,26 +358,45 @@ export class TheoryTooltip {
 
     const isSwap = this._currentTopicId !== null;
     this._currentTopicId = topicId;
-    if (anchorEl) this._lastAnchor = anchorEl;
+    if (anchorEl) {
+      this._lastAnchor = anchorEl;
+      this._triggerEl = anchorEl;
+    }
+
+    // clear history on fresh open (not a connection navigation)
+    if (!isSwap) {
+      this._history = [];
+    }
 
     this._populate(topic);
+    this._updateBackButton();
 
     if (!isSwap) {
-      // fresh open
       document.body.appendChild(this._backdrop);
       document.body.appendChild(this._el);
     }
 
     this._position(this._lastAnchor);
     this._el.style.animation = isSwap ? 'none' : '';
+    this._el.setAttribute('aria-label', `Theory tooltip: ${topic.title}`);
+
+    // move focus into the tooltip
+    this._el.focus();
   }
 
   hide() {
     if (!this._currentTopicId) return;
     this._currentTopicId = null;
     this._lastAnchor = null;
+    this._history = [];
     this._backdrop.remove();
     this._el.remove();
+
+    // restore focus to the element that opened the tooltip
+    if (this._triggerEl) {
+      this._triggerEl.focus();
+      this._triggerEl = null;
+    }
   }
 
   setDepth(depth) {
@@ -347,10 +421,14 @@ export class TheoryTooltip {
     const el = document.createElement('div');
     el.className = 'tt-tooltip';
     el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Theory tooltip');
+    el.setAttribute('tabindex', '-1');
     el.innerHTML = `
       <div class="tt-header">
+        <button class="tt-back" aria-label="Go back to previous topic">\u2190</button>
         <h3 class="tt-title"></h3>
         <span class="tt-badge"></span>
+        <button class="tt-close" aria-label="Close tooltip">\u2715</button>
       </div>
       <p class="tt-summary"></p>
       <div class="tt-depth-toggle">
@@ -364,17 +442,26 @@ export class TheoryTooltip {
       <div class="tt-connections"></div>
     `;
 
+    // close button
+    el.querySelector('.tt-close').addEventListener('click', () => this.hide());
+
+    // back button
+    el.querySelector('.tt-back').addEventListener('click', () => this._goBack());
+
     // depth toggle clicks
     el.querySelector('.tt-depth-toggle').addEventListener('click', (e) => {
       const btn = e.target.closest('.tt-depth-btn');
       if (btn) this.setDepth(btn.dataset.depth);
     });
 
-    // connection chip clicks
+    // connection chip clicks — push current topic onto history
     el.querySelector('.tt-connections').addEventListener('click', (e) => {
       const chip = e.target.closest('.tt-conn-chip');
       if (chip) {
         e.stopPropagation();
+        if (this._currentTopicId) {
+          this._history.push(this._currentTopicId);
+        }
         this.show(chip.dataset.topic, null);
       }
     });
@@ -467,44 +554,79 @@ export class TheoryTooltip {
     });
   }
 
+  // ── history navigation ──────────────────────────────────────────────
+
+  _goBack() {
+    if (this._history.length === 0) return;
+    const prevId = this._history.pop();
+    this.show(prevId, null);
+  }
+
+  _updateBackButton() {
+    const btn = this._el.querySelector('.tt-back');
+    btn.classList.toggle('tt-back--visible', this._history.length > 0);
+  }
+
   // ── positioning ────────────────────────────────────────────────────
 
   _position(anchorEl) {
     const el = this._el;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
 
-    // temporarily make measurable
+    // reset any previously constrained max-height
+    el.style.maxHeight = '';
     el.style.visibility = 'hidden';
     el.style.top = '0px';
     el.style.left = '0px';
 
     const ttRect = el.getBoundingClientRect();
-
     let top, left;
 
     if (anchorEl) {
       const aRect = anchorEl.getBoundingClientRect();
-      // default: below, centered
-      top = aRect.bottom + GAP;
-      left = aRect.left + aRect.width / 2 - ttRect.width / 2;
+      const spaceBelow = vh - aRect.bottom - GAP - MARGIN;
+      const spaceAbove = aRect.top - GAP - MARGIN;
 
-      // flip above if overflows bottom
-      if (top + ttRect.height > window.innerHeight - MARGIN) {
+      // prefer below; flip above only if more room there
+      if (ttRect.height <= spaceBelow) {
+        top = aRect.bottom + GAP;
+      } else if (ttRect.height <= spaceAbove) {
         top = aRect.top - GAP - ttRect.height;
+      } else {
+        // neither side fits entirely — pick the larger side, constrain height
+        if (spaceBelow >= spaceAbove) {
+          top = aRect.bottom + GAP;
+          el.style.maxHeight = `${spaceBelow}px`;
+        } else {
+          el.style.maxHeight = `${spaceAbove}px`;
+          top = MARGIN;
+        }
       }
+
+      left = aRect.left + aRect.width / 2 - ttRect.width / 2;
     } else {
       // no anchor (connection click) — center on screen
-      top = (window.innerHeight - ttRect.height) / 2;
-      left = (window.innerWidth - ttRect.width) / 2;
+      top = (vh - ttRect.height) / 2;
+      left = (vw - ttRect.width) / 2;
     }
 
-    // clamp
+    // vertical clamp
     if (top < MARGIN) top = MARGIN;
-    if (top + ttRect.height > window.innerHeight - MARGIN) {
-      top = window.innerHeight - MARGIN - ttRect.height;
+    const currentMaxH = parseFloat(el.style.maxHeight) || ttRect.height;
+    if (top + currentMaxH > vh - MARGIN) {
+      top = vh - MARGIN - currentMaxH;
+      if (top < MARGIN) {
+        top = MARGIN;
+        el.style.maxHeight = `${vh - MARGIN * 2}px`;
+      }
     }
+
+    // horizontal clamp
     if (left < MARGIN) left = MARGIN;
-    if (left + ttRect.width > window.innerWidth - MARGIN) {
-      left = window.innerWidth - MARGIN - ttRect.width;
+    if (left + ttRect.width > vw - MARGIN) {
+      left = vw - MARGIN - ttRect.width;
+      if (left < MARGIN) left = MARGIN;
     }
 
     el.style.top = `${top}px`;
@@ -537,6 +659,14 @@ export class TheoryTooltip {
 export function initTheoryTooltips() {
   const tooltip = new TheoryTooltip();
 
+  // add accessibility attributes to all trigger elements
+  document.querySelectorAll('[data-theory]').forEach(el => {
+    // skip elements already inside the tooltip (connection chips)
+    if (el.closest('.tt-tooltip')) return;
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+  });
+
   document.addEventListener('click', (e) => {
     const trigger = e.target.closest('[data-theory]');
     if (!trigger) return;
@@ -544,6 +674,15 @@ export function initTheoryTooltips() {
     if (trigger.closest('.tt-tooltip')) return;
     e.preventDefault();
     e.stopPropagation();
+    tooltip.show(trigger.getAttribute('data-theory'), trigger);
+  });
+
+  // keyboard support: Enter and Space open tooltips
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const trigger = e.target.closest('[data-theory]');
+    if (!trigger || trigger.closest('.tt-tooltip')) return;
+    e.preventDefault();
     tooltip.show(trigger.getAttribute('data-theory'), trigger);
   });
 
