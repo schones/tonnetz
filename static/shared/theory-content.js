@@ -1944,6 +1944,10 @@ export function validateTheory() {
     ['musician','theorist','math'].forEach(level => {
       if (!topic.levels?.[level]) errors.push(`${id}: missing depth level '${level}'`);
     });
+    // Enforce prerequisites array exists (even if empty) so consumers can always iterate
+    if (!Array.isArray(topic.prerequisites)) {
+      errors.push(`${id}: missing or non-array 'prerequisites' (use [] for root topics)`);
+    }
     // Valid visualization key
     if (topic.visualizationKey && !vizIds.has(topic.visualizationKey)) {
       errors.push(`${id}: visualizationKey '${topic.visualizationKey}' not found`);
@@ -1958,8 +1962,19 @@ export function validateTheory() {
     });
   });
 
+  // Validate THEORY.games — confirm relatedTopics point to valid topic keys
+  Object.entries(THEORY.games || {}).forEach(([gameId, game]) => {
+    (game.relatedTopics || []).forEach(ref => {
+      if (!topicIds.has(ref)) {
+        errors.push(`games.${gameId}: relatedTopics reference '${ref}' not found in topics`);
+      }
+    });
+  });
+
   if (errors.length === 0) {
-    console.log('✓ theory-content.js valid —', Object.keys(THEORY.topics).length, 'topics,', Object.keys(THEORY.visualizations).length, 'visualizations');
+    console.log('✓ theory-content.js valid —', Object.keys(THEORY.topics).length, 'topics,',
+      Object.keys(THEORY.visualizations).length, 'visualizations,',
+      Object.keys(THEORY.games || {}).length, 'games');
   } else {
     console.error('✗ Validation errors:\n' + errors.join('\n'));
   }

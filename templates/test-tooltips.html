@@ -124,8 +124,11 @@
 {% endblock %}
 
 {% block scripts %}
+{# Use url_for so the path stays correct if static prefix or CDN config changes.
+   theory-engine.js uses a relative import ('./theory-content.js') which resolves
+   correctly because both files live in the same /static/shared/ directory. #}
 <script type="module">
-  import { initTheoryTooltips } from '/static/shared/theory-engine.js';
+  import { initTheoryTooltips } from '{{ url_for("static", filename="shared/theory-engine.js") }}';
   initTheoryTooltips();
 </script>
 {% endblock %}

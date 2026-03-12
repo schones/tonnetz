@@ -409,6 +409,20 @@ export class TheoryTooltip {
     if (topic) this._renderBody(topic);
   }
 
+  /**
+   * Re-scan the DOM for new [data-theory] elements and apply a11y attributes.
+   * Call this after dynamically adding theory triggers (e.g., game integrations,
+   * Blockly workspace updates, or SPA route changes that inject new content).
+   */
+  refreshTriggers() {
+    document.querySelectorAll('[data-theory]').forEach(el => {
+      if (el.closest('.tt-tooltip')) return;
+      // Idempotent: only set attributes if not already present
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+      if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+    });
+  }
+
   // ── build skeleton ─────────────────────────────────────────────────
 
   _build() {
@@ -459,10 +473,13 @@ export class TheoryTooltip {
       const chip = e.target.closest('.tt-conn-chip');
       if (chip) {
         e.stopPropagation();
+        const targetId = chip.dataset.topic;
+        // Guard: only navigate if target topic exists; prevents history pollution from dead links
+        if (!THEORY.topics[targetId]) return;
         if (this._currentTopicId) {
           this._history.push(this._currentTopicId);
         }
-        this.show(chip.dataset.topic, null);
+        this.show(targetId, null);
       }
     });
 
@@ -506,7 +523,11 @@ export class TheoryTooltip {
   }
 
   _renderBody(topic) {
-    this._el.querySelector('.tt-body').textContent = trimContent(topic.levels[this._depth]);
+    // Guard: prevents TypeError if topic content is incomplete (missing levels object or depth key)
+    const content = topic.levels?.[this._depth];
+    this._el.querySelector('.tt-body').textContent = content
+      ? trimContent(content)
+      : 'Content coming soon.';
   }
 
   _renderMnemonics(mnemonics) {
@@ -647,10 +668,25 @@ export class TheoryTooltip {
   // ── global keys ────────────────────────────────────────────────────
 
   _bindGlobalKeys() {
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.hide();
-    });
-    window.addEventListener('resize', () => this.hide());
+    // Store bound references so destroy() can remove them
+    this._onKeydown = (e) => { if (e.key === 'Escape') this.hide(); };
+    this._onResize = () => this.hide();
+    document.addEventListener('keydown', this._onKeydown);
+    window.addEventListener('resize', this._onResize);
+  }
+
+  // ── teardown (for SPA-style navigation) ───────────────────────────
+
+  /**
+   * Remove global listeners and detach tooltip DOM.
+   * Call when unmounting the page in an SPA context to prevent leaks.
+   */
+  destroy() {
+    this.hide();
+    document.removeEventListener('keydown', this._onKeydown);
+    window.removeEventListener('resize', this._onResize);
+    this._el = null;
+    this._backdrop = null;
   }
 }
 
@@ -659,13 +695,8 @@ export class TheoryTooltip {
 export function initTheoryTooltips() {
   const tooltip = new TheoryTooltip();
 
-  // add accessibility attributes to all trigger elements
-  document.querySelectorAll('[data-theory]').forEach(el => {
-    // skip elements already inside the tooltip (connection chips)
-    if (el.closest('.tt-tooltip')) return;
-    el.setAttribute('tabindex', '0');
-    el.setAttribute('role', 'button');
-  });
+  // Apply a11y attributes to all trigger elements found at init time
+  tooltip.refreshTriggers();
 
   document.addEventListener('click', (e) => {
     const trigger = e.target.closest('[data-theory]');
