@@ -689,6 +689,8 @@
                 state.testQueue = [...intervals].sort(() => Math.random() - 0.5);
             }
             state.interval = state.testQueue[state.testIndex % intervals.length];
+            // Fix 4: notify tips pill directly on state change (replaces MutationObserver)
+            window.__harmonyTips.refreshTips?.();
             state.awaitingNext = false;
             state.stableStartTime = null;
             state.wrongPitchStartTime = null;
@@ -831,6 +833,8 @@
             const notes = getNoteRange(3, 'C5');
             state.rootNote = notes[Math.floor(Math.random() * notes.length)];
             state.interval = Math.floor(Math.random() * INTERVAL_NAMES.length);
+            // Fix 4: notify tips pill directly on state change
+            window.__harmonyTips.refreshTips?.();
             $('game-root').value = state.rootNote;
             $('game-interval').value = state.interval;
             updatePracticeInfo();
@@ -918,12 +922,14 @@
             $('feedback').textContent = '';
             updateStats();
             showScreen('game');
+            // Fix 4: notify tips pill on game start (mode + initial interval now known)
+            window.__harmonyTips.refreshTips?.();
             // Try to auto-start so user doesn't have to click another button
             await doStartListening();
         });
 
         $('game-root').addEventListener('change', (e) => { state.rootNote = e.target.value; updatePracticeInfo(); });
-        $('game-interval').addEventListener('change', (e) => { state.interval = parseInt(e.target.value, 10); updatePracticeInfo(); });
+        $('game-interval').addEventListener('change', (e) => { state.interval = parseInt(e.target.value, 10); updatePracticeInfo(); window.__harmonyTips.refreshTips?.(); });
 
         $('btn-listen').addEventListener('click', () => state.listening ? doStopListening() : doStartListening());
         $('btn-quit').addEventListener('click', () => { clearQuestionTimer(); doStopListening(); showScreen('setup'); });
@@ -943,5 +949,81 @@
         // Initialize on page load
         populateSelectors();
         buildTuner();
+
+        // ── Tips pill integration ───────────────────────────────────────
+        // Expose hooks so the module script below can call back into game state.
+        window.__harmonyTips = {
+          getInterval: () => state.interval,
+          getMode: () => state.mode,
+        };
+    </script>
+
+    {# Tips pill — ES module for contextual theory tips #}
+    <script type="module">
+      import { TipsPill } from '{{ url_for("static", filename="shared/tips-pill.js") }}';
+      import { initTheoryTooltips } from '{{ url_for("static", filename="shared/theory-engine.js") }}';
+
+      // Map current interval to relevant theory topics (2-4 keys).
+      // Fix 5: independent if-blocks so multiple topics can surface simultaneously
+      // (e.g. a Perfect 5th is relevant to both triads and circle_of_fifths).
+      function getRelevantTopics(interval) {
+        const tips = [
+          { id: 'intervals', relevance: 'high' },
+          { id: 'sound_basics', relevance: 'low' },
+        ];
+
+        const sem = Math.abs(interval) % 13;
+
+        if (sem <= 2) {
+          tips.push({ id: 'semitones_whole_tones', relevance: 'high' });
+        }
+        if (sem === 3 || sem === 4) {
+          tips.push({ id: 'triads', relevance: 'high' });
+        }
+        if (sem === 5 || sem === 7) {
+          tips.push({ id: 'circle_of_fifths', relevance: 'high' });
+        }
+        if (sem === 6) {
+          tips.push({ id: 'chord_function', relevance: 'medium' });
+        }
+        if (sem === 8 || sem === 9) {
+          tips.push({ id: 'triads', relevance: 'medium' });
+        }
+        if (sem === 10 || sem === 11) {
+          tips.push({ id: 'seventh_chords', relevance: 'high' });
+        }
+        if (sem === 12 || sem === 0) {
+          tips.push({ id: 'octave', relevance: 'high' });
+        }
+
+        return tips;
+      }
+
+      // Boot tooltip engine (for deep-dive chips inside expanded tip cards)
+      const tooltipEngine = initTheoryTooltips();
+
+      // Create pill, attach tooltip engine for connection-chip deep dives
+      const pill = TipsPill.init(document.body, { tooltipEngine });
+
+      // Fix 4: game code calls this directly on state changes — no MutationObserver needed.
+      // This pattern is portable to any game that exposes getInterval/getMode on a bridge object.
+      function refreshTips() {
+        const mode = window.__harmonyTips.getMode();
+        // Fix 2: hide pill entirely in test mode to avoid leaking interval-specific answers
+        if (mode === 'test') {
+          pill.setVisible(false);
+          pill.update([]);
+          return;
+        }
+        pill.setVisible(true);
+        const interval = window.__harmonyTips.getInterval();
+        pill.update(getRelevantTopics(interval));
+      }
+
+      // Register callback so the classic game script can invoke it directly
+      window.__harmonyTips.refreshTips = refreshTips;
+
+      // Initial tips for the default interval
+      refreshTips();
     </script>
 {% endblock %}
