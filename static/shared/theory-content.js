@@ -55,7 +55,8 @@ export const THEORY = {
     sound_basics: {
       id: "sound_basics",
       title: "What is Sound?",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Sound is vibration through air. Frequency sets pitch, amplitude sets volume, and overtone patterns create timbre.",
       tags: ["physics", "acoustics", "fundamentals"],
       visualizationKey: "waveform_explorer",   // links to THEORY.visualizations
       prerequisites: [],
@@ -96,7 +97,8 @@ export const THEORY = {
     the_staff: {
       id: "the_staff",
       title: "The Staff & Clefs",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Five lines and four spaces map pitch visually. Clefs anchor specific notes to the grid.",
       tags: ["notation", "reading", "fundamentals"],
       visualizationKey: "staff_explorer",
       prerequisites: ["sound_basics", "note_names"],
@@ -136,7 +138,8 @@ export const THEORY = {
     ledger_lines: {
       id: "ledger_lines",
       title: "Ledger Lines",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Short extension lines above or below the staff for notes beyond its five-line range.",
       tags: ["notation", "reading", "fundamentals"],
       visualizationKey: "staff_explorer",
       prerequisites: ["the_staff"],
@@ -179,7 +182,8 @@ export const THEORY = {
     note_names: {
       id: "note_names",
       title: "Note Names & the Musical Alphabet",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Seven letters A through G name the white keys. Sharps and flats fill the five gaps between them.",
       tags: ["notation", "pitch", "fundamentals"],
       visualizationKey: "keyboard_explorer",
       prerequisites: [],
@@ -220,7 +224,8 @@ export const THEORY = {
     rhythm: {
       id: "rhythm",
       title: "Rhythm & Duration",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Notes have duration from whole to sixteenth. Time signatures organize beats into recurring measures.",
       tags: ["rhythm", "notation", "time"],
       visualizationKey: "rhythm_grid",
       prerequisites: ["sound_basics"],
@@ -261,7 +266,8 @@ export const THEORY = {
     meter_and_groove: {
       id: "meter_and_groove",
       title: "Meter & Groove",
-      tier: "intermediate",
+      content_type: "framework",
+      quick_summary: "Meter groups beats into strong-weak patterns. Groove is how performers shape those patterns with feel and accent.",
       tags: ["rhythm", "feel", "meter", "groove"],
       visualizationKey: "rhythm_grid",
       prerequisites: ["rhythm"],
@@ -310,7 +316,8 @@ export const THEORY = {
     semitones_whole_tones: {
       id: "semitones_whole_tones",
       title: "Semitones & Whole Tones",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "The semitone is the smallest step between adjacent keys. Two semitones make a whole tone, the atoms of all scales.",
       tags: ["intervals", "pitch", "fundamentals"],
       visualizationKey: "chromatic_clock",
       prerequisites: ["note_names"],
@@ -351,7 +358,8 @@ export const THEORY = {
     intervals: {
       id: "intervals",
       title: "Intervals",
-      tier: "intermediate",
+      content_type: "building_block",
+      quick_summary: "The distance between two pitches, measured in semitones. Each interval has a distinctive sound and emotional character.",
       tags: ["intervals", "pitch", "ear-training"],
       visualizationKey: "interval_character_cards",
       prerequisites: ["semitones_whole_tones"],
@@ -410,7 +418,8 @@ export const THEORY = {
     octave: {
       id: "octave",
       title: "The Octave",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Twelve semitones up doubles the frequency. Notes an octave apart sound like the same pitch, higher or lower.",
       tags: ["intervals", "pitch", "fundamentals"],
       visualizationKey: "keyboard_explorer",
       prerequisites: ["semitones_whole_tones"],
@@ -451,7 +460,8 @@ export const THEORY = {
     chromatic_scale: {
       id: "chromatic_scale",
       title: "The Chromatic Scale",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "All twelve notes in order, each a semitone apart. The complete pitch palette from which all scales are carved.",
       tags: ["scales", "pitch", "fundamentals"],
       visualizationKey: "chromatic_clock",
       prerequisites: ["semitones_whole_tones"],
@@ -495,7 +505,8 @@ export const THEORY = {
     major_scale: {
       id: "major_scale",
       title: "The Major Scale",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Seven notes in a W-W-H-W-W-W-H pattern. The bright, stable foundation of Western tonal music.",
       tags: ["scales", "tonality", "fundamentals"],
       visualizationKey: "scale_dna",
       prerequisites: ["semitones_whole_tones"],
@@ -539,7 +550,8 @@ export const THEORY = {
     minor_scale: {
       id: "minor_scale",
       title: "The Minor Scale",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Same notes as its relative major but centered on a different root, producing a darker, more complex mood.",
       tags: ["scales", "tonality", "emotion"],
       visualizationKey: "scale_dna",
       prerequisites: ["major_scale"],
@@ -585,7 +597,8 @@ export const THEORY = {
     relative_minor_major: {
       id: "relative_minor_major",
       title: "Relative Major & Minor",
-      tier: "beginner",
+      content_type: "framework",
+      quick_summary: "Major and minor keys sharing identical notes but different tonal centers. C major and A minor are relatives.",
       tags: ["keys", "tonality", "scales", "relationships"],
       visualizationKey: "circle_of_fifths",
       prerequisites: ["major_scale", "minor_scale"],
@@ -630,7 +643,8 @@ export const THEORY = {
     harmonic_minor: {
       id: "harmonic_minor",
       title: "The Harmonic Minor Scale",
-      tier: "intermediate",
+      content_type: "building_block",
+      quick_summary: "Natural minor with a raised seventh, creating a leading tone that pulls strongly toward resolution.",
       tags: ["scales", "tonality", "tension", "classical"],
       visualizationKey: "scale_dna",
       prerequisites: ["minor_scale"],
@@ -676,7 +690,8 @@ export const THEORY = {
     modes: {
       id: "modes",
       title: "Modes",
-      tier: "intermediate",
+      content_type: "building_block",
+      quick_summary: "Seven rotations of the major scale, each with a distinct character from bright Lydian to dark Locrian.",
       tags: ["scales", "modes", "tonality", "color"],
       visualizationKey: "scale_mood_spectrum",
       prerequisites: ["major_scale", "minor_scale"],
@@ -726,7 +741,8 @@ export const THEORY = {
     modal_interchange: {
       id: "modal_interchange",
       title: "Modal Interchange (Borrowed Chords)",
-      tier: "advanced",
+      content_type: "framework",
+      quick_summary: "Borrowing chords from parallel modes for harmonic color, like using a minor iv in a major key.",
       tags: ["harmony", "modes", "chords", "color"],
       visualizationKey: null,
       prerequisites: ["modes", "diatonic_chords"],
@@ -773,7 +789,8 @@ export const THEORY = {
     pentatonic: {
       id: "pentatonic",
       title: "Pentatonic Scales",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Five notes, no semitones, no tritones. Universally consonant and found in folk traditions worldwide.",
       tags: ["scales", "improvisation", "universality"],
       visualizationKey: "scale_dna",
       prerequisites: ["major_scale"],
@@ -816,7 +833,8 @@ export const THEORY = {
     blues_scale: {
       id: "blues_scale",
       title: "The Blues Scale",
-      tier: "intermediate",
+      content_type: "building_block",
+      quick_summary: "Minor pentatonic plus a flatted fifth. The blue note adds tension, grit, and expressive depth.",
       tags: ["scales", "blues", "jazz", "emotion"],
       visualizationKey: "scale_dna",
       prerequisites: ["pentatonic"],
@@ -860,7 +878,8 @@ export const THEORY = {
     twelve_bar_blues: {
       id: "twelve_bar_blues",
       title: "The 12-Bar Blues",
-      tier: "intermediate",
+      content_type: "reference",
+      quick_summary: "A twelve-measure I-IV-V chord form that underpins blues, early rock and roll, and jazz blues.",
       tags: ["form", "blues", "progression", "improvisation"],
       visualizationKey: null,
       prerequisites: ["blues_scale", "diatonic_chords"],
@@ -911,7 +930,8 @@ export const THEORY = {
     triads: {
       id: "triads",
       title: "Triads",
-      tier: "beginner",
+      content_type: "building_block",
+      quick_summary: "Three notes stacked in thirds. Major, minor, diminished, and augmented are the four atoms of harmony.",
       tags: ["chords", "harmony", "fundamentals"],
       visualizationKey: "chord_construction",
       prerequisites: ["intervals"],
@@ -960,7 +980,8 @@ export const THEORY = {
     seventh_chords: {
       id: "seventh_chords",
       title: "Seventh Chords",
-      tier: "intermediate",
+      content_type: "building_block",
+      quick_summary: "A triad plus a seventh above the root, adding richer color and the harmonic tension that drives resolution.",
       tags: ["chords", "harmony", "jazz", "tension"],
       visualizationKey: "chord_construction",
       prerequisites: ["triads"],
@@ -1001,59 +1022,13 @@ export const THEORY = {
       connections: ["triads", "chord_function", "cadences", "jazz_harmony"],
     },
 
-    jazz_harmony: {
-      id: "jazz_harmony",
-      title: "Jazz Harmony Basics",
-      tier: "advanced",
-      tags: ["jazz", "harmony", "chords", "improvisation"],
-      visualizationKey: "chord_construction",
-      prerequisites: ["seventh_chords", "chord_function"],
-
-      summary: "ii–V–I, extended chords, tritone subs. Jazz expands harmonic vocabulary beyond classical limits.",
-
-      levels: {
-        musician: `
-          Jazz takes the basic chords of classical harmony and extends them.
-          The ii-V-I progression is the backbone of jazz: Dm7-G7-Cmaj7 in C major.
-          Where classical music uses triads, jazz uses seventh chords as the default.
-          Then it goes further: 9ths, 11ths, 13ths add "color" notes above the seventh.
-          Tritone substitution: replace V7 with a dominant 7th a tritone away (G7 → D♭7).
-          This works because both chords share the same tritone interval (B and F).
-          Jazz harmony is about maximum color with smooth voice leading.
-        `,
-        theorist: `
-          Jazz harmonic principles:
-          ii-V-I is the core cadential motion. In minor: iiø7-V7-i (half-diminished to dominant to minor).
-          Extended chords: 9th = 7th + M2 above octave. 11th = 9th + P4. 13th = 11th + M3.
-          Chord-scale theory: each chord implies a compatible scale for improvisation.
-            Cmaj7 → Ionian or Lydian. Dm7 → Dorian. G7 → Mixolydian.
-          Tritone substitution: V7 → ♭II7. Works because the guide tones (3rd and 7th) are identical:
-            G7 has B and F; D♭7 has F and C♭(=B). Shared tritone: B–F.
-          Reharmonization: replacing chords with substitutes that serve the same harmonic function.
-        `,
-        math: `
-          ii-V-I voice leading in C: {2,5,9,0} → {7,11,2,5} → {0,4,7,11}.
-          Tritone sub: V7 at root r → ♭II7 at root r+6 (mod 12).
-          Shared tritone: G7 = {7,11,2,5}, D♭7 = {1,5,8,11}. Common = {5,11} = {F, B}.
-          Extended chord voicings as subsets of chord-scales:
-          Cmaj9 = {0,4,7,11,2} = 5 of the 7 notes of C Ionian.
-          The "avoid note" concept: notes creating ♭9 with chord tones are excluded.
-          For Cmaj7: the avoid note is F (=5), because F creates ♭9 with E (=4).
-          ii-V-I root motion: 2 → 7 → 0. Each step = P4 ascent (5 semitones), the strongest resolution.
-        `,
-      },
-
-      practical: "Learn the ii-V-I in three keys: C, F, and B♭. Those three keys cover most jazz standards. Once you can hear ii-V-I, you'll recognize it everywhere — it IS the sound of jazz.",
-
-      connections: ["seventh_chords", "chord_function", "secondary_dominants", "modes", "common_progressions"],
-    },
-
     // ── TIER 5: HARMONIC SYSTEMS ──────────────────────────────────
 
     circle_of_fifths: {
       id: "circle_of_fifths",
       title: "The Circle of Fifths",
-      tier: "intermediate",
+      content_type: "framework",
+      quick_summary: "Twelve keys arranged by ascending fifths. Adjacent keys share the most notes; the circle maps all of Western tonality.",
       tags: ["harmony", "keys", "structure", "navigation"],
       visualizationKey: "circle_of_fifths",
       prerequisites: ["major_scale", "intervals"],
@@ -1099,7 +1074,8 @@ export const THEORY = {
     diatonic_chords: {
       id: "diatonic_chords",
       title: "Diatonic Chords & Roman Numerals",
-      tier: "intermediate",
+      content_type: "framework",
+      quick_summary: "Seven chords built from a scale's own notes. Roman numerals label each chord's position and quality.",
       tags: ["harmony", "chords", "function", "analysis"],
       visualizationKey: null,
       prerequisites: ["major_scale", "triads"],
@@ -1145,7 +1121,8 @@ export const THEORY = {
     chord_function: {
       id: "chord_function",
       title: "Chord Function: Tonic, Subdominant, Dominant",
-      tier: "intermediate",
+      content_type: "framework",
+      quick_summary: "Chords serve as tonic (stable), subdominant (departure), or dominant (tension), creating the grammar of harmonic motion.",
       tags: ["harmony", "function", "tension", "resolution"],
       visualizationKey: "tension_meter",
       prerequisites: ["diatonic_chords"],
@@ -1192,7 +1169,8 @@ export const THEORY = {
     cadences: {
       id: "cadences",
       title: "Cadences",
-      tier: "intermediate",
+      content_type: "framework",
+      quick_summary: "Chord pairs that punctuate phrases: authentic (V to I), plagal (IV to I), half (to V), and deceptive (V to vi).",
       tags: ["harmony", "resolution", "phrase", "function"],
       visualizationKey: "tension_meter",
       prerequisites: ["chord_function"],
@@ -1238,7 +1216,8 @@ export const THEORY = {
     common_progressions: {
       id: "common_progressions",
       title: "Common Chord Progressions",
-      tier: "intermediate",
+      content_type: "reference",
+      quick_summary: "Recurring chord patterns like I-V-vi-IV and ii-V-I that form the harmonic backbone of countless songs.",
       tags: ["harmony", "songwriting", "progressions", "pop"],
       visualizationKey: null,
       prerequisites: ["diatonic_chords", "chord_function"],
@@ -1287,7 +1266,8 @@ export const THEORY = {
     circle_of_fifths_advanced: {
       id: "circle_of_fifths_advanced",
       title: "Modulation & Key Relationships",
-      tier: "advanced",
+      content_type: "framework",
+      quick_summary: "How key distance on the circle of fifths governs modulation smoothness and shared harmonic material.",
       tags: ["harmony", "modulation", "keys", "navigation"],
       visualizationKey: "circle_of_fifths",
       prerequisites: ["circle_of_fifths", "chord_function"],
@@ -1333,7 +1313,8 @@ export const THEORY = {
     modulation: {
       id: "modulation",
       title: "Modulation",
-      tier: "intermediate",
+      content_type: "framework",
+      quick_summary: "Changing key mid-piece using pivot chords, chromatic shifts, or direct jumps for emotional contrast.",
       tags: ["harmony", "keys", "transitions", "composition"],
       visualizationKey: "circle_of_fifths",
       prerequisites: ["circle_of_fifths", "chord_function"],
@@ -1379,7 +1360,8 @@ export const THEORY = {
     secondary_dominants: {
       id: "secondary_dominants",
       title: "Secondary Dominants",
-      tier: "advanced",
+      content_type: "framework",
+      quick_summary: "Temporary dominant chords that point to non-tonic degrees, adding chromatic sparkle without fully changing key.",
       tags: ["harmony", "chromaticism", "tension", "tonicization"],
       visualizationKey: "tension_meter",
       prerequisites: ["chord_function", "seventh_chords"],
@@ -1428,7 +1410,8 @@ export const THEORY = {
     tonnetz_geometry: {
       id: "tonnetz_geometry",
       title: "The Tonnetz",
-      tier: "intermediate",
+      content_type: "framework",
+      quick_summary: "A 2D pitch lattice where fifths run horizontally and thirds diagonally. Chords are triangles; voice leading is proximity.",
       tags: ["tonnetz", "geometry", "neo-riemannian", "visualization"],
       visualizationKey: "tonnetz_explorer",
       prerequisites: ["triads", "intervals"],
@@ -1480,7 +1463,8 @@ export const THEORY = {
     tonnetz_transforms: {
       id: "tonnetz_transforms",
       title: "Neo-Riemannian Transforms (P, L, R)",
-      tier: "advanced",
+      content_type: "framework",
+      quick_summary: "Three single-note operations (P, L, R) that transform any triad to its Tonnetz neighbor.",
       tags: ["tonnetz", "neo-riemannian", "transforms", "voice-leading"],
       visualizationKey: "chord_morphing",
       prerequisites: ["tonnetz_geometry", "triads"],
@@ -1532,7 +1516,8 @@ export const THEORY = {
     neo_riemannian: {
       id: "neo_riemannian",
       title: "Neo-Riemannian Theory",
-      tier: "advanced",
+      content_type: "framework",
+      quick_summary: "Chromatic harmony analyzed by geometric transforms rather than key centers, explaining keyless film-score progressions.",
       tags: ["theory", "neo-riemannian", "chromaticism", "film-music"],
       visualizationKey: "chord_morphing",
       prerequisites: ["tonnetz_geometry", "tonnetz_transforms"],
@@ -1583,7 +1568,8 @@ export const THEORY = {
     hexatonic_cycles: {
       id: "hexatonic_cycles",
       title: "Hexatonic Cycles",
-      tier: "advanced",
+      content_type: "framework",
+      quick_summary: "Six chords looping through alternating P and L transforms. Maximally smooth voice leading in a closed cycle.",
       tags: ["tonnetz", "neo-riemannian", "cycles", "chromaticism"],
       visualizationKey: "chord_morphing",
       prerequisites: ["tonnetz_transforms"],
@@ -1707,6 +1693,8 @@ export const THEORY = {
     circle_of_fifths: {
       id: "circle_of_fifths",
       title: "Circle of Fifths",
+      content_type: "framework",
+      quick_summary: "Twelve keys arranged by ascending fifths. Adjacent keys share the most notes; the circle maps all of Western tonality.",
       componentClass: "CircleOfFifths",
       relatedTopics: ["circle_of_fifths", "major_scale", "minor_scale", "modulation"],
       description: "Animated circle. Watch key signatures accumulate. Trace modulation paths. See relative minors.",
