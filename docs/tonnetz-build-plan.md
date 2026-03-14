@@ -27,7 +27,7 @@ Every prompt follows Dustin's conventions: starts with read-and-verify, ends wit
 
 ```
 Read the file structure starting from the project root, then read
-static/js/theory-content.js to understand the current topic schema.
+static/shared/theory-content.js to understand the current topic schema.
 
 For each of the 33 topics currently in the file (excluding jazz_harmony
 if present — remove it), add two new fields:
@@ -64,7 +64,7 @@ Do not commit — I will handle git myself.
 ### Task 1.2 — Add computed difficulty and related_games
 
 ```
-Read static/js/theory-content.js to see the current state after
+Read static/shared/theory-content.js to see the current state after
 the content_type migration.
 
 Add two new fields to each topic:
@@ -106,7 +106,7 @@ Do not commit — I will handle git myself.
 ### Task 1.3 — Add related_visualizations and creative_prompts
 
 ```
-Read static/js/theory-content.js to see the current state.
+Read static/shared/theory-content.js to see the current state.
 
 Add two new fields to each topic:
 
@@ -163,9 +163,11 @@ still work with the updated data structure. No regressions.
 
 ```
 Read the project structure and understand the current state of
-static/js/ to see what modules exist.
+static/shared/ to see what modules exist. Also read
+static/shared/theory-content.js and static/shared/theory-engine.js
+to understand the existing patterns.
 
-Create a new file: static/js/user-profile.js
+Create a new file: static/shared/user-profile.js
 
 This module manages user profile state in localStorage.
 It should export (or expose on window) these functions:
@@ -222,7 +224,7 @@ templates/index.html to understand the current Jinja2 template
 structure and styling approach (CSS custom properties, light/dark
 theme toggle).
 
-Read static/js/user-profile.js to understand the profile API.
+Read static/shared/user-profile.js to understand the profile API.
 
 Create an onboarding modal/overlay that appears on first visit
 (when getProfile() returns null). Requirements:
@@ -267,7 +269,7 @@ Do not commit — I will handle git myself.
 ### Task 2.3 — Wire profile into existing Tips pill
 
 ```
-Read static/js/theory-engine.js and static/js/user-profile.js.
+Read static/shared/theory-engine.js and static/shared/user-profile.js.
 
 Update the theory engine / tips pill to be profile-aware:
 
@@ -342,7 +344,7 @@ Review and edit the drafts yourself before proceeding to 3.2.
 ### Task 3.2 — Add playful lens to theory-content.js
 
 ```
-Read static/js/theory-content.js to see the current depths structure.
+Read static/shared/theory-content.js to see the current depths structure.
 
 I will provide you with playful lens content for the following topics
 as a JSON object. For each topic, add a "playful" key to the depths
@@ -370,8 +372,9 @@ Do not commit — I will handle git myself.
 
 ```
 Read the Skratch Studio code to understand the current architecture.
-Start from the project root, then read the Skratch Studio template
-and all related JS files.
+Start from the project root, then read templates/skratch-studio.html
+and all JS files in static/skratch-studio/ (especially studio.js,
+blocks.js, music-engine.js, and sandbox.js).
 
 Also read docs/content-architecture.md, specifically §7a (Starters)
 for the schema and requirements.
@@ -405,7 +408,7 @@ to accept a preconfigured state. Requirements:
 6. If no ?starter= param is present, Skratch Studio loads
    normally with no constraints (backward compatible).
 
-Create a new file static/js/skratch-starters.js that holds the
+Create a new file static/skratch-studio/skratch-starters.js that holds the
 starter config data. For now, include just two starter configs
 as proof of concept:
 
@@ -437,7 +440,7 @@ Do not commit — I will handle git myself.
 ### Task 4.2 — Build all Foundations path starters
 
 ```
-Read static/js/skratch-starters.js and docs/content-architecture.md
+Read static/skratch-studio/skratch-starters.js and docs/content-architecture.md
 (§6, the full Foundations path with all 12 steps and starter IDs).
 
 Add the remaining starter configs for the Foundations path:
@@ -515,10 +518,10 @@ is already fully designed in the architecture doc. Still needed:
 ### Task 4.4 — Learning paths data file
 
 ```
-Read the project structure and static/js/theory-content.js.
+Read the project structure and static/shared/theory-content.js.
 Read docs/content-architecture.md §6 for the full Foundations path.
 
-Create a new file: static/js/learning-paths.js
+Create a new file: static/shared/learning-paths.js
 
 This file exports (or exposes on window) an array of learning path
 objects. Include all 3 paths:
@@ -537,8 +540,8 @@ Do not commit — I will handle git myself.
 
 ```
 Read templates/base.html to understand the template structure.
-Read static/js/theory-content.js and static/js/learning-paths.js
-for the data layer. Read static/js/user-profile.js for profile state.
+Read static/shared/theory-content.js and static/shared/learning-paths.js
+for the data layer. Read static/shared/user-profile.js for profile state.
 
 Create a new route and template for the Theory Hub:
 
@@ -574,7 +577,7 @@ Do not commit — I will handle git myself.
 ### Task 4.6 — Path runner UI
 
 ```
-Read static/js/learning-paths.js, static/js/user-profile.js,
+Read static/shared/learning-paths.js, static/shared/user-profile.js,
 and the Theory Hub template from Task 4.5.
 
 Build a path runner — the UI for stepping through a learning path:
@@ -610,7 +613,7 @@ Do not commit — I will handle git myself.
 ### Task 4.7 — Bidirectional game ↔ topic links
 
 ```
-Read the game page templates and static/js/theory-content.js.
+Read the game page templates and static/shared/theory-content.js.
 
 Add bidirectional navigation between games and topics:
 
@@ -656,8 +659,8 @@ the hub shows progress bars updating.
 
 ```
 Read the game templates to understand how games currently load.
-Read static/js/theory-content.js for the game → topic mappings.
-Read static/js/user-profile.js for profile access.
+Read static/shared/theory-content.js for the game → topic mappings.
+Read static/shared/user-profile.js for profile access.
 
 For each recognition game (harmony_trainer, melody_match,
 chord_spotter, rhythm_lab, relative_pitch, strum_patterns),
@@ -685,7 +688,7 @@ Do not commit — I will handle git myself.
 
 ```
 Read the game JS files to understand how scoring/difficulty
-currently works in each game. Read static/js/user-profile.js.
+currently works in each game. Read static/shared/user-profile.js.
 
 This task is game-specific and may need to be split across
 multiple sessions depending on game complexity. Start with
@@ -784,8 +787,8 @@ see the onboarding flow. Add traditional nav fallback.]
 
 ```
 Phase 1 (Schema Migration) ✓
-  └─→ Phase 2 (Profile & Onboarding) ✓
-       ├─→ Phase 3 (Playful Lens Content) ✓
+  └─→ Phase 2 (Profile & Onboarding)
+       ├─→ Phase 3 (Playful Lens Content)
        └─→ Phase 4 (Starters, Paths & Hub)
             │  ├─ 4.1-4.2: Skratch Studio starter system
             │  ├─ 4.3-4.4: Path data (can overlap with 4.1-4.2)
