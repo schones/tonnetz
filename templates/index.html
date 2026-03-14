@@ -352,6 +352,13 @@
 </style>
 {% endblock %}
 
+{% block scripts %}
+<script type="module">
+  import { showOnboardingIfNeeded } from '/static/shared/onboarding.js';
+  showOnboardingIfNeeded();
+</script>
+{% endblock %}
+
 {% block content %}
 <main>
     <!-- ===== Hero ===== -->
