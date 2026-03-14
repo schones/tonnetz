@@ -429,7 +429,11 @@ class TipsPill {
     // Use profile-aware depth for content (per-topic fallback)
     const depth = _resolveDepth(topic);
     console.log(`[tips-pill] topic="${topic.id}" lens="${getProfile()?.active_lens ?? 'none'}" → depth="${depth}"`);
-    const content = topic.levels?.[depth] || topic.summary || '';
+    const rawContent = topic.levels?.[depth];
+    // Depth may be a string (musician/theorist/math) or an object ({available, summary, body})
+    const content = (rawContent && typeof rawContent === 'object')
+      ? (rawContent.body || rawContent.summary || '')
+      : (rawContent || topic.summary || '');
     const contentEl = document.createElement('div');
     contentEl.className = 'tips-card__content';
     contentEl.textContent = content;

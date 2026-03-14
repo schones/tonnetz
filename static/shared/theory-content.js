@@ -97,6 +97,15 @@ export const THEORY = {
           revealing the frequency spectrum that defines timbre.
           f_n = n · f₀  (nth harmonic, n = 1, 2, 3, ...)
         `,
+        playful: {
+          available: true,
+          summary: "Sound is what happens when something shakes the air — your ears catch those shakes and turn them into everything you hear.",
+          body: `Put your fingers on your throat and hum. Feel that buzzing? That's you making sound. Your vocal cords are vibrating, pushing the air around, and those vibrations travel all the way to someone else's ears.
+
+All sound works like this. A guitar string vibrates. A drum skin vibrates. Even a clap is two hands smacking together and shaking the air between them.
+
+Two things change how a sound... sounds. **Pitch** is how high or low it is — a bird chirp vs. a foghorn. **Volume** is how loud or soft — a whisper vs. a yell. Music is just people choosing pitches and volumes on purpose, in patterns.`,
+        },
       },
 
       practical: "Next time you pluck a guitar string, watch it vibrate. That motion IS the sound.",
@@ -142,6 +151,17 @@ export const THEORY = {
           Accidentals (♯, ♭) shift MIDI ± 1 without changing staff position — 
           this is why enharmonic equivalents (C# vs D♭) look different but sound identical in equal temperament.
         `,
+        playful: {
+          available: true,
+          summary: "The staff is five lines where music gets written down — the higher a note sits, the higher it sounds.",
+          body: `The staff is five horizontal lines. Notes are dots that sit on the lines or in the spaces between them. Higher dot = higher pitch. Lower dot = lower pitch. That's the basic idea.
+
+At the start of every staff there's a symbol called a **clef** that tells you which notes the lines mean. The most common one looks like a fancy "&" — that's the **treble clef**, used for higher sounds.
+
+Find any piece of sheet music and follow the dots with your eyes. When they move up, the melody goes up. When they drop down, it goes down. You're reading the *shape* of the music, even if you can't name every note yet.
+
+Lots of great musicians never learn to read sheet music — they play by ear. But the staff is like a map. If you can read it, you can play music you've never heard before, written by someone you've never met, from hundreds of years ago. That's pretty useful.`,
+        },
       },
 
       practical: "Spend 5 minutes on musictheory.net's Note Identification exercise. Fluent reading is muscle memory.",
@@ -190,6 +210,7 @@ export const THEORY = {
           The decision to use 8va vs. ledger lines is an optimization problem:
           minimize cognitive load while preserving pitch clarity.
         `,
+        playful: { available: false },
       },
 
       practical: "Start by memorizing just middle C as a ledger line in both clefs. From there, count up or down by step to find other ledger line notes.",
@@ -236,6 +257,17 @@ export const THEORY = {
           they follow the pattern of the major scale (W-W-H-W-W-W-H).
           Accidentals shift the pitch class index ±1 (mod 12) while the staff position (letter) stays fixed.
         `,
+        playful: {
+          available: true,
+          summary: "Music uses 7 letter names — A through G — and then starts over. That's it. The whole alphabet of music.",
+          body: `The notes go: A, B, C, D, E, F, G. After G it goes back to A. No H, no Z. Just seven letters on repeat, forever.
+
+On a piano, the white keys are these seven notes. Find a group of two black keys — the white key just left of them is C. Go right from there: C, D, E, F, G, A, B, C. You're back to C again.
+
+The black keys are the notes *between* some of the letters. They get names like C♯ ("C sharp" — a tiny step up from C) or B♭ ("B flat" — a tiny step down from B).
+
+Count every key, black and white, from one C to the next: you get 12. Those 12 notes are all there is. Everything in music — every song, every style — comes from arranging these 12 notes.`,
+        },
       },
 
       practical: "Learn the piano keyboard layout first — it's the clearest physical model of the 12 pitches.",
@@ -282,6 +314,17 @@ export const THEORY = {
           A triplet eighth has 2/3 the duration of a regular eighth note: three triplet-eighths = one quarter note.
           Time signature n/d: measure duration = n × (1/d) whole notes.
         `,
+        playful: {
+          available: true,
+          summary: "Rhythm is the pattern of long and short sounds — it's the part of music that makes you want to move.",
+          body: `Clap a steady beat. Now clap twice between some of those beats. You just changed the rhythm — you made some sounds shorter and some longer.
+
+Every piece of music has a **beat** — a steady pulse underneath, like a clock ticking. You feel it even when you can't hear it. That's why your foot taps on its own.
+
+Rhythm is what you do *on top of* that beat. Sometimes you land right on it. Sometimes you squeeze extra sounds between beats. Sometimes you leave silence. The pattern you make is the rhythm.
+
+You don't need any instruments for this. Tap a table. Stomp. Snap. Rhythm is just patterns in time.`,
+        },
       },
 
       practical: "Clap along to music and count out loud. Physical beat internalization precedes reading.",
@@ -334,6 +377,7 @@ export const THEORY = {
           LCM(p,q) determines the minimum resolution grid needed to notate both patterns.
           Metric modulation: tempo₂ = tempo₁ × (sub₁ / sub₂), preserving pulse continuity.
         `,
+        playful: { available: false },
       },
 
       practical: "Listen to the same song drumless, then with drums. The groove is everything the drummer adds beyond the bare meter. Try conducting in 3/4 vs 4/4 — feel the difference in your body.",
@@ -382,6 +426,17 @@ export const THEORY = {
           Just intonation (pre-equal-temperament): the major whole tone = 9:8 ≈ 1.125,
           minor whole tone = 10:9 ≈ 1.111 — unequal, which is why 12-TET was standardized.
         `,
+        playful: {
+          available: true,
+          summary: "A semitone is the smallest step between two notes — one key to the very next key on a piano. A whole tone is two of those steps.",
+          body: `On a piano, pick any key. The key right next to it — whether black or white — is one **semitone** away. That's the smallest step you can take.
+
+Now skip a key and go to the one after it. That's a **whole tone** — two semitones.
+
+Play a few semitones in a row. They sound very close together, kind of tense. Now play a few whole tones in a row. Bigger jumps, more relaxed.
+
+That's basically it. These two step sizes are the ingredients for building scales. Every scale is just a recipe that tells you when to step by a semitone and when to step by a whole tone.`,
+        },
       },
 
       practical: "On a piano or guitar, move one fret/key at a time — that's a semitone. Hear how small it is.",
@@ -430,6 +485,15 @@ export const THEORY = {
           The tritone (TT, 6 semitones) = 2^(6/12) = √2 — irrational, maximally dissonant.
           Interval inversion: n + n' = 12. M3 inverts to m6 (4+8=12). P5 inverts to P4 (7+5=12).
         `,
+        playful: {
+          available: true,
+          summary: "An interval is the distance between two notes — small intervals sound close and smooth, big intervals sound like a jump.",
+          body: `Hum the first two notes of "Happy Birthday." That's a small interval — the notes are neighbors. Now hum the first two notes of the *Star Wars* theme. Much bigger jump. That's a large interval.
+
+Intervals get their names from counting letter names. C up to D = a 2nd (two letters). C up to E = a 3rd. C up to G = a 5th.
+
+Here's the thing: you already recognize intervals, even without names. When you hear the opening of a song and instantly know what it is — that's your brain recognizing the interval. Your ears learned this before your brain caught up. Now we're just giving names to what you already hear.`,
+        },
       },
 
       practical: "Train your ear daily — even 5 minutes on teoria.com's interval exercises builds recognition fast.",
@@ -492,6 +556,17 @@ export const THEORY = {
           The octave is the fundamental domain of pitch class space — 
           the Tonnetz wraps around in both dimensions because of this.
         `,
+        playful: {
+          available: true,
+          summary: "An octave is the distance from one note to the next note with the same name — it sounds like the same note, just higher or lower.",
+          body: `Sing the beginning of "Somewhere Over the Rainbow." The jump on "Some-WHERE" — that's an octave. The two notes sound almost identical, but one is higher.
+
+On a piano, find any C. Count 8 white keys up (including the one you started on). You're on C again. Play both. They're different pitches, but they sound... related. Like they belong together. That's an octave.
+
+When adults and kids sing the same song together, they're usually singing in octaves without knowing it. Same melody, same letter names, different height.
+
+The word "octave" comes from the Latin word for eight. Count the letters: C, D, E, F, G, A, B, C. Eight notes, and then the whole pattern starts over.`,
+        },
       },
 
       practical: "Sing 'Somewhere Over the Rainbow' — that first leap ('Some-WHERE') is a perfect octave.",
@@ -539,6 +614,7 @@ export const THEORY = {
           The group of transpositions ⟨T₁⟩ ≅ ℤ₁₂ acts simply transitively on the chromatic scale.
           In frequency space: consecutive chromatic pitches have ratio 2^(1/12) ≈ 1.05946.
         `,
+        playful: { available: false },
       },
 
       practical: "Play every key on a piano from C to C, white and black, in order. That's the chromatic scale — the entire pitch universe of Western music in one octave.",
@@ -590,6 +666,17 @@ export const THEORY = {
           G major: {7,9,11,0,2,4,6} = {G,A,B,C,D,E,F#}.
           The pattern generates all 12 major scales via transposition (no rotation needed).
         `,
+        playful: {
+          available: true,
+          summary: "A major scale is a specific pattern of whole steps and half steps — it's the \"Do Re Mi\" sound.",
+          body: `Sing "Do, Re, Mi, Fa, Sol, La, Ti, Do." That's a major scale. You already know it.
+
+What makes it a *major* scale is the recipe: **whole, whole, half, whole, whole, whole, half.** Start on C, follow that recipe, and you hit only white keys: C, D, E, F, G, A, B, C.
+
+Start on a different note and the recipe still works — you'll just need some black keys to keep the pattern right. Start on G and you need one sharp (F♯). Start on D and you need two (F♯ and C♯). Different starting note, same recipe, same bright, happy sound.
+
+Most of the music you hear on the radio is built on major scales. Once you know the recipe, you can build one starting from any of the 12 notes.`,
+        },
       },
 
       practical: "Learn C, G, and F major scales first. They're the keys used in most beginner repertoire and cover both a sharp and a flat.",
@@ -641,6 +728,15 @@ export const THEORY = {
           Melodic minor ascending: {0,2,3,5,7,9,11} (same as major with ♭3).
           This is the "jazz minor" scale — important in jazz harmony.
         `,
+        playful: {
+          available: true,
+          summary: "A minor scale uses a different step pattern than major — it sounds darker, sadder, or more mysterious.",
+          body: `Play all the white keys from A to A. That's A minor — the easiest minor scale on piano. Now play from C to C. Same white keys, but it sounds completely different. A minor sounds dark. C major sounds bright.
+
+The minor recipe: **whole, half, whole, whole, half, whole, whole.** Compare it to major — the half steps land in different places. Small change, big difference.
+
+Here's something strange: A minor and C major use the exact same notes. A, B, C, D, E, F, G. But starting on A instead of C shifts everything. It's like telling the same story from a different character's perspective — the facts are identical, but it *feels* different.`,
+        },
       },
 
       practical: "Listen to the same melody in major then minor (e.g., 'Happy Birthday' in minor). The emotional shift is immediate and dramatic.",
@@ -691,6 +787,7 @@ export const THEORY = {
           Diatonic chord functions reassign: I(major) → ♭III(minor), vi(major) → i(minor).
           The relative relation is an involution on key-pairs: rel(rel(k)) = k.
         `,
+        playful: { available: false },
       },
 
       practical: "Take any song in C major. Play the same notes but treat A as home — start and end on A. Notice how the mood darkens instantly. Same notes, different story.",
@@ -742,6 +839,7 @@ export const THEORY = {
           Generates unique chord structures: the diminished 7th on 7̂ (vii°7) is a symmetric chord
           {11,2,5,8} (mod 12), invariant under T₃.
         `,
+        playful: { available: false },
       },
 
       practical: "Play A natural minor (all white keys from A), then play it again but change every G to G#. Hear how the G# creates urgency to resolve up to A? That's the leading tone in action.",
@@ -797,6 +895,7 @@ export const THEORY = {
           Modal interchange: borrowing chords from parallel modes (same root, different mode) — 
           the ♭VII chord in rock comes from Mixolydian.
         `,
+        playful: { available: false },
       },
 
       practical: "Don't memorize modes as separate scales. Hear them as 'major with one note changed.' Dorian = minor with a brighter 6th. Lydian = major with a dreamy raised 4th.",
@@ -849,6 +948,7 @@ export const THEORY = {
           The "brightness" metric of modes (Lydian brightest, Locrian darkest)
           predicts which borrowed chords add brightness vs. darkness to a progression.
         `,
+        playful: { available: false },
       },
 
       practical: "In a I-IV-V-I progression in C major, try replacing IV (F) with iv (Fm). That one lowered note (A→A♭) transforms the feel from bright to bittersweet.",
@@ -897,6 +997,7 @@ export const THEORY = {
           This P5-stacking origin explains why pentatonic is so consonant — 
           all notes are "close" on the circle of fifths (small harmonic distance).
         `,
+        playful: { available: false },
       },
 
       practical: "Improvise freely on the black keys of a piano. Every note sounds good. That's the power of pentatonic.",
@@ -946,6 +1047,7 @@ export const THEORY = {
           the scale's ♭3 against the chord's ♮3 creates a "crushed" third — 
           simultaneously implying major and minor, which is the defining harmonic ambiguity of blues.
         `,
+        playful: { available: false },
       },
 
       practical: "The blues scale is meant to be *bent*. On guitar, physically bend strings to slide between notes. That glide is the soul of the sound.",
@@ -1000,6 +1102,7 @@ export const THEORY = {
           it has dominant function relative to IV, explaining the I7→IV7 motion in bar 5.
           12 bars × 4 beats = 48 beats per cycle. At 120 BPM, one chorus ≈ 24 seconds.
         `,
+        playful: { available: false },
       },
 
       practical: "Learn a 12-bar blues in A on any instrument. It's the universal jam session language — walk into any blues jam, call '12-bar in A,' and everyone can play along.",
@@ -1056,6 +1159,17 @@ export const THEORY = {
           R (Relative): {r, r+4, r+7} ↔ {r+9, r+4, r+7} — root/fifth relationship
           L (Leading-tone): {r, r+4, r+7} ↔ {r+4, r+7, r+11} — subtle shift
         `,
+        playful: {
+          available: true,
+          summary: "A triad is three notes stacked together — the simplest chord, and the foundation of how harmony works.",
+          body: `Pick a note. Skip one, grab the next. Skip one more, grab the next. Play all three at once. That's a triad.
+
+Starting on C: take C, skip D, take E, skip F, take G. Play C-E-G together. Sounds full and happy — that's a **major triad.** Start on A: A, skip B, take C, skip D, take E. Play A-C-E. Darker — that's a **minor triad.**
+
+The only difference is the middle note. In a major triad it's a slightly bigger step from the bottom note. In a minor triad it's slightly smaller. One note shifts, and the whole mood changes.
+
+Nearly every song is built from triads moving one to the next. Learn to hear them and build them, and you understand how most music is put together.`,
+        },
       },
 
       practical: "Learn to play all four triad types from C. Then transpose to G and F. Six chords that unlock most beginner repertoire.",
@@ -1105,6 +1219,7 @@ export const THEORY = {
           Only 3 distinct diminished 7th chords exist (all others are transpositions of one of three).
           Half-diminished (ø7) = {0,3,6,10}: used as ii°⁷ in minor keys (the ii-V-i backbone of jazz).
         `,
+        playful: { available: false },
       },
 
       practical: "Learn G7→C and D7→G progressions. Play them repeatedly. Feel how the 7th chord *wants* to resolve — that pull is harmonic gravity.",
@@ -1158,6 +1273,7 @@ export const THEORY = {
           The diatonic collection is a "maximally even" 7-element subset of ℤ₁₂ —
           the circle of fifths ordering is equivalent to the Farey sequence property of maximal evenness.
         `,
+        playful: { available: false },
       },
 
       practical: "Memorize the order of sharps (F C G D A E B) and flats (B E A D G C F) — they're the circle of fifths forward and backward.",
@@ -1209,6 +1325,7 @@ export const THEORY = {
           This invariance is why transposition preserves harmonic function — 
           same roman numeral analysis means same "story" in any key.
         `,
+        playful: { available: false },
       },
 
       practical: "Learn the I, IV, V chords in G, C, and D major. You can play hundreds of folk and rock songs with just those 9 chords.",
@@ -1261,6 +1378,7 @@ export const THEORY = {
           P, L, R transforms move between triads with maximum common tones (2 of 3 notes preserved).
           This explains "functional" progressions in film music that have no clear key center.
         `,
+        playful: { available: false },
       },
 
       practical: "Play I - IV - V - I in any key and really listen. The I feels like home. The IV like leaving. The V like needing to return. Music is organized suspense.",
@@ -1312,6 +1430,7 @@ export const THEORY = {
           Cadential closure perception is modeled as a function of
           (1) bass motion by P4/P5, (2) leading tone resolution, (3) metric position (downbeat).
         `,
+        playful: { available: false },
       },
 
       practical: "Play C-G-Am-F, then C-G-C. Feel how G→C is satisfying and final (authentic), while G→Am is a surprise (deceptive). Cadences are the grammar of musical storytelling.",
@@ -1366,6 +1485,7 @@ export const THEORY = {
           Markov chain models of pop harmony show I-V and I-IV as highest-probability transitions,
           with vi-IV as the most common "surprising" transition (high entropy, high usage).
         `,
+        playful: { available: false },
       },
 
       practical: "Learn I-V-vi-IV in three keys (C, G, D). You can now play along with hundreds of pop songs. Seriously — try it with any playlist.",
@@ -1417,6 +1537,7 @@ export const THEORY = {
           Tritone substitution in jazz: V7 can be replaced by ♭II7 (tritone away) — 
           same tritone interval, different orientation.
         `,
+        playful: { available: false },
       },
 
       practical: "Find a song you love that has a dramatic key change. Listen for the moment it happens. Did it feel smooth or jarring? That tells you how far the modulation was on the circle.",
@@ -1468,6 +1589,7 @@ export const THEORY = {
           The modulation graph (nodes = keys, edges = smooth modulations) is
           the circle of fifths, with edge weight inversely proportional to key distance.
         `,
+        playful: { available: false },
       },
 
       practical: "Find a song with a key change (Beyoncé's 'Love on Top' or Whitney Houston's 'I Wanna Dance with Somebody'). Listen for the exact moment — your ears will tell you when the floor shifts.",
@@ -1520,6 +1642,7 @@ export const THEORY = {
           Chain of secondary dominants: V7/vi → V7/ii → V7/V → V7 → I follows the circle of fifths
           backward through the diatonic chords — each resolving down a P5.
         `,
+        playful: { available: false },
       },
 
       practical: "In a C major progression, replace the plain G chord with D7→G. That D7 (V/V) adds a spark of tension that makes the G arrival more satisfying. It's a one-chord upgrade to any basic progression.",
@@ -1579,6 +1702,7 @@ export const THEORY = {
           Octatonic cycles (P then R, repeated): cover 8 triads.
           Tymoczko (2006): Tonnetz = dual graph of the "triad voice-leading lattice" in orbifold T³/S₃.
         `,
+        playful: { available: false },
       },
 
       practical: "Explore the Tonnetz in this app. Find a major chord. Click its neighbors. Listen to how smoothly the harmony changes — that smoothness is geometric efficiency.",
@@ -1636,6 +1760,7 @@ export const THEORY = {
           Voice leading: each transform moves exactly one note by one or two semitones.
           Minimum total voice leading distance = 1 (P and L move 1 semitone, R moves 2).
         `,
+        playful: { available: false },
       },
 
       practical: "In the Tonnetz explorer: pick any chord, apply P, then L, then R. Hear how each move shifts just one note. That's voice leading efficiency made visible.",
@@ -1692,6 +1817,7 @@ export const THEORY = {
           Cohn's hexatonic systems partition the 24 triads into 4 hexatonic sets of 6,
           each closed under PL. Between sets: LR transitions.
         `,
+        playful: { available: false },
       },
 
       practical: "Watch any dramatic film scene — notice how the music moves between chords that don't seem to belong to any key. That's neo-Riemannian harmony at work. The Tonnetz makes it visible.",
@@ -1746,6 +1872,7 @@ export const THEORY = {
           The four hexatonic systems partition all 24 consonant triads into 4 groups of 6.
           The "hyper-hexatonic system" connects the 4 groups via LR transforms.
         `,
+        playful: { available: false },
       },
 
       practical: "On a keyboard, play: C major → C minor → A♭ major → A♭ minor → E major → E minor → C major. Each change is just one note moving by one semitone. It sounds like the music is breathing.",
