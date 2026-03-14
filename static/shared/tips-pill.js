@@ -14,6 +14,33 @@
  */
 
 import { THEORY } from './theory-content.js';
+import { getProfile } from './user-profile.js';
+
+/** Minimum topic difficulty shown per preset. */
+const PRESET_MIN_DIFFICULTY = {
+  beginner:       1,
+  dabbler:        2,
+  producer:       2,
+  curious_player: 3,
+  deep_diver:     4,
+  math_explorer:  4,
+};
+
+/** Max learned topics to keep when enough unlearned topics exist. */
+const MAX_LEARNED_SHOWN = 1;
+
+/** Resolve depth per-topic: try active lens → additional lenses → 'musician'. */
+function _resolveDepth(topic) {
+  const profile = getProfile();
+  if (!profile) return 'musician';
+  // Try active lens directly against this topic's levels
+  if (topic?.levels?.[profile.active_lens]) return profile.active_lens;
+  // Try additional lenses
+  for (const l of (profile.additional_lenses || [])) {
+    if (topic?.levels?.[l]) return l;
+  }
+  return 'musician';
+}
 
 // ── CSS (injected once) ─────────────────────────────────────────────────────
 
@@ -182,6 +209,15 @@ const PILL_CSS = /* css */ `
   border-color: var(--accent, #6c63ff);
 }
 
+/* ── learned indicator ───────────────────────────────────────────────── */
+
+.tips-card__learned {
+  color: var(--text-success, #16a34a);
+  font-size: 0.75rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 /* ── empty state ─────────────────────────────────────────────────────── */
 
 .tips-pill__empty {
@@ -271,13 +307,26 @@ class TipsPill {
 
   /**
    * Update the tip list with new topic keys.
+   * Filters by difficulty floor based on user preset; updates count to reflect visible tips.
    * @param {Array<{id: string, relevance: 'high'|'medium'|'low'}>} topics
    */
   update(topics) {
     // Normalize: accept string[] or {id, relevance}[]
-    this._topicKeys = topics.map(t =>
+    const normalized = topics.map(t =>
       typeof t === 'string' ? { id: t, relevance: 'medium' } : t
     );
+
+    // Filter by difficulty floor
+    const profile = getProfile();
+    const minDiff = PRESET_MIN_DIFFICULTY[profile?.preset] ?? 1;
+    this._topicKeys = normalized.filter(({ id }) => {
+      const topic = THEORY.topics[id];
+      if (!topic) return false;
+      const diff = typeof topic.difficulty === 'number' ? topic.difficulty : 1;
+      return diff >= minDiff;
+    });
+
+    console.log(`[tips-pill] preset="${profile?.preset ?? 'none'}" minDiff=${minDiff} → ${this._topicKeys.length}/${normalized.length} topics`);
     this._countEl.textContent = this._topicKeys.length;
     this._renderCards();
   }
@@ -308,9 +357,29 @@ class TipsPill {
       return;
     }
 
-    for (const { id, relevance } of this._topicKeys) {
+    // Split into unlearned vs learned, then aggressively trim learned
+    const profile = getProfile();
+    const unlearned = [];
+    const learned = [];
+    for (const entry of this._topicKeys) {
+      if (profile?.topics?.[entry.id]?.status === 'learned') {
+        learned.push(entry);
+      } else {
+        unlearned.push(entry);
+      }
+    }
+    // Show at most MAX_LEARNED_SHOWN learned topics, only if few unlearned remain
+    const learnedToShow = unlearned.length >= 3 ? 0 : MAX_LEARNED_SHOWN;
+    const visible = [...unlearned, ...learned.slice(0, learnedToShow)];
+
+    // Update count to reflect what's actually shown
+    this._countEl.textContent = visible.length;
+
+    for (const { id, relevance } of visible) {
       const topic = THEORY.topics[id];
       if (!topic) continue;
+
+      const isLearned = profile?.topics?.[id]?.status === 'learned';
 
       const card = document.createElement('div');
       card.className = 'tips-card';
@@ -323,8 +392,9 @@ class TipsPill {
 
       card.innerHTML = `
         <div class="tips-card__header">
-          <span class="tips-card__dot tips-card__dot--${relevance}"></span>
+          <span class="tips-card__dot tips-card__dot--${isLearned ? 'low' : relevance}"></span>
           <span class="tips-card__title">${topic.title}</span>
+          ${isLearned ? '<span class="tips-card__learned" aria-label="Learned">\u2713</span>' : ''}
         </div>
         <div class="tips-card__preview">${preview}</div>
         <div class="tips-card__body"></div>
@@ -356,8 +426,10 @@ class TipsPill {
     // Only populate on first expand
     if (body.children.length) return;
 
-    // Musician-level content (most accessible)
-    const content = topic.levels?.musician || topic.summary || '';
+    // Use profile-aware depth for content (per-topic fallback)
+    const depth = _resolveDepth(topic);
+    console.log(`[tips-pill] topic="${topic.id}" lens="${getProfile()?.active_lens ?? 'none'}" → depth="${depth}"`);
+    const content = topic.levels?.[depth] || topic.summary || '';
     const contentEl = document.createElement('div');
     contentEl.className = 'tips-card__content';
     contentEl.textContent = content;

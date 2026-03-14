@@ -11,6 +11,7 @@
  */
 
 import { THEORY } from './theory-content.js';
+import { getProfile, updateTopicStatus } from './user-profile.js';
 
 // ── CSS (injected once) ─────────────────────────────────────────────────────
 
@@ -291,6 +292,33 @@ const TOOLTIP_CSS = /* css */ `
   color: #fff;
 }
 
+/* ── expand / collapse ────────────────────────────────────────────────── */
+
+.tt-expand {
+  display: block;
+  margin: 0 1.125rem 0.5rem;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent, #6c63ff);
+  cursor: pointer;
+}
+.tt-expand:hover { text-decoration: underline; }
+
+.tt-detail { display: none; }
+.tt-detail--open { display: block; }
+
+/* ── learned checkmark ───────────────────────────────────────────────── */
+
+.tt-learned {
+  color: var(--text-success, #16a34a);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
 /* ── animation ────────────────────────────────────────────────────────── */
 
 @keyframes tt-fade-in {
@@ -324,6 +352,7 @@ export class TheoryTooltip {
 
   constructor() {
     this._depth = TheoryTooltip.loadDepth();
+    this._additionalLenses = [];  // populated from profile on each show()
     this._el = null;        // tooltip element
     this._backdrop = null;
     this._currentTopicId = null;
@@ -339,12 +368,28 @@ export class TheoryTooltip {
   // ── static depth persistence ───────────────────────────────────────
 
   static loadDepth() {
+    const profile = getProfile();
+    if (profile) {
+      return TheoryTooltip._lensToDepth(profile.active_lens, profile.additional_lenses);
+    }
     const v = localStorage.getItem(DEPTH_KEY);
     return VALID_DEPTHS.includes(v) ? v : 'musician';
   }
 
   static saveDepth(depth) {
     localStorage.setItem(DEPTH_KEY, depth);
+  }
+
+  /** Map profile lens → valid depth key, with fallback chain. */
+  static _lensToDepth(lens, additionalLenses = []) {
+    const MAP = { playful: 'musician', musician: 'musician', theorist: 'theorist', math: 'math' };
+    const mapped = MAP[lens];
+    if (mapped) return mapped;
+    for (const l of additionalLenses) {
+      const m = MAP[l];
+      if (m) return m;
+    }
+    return 'musician';
   }
 
   // ── public API ─────────────────────────────────────────────────────
@@ -368,7 +413,23 @@ export class TheoryTooltip {
       this._history = [];
     }
 
+    // Re-resolve depth from profile on each fresh open (not connection swap)
+    const profile = getProfile();
+    if (!isSwap && profile) {
+      this._depth = profile.active_lens;
+      this._additionalLenses = profile.additional_lenses || [];
+    }
+
     this._populate(topic);
+
+    // Track topic visit in profile (only first time — unseen → visited)
+    if (profile) {
+      const status = profile.topics?.[topicId]?.status;
+      if (!status || status === 'unseen') {
+        updateTopicStatus(topicId, 'visited', 'tooltip');
+      }
+    }
+
     this._updateBackButton();
 
     if (!isSwap) {
@@ -403,7 +464,6 @@ export class TheoryTooltip {
     if (!VALID_DEPTHS.includes(depth)) return;
     this._depth = depth;
     TheoryTooltip.saveDepth(depth);
-    this._updateDepthButtons();
 
     const topic = THEORY.topics[this._currentTopicId];
     if (topic) this._renderBody(topic);
@@ -441,18 +501,22 @@ export class TheoryTooltip {
       <div class="tt-header">
         <button class="tt-back" aria-label="Go back to previous topic">\u2190</button>
         <h3 class="tt-title"></h3>
+        <span class="tt-learned" style="display:none" aria-label="Learned">\u2713</span>
         <span class="tt-badge"></span>
         <button class="tt-close" aria-label="Close tooltip">\u2715</button>
       </div>
       <p class="tt-summary"></p>
-      <div class="tt-depth-toggle">
-        <button class="tt-depth-btn" data-depth="musician">Musician</button>
-        <button class="tt-depth-btn" data-depth="theorist">Theorist</button>
-        <button class="tt-depth-btn" data-depth="math">Math</button>
+      <button class="tt-expand" type="button">Read more</button>
+      <div class="tt-detail">
+        <div class="tt-depth-toggle">
+          <button class="tt-depth-btn" data-depth="musician">Musician</button>
+          <button class="tt-depth-btn" data-depth="theorist">Theorist</button>
+          <button class="tt-depth-btn" data-depth="math">Math</button>
+        </div>
+        <div class="tt-body"></div>
+        <div class="tt-mnemonics"></div>
+        <p class="tt-practical"></p>
       </div>
-      <div class="tt-body"></div>
-      <div class="tt-mnemonics"></div>
-      <p class="tt-practical"></p>
       <div class="tt-connections"></div>
     `;
 
@@ -466,6 +530,16 @@ export class TheoryTooltip {
     el.querySelector('.tt-depth-toggle').addEventListener('click', (e) => {
       const btn = e.target.closest('.tt-depth-btn');
       if (btn) this.setDepth(btn.dataset.depth);
+    });
+
+    // expand / collapse detail
+    el.querySelector('.tt-expand').addEventListener('click', () => {
+      const detail = el.querySelector('.tt-detail');
+      const expandBtn = el.querySelector('.tt-expand');
+      const isOpen = detail.classList.contains('tt-detail--open');
+      detail.classList.toggle('tt-detail--open', !isOpen);
+      expandBtn.textContent = isOpen ? 'Read more' : 'Show less';
+      this._position(this._lastAnchor);
     });
 
     // connection chip clicks — push current topic onto history
@@ -497,13 +571,19 @@ export class TheoryTooltip {
     badge.textContent = topic.tier;
     badge.className = `tt-badge tt-badge--${topic.tier}`;
 
-    // summary
-    el.querySelector('.tt-summary').textContent = topic.summary;
+    // learned checkmark
+    const profile = getProfile();
+    const isLearned = profile?.topics?.[this._currentTopicId]?.status === 'learned';
+    el.querySelector('.tt-learned').style.display = isLearned ? '' : 'none';
 
-    // depth buttons
-    this._updateDepthButtons();
+    // summary — prefer quick_summary for the compact view
+    el.querySelector('.tt-summary').textContent = topic.quick_summary || topic.summary;
 
-    // body
+    // reset expand state (each topic starts collapsed)
+    el.querySelector('.tt-detail').classList.remove('tt-detail--open');
+    el.querySelector('.tt-expand').textContent = 'Read more';
+
+    // body + depth toggle highlight (renderBody handles both)
     this._renderBody(topic);
 
     // mnemonics
@@ -523,11 +603,28 @@ export class TheoryTooltip {
   }
 
   _renderBody(topic) {
-    // Guard: prevents TypeError if topic content is incomplete (missing levels object or depth key)
-    const content = topic.levels?.[this._depth];
+    // Per-topic depth resolution: preferred lens → additional lenses → musician
+    const resolved = this._resolveDepthForTopic(topic);
+    console.log(`[theory-engine] topic="${this._currentTopicId}" lens="${this._depth}" → depth="${resolved}"`);
+
+    const content = topic.levels?.[resolved];
     this._el.querySelector('.tt-body').textContent = content
       ? trimContent(content)
       : 'Content coming soon.';
+
+    // Highlight the depth button matching what's actually displayed
+    this._el.querySelectorAll('.tt-depth-btn').forEach(btn => {
+      btn.classList.toggle('tt-depth-btn--active', btn.dataset.depth === resolved);
+    });
+  }
+
+  /** Try preferred depth against this topic's levels, fall back through additional lenses → musician. */
+  _resolveDepthForTopic(topic) {
+    if (topic.levels?.[this._depth]) return this._depth;
+    for (const lens of this._additionalLenses) {
+      if (topic.levels?.[lens]) return lens;
+    }
+    return 'musician';
   }
 
   _renderMnemonics(mnemonics) {
@@ -567,12 +664,6 @@ export class TheoryTooltip {
 
     wrap.style.display = '';
     wrap.innerHTML = `<span class="tt-connections__label">Related</span>${chips.join('')}`;
-  }
-
-  _updateDepthButtons() {
-    this._el.querySelectorAll('.tt-depth-btn').forEach(btn => {
-      btn.classList.toggle('tt-depth-btn--active', btn.dataset.depth === this._depth);
-    });
   }
 
   // ── history navigation ──────────────────────────────────────────────
