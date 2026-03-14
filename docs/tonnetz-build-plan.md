@@ -14,7 +14,7 @@ Each **Task** within a phase is scoped to one Claude Code session.
 Tasks include a ready-to-paste Claude Code prompt (in fenced blocks).
 Every prompt follows Dustin's conventions: starts with read-and-verify, ends with "Do not commit."
 
-**Estimated total:** 6 phases, ~20-25 Claude Code sessions, buildable over 4-8 weeks depending on pace.
+**Estimated total:** 6 phases, ~25-30 Claude Code sessions, buildable over 6-10 weeks depending on pace. Phase 4 (Skratch Studio starters + paths + hub) is the largest phase.
 
 ---
 
@@ -361,41 +361,170 @@ Do not commit — I will handle git myself.
 
 ---
 
-## Phase 4: Learning Paths & Theory Hub
-**Goal:** Build the path system and a basic Theory Hub page where users can browse topics and follow guided sequences.
-**Why fourth:** With profiles, content types, and playful lenses in place, we have everything needed to present structured learning journeys.
-**Ships:** Theory Hub page with browsable topics, 2-3 initial learning paths.
+## Phase 4: Skratch Studio Starters, Learning Paths & Theory Hub
+**Goal:** Build the Skratch Studio starter loading system, the path system, and a basic Theory Hub page.
+**Why fourth:** With profiles, content types, and playful lenses in place, we need the path infrastructure to deliver guided learning. The Foundations path depends on Skratch Studio starters, so that engineering comes first.
+**Ships:** Skratch Studio lesson mode, Theory Hub page, 3 learning paths with full interactivity.
 
-### Task 4.1 — Define initial learning paths (data)
+### Task 4.1 — Skratch Studio starter loading system
 
-Use claude.ai to design 3 paths:
+```
+Read the Skratch Studio code to understand the current architecture.
+Start from the project root, then read the Skratch Studio template
+and all related JS files.
 
-1. **"Music Foundations"** — beginner/dabbler path. ~10 steps from
-   sound_basics through triads. Default lens: playful.
+Also read docs/content-architecture.md, specifically §7a (Starters)
+for the schema and requirements.
 
-2. **"Why Chords Work"** — curious_player/producer path. ~8 steps
-   from intervals through chord_function and cadences. Assumes
-   note_names and scales are known. Default lens: musician.
+Build a starter loading system for Skratch Studio that allows it
+to accept a preconfigured state. Requirements:
 
-3. **"Tonnetz & Transforms"** — deep_diver/math_explorer path.
+1. Config ingestion: Skratch Studio accepts a starter config via
+   URL parameter (e.g., ?starter=starter_rhythm_grid) that loads
+   a JSON config from a starters data file.
+
+2. Feature locking: ability to hide/disable instruments and block
+   categories listed in the config's locked_features array.
+
+3. Block pre-placement: load blocks listed in the config's blocks
+   array onto the Blockly canvas programmatically on startup.
+
+4. Piano config: if the starter has piano_config, configure the
+   piano to show only the specified octave range and highlight
+   the specified keys.
+
+5. Starter UI elements:
+   - Show the starter's prompt text in a banner at the top.
+   - Show hints progressively (one at a time) via a "Need a hint?"
+     button.
+   - Show the debrief text when the user clicks "I'm done" or
+     after a reasonable time.
+   - A "Reset to starter" button that restores the original
+     preconfigured state (distinct from "Clear All").
+
+6. If no ?starter= param is present, Skratch Studio loads
+   normally with no constraints (backward compatible).
+
+Create a new file static/js/skratch-starters.js that holds the
+starter config data. For now, include just two starter configs
+as proof of concept:
+
+   starter_free_play: {
+     instruments: all, blocks: [], available_blocks: all,
+     locked_features: [], piano_config: null, bpm: 120, key: null,
+     prompt: "This is your music playground. Make some noise!",
+     hints: [], debrief: null, theory_link: null
+   }
+
+   starter_rhythm_grid: {
+     instruments: ["drums"], blocks: [a basic 4-bar drum pattern],
+     available_blocks: ["drum_loop", "drum_hit"],
+     locked_features: ["melody", "bass", "piano"],
+     piano_config: null, bpm: 100, key: null,
+     prompt: "Make a pattern that repeats. Tap along with it.",
+     hints: ["Try putting a kick on beats 1 and 3.",
+             "Now add a snare on beats 2 and 4."],
+     debrief: "That repeating pattern is called rhythm — the heartbeat of music.",
+     theory_link: "rhythm"
+   }
+
+Test that ?starter=starter_rhythm_grid loads the constrained state
+and ?starter= (empty) or no param loads normally.
+
+Do not commit — I will handle git myself.
+```
+
+### Task 4.2 — Build all Foundations path starters
+
+```
+Read static/js/skratch-starters.js and docs/content-architecture.md
+(§6, the full Foundations path with all 12 steps and starter IDs).
+
+Add the remaining starter configs for the Foundations path:
+
+- starter_sound_frequency: single oscillator block, frequency slider,
+  no other instruments. Prompt: "Drag the slider. What happens to
+  the sound when you go up? Down?"
+
+- starter_note_names: piano only, 1 octave (C4-B4), keys labeled
+  with note names. Lock drums/bass/melody blocks.
+  Prompt: "Play every white key from left to right."
+
+- starter_tempo_slider: reload the drum loop from starter_rhythm_grid,
+  add a BPM slider (range 40-200). Lock everything except tempo control.
+  Prompt: "Same pattern, but now you control the speed."
+
+- starter_dynamics_loud_soft: pre-built simple melody (C-E-G-E-C),
+  volume envelope block available to add. Lock new instruments.
+  Prompt: "This melody sounds flat. Make it start quiet and get LOUD."
+
+- starter_octave_jump: piano, 2 octaves (C3-B4), C notes highlighted
+  in both octaves. Lock blocks. Prompt: "Play this C. Now play
+  THIS C. Same note, different height."
+
+- starter_half_whole_steps: piano zoomed to C4-E4, half steps
+  color-coded one color, whole steps another. Lock blocks.
+  Prompt: "Play two keys right next to each other — that's a
+  semitone. Skip one — that's a whole tone."
+
+- starter_interval_builder: piano, 1 octave, two movable note
+  markers that display the interval name between them as they move.
+  Prompt: "Drag the notes apart — watch the name change."
+
+- starter_major_scale: piano, only white keys active (C major),
+  whole/half step pattern shown as colored markers between keys.
+  Prompt: "Play these keys in order. Hear 'Do Re Mi'?"
+
+- starter_minor_scale: piano starting on A, white keys only,
+  A minor scale highlighted. Prompt: "Same keys, different
+  starting point. Hear how it sounds darker?"
+
+- starter_triad_builder: piano with chord-building mode — user
+  picks a root note and sees the triad (root, 3rd, 5th) highlight
+  automatically. Can toggle major/minor.
+  Prompt: "Pick any note. Now stack — that's a chord."
+
+Adapt each starter to what Skratch Studio can actually do given
+the loading system built in Task 4.1. If a starter requires
+functionality that doesn't exist yet (like the interval name
+display), implement a simplified version and leave a TODO comment.
+
+Test each starter loads correctly via URL parameter.
+
+Do not commit — I will handle git myself.
+```
+
+### Task 4.3 — Design remaining paths (claude.ai)
+
+Use claude.ai to design the other 2 paths. Music Foundations
+is already fully designed in the architecture doc. Still needed:
+
+1. **"Why Chords Work"** — curious_player/producer path. ~8 steps.
+   Assumes note_names and scales are known. Start from intervals,
+   through triads, diatonic_chords, chord_function, cadences.
+   Include Chord Spotter and Harmony Trainer at relevant steps.
+   Some steps may use Skratch Studio starters (e.g., "build a
+   I-IV-V progression"). Default lens: musician.
+
+2. **"Tonnetz & Transforms"** — deep_diver/math_explorer path.
    ~6 steps covering tonnetz_geometry through hexatonic_cycles.
+   Visualization-heavy (Tonnetz Grid at most steps). No Skratch
+   Studio starters needed — this path is more conceptual.
    Default lens: theorist/math.
 
-For each path, define: id, title, description, target_personas,
-default_lens, and the step sequence (topic_id, game_id, visualization_id,
-prompt text).
-
-### Task 4.2 — Learning paths data file
+### Task 4.4 — Learning paths data file
 
 ```
 Read the project structure and static/js/theory-content.js.
+Read docs/content-architecture.md §6 for the full Foundations path.
 
 Create a new file: static/js/learning-paths.js
 
 This file exports (or exposes on window) an array of learning path
-objects following this schema:
+objects. Include all 3 paths:
 
-[Paste the 3 path definitions from Task 4.1 here]
+[Paste the Foundations path from the architecture doc,
+plus the 2 paths designed in Task 4.3]
 
 Also create a helper function getPathsForPreset(preset) that
 returns all paths whose target_personas array includes the given
@@ -404,7 +533,7 @@ preset string.
 Do not commit — I will handle git myself.
 ```
 
-### Task 4.3 — Theory Hub page (basic version)
+### Task 4.5 — Theory Hub page
 
 ```
 Read templates/base.html to understand the template structure.
@@ -442,7 +571,43 @@ Create a new route and template for the Theory Hub:
 Do not commit — I will handle git myself.
 ```
 
-### Task 4.4 — Bidirectional game ↔ topic links
+### Task 4.6 — Path runner UI
+
+```
+Read static/js/learning-paths.js, static/js/user-profile.js,
+and the Theory Hub template from Task 4.5.
+
+Build a path runner — the UI for stepping through a learning path:
+
+1. When a user clicks "Start" or "Continue" on a path in the
+   Theory Hub, open the path runner view.
+
+2. The runner shows the current step:
+   - The step's prompt text (large, friendly)
+   - The topic content for the user's active lens (expandable)
+   - Action buttons based on what the step includes:
+     - If game_id is a recognition game → "Play [Game Name]" button
+       that navigates to the game
+     - If starter_id exists → "Open in Skratch Studio" button that
+       opens Skratch Studio with ?starter=[starter_id]
+     - If visualization_id exists → "Explore" button (links to
+       visualization, or shows placeholder if not yet built)
+   - "Mark Complete & Next Step →" button that calls
+     updatePathProgress and advances to the next step.
+   - "← Previous Step" for review.
+
+3. A step progress bar showing all steps as dots/nodes,
+   with completed steps filled and current step highlighted.
+
+4. On the final step, show a completion message and suggest
+   the next path or free exploration.
+
+5. Save progress to profile on each step completion.
+
+Do not commit — I will handle git myself.
+```
+
+### Task 4.7 — Bidirectional game ↔ topic links
 
 ```
 Read the game page templates and static/js/theory-content.js.
@@ -471,12 +636,14 @@ Do not commit — I will handle git myself.
 ```
 
 ### Phase 4 Checkpoint
-Users can browse all topics in the Theory Hub, follow guided paths,
-and navigate between games and theory content. Progress is tracked
-and visible.
-**Test:** Follow the "Music Foundations" path from step 1 through
-step 3. Verify path progress saves to localStorage. Open a game from
-a topic link. Return to hub and see the path progress bar updated.
+Users can browse all topics in the Theory Hub, follow the Music
+Foundations path with Skratch Studio starters at every step,
+and navigate between games and theory content.
+**Test:** Start the Foundations path as a beginner. Step 0 opens
+Skratch Studio in free play mode. Step 2 opens Rhythm Lab, then
+the rhythm starter in Skratch Studio. Step 8 opens Harmony Trainer,
+then the interval builder starter. Verify path progress saves and
+the hub shows progress bars updating.
 
 ---
 
@@ -600,9 +767,10 @@ see the onboarding flow. Add traditional nav fallback.]
 
 ## What's NOT in This Plan (Post-MVP)
 
-- **Skratch Studio challenge system** (§7 of architecture doc) — build after core loop is proven
+- **Skratch Studio open-ended challenges** (§7b of architecture doc) — build after core path loop is proven
 - **Skill guide topics** — write these after games have level systems that need them
 - **Additional learning paths** beyond the initial 3
+- **Additional Skratch Studio starters** for "Why Chords Work" and "Tonnetz & Transforms" paths
 - **Backend migration** (localStorage → Postgres/Supabase) — when multi-device or auth is needed
 - **Mobile optimization** — responsive design pass after core features are stable
 - **Additional visualizations** (Circle of Fifths Explorer, Scale Explorer, Chord Voicing Visualizer) — Phase 6 proves the pattern, then expand
@@ -615,16 +783,20 @@ see the onboarding flow. Add traditional nav fallback.]
 ## Quick Reference: Phase Dependencies
 
 ```
-Phase 1 (Schema Migration)
-  └─→ Phase 2 (Profile & Onboarding)
-       ├─→ Phase 3 (Playful Lens Content)
-       │    └─→ Phase 4 (Paths & Theory Hub)
-       │         └─→ Phase 5 (Game Progression)
-       │              └─→ Phase 6 (Tonnetz Grid Map)
-       └─→ Phase 4 can start before Phase 3 is fully
-           complete (musician lens works without playful)
+Phase 1 (Schema Migration) ✓
+  └─→ Phase 2 (Profile & Onboarding) ✓
+       ├─→ Phase 3 (Playful Lens Content) ✓
+       └─→ Phase 4 (Starters, Paths & Hub)
+            │  ├─ 4.1-4.2: Skratch Studio starter system
+            │  ├─ 4.3-4.4: Path data (can overlap with 4.1-4.2)
+            │  ├─ 4.5-4.6: Theory Hub + path runner
+            │  └─ 4.7: Bidirectional links
+            └─→ Phase 5 (Game Progression & Assessment)
+                 └─→ Phase 6 (Tonnetz Grid Map)
 ```
 
-Phases 3 and 4 can partially overlap — you can build the hub UI
-(Task 4.3) while playful content is being drafted (Task 3.1),
-since the hub works fine with musician/theorist lenses only.
+Within Phase 4, Tasks 4.1-4.2 (starter system) and 4.3-4.4 (path
+data) are independent and can overlap. Tasks 4.5-4.7 depend on
+both being complete. The Theory Hub (4.5) can be built and tested
+with path data alone — starters add interactivity but the hub
+works without them (steps just link to regular Skratch Studio).

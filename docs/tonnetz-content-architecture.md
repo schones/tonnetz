@@ -192,40 +192,137 @@ Every piece of content belongs to exactly one primary type. These types reflect 
 
 ## 6. Learning Paths
 
-A path is a curated, ordered sequence of steps. Each step combines a topic, an optional game, and an optional visualization. Paths are the primary solution to the cold start problem.
+A path is a curated, ordered sequence of steps. Each step combines a topic with one or more of: a recognition game, a Skratch Studio starter, and a visualization. Skratch Studio serves as the creative sandbox throughout — every step that doesn't have a recognition game uses a Starter to make the concept hands-on.
+
+### Path Step Schema
 
 ```javascript
 {
   id: "foundations",
   title: "Music Foundations",
-  description: "From zero to reading and hearing music.",
-  target_personas: ["beginner", "dabbler"],  // maps to onboarding presets
-  default_lens: "musician",           // which depth to show by default (user can switch)
+  description: "From zero to reading and hearing music — with Skratch Studio as your playground.",
+  target_personas: ["beginner", "dabbler"],
+  default_lens: "playful",
   estimated_total_minutes: 120,
 
   steps: [
+    // --- Step 0: Meet Skratch Studio ---
+    {
+      topic_id: null,                         // no theory topic — this is pure onboarding
+      game_id: "skratch_studio",
+      starter_id: "starter_free_play",        // everything unlocked, no constraints
+      visualization_id: null,
+      prompt: "This is your music playground. Poke around. Make some noise. Nothing can break."
+    },
+
+    // --- Step 1: What is Sound? ---
     {
       topic_id: "sound_basics",
-      game_id: null,                  // no game for this one, just read/explore
+      game_id: "skratch_studio",
+      starter_id: "starter_sound_frequency",  // single oscillator + frequency slider
       visualization_id: null,
-      prompt: "Before we talk about music, let's talk about sound itself."
+      prompt: "Drag the slider. What happens to the sound when you go up? Down?"
     },
+
+    // --- Step 2: Rhythm ---
+    {
+      topic_id: "rhythm",
+      game_id: "rhythm_lab",                  // recognition game first
+      starter_id: "starter_rhythm_grid",      // then: drums only, loop grid
+      visualization_id: null,
+      prompt: "Feel the beat first, then build your own pattern."
+    },
+
+    // --- Step 3: Note Names ---
     {
       topic_id: "note_names",
-      game_id: null,
+      game_id: "skratch_studio",
+      starter_id: "starter_note_names",       // piano, 1 octave, keys labeled
       visualization_id: "scale_explorer",
-      prompt: "Now that you know what sound is, let's name the notes."
+      prompt: "Play every white key from left to right. You just played C-D-E-F-G-A-B."
     },
+
+    // --- Step 4: Tempo ---
+    {
+      topic_id: "tempo",
+      game_id: "skratch_studio",
+      starter_id: "starter_tempo_slider",     // drum loop from Step 2, BPM slider added
+      visualization_id: null,
+      prompt: "Same pattern, but now you control the speed. Slow it way down. Speed it way up."
+    },
+
+    // --- Step 5: Dynamics ---
+    {
+      topic_id: "dynamics",
+      game_id: "skratch_studio",
+      starter_id: "starter_dynamics_loud_soft", // pre-built melody, volume envelope available
+      visualization_id: null,
+      prompt: "This melody sounds flat and boring. Can you make it start quiet and get LOUD?"
+    },
+
+    // --- Step 6: Octave ---
+    {
+      topic_id: "octave",
+      game_id: "skratch_studio",
+      starter_id: "starter_octave_jump",      // piano, 2 octaves, C notes highlighted
+      visualization_id: "scale_explorer",
+      prompt: "Play this C. Now play THIS C. Same note, different height. That's an octave."
+    },
+
+    // --- Step 7: Semitones & Whole Tones ---
+    {
+      topic_id: "semitones_whole_tones",
+      game_id: "skratch_studio",
+      starter_id: "starter_half_whole_steps",  // piano zoomed C-E, steps color-coded
+      visualization_id: null,
+      prompt: "Play two keys right next to each other — that tiny step is a semitone. Skip one — that's a whole tone."
+    },
+
+    // --- Step 8: Intervals ---
     {
       topic_id: "intervals",
-      game_id: "harmony_trainer",
+      game_id: "harmony_trainer",             // recognition game first
+      starter_id: "starter_interval_builder", // piano, drag notes apart, interval name shown live
       visualization_id: "tonnetz_grid",
-      prompt: "Notes have distances between them. Let's learn to hear those distances."
+      prompt: "Train your ear first, then build your own intervals and watch them change."
     },
-    // ...
+
+    // --- Step 9: Major Scale ---
+    {
+      topic_id: "major_scale",
+      game_id: "skratch_studio",
+      starter_id: "starter_major_scale",      // piano, only white keys active (C major), W/H pattern shown
+      visualization_id: "scale_explorer",
+      prompt: "Play these keys in order. Hear 'Do Re Mi'? That pattern of whole and half steps is a major scale."
+    },
+
+    // --- Step 10: Minor Scale ---
+    {
+      topic_id: "minor_scale",
+      game_id: "skratch_studio",
+      starter_id: "starter_minor_scale",      // piano, A minor (white keys starting on A)
+      visualization_id: "scale_explorer",
+      prompt: "Same keys, different starting point. Hear how it sounds darker? That's a minor scale."
+    },
+
+    // --- Step 11: Triads ---
+    {
+      topic_id: "triads",
+      game_id: "chord_spotter",               // recognition game first
+      starter_id: "starter_triad_builder",    // piano with chord-building: pick root, see triad build
+      visualization_id: "chord_voicing_visualizer",
+      prompt: "Hear some chords first, then build your own. Stack every other note — that's a triad."
+    }
   ]
 }
 ```
+
+### Step Design Principles
+- **Every step is interactive.** No step is "just read this." Either a recognition game, a Skratch Studio starter, or both.
+- **Games come before starters when both exist.** Train your ear (structured) → then create with the concept (open-ended). The game gives confidence; the starter gives ownership.
+- **Starters get progressively richer.** Step 1 has one block and a slider. Step 11 has chord-building tools. This mirrors the learner's growing vocabulary.
+- **Starters can reference earlier starters.** Step 4 (tempo) reloads the drum loop from Step 2 (rhythm) with a BPM slider added, reinforcing continuity.
+- **Steps that use Skratch Studio set `game_id: "skratch_studio"` and `starter_id` to the specific config.** Steps that use only a recognition game set `starter_id: null` (or include a starter as an optional follow-up).
 
 ### Onboarding Presets → Path Mapping
 
@@ -233,8 +330,8 @@ Preset IDs are intent-based, not demographic. User-facing labels are friendly an
 
 | Preset | Label (shown to user) | Default Lens | Recommended Paths | Starting Games |
 |--------|-----------------------|-------------|-------------------|----------------|
-| `beginner` | "I'm brand new to music" | playful | Music Foundations | Rhythm Lab, Skratch Studio |
-| `dabbler` | "I play an instrument a little" | playful / musician | Music Foundations (skip sound_basics), Ear Training Basics | Melody Match, Harmony Trainer (easy) |
+| `beginner` | "I'm brand new to music" | playful | Music Foundations | Skratch Studio, Rhythm Lab |
+| `dabbler` | "I play an instrument a little" | playful / musician | Music Foundations (skip Steps 0-1), Ear Training Basics | Melody Match, Harmony Trainer (easy) |
 | `curious_player` | "I play but want to understand theory" | musician | Why Chords Work, Ear Training Deep Dive | Chord Spotter, Harmony Trainer |
 | `producer` | "I make beats but don't know theory" | musician | Why Chords Work, Rhythm & Groove | Skratch Studio, Rhythm Lab, Chord Spotter |
 | `deep_diver` | "I know theory, show me the deep stuff" | theorist | Advanced Harmony, Tonnetz & Transforms | All unlocked |
@@ -251,9 +348,63 @@ After selecting a preset, users can:
 
 ## 7. Skratch Studio Content Layer
 
-Skratch Studio gets its own content approach because it's creative, not quiz-based.
+Skratch Studio gets its own content approach because it's creative, not quiz-based. It serves two roles:
 
-### Instead of Tooltips → Creative Challenges
+1. **Sandbox for learning paths** — via Starters that constrain and pre-configure the environment to focus on one concept.
+2. **Open-ended creative tool** — via Challenges that prompt exploration without constraints.
+
+### 7a. Starters (Path-Integrated Sandbox Mode)
+
+A Starter is a preconfigured Skratch Studio state designed to teach a specific concept. It constrains what's available so the learner focuses on one idea at a time. Starters are referenced from Learning Path steps (§6).
+
+```javascript
+{
+  id: "starter_dynamics_loud_soft",
+  topic_id: "dynamics",
+  title: "Loud and Soft",
+
+  // --- Pre-configured state ---
+  preload: {
+    instruments: ["drums"],           // which instruments are available
+    blocks: [                         // blocks pre-placed on canvas
+      { type: "drum_loop", config: { pattern: "basic_4bar", bpm: 100 } }
+    ],
+    available_blocks: ["volume_envelope"],  // blocks the user can add
+    locked_features: ["melody", "bass", "loop_pedal"],  // hidden/disabled
+    piano_config: null,               // or { octaves: 2, start_note: "C4", highlighted_keys: ["C4", "E4", "G4"] }
+    bpm: 100,
+    key: null                         // or "C_major" to constrain available notes
+  },
+
+  // --- The lesson ---
+  prompt: "This drum loop sounds the same the whole way through. Can you make it start soft and end LOUD?",
+  hints: [                            // shown progressively if user seems stuck
+    "Look for the volume block — drag it onto your loop.",
+    "Try setting the start volume low and the end volume high."
+  ],
+
+  // --- After they've explored ---
+  debrief: "You just used dynamics — that's how musicians control volume to make music feel alive.",
+  theory_link: "dynamics",            // "Want to learn more?" → Theory Hub
+
+  // --- Optional: bridge to a recognition game ---
+  bridge_to_game: null                // or { game_id: "...", prompt: "Now try hearing it..." }
+}
+```
+
+### Engineering Requirement: Starter Loading System
+Skratch Studio currently supports keyboard starter packs but not full preconfigured states with block pre-loading and feature locking. The Starter system requires:
+1. **Config ingestion** — Skratch Studio accepts a starter config object (from URL param, postMessage, or JS API) that sets instruments, blocks, constraints.
+2. **Feature locking** — ability to hide/disable instruments and block categories not relevant to the current lesson.
+3. **Block pre-placement** — load blocks onto the canvas programmatically.
+4. **State reset** — "Reset to starter" button that restores the original config (distinct from "Clear All").
+
+This is a prerequisite for the Learning Paths that use Skratch Studio (Phase 4 of the build plan).
+
+### 7b. Challenges (Open-Ended Creative Prompts)
+
+Challenges are standalone creative prompts, not tied to a specific path step. They can appear as suggestions within Skratch Studio or in the Theory Hub.
+
 ```javascript
 {
   id: "challenge_big_jumps",
