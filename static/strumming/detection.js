@@ -238,11 +238,6 @@ async function detectLoop() {
     d.prevRMS = 0; // signal that lockout is active (baseline needs reset)
     const onsetTime = now - latencyCompensationMs;
 
-    console.log(
-      `[detect] >>> ONSET rms=${rms.toFixed(4)} prev=${d.prevRMS.toFixed(4)} ` +
-      `lockoutMs=${d.lockoutMs.toFixed(0)}`
-    );
-
     if (d.onOnset) {
       d.onOnset(onsetTime);
     }

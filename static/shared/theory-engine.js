@@ -605,8 +605,6 @@ export class TheoryTooltip {
   _renderBody(topic) {
     // Per-topic depth resolution: preferred lens → additional lenses → musician
     const resolved = this._resolveDepthForTopic(topic);
-    console.log(`[theory-engine] topic="${this._currentTopicId}" lens="${this._depth}" → depth="${resolved}"`);
-
     const content = topic.levels?.[resolved];
     this._el.querySelector('.tt-body').textContent = content
       ? trimContent(content)

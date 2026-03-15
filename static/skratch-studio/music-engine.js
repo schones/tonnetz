@@ -125,17 +125,6 @@ export class MusicEngine {
     Tone.Transport.loopEnd = loopEndSec;
     Tone.Transport.loop = enabled;
 
-    console.log('[Loop] setLoop:', {
-      enabled,
-      measures: this._loopEndBar,
-      bpm,
-      loopEndSec: loopEndSec.toFixed(3) + 's',
-      readback: {
-        loop: Tone.Transport.loop,
-        loopEnd: Tone.Transport.loopEnd,
-        loopStart: Tone.Transport.loopStart,
-      }
-    });
   }
 
   onLoopRestart(callback) {

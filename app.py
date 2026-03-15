@@ -35,6 +35,7 @@ from pitch_matcher import PitchMatcher
 # App + singletons
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB upload limit
 
 detector = ChordDetector(sample_rate=SAMPLE_RATE)
 matcher = PitchMatcher(sample_rate=SAMPLE_RATE)

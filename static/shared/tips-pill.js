@@ -326,7 +326,6 @@ class TipsPill {
       return diff >= minDiff;
     });
 
-    console.log(`[tips-pill] preset="${profile?.preset ?? 'none'}" minDiff=${minDiff} → ${this._topicKeys.length}/${normalized.length} topics`);
     this._countEl.textContent = this._topicKeys.length;
     this._renderCards();
   }
@@ -428,7 +427,6 @@ class TipsPill {
 
     // Use profile-aware depth for content (per-topic fallback)
     const depth = _resolveDepth(topic);
-    console.log(`[tips-pill] topic="${topic.id}" lens="${getProfile()?.active_lens ?? 'none'}" → depth="${depth}"`);
     const rawContent = topic.levels?.[depth];
     // Depth may be a string (musician/theorist/math) or an object ({available, summary, body})
     const content = (rawContent && typeof rawContent === 'object')

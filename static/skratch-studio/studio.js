@@ -843,9 +843,11 @@ export function init() {
   // Clear Blocks button — clears only the Blockly workspace
   document.getElementById('btnClearBlocks').addEventListener('click', () => {
     if (!confirm('Are you sure? This will clear all blocks.')) return;
+    if (_isPlaying) handleStop();
     workspace.clear();
     updateCodePreview();
     localStorage.removeItem(STORAGE_KEY);
+    drawCanvasGrid(document.getElementById('skratchCanvas'));
   });
 
   // Clear Canvas button — resets canvas and stops audio/Transport
@@ -902,14 +904,12 @@ export function init() {
   document.getElementById('chkLoop').addEventListener('change', (e) => {
     if (_isPlaying && musicEngine._started) {
       const loop = e.target.checked;
-      console.log('[Loop] Live toggle:', loop);
       musicEngine.setLoop(loop);
       if (loop) {
         // Wire up live editing reschedule + visual restart
         musicEngine.onLoopReschedule(() => {
           if (!_workspaceDirty) return;
           _workspaceDirty = false;
-          console.log('[LiveEdit] Rescheduling — workspace changed');
           const newCode = generateCode();
           const newHasMusic = /\b(kick|snare|hihat|bass|melody|chords)\.(trigger|Tone\.Transport)/.test(newCode)
             || /__playLoop\(/.test(newCode);
@@ -919,7 +919,6 @@ export function init() {
           sandbox.recompile(newCode);
         });
         musicEngine.onLoopRestart(() => {
-          console.log('[Loop] Transport looped — restarting visual animation');
           sandbox.restartLoop();
         });
       } else {
@@ -1249,7 +1248,6 @@ async function handlePlay() {
 
     // Enable looping if the Loop checkbox is checked
     const loopEnabled = document.getElementById('chkLoop').checked;
-    console.log('[Loop] Checkbox checked:', loopEnabled);
     // Always set loop boundaries so live toggling during playback works
     musicEngine.setLoop(loopEnabled);
 
@@ -1258,7 +1256,6 @@ async function handlePlay() {
     musicEngine.onLoopReschedule(() => {
       if (!_workspaceDirty) return;
       _workspaceDirty = false;
-      console.log('[LiveEdit] Rescheduling — workspace changed');
 
       const newCode = generateCode();
       const newHasMusic = /\b(kick|snare|hihat|bass|melody|chords)\.(trigger|Tone\.Transport)/.test(newCode);
@@ -1278,7 +1275,6 @@ async function handlePlay() {
 
     // Register loop restart handler (resets visual animation on each loop)
     musicEngine.onLoopRestart(() => {
-      console.log('[Loop] Transport looped — restarting visual animation');
       sandbox.restartLoop();
     });
 

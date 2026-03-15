@@ -2229,9 +2229,7 @@ export function validateTheory() {
   });
 
   if (errors.length === 0) {
-    console.log('✓ theory-content.js valid —', Object.keys(THEORY.topics).length, 'topics,',
-      Object.keys(THEORY.visualizations).length, 'visualizations,',
-      Object.keys(THEORY.games || {}).length, 'games');
+    // validation passed
   } else {
     console.error('✗ Validation errors:\n' + errors.join('\n'));
   }
