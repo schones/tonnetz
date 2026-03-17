@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% block title %}Relative Major & Minor — Tonnetz{% endblock %}
+
+{% block head %}
+<!-- Tone.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<style>
+  /* ── Page layout ─────────────────────────────────────────── */
+  .rkt-page {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 1rem 1rem 3rem;
+  }
+
+  /* ── Top bar ─────────────────────────────────────────────── */
+  .rkt-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .rkt-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .rkt-top-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .rkt-back-link {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 700;
+  }
+  .rkt-back-link:hover { color: var(--text-primary); }
+
+  /* ── Level dots ──────────────────────────────────────────── */
+  #level-dots {
+    display: flex;
+    gap: 4px;
+    font-size: 0.9rem;
+  }
+  .rkt-level-dot {
+    color: var(--text-muted);
+    line-height: 1;
+  }
+  .rkt-level-dot--active {
+    color: #f59e0b;
+  }
+
+  /* ── Level selector ──────────────────────────────────────── */
+  .rkt-level-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1rem;
+  }
+  .rkt-level-btn {
+    padding: 5px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .rkt-level-btn:hover:not(:disabled) {
+    border-color: #f59e0b;
+  }
+  .rkt-level-btn--active {
+    background: #f59e0b;
+    color: #1a1a2e;
+    border-color: #f59e0b;
+  }
+  .rkt-level-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ── Component containers ────────────────────────────────── */
+  #tonnetz-container {
+    width: 100%;
+    max-width: 480px;
+    height: 360px;
+    margin: 0 auto 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+  #keyboard-container {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto 1rem;
+    overflow-x: auto;
+  }
+
+  /* ── Question / Feedback ─────────────────────────────────── */
+  .rkt-question-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  #question-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+  }
+  .rkt-round-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  /* ── Answer buttons ──────────────────────────────────────── */
+  #answer-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .rkt-answer-btn {
+    min-width: 120px;
+    min-height: 48px;
+    padding: 0.6rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .rkt-answer-btn:hover:not(:disabled) {
+    border-color: #f59e0b;
+    transform: translateY(-2px);
+  }
+  .rkt-answer-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  .rkt-answer-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ── Replay button ───────────────────────────────────────── */
+  #btn-replay {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin: 0.75rem auto 0;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  #btn-replay:hover { color: var(--text-primary); }
+
+  /* ── Feedback ────────────────────────────────────────────── */
+  .rkt-feedback {
+    min-height: 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-align: center;
+    margin-top: 0.75rem;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    transition: background 0.2s;
+  }
+  .rkt-feedback--correct {
+    color: var(--text-success);
+    background: rgba(0, 200, 83, 0.1);
+  }
+  .rkt-feedback--incorrect {
+    color: var(--text-error);
+    background: rgba(255, 23, 68, 0.1);
+  }
+
+  /* ── Results ─────────────────────────────────────────────── */
+  #results-area {
+    display: none;
+    text-align: center;
+  }
+  .rkt-results-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 2rem;
+  }
+  #results-score {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #f59e0b;
+    margin-bottom: 1.25rem;
+  }
+  #results-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* ── Shared button styles ────────────────────────────────── */
+  .rkt-btn {
+    padding: 0.65rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .rkt-btn:hover { transform: translateY(-2px); }
+  .rkt-btn--primary {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+  }
+  .rkt-btn--accent {
+    background: #f59e0b;
+    color: #1a1a2e;
+  }
+
+  /* ── Start overlay ───────────────────────────────────────── */
+  #start-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem 1rem;
+    text-align: center;
+    cursor: pointer;
+  }
+  .rkt-start-icon {
+    font-size: 3rem;
+    line-height: 1;
+  }
+  .rkt-start-text {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .rkt-start-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Game area (hidden until start) ──────────────────────── */
+  #game-area {
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rkt-page">
+
+  <!-- Top bar -->
+  <div class="rkt-top-bar">
+    <h1 class="rkt-title">Relative Major & Minor</h1>
+    <div class="rkt-top-right">
+      <div id="level-dots"></div>
+      <a href="/" class="rkt-back-link">&larr; Back</a>
+    </div>
+  </div>
+
+  <!-- Level selector -->
+  <div class="rkt-level-bar">
+    <button class="rkt-level-btn rkt-level-btn--active" data-level="1">Level 1</button>
+    <button class="rkt-level-btn" data-level="2">Level 2</button>
+  </div>
+
+  <!-- Start overlay (Tone.js needs user gesture) -->
+  <div id="start-overlay">
+    <div class="rkt-start-icon">&#9654;</div>
+    <div class="rkt-start-text">Start Game</div>
+    <div class="rkt-start-sub">Click to begin (enables audio)</div>
+  </div>
+
+  <!-- Game area -->
+  <div id="game-area">
+    <!-- Tonnetz -->
+    <div id="tonnetz-container"></div>
+
+    <!-- Keyboard -->
+    <div id="keyboard-container"></div>
+
+    <!-- Question card -->
+    <div class="rkt-question-card">
+      <div class="rkt-round-info">
+        <span id="round-indicator">Round 1 / 10</span>
+        <span id="score-display">Score: 0</span>
+      </div>
+      <div id="question-text"></div>
+      <div id="answer-buttons"></div>
+      <button id="btn-replay">&#9654; Replay</button>
+      <div id="feedback-area" class="rkt-feedback"></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-area">
+    <div class="rkt-results-card">
+      <div id="results-score"></div>
+      <div id="results-actions"></div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { init } from '{{ url_for("static", filename="games/relative-key-trainer.js") }}';
+  init();
+</script>
+{% endblock %}

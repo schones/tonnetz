@@ -109,6 +109,10 @@ def rhythm():
 def strumming():
     return render_template("strumming.html")
 
+@app.route("/games/relative-key-trainer")
+def relative_key_trainer():
+    return render_template("relative-key-trainer.html")
+
 @app.route("/skratch")
 def skratch():
     return render_template("skratch-studio.html")
