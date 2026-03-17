@@ -18,7 +18,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     flex-wrap: wrap;
     gap: 0.5rem;
   }
@@ -28,11 +28,6 @@
     color: var(--text-primary);
     margin: 0;
   }
-  .rkt-top-right {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
   .rkt-back-link {
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -41,48 +36,52 @@
   }
   .rkt-back-link:hover { color: var(--text-primary); }
 
-  /* ── Level dots ──────────────────────────────────────────── */
-  #level-dots {
-    display: flex;
-    gap: 4px;
-    font-size: 0.9rem;
-  }
-  .rkt-level-dot {
+  /* ── Tier label ────────────────────────────────────────────── */
+  .rkt-tier-label {
+    text-align: center;
+    font-size: 0.78rem;
     color: var(--text-muted);
-    line-height: 1;
-  }
-  .rkt-level-dot--active {
-    color: #f59e0b;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
-  /* ── Level selector ──────────────────────────────────────── */
-  .rkt-level-bar {
+  /* ── Phase tabs ────────────────────────────────────────────── */
+  .rkt-phase-tabs {
     display: flex;
     gap: 6px;
-    margin-bottom: 1rem;
+    justify-content: center;
+    margin-bottom: 0.35rem;
   }
-  .rkt-level-btn {
-    padding: 5px 14px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg-card);
+  .rkt-phase-tab {
+    padding: 7px 22px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: transparent;
     color: var(--text-primary);
-    font-size: 0.82rem;
+    font-size: 0.9rem;
     font-weight: 700;
+    font-family: var(--font-main);
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
-  .rkt-level-btn:hover:not(:disabled) {
+  .rkt-phase-tab:hover:not(.rkt-phase-tab--active) {
     border-color: #f59e0b;
   }
-  .rkt-level-btn--active {
+  .rkt-phase-tab--active {
     background: #f59e0b;
     color: #1a1a2e;
     border-color: #f59e0b;
   }
-  .rkt-level-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+
+  /* ── Phase hint ────────────────────────────────────────────── */
+  .rkt-phase-hint {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    font-style: italic;
   }
 
   /* ── Component containers ────────────────────────────────── */
@@ -103,7 +102,141 @@
     overflow-x: auto;
   }
 
-  /* ── Question / Feedback ─────────────────────────────────── */
+  /* ── Learn phase ─────────────────────────────────────────── */
+  .rkt-step-indicator {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    text-align: right;
+    margin-bottom: 0.25rem;
+  }
+  .rkt-narration {
+    font-size: 1.15rem;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    min-height: 2.5rem;
+    transition: opacity 0.25s ease;
+  }
+  #learn-extras {
+    text-align: center;
+    min-height: 0;
+  }
+  .rkt-annotation-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-align: center;
+    font-style: italic;
+    margin: 0.75rem 0 0;
+    line-height: 1.5;
+  }
+  .rkt-learn-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.75rem;
+    gap: 0.5rem;
+  }
+  .rkt-nav-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, opacity 0.15s;
+  }
+  .rkt-nav-btn:hover:not(:disabled) {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+  }
+  .rkt-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .rkt-nav-btn--next {
+    background: #f59e0b;
+    color: #1a1a2e;
+    border-color: #f59e0b;
+  }
+  .rkt-nav-btn--next:hover:not(:disabled) {
+    color: #1a1a2e;
+    opacity: 0.9;
+  }
+  .rkt-nav-btn--next:disabled {
+    background: #f59e0b;
+    color: #1a1a2e;
+    border-color: #f59e0b;
+    opacity: 0.3;
+  }
+
+  /* ── Practice phase ─────────────────────────────────────────── */
+  .rkt-practice-question {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+  }
+  #practice-answer-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+  .rkt-practice-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 0.25rem;
+  }
+  .rkt-nav-btn--ghost {
+    border-style: dashed;
+    opacity: 0.7;
+  }
+  .rkt-nav-btn--ghost:hover:not(:disabled) {
+    opacity: 1;
+  }
+  #practice-next-wrap {
+    margin-top: 0.75rem;
+    text-align: center;
+  }
+  .rkt-feedback--practice-incorrect {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+  .rkt-feedback--neutral {
+    color: var(--text-secondary);
+    background: rgba(200, 200, 200, 0.08);
+  }
+  .rkt-practice-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+  }
+  .rkt-practice-prompt {
+    text-align: center;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+  }
+  .rkt-practice-test-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 600;
+    font-style: italic;
+  }
+  .rkt-practice-test-link:hover {
+    color: #f59e0b;
+  }
+
+  /* ── Question / Feedback (Test phase) ──────────────────────── */
   .rkt-question-card {
     background: var(--bg-card);
     border-radius: 12px;
@@ -158,7 +291,7 @@
     cursor: not-allowed;
   }
 
-  /* ── Replay button ───────────────────────────────────────── */
+  /* ── Replay button (Test phase) ─────────────────────────── */
   #btn-replay {
     display: none;
     align-items: center;
@@ -177,7 +310,7 @@
   }
   #btn-replay:hover { color: var(--text-primary); }
 
-  /* ── Feedback ────────────────────────────────────────────── */
+  /* ── Feedback ──────────────────────────────────────────────── */
   .rkt-feedback {
     min-height: 1.5rem;
     font-size: 0.95rem;
@@ -220,7 +353,7 @@
     flex-wrap: wrap;
   }
 
-  /* ── Shared button styles ────────────────────────────────── */
+  /* ── Shared button styles ──────────────────────────────────── */
   .rkt-btn {
     padding: 0.65rem 1.5rem;
     font-size: 1rem;
@@ -241,7 +374,7 @@
     color: #1a1a2e;
   }
 
-  /* ── Start overlay ───────────────────────────────────────── */
+  /* ── Start overlay ─────────────────────────────────────────── */
   #start-overlay {
     display: flex;
     flex-direction: column;
@@ -265,11 +398,6 @@
     font-size: 0.85rem;
     color: var(--text-muted);
   }
-
-  /* ── Game area (hidden until start) ──────────────────────── */
-  #game-area {
-    display: none;
-  }
 </style>
 {% endblock %}
 
@@ -279,44 +407,93 @@
   <!-- Top bar -->
   <div class="rkt-top-bar">
     <h1 class="rkt-title">Relative Major & Minor</h1>
-    <div class="rkt-top-right">
-      <div id="level-dots"></div>
-      <a href="/" class="rkt-back-link">&larr; Back</a>
-    </div>
+    <a href="/" class="rkt-back-link">&larr; Back</a>
   </div>
 
-  <!-- Level selector -->
-  <div class="rkt-level-bar">
-    <button class="rkt-level-btn rkt-level-btn--active" data-level="1">Level 1</button>
-    <button class="rkt-level-btn" data-level="2">Level 2</button>
+  <!-- Tier label -->
+  <div class="rkt-tier-label">Tier 1: Major or Minor?</div>
+
+  <!-- Phase tabs -->
+  <div class="rkt-phase-tabs">
+    <button class="rkt-phase-tab rkt-phase-tab--active" data-phase="learn">Learn</button>
+    <button class="rkt-phase-tab" data-phase="practice">Practice</button>
+    <button class="rkt-phase-tab" data-phase="test">Test</button>
   </div>
+  <div class="rkt-phase-hint" id="phase-hint">Watch &amp; listen</div>
 
   <!-- Start overlay (Tone.js needs user gesture) -->
   <div id="start-overlay">
     <div class="rkt-start-icon">&#9654;</div>
-    <div class="rkt-start-text">Start Game</div>
+    <div class="rkt-start-text">Start</div>
     <div class="rkt-start-sub">Click to begin (enables audio)</div>
   </div>
 
-  <!-- Game area -->
-  <div id="game-area">
-    <!-- Tonnetz -->
-    <div id="tonnetz-container"></div>
+  <!-- Main content (hidden until audio starts) -->
+  <div id="main-content" style="display: none;">
 
-    <!-- Keyboard -->
-    <div id="keyboard-container"></div>
-
-    <!-- Question card -->
-    <div class="rkt-question-card">
-      <div class="rkt-round-info">
-        <span id="round-indicator">Round 1 / 10</span>
-        <span id="score-display">Score: 0</span>
-      </div>
-      <div id="question-text"></div>
-      <div id="answer-buttons"></div>
-      <button id="btn-replay">&#9654; Replay</button>
-      <div id="feedback-area" class="rkt-feedback"></div>
+    <!-- ── Learn header ──────────────────────────────────── -->
+    <div id="learn-header">
+      <div class="rkt-step-indicator" id="step-indicator">Step 1 of 5</div>
+      <div class="rkt-narration" id="narration-text"></div>
     </div>
+
+    <!-- ── Shared visualizations ─────────────────────────── -->
+    <div id="viz-area">
+      <div id="tonnetz-container"></div>
+      <div id="keyboard-container"></div>
+    </div>
+
+    <!-- ── Learn footer ──────────────────────────────────── -->
+    <div id="learn-footer">
+      <div id="learn-extras"></div>
+      <div class="rkt-learn-nav">
+        <button class="rkt-nav-btn" id="btn-learn-back" disabled>&#8592; Back</button>
+        <button class="rkt-nav-btn" id="btn-learn-replay">&#9654; Replay</button>
+        <button class="rkt-nav-btn rkt-nav-btn--next" id="btn-learn-next" disabled>Next &#8594;</button>
+      </div>
+    </div>
+
+    <!-- ── Test phase content ────────────────────────────── -->
+    <div id="test-content" style="display: none;">
+      <div class="rkt-question-card">
+        <div class="rkt-round-info">
+          <span id="round-indicator">Round 1 / 10</span>
+          <span id="score-display">Score: 0</span>
+        </div>
+        <div id="question-text"></div>
+        <div id="answer-buttons"></div>
+        <button id="btn-replay">&#9654; Replay</button>
+        <div id="feedback-area" class="rkt-feedback"></div>
+      </div>
+    </div>
+
+    <!-- ── Practice phase content ────────────────────────── -->
+    <div id="practice-content" style="display: none;">
+      <div class="rkt-question-card">
+        <div id="practice-question-text" class="rkt-practice-question">Is this major or minor?</div>
+        <div id="practice-answer-buttons">
+          <button class="rkt-answer-btn" data-answer="major">Major</button>
+          <button class="rkt-answer-btn" data-answer="minor">Minor</button>
+        </div>
+        <div class="rkt-practice-actions">
+          <button class="rkt-nav-btn" id="btn-practice-replay">&#9654; Replay</button>
+          <button class="rkt-nav-btn rkt-nav-btn--ghost" id="btn-practice-showme">&#128161; Show me</button>
+        </div>
+        <div id="practice-feedback" class="rkt-feedback"></div>
+        <div id="practice-next-wrap" style="display: none;">
+          <button class="rkt-btn rkt-btn--accent" id="btn-practice-next">Next round &#8594;</button>
+        </div>
+      </div>
+      <div class="rkt-practice-stats">
+        <span id="practice-streak">Streak: 0</span>
+        <span id="practice-rounds">Rounds: 0</span>
+      </div>
+      <div id="practice-test-prompt" class="rkt-practice-prompt" style="display: none;">
+        <span id="practice-test-prompt-text"></span>
+        <a href="#" id="practice-goto-test" class="rkt-practice-test-link"></a>
+      </div>
+    </div>
+
   </div>
 
   <!-- Results -->
