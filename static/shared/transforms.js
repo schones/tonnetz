@@ -209,7 +209,8 @@ const TRANSFORMS = {
         // C major (C,E,G) → A minor (A,C,E): move G→A, new root = A
         const fifth = (rootPC + 7) % 12;
         const newRootPC = (fifth + 2) % 12;
-        const newRoot = pcToNote(newRootPC, true); // prefer flats for minor context
+        const useFlats = _shouldUseFlats(root, quality);
+        const newRoot = pcToNote(newRootPC, useFlats);
         return { root: newRoot, quality: "minor" };
       } else {
         // Minor → major: lower root by 2 → that becomes 5th of new major triad

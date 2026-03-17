@@ -129,6 +129,10 @@ def test_sustain():
 def test_tooltips():
     return render_template("test-tooltips.html")
 
+@app.route("/test/shared")
+def test_shared():
+    return render_template("test-shared.html")
+
 
 @app.route("/play", methods=["POST"])
 def play():

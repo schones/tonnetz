@@ -3,7 +3,10 @@
 Track issues identified during development that aren't blocking current work but need attention before production.
 
 ## Resolved
-<!-- Move items here as they're fixed, with date and commit ref -->
+
+### TonnetzNeighborhood.recenter() did not sync HarmonyState
+- **Fixed:** 2026-03-16
+- **Detail:** `recenter()` rebuilt the neighborhood graph and re-rendered the SVG, but did not call `HarmonyState.setTriad()`, so the keyboard view stayed stale. Added a guarded `setTriad()` call inside `recenter()` that checks whether `tonnetzCenter` already matches before updating, preventing infinite loops.
 
 ## To Fix Before Production
 
@@ -26,3 +29,4 @@ Track issues identified during development that aren't blocking current work but
 - **Source:** Gemini review, Phase 0
 - **Detail:** Tooltip relies on `document.addEventListener('click')`. Any game component using `event.stopPropagation()` will block `[data-theory]` triggers inside it. May need direct listeners or a different delegation strategy for embedded tooltips.
 - **Priority:** Low — only relevant when embedding tooltips inside interactive game canvases
+
