@@ -115,6 +115,13 @@ let isPlaying = false;
 let sampler = null;   // shared Tone.Sampler from KeyboardView
 let audioStarted = false;
 
+// Explore state
+let currentMode = 'phases';      // 'phases' | 'explore'
+let exploreTrail = [];           // [{ root, quality, transform? }]
+const MAX_TRAIL = 6;
+let exploreDepth = 1;
+let exploreCurrent = null;       // { root, quality } — currently selected triad
+
 // ════════════════════════════════════════════════════════════════════
 // DOM
 // ════════════════════════════════════════════════════════════════════
@@ -597,6 +604,22 @@ function showAfterText(text) {
   p.className = 'rkt-annotation-text';
   p.textContent = text;
   extras.appendChild(p);
+
+  // On step 5, add "or Explore freely" link
+  if (getLearnStep() === 5) {
+    const link = document.createElement('a');
+    link.href = '#';
+    link.className = 'rkt-explore-link';
+    link.textContent = 'or Explore freely →';
+    link.style.display = 'block';
+    link.style.textAlign = 'center';
+    link.style.marginTop = '0.5rem';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      enterExplore();
+    });
+    extras.appendChild(link);
+  }
 }
 
 /** Advance to the next sub-step within the current Learn step. */
@@ -1204,6 +1227,202 @@ function updatePracticeStats() {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// EXPLORE MODE
+// ════════════════════════════════════════════════════════════════════
+
+/** Play a single triad chord (3 notes, quarter note duration). */
+async function playTriadChord(root, quality) {
+  if (isPlaying) return;
+  await ensureAudio();
+  const voicing = chordVoicing(root, quality, 4);
+  if (!voicing.length) return;
+  isPlaying = true;
+  const beatDur = 60 / BPM;
+  sampler.triggerAttackRelease(voicing, beatDur * 0.9, Tone.now());
+  await new Promise(r => setTimeout(r, beatDur * 1000 + 100));
+  isPlaying = false;
+}
+
+/** Play source chord briefly, then destination chord (for transform). */
+async function playTransformChords(fromRoot, fromQuality, toRoot, toQuality) {
+  if (isPlaying) return;
+  await ensureAudio();
+  isPlaying = true;
+  const beatDur = 60 / BPM;
+  const now = Tone.now();
+  const fromVoicing = chordVoicing(fromRoot, fromQuality, 4);
+  const toVoicing = chordVoicing(toRoot, toQuality, 4);
+  sampler.triggerAttackRelease(fromVoicing, beatDur * 0.5, now);
+  sampler.triggerAttackRelease(toVoicing, beatDur * 0.9, now + beatDur * 0.7);
+  await new Promise(r => setTimeout(r, beatDur * 1.8 * 1000));
+  isPlaying = false;
+}
+
+/** Render the breadcrumb trail. */
+function renderExploreTrail() {
+  const container = $('explore-trail');
+  container.innerHTML = '';
+
+  exploreTrail.forEach((entry, i) => {
+    // Transform arrow (if not the first entry)
+    if (entry.transform) {
+      const arrow = document.createElement('span');
+      arrow.className = 'rkt-trail-arrow';
+      arrow.textContent = entry.transform;
+      container.appendChild(arrow);
+    }
+
+    // Chord pill
+    const pill = document.createElement('button');
+    pill.className = 'rkt-trail-chord';
+    if (i === exploreTrail.length - 1) pill.classList.add('rkt-trail-chord--active');
+    pill.textContent = `${displayNote(entry.root)} ${entry.quality === 'major' ? 'maj' : 'min'}`;
+    pill.addEventListener('click', () => {
+      exploreSelectChord(entry.root, entry.quality, true);
+    });
+    container.appendChild(pill);
+  });
+
+  // Scroll to end
+  const wrap = $('explore-trail').parentElement;
+  wrap.scrollLeft = wrap.scrollWidth;
+}
+
+/** Select a chord in Explore mode (from triad click or breadcrumb). */
+function exploreSelectChord(root, quality, fromBreadcrumb) {
+  exploreCurrent = { root, quality };
+
+  HarmonyState.update({ annotations: ANN_TRIAD, tonnetzDepth: exploreDepth });
+  HarmonyState.setTriad(root, quality);
+  TonnetzNeighborhood.recenter(root, quality);
+
+  $('explore-transform-label').textContent = '';
+
+  if (!fromBreadcrumb) {
+    // Add to trail
+    exploreTrail.push({ root, quality });
+    if (exploreTrail.length > MAX_TRAIL) exploreTrail.shift();
+    renderExploreTrail();
+  } else {
+    // Update active pill styling
+    $('explore-trail').querySelectorAll('.rkt-trail-chord').forEach((pill, i) => {
+      pill.classList.toggle('rkt-trail-chord--active',
+        i === exploreTrail.findIndex(e => e.root === root && e.quality === quality));
+    });
+  }
+
+  playTriadChord(root, quality);
+}
+
+/** Apply a PLR transform from the current chord in Explore mode. */
+function exploreApplyTransform(type) {
+  if (!exploreCurrent) return;
+
+  const from = { ...exploreCurrent };
+  const result = TRANSFORMS[type].apply(from.root, from.quality);
+  const to = { root: result.root, quality: result.quality };
+
+  // Animate on Tonnetz (ghost → primary)
+  HarmonyState.update({ annotations: ANN_TRANSFORM, tonnetzDepth: exploreDepth });
+  HarmonyState.setTransform(type, from.root, from.quality);
+
+  // Show label
+  const label = `${type}: ${displayNote(from.root)} ${from.quality} → ${displayNote(to.root)} ${to.quality}`;
+  $('explore-transform-label').textContent = label;
+
+  // Update current
+  exploreCurrent = to;
+
+  // Add to trail
+  exploreTrail.push({ root: to.root, quality: to.quality, transform: type });
+  if (exploreTrail.length > MAX_TRAIL) exploreTrail.shift();
+  renderExploreTrail();
+
+  // Play transform audio
+  playTransformChords(from.root, from.quality, to.root, to.quality);
+
+  // After a short delay, recenter on the new chord
+  setTimeout(() => {
+    if (exploreCurrent.root === to.root && exploreCurrent.quality === to.quality) {
+      TonnetzNeighborhood.recenter(to.root, to.quality);
+    }
+  }, 800);
+}
+
+/** Enter Explore mode. */
+function enterExplore() {
+  currentMode = 'explore';
+  stopAllAudio();
+  learnPlaybackId++;
+  awaitingAnswer = false;
+  practiceAwaitingAnswer = false;
+
+  // Deselect all phase tabs
+  document.querySelectorAll('.rkt-phase-tab').forEach(tab => {
+    tab.classList.remove('rkt-phase-tab--active');
+  });
+  $('phase-hint').textContent = 'Explore freely';
+
+  // Highlight explore button
+  $('btn-explore').classList.add('rkt-explore-btn--active');
+
+  // Show/hide areas
+  $('learn-header').style.display = 'none';
+  $('learn-footer').style.display = 'none';
+  $('test-content').style.display = 'none';
+  $('practice-content').style.display = 'none';
+  $('results-area').style.display = 'none';
+  $('viz-area').style.display = '';
+  $('explore-content').style.display = '';
+
+  // Re-init TonnetzNeighborhood with interactive mode
+  TonnetzNeighborhood.destroy();
+  TonnetzNeighborhood.init('tonnetz-container', {
+    interactive: true,
+    onTriadClick({ root, quality }) {
+      exploreSelectChord(root, quality, false);
+    },
+    onTransformClick({ type }) {
+      exploreApplyTransform(type);
+    },
+  });
+
+  // Set keyboard to 'both' (display + playable)
+  HarmonyState.update({ keyboardMode: 'both' });
+
+  // Set initial chord
+  const startRoot = exploreCurrent ? exploreCurrent.root : 'C';
+  const startQuality = exploreCurrent ? exploreCurrent.quality : 'major';
+  exploreCurrent = { root: startRoot, quality: startQuality };
+
+  HarmonyState.update({ annotations: { ...ANN_TRIAD, showTransformLabels: true }, tonnetzDepth: exploreDepth });
+  HarmonyState.setTriad(startRoot, startQuality);
+  TonnetzNeighborhood.setDepth(exploreDepth);
+
+  // Init trail
+  if (exploreTrail.length === 0) {
+    exploreTrail.push({ root: startRoot, quality: startQuality });
+  }
+  renderExploreTrail();
+  $('explore-transform-label').textContent = '';
+  $('explore-depth-select').value = String(exploreDepth);
+}
+
+/** Exit Explore mode and return to phases. */
+function exitExplore() {
+  currentMode = 'phases';
+  $('btn-explore').classList.remove('rkt-explore-btn--active');
+  $('explore-content').style.display = 'none';
+
+  // Re-init TonnetzNeighborhood in non-interactive mode
+  TonnetzNeighborhood.destroy();
+  TonnetzNeighborhood.init('tonnetz-container', { interactive: false });
+
+  // Return to last phase
+  switchPhase(currentPhase);
+}
+
+// ════════════════════════════════════════════════════════════════════
 // TIER SWITCHING
 // ════════════════════════════════════════════════════════════════════
 
@@ -1232,10 +1451,15 @@ const PHASE_HINTS = {
 
 function switchPhase(phase) {
   currentPhase = phase;
+  currentMode = 'phases';
   stopAllAudio();
   learnPlaybackId++;   // Cancel any in-flight Learn playback
   awaitingAnswer = false; // Cancel any pending Test answer
   practiceAwaitingAnswer = false;
+
+  // Remove explore active state
+  $('btn-explore').classList.remove('rkt-explore-btn--active');
+  $('explore-content').style.display = 'none';
 
   // Tab UI
   document.querySelectorAll('.rkt-phase-tab').forEach(tab => {
@@ -1285,6 +1509,14 @@ export function init() {
   document.querySelectorAll('.rkt-tier-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       if (!audioStarted) return;
+      if (currentMode === 'explore') {
+        // Re-init TonnetzNeighborhood in non-interactive mode
+        TonnetzNeighborhood.destroy();
+        TonnetzNeighborhood.init('tonnetz-container', { interactive: false });
+        currentMode = 'phases';
+        $('btn-explore').classList.remove('rkt-explore-btn--active');
+        $('explore-content').style.display = 'none';
+      }
       switchTier(Number(tab.dataset.tier));
     });
   });
@@ -1293,7 +1525,13 @@ export function init() {
   document.querySelectorAll('.rkt-phase-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       if (!audioStarted) return;
-      if (tab.dataset.phase === currentPhase) return;
+      const wasExplore = currentMode === 'explore';
+      if (tab.dataset.phase === currentPhase && !wasExplore) return;
+      if (wasExplore) {
+        // Re-init TonnetzNeighborhood in non-interactive mode
+        TonnetzNeighborhood.destroy();
+        TonnetzNeighborhood.init('tonnetz-container', { interactive: false });
+      }
       switchPhase(tab.dataset.phase);
     });
   });
@@ -1333,6 +1571,38 @@ export function init() {
   $('btn-replay').addEventListener('click', async () => {
     if (isPlaying || !currentKey) return;
     await playProgression(buildProgression(currentKey.root, currentKey.quality), BPM);
+  });
+
+  // ── Explore mode controls ────────────────────────────────────────
+
+  // Explore button (top bar)
+  $('btn-explore').addEventListener('click', () => {
+    if (!audioStarted) return;
+    if (currentMode === 'explore') {
+      exitExplore();
+    } else {
+      enterExplore();
+    }
+  });
+
+  // P/R/L transform buttons
+  document.querySelectorAll('.rkt-transform-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (currentMode !== 'explore') return;
+      exploreApplyTransform(btn.dataset.transform);
+    });
+  });
+
+  // Depth select
+  $('explore-depth-select').addEventListener('change', (e) => {
+    exploreDepth = Number(e.target.value);
+    HarmonyState.update({ tonnetzDepth: exploreDepth });
+    TonnetzNeighborhood.setDepth(exploreDepth);
+  });
+
+  // Back to Learn button
+  $('btn-explore-back').addEventListener('click', () => {
+    exitExplore();
   });
 
   // Start overlay (audio gate)

@@ -394,6 +394,156 @@
     color: #1a1a2e;
   }
 
+  /* ── Explore button (top bar) ──────────────────────────────── */
+  .rkt-top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .rkt-explore-btn {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .rkt-explore-btn:hover {
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }
+  .rkt-explore-btn--active {
+    background: #f59e0b;
+    color: #1a1a2e;
+    border-color: #f59e0b;
+  }
+
+  /* ── Explore mode ────────────────────────────────────────── */
+  .rkt-explore-transform-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
+  .rkt-transform-btn {
+    width: 52px;
+    height: 44px;
+    font-size: 1.15rem;
+    font-weight: 800;
+    font-family: var(--font-main);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .rkt-transform-btn:hover {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    transform: translateY(-2px);
+  }
+  .rkt-transform-btn:active {
+    transform: translateY(0);
+    background: #f59e0b;
+    color: #1a1a2e;
+  }
+  .rkt-explore-transform-label {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    min-height: 1.3rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  /* ── Breadcrumb trail ────────────────────────────────────── */
+  .rkt-explore-trail-wrap {
+    overflow-x: auto;
+    margin-bottom: 0.75rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .rkt-explore-trail {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    min-height: 1.8rem;
+    padding: 2px 0;
+  }
+  .rkt-trail-chord {
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .rkt-trail-chord:hover {
+    border-color: #f59e0b;
+  }
+  .rkt-trail-chord--active {
+    background: var(--accent, #6c63ff);
+    border-color: var(--accent, #6c63ff);
+    color: #fff;
+  }
+  .rkt-trail-arrow {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* ── Explore controls ────────────────────────────────────── */
+  .rkt-explore-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+  }
+  .rkt-depth-toggle {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .rkt-depth-select {
+    padding: 3px 6px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: var(--font-main);
+    cursor: pointer;
+  }
+
+  /* ── Explore link in Learn footer ────────────────────────── */
+  .rkt-explore-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+  .rkt-explore-link:hover {
+    color: #f59e0b;
+  }
+
   /* ── Start overlay ─────────────────────────────────────────── */
   #start-overlay {
     display: flex;
@@ -427,7 +577,10 @@
   <!-- Top bar -->
   <div class="rkt-top-bar">
     <h1 class="rkt-title">Relative Major & Minor</h1>
-    <a href="/" class="rkt-back-link">&larr; Back</a>
+    <div class="rkt-top-bar-right">
+      <button class="rkt-explore-btn" id="btn-explore">Explore &#9835;</button>
+      <a href="/" class="rkt-back-link">&larr; Back</a>
+    </div>
   </div>
 
   <!-- Tier selector -->
@@ -511,6 +664,31 @@
       <div id="practice-test-prompt" class="rkt-practice-prompt" style="display: none;">
         <span id="practice-test-prompt-text"></span>
         <a href="#" id="practice-goto-test" class="rkt-practice-test-link"></a>
+      </div>
+    </div>
+
+    <!-- ── Explore mode content ────────────────────────── -->
+    <div id="explore-content" style="display: none;">
+      <div class="rkt-explore-transform-btns">
+        <button class="rkt-transform-btn" data-transform="P">P</button>
+        <button class="rkt-transform-btn" data-transform="R">R</button>
+        <button class="rkt-transform-btn" data-transform="L">L</button>
+      </div>
+      <div class="rkt-explore-transform-label" id="explore-transform-label"></div>
+      <div class="rkt-explore-trail-wrap">
+        <div class="rkt-explore-trail" id="explore-trail"></div>
+      </div>
+      <div class="rkt-explore-controls">
+        <label class="rkt-depth-toggle">
+          Depth:
+          <select id="explore-depth-select" class="rkt-depth-select">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <button class="rkt-nav-btn" id="btn-explore-back">&larr; Back to Learn</button>
       </div>
     </div>
 
