@@ -25,7 +25,8 @@
 - [x] RKT-6: Levels 1-2 (listen mode) + answer visibility fix
 - [x] RKT-REFACTOR: Learn/Practice/Test 3-phase tab structure, 5-step Learn tutorial, shared Salamander sampler
 - [x] Salamander sample URL fix (v1 suffix)
-[x] RKT-7: Tier 2 "Find the Relative" — Learn/Practice/Test phases, tier selector, distractor generation, R transform animations
+- [x] RKT-7: Tier 2 "Find the Relative" — Learn/Practice/Test phases, tier selector, distractor generation, R transform animations
+- [x] RKT-8: Explore mode — interactive Tonnetz, P/R/L buttons, breadcrumb trail, depth 1-4
 
 
 
@@ -47,7 +48,7 @@
 ### Relative Key Trainer — Tier 2+
 - Tier 1 and Tier 2 both have Learn/Practice/Test built
 - Known text fix applied: "moves up a whole step" (Step 2 narration)
-- Next: RKT-8 (Explore mode), then RKT-9 (levels 4-5), RKT-10 (education wiring)
+- Next: RKT-9 (levels 4-5), RKT-10 (education wiring)
 
 
 ---
