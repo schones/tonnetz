@@ -2,7 +2,8 @@
 
 **Last updated:** 2026-03-18
 **Branch:** `education-layer`
-**Last commit:** `771aa90` — Fix Salamander sample URLs
+**Last commit:** b3a5b4d — RKT7
+
 
 ---
 
@@ -24,6 +25,9 @@
 - [x] RKT-6: Levels 1-2 (listen mode) + answer visibility fix
 - [x] RKT-REFACTOR: Learn/Practice/Test 3-phase tab structure, 5-step Learn tutorial, shared Salamander sampler
 - [x] Salamander sample URL fix (v1 suffix)
+[x] RKT-7: Tier 2 "Find the Relative" — Learn/Practice/Test phases, tier selector, distractor generation, R transform animations
+
+
 
 ### Other
 - [x] Clear All canvas bugfix (Skratch Studio)
@@ -39,10 +43,12 @@
 - Content exists for 12 topics but needs quality review and polish
 - Status: needs a review pass, not new writing
 
+
 ### Relative Key Trainer — Tier 2+
-- Tier 1 ("Major or Minor?") has Learn/Practice/Test built
-- Next: Tier 2 ("Find the Relative") content across all three phases
-- Then: tasks RKT-7 (pivot recognition), RKT-8 (explore mode), RKT-9 (levels 4-5), RKT-10 (education wiring)
+- Tier 1 and Tier 2 both have Learn/Practice/Test built
+- Known text fix applied: "moves up a whole step" (Step 2 narration)
+- Next: RKT-8 (Explore mode), then RKT-9 (levels 4-5), RKT-10 (education wiring)
+
 
 ---
 
