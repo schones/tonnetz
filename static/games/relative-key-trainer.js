@@ -7,7 +7,12 @@
  * Tier 1: "Major or Minor?"
  *   Learn   — 5-step guided walkthrough (watch & listen)
  *   Practice — guided ear-training with scaffolded visuals
- *   Test     — 10-round ear-training quiz (existing Level 1 gameplay)
+ *   Test     — 10-round ear-training quiz
+ *
+ * Tier 2: "Find the Relative"
+ *   Learn   — 5-step R-transform walkthrough
+ *   Practice — given a key, find its relative major/minor (4 options)
+ *   Test     — 10-round relative key quiz (no scaffolding)
  *
  * Depends on:
  *   - transforms.js   → TRANSFORMS, triadNotes, spellingForKey, noteToPC
@@ -36,8 +41,13 @@ const ROUNDS_PER_SESSION = 10;
 const BPM = 100;
 const FEEDBACK_DELAY = 2000;
 
-const MAJOR_KEYS = ['C', 'G', 'D', 'F', 'Bb'];
-const MINOR_KEYS = ['A', 'E', 'B', 'D', 'G'];
+// Tier 1 key pools
+const T1_MAJOR_KEYS = ['C', 'G', 'D', 'F', 'Bb'];
+const T1_MINOR_KEYS = ['A', 'E', 'B', 'D', 'G'];
+
+// Tier 2 key pools (broader)
+const T2_MAJOR_KEYS = ['C', 'G', 'D', 'A', 'F', 'Bb', 'Eb'];
+const T2_MINOR_KEYS = ['A', 'E', 'B', 'F#', 'D', 'G', 'C'];
 
 const ENCOURAGEMENTS = ['Nice!', 'Correct!', 'You got it!', 'Well done!', 'Great ear!'];
 
@@ -72,10 +82,11 @@ const ANN_TRANSFORM = {
 // STATE
 // ════════════════════════════════════════════════════════════════════
 
+let currentTier = 1;          // 1 or 2
 let currentPhase = 'learn';   // 'learn' | 'practice' | 'test'
 
-// Learn state
-let learnStep = 1;
+// Learn state (per-tier step positions preserved when switching tiers)
+let learnSteps = { 1: 1, 2: 1 };
 let learnAudioPlayed = false;
 let learnPlaybackId = 0;      // incremented on step change to cancel stale audio
 let learnSubStep = 0;         // sub-step within multi-part Learn steps
@@ -84,15 +95,20 @@ let learnSubStep = 0;         // sub-step within multi-part Learn steps
 let round = 0;
 let score = 0;
 let currentKey = null;         // { root, quality }
+let testCorrectAnswer = null;  // for Tier 2: { root, quality } of correct answer
 let awaitingAnswer = false;
 
 // Practice state
-let practiceKey = null;        // { root, quality }
+let practiceKey = null;        // { root, quality } — the given key
+let practiceCorrectAnswer = null; // for Tier 2: { root, quality }
 let practiceAwaitingAnswer = false;
-let practiceStreak = 0;
-let practiceCorrectTotal = 0;
-let practiceRoundTotal = 0;
 let practiceLastKey = null;    // avoid repeating same key
+
+// Per-tier practice stats
+let practiceStats = {
+  1: { streak: 0, correctTotal: 0, roundTotal: 0 },
+  2: { streak: 0, correctTotal: 0, roundTotal: 0 },
+};
 
 // Audio state
 let isPlaying = false;
@@ -128,6 +144,16 @@ function displayNote(name) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/** Get the current tier's learn step. */
+function getLearnStep() {
+  return learnSteps[currentTier];
+}
+
+/** Set the current tier's learn step. */
+function setLearnStep(step) {
+  learnSteps[currentTier] = step;
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -220,13 +246,87 @@ function stopAllAudio() {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// DISTRACTOR GENERATION (Tier 2)
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Generate plausible wrong answers for Tier 2 questions.
+ * @param {string} originalRoot - root of the given key
+ * @param {string} originalQuality - quality of the given key
+ * @param {string} correctRoot - root of the correct answer
+ * @param {string} targetQuality - quality the answer must be ("major" or "minor")
+ * @param {number} count - number of distractors
+ * @returns {Array<{root: string, quality: string}>}
+ */
+function generateDistractors(originalRoot, originalQuality, correctRoot, targetQuality, count) {
+  count = count || 3;
+  const correctPC = noteToPC(correctRoot);
+  const distractorPCs = new Set([correctPC]);
+  const distractors = [];
+
+  // 1. P transform from the original key → parallel (common confusion)
+  const pResult = TRANSFORMS.P.apply(originalRoot, originalQuality);
+  // If target quality matches, check that it's different from correct
+  if (pResult.quality === targetQuality && noteToPC(pResult.root) !== correctPC) {
+    if (!distractorPCs.has(noteToPC(pResult.root))) {
+      distractors.push({ root: displayNote(pResult.root), quality: targetQuality });
+      distractorPCs.add(noteToPC(pResult.root));
+    }
+  }
+
+  // 2. L transform from the original key → leading-tone relative
+  const lResult = TRANSFORMS.L.apply(originalRoot, originalQuality);
+  if (lResult.quality === targetQuality && noteToPC(lResult.root) !== correctPC) {
+    if (!distractorPCs.has(noteToPC(lResult.root))) {
+      distractors.push({ root: displayNote(lResult.root), quality: targetQuality });
+      distractorPCs.add(noteToPC(lResult.root));
+    }
+  }
+
+  // If L result is wrong quality, apply R to get another nearby key of target quality
+  if (distractors.length < count && lResult.quality !== targetQuality) {
+    const lrResult = TRANSFORMS.R.apply(lResult.root, lResult.quality);
+    if (lrResult.quality === targetQuality && !distractorPCs.has(noteToPC(lrResult.root))) {
+      distractors.push({ root: displayNote(lrResult.root), quality: targetQuality });
+      distractorPCs.add(noteToPC(lrResult.root));
+    }
+  }
+
+  // If P result is wrong quality, try its R neighbor
+  if (distractors.length < count && pResult.quality !== targetQuality) {
+    const prResult = TRANSFORMS.R.apply(pResult.root, pResult.quality);
+    if (prResult.quality === targetQuality && !distractorPCs.has(noteToPC(prResult.root))) {
+      distractors.push({ root: displayNote(prResult.root), quality: targetQuality });
+      distractorPCs.add(noteToPC(prResult.root));
+    }
+  }
+
+  // 3. Fill remaining with random keys of target quality
+  const pool = targetQuality === 'minor' ? T2_MINOR_KEYS : T2_MAJOR_KEYS;
+  let attempts = 0;
+  while (distractors.length < count && attempts < 30) {
+    attempts++;
+    const r = pickRandom(pool);
+    const rPC = noteToPC(r);
+    if (!distractorPCs.has(rPC)) {
+      distractors.push({ root: displayNote(r), quality: targetQuality });
+      distractorPCs.add(rPC);
+    }
+  }
+
+  return shuffleArray(distractors).slice(0, count);
+}
+
+// ════════════════════════════════════════════════════════════════════
 // LEARN PHASE
 // ════════════════════════════════════════════════════════════════════
 
-/** C major scale notes (used in Step 4). */
+/** C major scale notes (used in Tier 1 Step 4). */
 const C_MAJOR_SCALE = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
-const LEARN_SCRIPTS = [
+// ── Tier 1 Learn scripts ────────────────────────────────────────────
+
+const LEARN_SCRIPTS_T1 = [
   // ── Step 1: "This Is a Major Chord" ─────────────────────────────
   {
     narration:
@@ -250,13 +350,10 @@ const LEARN_SCRIPTS = [
     },
     async play() {
       const id = learnPlaybackId;
-      // Brief hold on C major
       await delay(1000);
       if (learnPlaybackId !== id) return;
-      // R transform → A minor
       HarmonyState.update({ annotations: ANN_TRANSFORM });
       HarmonyState.setTransform('R', 'C', 'major');
-      // Play A minor progression
       await playProgression(buildProgression('A', 'minor'), BPM);
     },
   },
@@ -276,12 +373,10 @@ const LEARN_SCRIPTS = [
     async play(sub) {
       const id = learnPlaybackId;
       const [majRoot, minRoot] = sub === 0 ? ['G', 'E'] : ['F', 'D'];
-      // Play major progression
       await playProgression(buildProgression(majRoot, 'major'), BPM);
       if (learnPlaybackId !== id) return;
       await delay(1500);
       if (learnPlaybackId !== id) return;
-      // R transform → relative minor
       HarmonyState.update({ annotations: ANN_TRANSFORM });
       HarmonyState.setTransform('R', majRoot, 'major');
       await playProgression(buildProgression(minRoot, 'minor'), BPM);
@@ -343,18 +438,146 @@ const LEARN_SCRIPTS = [
     },
     async play() {
       const id = learnPlaybackId;
-      // Play C major progression
       await playProgression(buildProgression('C', 'major'), BPM);
       if (learnPlaybackId !== id) return;
       await delay(2000);
       if (learnPlaybackId !== id) return;
-      // R transform → A minor
       HarmonyState.update({ annotations: ANN_TRANSFORM });
       HarmonyState.setTransform('R', 'C', 'major');
       await playProgression(buildProgression('A', 'minor'), BPM);
     },
   },
 ];
+
+// ── Tier 2 Learn scripts ────────────────────────────────────────────
+
+const LEARN_SCRIPTS_T2 = [
+  // ── Step 1: "Every Major Has a Relative Minor" ──────────────────
+  {
+    narration:
+      'You already know major sounds bright and minor sounds dark. Now here\u2019s the secret \u2014 every major key has a partner minor key that uses the exact same notes.',
+    setup() {
+      HarmonyState.update({ annotations: ANN_TRIAD });
+      HarmonyState.setTriad('C', 'major');
+    },
+    async play() {
+      const id = learnPlaybackId;
+      await playProgression(buildProgression('C', 'major'), BPM);
+      if (learnPlaybackId !== id) return;
+      await delay(1500);
+      if (learnPlaybackId !== id) return;
+      HarmonyState.update({ annotations: ANN_TRANSFORM });
+      HarmonyState.setTransform('R', 'C', 'major');
+      await playProgression(buildProgression('A', 'minor'), BPM);
+    },
+  },
+
+  // ── Step 2: "The R Transform" ───────────────────────────────────
+  {
+    narration:
+      'On the Tonnetz, the R arrow always points from a major chord to its relative minor. Two notes stay \u2014 one moves up by a whole step.',
+    afterText:
+      'R stands for Relative \u2014 the closest minor key to any major key.',
+    setup() {
+      HarmonyState.update({ annotations: ANN_TRIAD });
+      HarmonyState.setTriad('C', 'major');
+    },
+    async play() {
+      const id = learnPlaybackId;
+      await delay(800);
+      if (learnPlaybackId !== id) return;
+      HarmonyState.update({ annotations: ANN_TRANSFORM });
+      HarmonyState.setTransform('R', 'C', 'major');
+      await playProgression(buildProgression('C', 'major'), BPM);
+      if (learnPlaybackId !== id) return;
+      await delay(1500);
+      if (learnPlaybackId !== id) return;
+      await playProgression(buildProgression('A', 'minor'), BPM);
+    },
+  },
+
+  // ── Step 3: "It Works in Every Key" ─────────────────────────────
+  {
+    narration:
+      'The R transform works the same way no matter what key you\u2019re in. Watch.',
+    subSteps: 3,
+    subStepLabel: 'Another key →',
+    afterText:
+      'Same pattern every time \u2014 the R arrow always finds the relative minor.',
+    setup(sub) {
+      const pairs = [['G', 'E'], ['F', 'D'], ['D', 'B']];
+      const [majRoot] = pairs[sub];
+      HarmonyState.update({ annotations: ANN_TRIAD });
+      HarmonyState.setTriad(majRoot, 'major');
+    },
+    async play(sub) {
+      const id = learnPlaybackId;
+      const pairs = [['G', 'E'], ['F', 'D'], ['D', 'B']];
+      const [majRoot, minRoot] = pairs[sub];
+      await playProgression(buildProgression(majRoot, 'major'), BPM);
+      if (learnPlaybackId !== id) return;
+      await delay(1500);
+      if (learnPlaybackId !== id) return;
+      HarmonyState.update({ annotations: ANN_TRANSFORM });
+      HarmonyState.setTransform('R', majRoot, 'major');
+      await playProgression(buildProgression(minRoot, 'minor'), BPM);
+    },
+  },
+
+  // ── Step 4: "Going the Other Direction" ─────────────────────────
+  {
+    narration:
+      'It works backwards too. Every minor key has a relative major. The R arrow goes both ways.',
+    subSteps: 2,
+    subStepLabel: 'Show the reverse →',
+    afterText:
+      'Minor to major, major to minor \u2014 the R transform always connects them.',
+    setup(sub) {
+      const pairs = [['A', 'C'], ['E', 'G']];
+      const [minRoot] = pairs[sub];
+      HarmonyState.update({ annotations: ANN_TRIAD });
+      HarmonyState.setTriad(minRoot, 'minor');
+    },
+    async play(sub) {
+      const id = learnPlaybackId;
+      const pairs = [['A', 'C'], ['E', 'G']];
+      const [minRoot, majRoot] = pairs[sub];
+      await playProgression(buildProgression(minRoot, 'minor'), BPM);
+      if (learnPlaybackId !== id) return;
+      await delay(1500);
+      if (learnPlaybackId !== id) return;
+      HarmonyState.update({ annotations: ANN_TRANSFORM });
+      HarmonyState.setTransform('R', minRoot, 'minor');
+      await playProgression(buildProgression(majRoot, 'major'), BPM);
+    },
+  },
+
+  // ── Step 5: "Your Turn" ─────────────────────────────────────────
+  {
+    narration:
+      'Now you know the relationship. In Practice mode, you\u2019ll hear a major key and pick its relative minor. Listen for the shared notes \u2014 that\u2019s your clue.',
+    afterText: 'Ready to try it yourself →',
+    setup() {
+      HarmonyState.update({ annotations: ANN_TRIAD });
+      HarmonyState.setTriad('C', 'major');
+    },
+    async play() {
+      const id = learnPlaybackId;
+      await playProgression(buildProgression('C', 'major'), BPM);
+      if (learnPlaybackId !== id) return;
+      await delay(1500);
+      if (learnPlaybackId !== id) return;
+      HarmonyState.update({ annotations: ANN_TRANSFORM });
+      HarmonyState.setTransform('R', 'C', 'major');
+      await playProgression(buildProgression('A', 'minor'), BPM);
+    },
+  },
+];
+
+/** Get the learn scripts for the current tier. */
+function getLearnScripts() {
+  return currentTier === 1 ? LEARN_SCRIPTS_T1 : LEARN_SCRIPTS_T2;
+}
 
 /** Show a sub-step advance button in the extras area. */
 function showSubStepButton(label) {
@@ -381,7 +604,8 @@ async function advanceSubStep() {
   learnSubStep++;
   learnPlaybackId++;
   const myId = learnPlaybackId;
-  const script = LEARN_SCRIPTS[learnStep - 1];
+  const scripts = getLearnScripts();
+  const script = scripts[getLearnStep() - 1];
   const totalSubSteps = script.subSteps || 1;
 
   $('learn-extras').innerHTML = '';
@@ -403,7 +627,7 @@ async function advanceSubStep() {
 
 /** Navigate to a Learn step (1–5). Sets up visuals and plays audio. */
 async function showLearnStep(step) {
-  learnStep = step;
+  setLearnStep(step);
   learnSubStep = 0;
   learnAudioPlayed = false;
   learnPlaybackId++;
@@ -411,7 +635,8 @@ async function showLearnStep(step) {
 
   stopAllAudio();
 
-  const script = LEARN_SCRIPTS[step - 1];
+  const scripts = getLearnScripts();
+  const script = scripts[step - 1];
   const totalSubSteps = script.subSteps || 1;
 
   // Fade narration
@@ -461,7 +686,8 @@ async function learnReplay() {
   $('btn-learn-next').disabled = true;
   $('learn-extras').innerHTML = '';
 
-  const script = LEARN_SCRIPTS[learnStep - 1];
+  const scripts = getLearnScripts();
+  const script = scripts[getLearnStep() - 1];
   const totalSubSteps = script.subSteps || 1;
 
   script.setup(learnSubStep);
@@ -479,41 +705,123 @@ async function learnReplay() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// TEST PHASE (existing Level 1 quiz gameplay)
+// TEST PHASE
 // ════════════════════════════════════════════════════════════════════
 
 function generateTestRound() {
-  const isMajor = Math.random() < 0.5;
-  const root = isMajor ? pickRandom(MAJOR_KEYS) : pickRandom(MINOR_KEYS);
-  return { root, quality: isMajor ? 'major' : 'minor' };
+  if (currentTier === 1) {
+    const isMajor = Math.random() < 0.5;
+    const root = isMajor ? pickRandom(T1_MAJOR_KEYS) : pickRandom(T1_MINOR_KEYS);
+    return { root, quality: isMajor ? 'major' : 'minor' };
+  }
+
+  // Tier 2: ask "find the relative minor" or "find the relative major"
+  // After round 5, mix both directions; before that, only major→minor
+  const askReverse = round >= 5 && Math.random() < 0.5;
+  if (askReverse) {
+    // Given minor key, find its relative major
+    const root = pickRandom(T2_MINOR_KEYS);
+    const answer = TRANSFORMS.R.apply(root, 'minor');
+    return {
+      root,
+      quality: 'minor',
+      direction: 'minor-to-major',
+      correctAnswer: { root: displayNote(answer.root), quality: answer.quality },
+    };
+  } else {
+    // Given major key, find its relative minor
+    const root = pickRandom(T2_MAJOR_KEYS);
+    const answer = TRANSFORMS.R.apply(root, 'major');
+    return {
+      root,
+      quality: 'major',
+      direction: 'major-to-minor',
+      correctAnswer: { root: displayNote(answer.root), quality: answer.quality },
+    };
+  }
 }
 
 function showTestQuestion() {
-  $('question-text').textContent = 'Is this major or minor?';
-  const btnArea = $('answer-buttons');
-  btnArea.innerHTML = '';
+  if (currentTier === 1) {
+    $('question-text').textContent = 'Is this major or minor?';
+    const btnArea = $('answer-buttons');
+    btnArea.innerHTML = '';
 
-  ['Major', 'Minor'].forEach(label => {
-    const btn = document.createElement('button');
-    btn.className = 'rkt-answer-btn';
-    btn.textContent = label;
-    btn.addEventListener('click', () => handleTestAnswer(label.toLowerCase()));
-    btnArea.appendChild(btn);
-  });
+    ['Major', 'Minor'].forEach(label => {
+      const btn = document.createElement('button');
+      btn.className = 'rkt-answer-btn';
+      btn.textContent = label;
+      btn.addEventListener('click', () => handleTestAnswer(label.toLowerCase()));
+      btnArea.appendChild(btn);
+    });
+  } else {
+    // Tier 2
+    const dir = currentKey.direction;
+    if (dir === 'major-to-minor') {
+      $('question-text').textContent =
+        `What is the relative minor of ${displayNote(currentKey.root)} major?`;
+    } else {
+      $('question-text').textContent =
+        `What is the relative major of ${displayNote(currentKey.root)} minor?`;
+    }
+
+    const btnArea = $('answer-buttons');
+    btnArea.innerHTML = '';
+
+    const correct = testCorrectAnswer;
+    const targetQuality = correct.quality;
+    const distractors = generateDistractors(
+      currentKey.root, currentKey.quality, correct.root, targetQuality
+    );
+    const options = shuffleArray([correct, ...distractors]);
+
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'rkt-answer-btn';
+      btn.textContent = `${opt.root} ${opt.quality}`;
+      btn.addEventListener('click', () => handleTestAnswer(opt.root, opt.quality));
+      btnArea.appendChild(btn);
+    });
+  }
 }
 
-async function handleTestAnswer(answer) {
+async function handleTestAnswer(answerRootOrQuality, answerQuality) {
   if (!awaitingAnswer) return;
   awaitingAnswer = false;
 
-  const correct = currentKey.quality === answer;
+  let correct;
+  if (currentTier === 1) {
+    correct = currentKey.quality === answerRootOrQuality;
+  } else {
+    correct =
+      noteToPC(answerRootOrQuality) === noteToPC(testCorrectAnswer.root) &&
+      answerQuality === testCorrectAnswer.quality;
+  }
+
   if (correct) score++;
 
-  // Reveal triad
-  HarmonyState.update({ annotations: ANN_TRIAD });
-  HarmonyState.setTriad(currentKey.root, currentKey.quality);
+  if (currentTier === 1) {
+    // Reveal triad
+    HarmonyState.update({ annotations: ANN_TRIAD });
+    HarmonyState.setTriad(currentKey.root, currentKey.quality);
+    showFeedback(correct, `It was ${displayNote(currentKey.root)} ${currentKey.quality}.`);
+  } else {
+    // Tier 2: reveal R transform
+    HarmonyState.update({ annotations: ANN_TRANSFORM });
+    HarmonyState.setTransform('R', currentKey.root, currentKey.quality);
 
-  showFeedback(correct, `It was ${displayNote(currentKey.root)} ${currentKey.quality}.`);
+    const ca = testCorrectAnswer;
+    if (correct) {
+      showFeedback(true, `${ca.root} ${ca.quality} is the relative ${ca.quality} of ${displayNote(currentKey.root)} ${currentKey.quality}.`);
+    } else {
+      showFeedback(false, `The relative ${ca.quality} of ${displayNote(currentKey.root)} ${currentKey.quality} is ${ca.root} ${ca.quality}. Watch the R arrow.`);
+    }
+
+    // Play the correct answer's progression
+    const correctProg = buildProgression(ca.root, ca.quality);
+    playProgression(correctProg, BPM);
+  }
+
   disableAnswerButtons();
 
   setTimeout(() => {
@@ -533,6 +841,7 @@ async function startRound() {
   $('feedback-area').textContent = '';
 
   currentKey = generateTestRound();
+  testCorrectAnswer = currentKey.correctAnswer || null;
 
   // Hide visuals during question
   HarmonyState.reset();
@@ -607,13 +916,46 @@ function startSession() {
 // PRACTICE PHASE
 // ════════════════════════════════════════════════════════════════════
 
-/** Pick a random key, avoiding the same key twice in a row. */
+/** Pick a random key for Practice, avoiding the same key twice in a row. */
 function generatePracticeRound() {
+  if (currentTier === 1) {
+    let key;
+    do {
+      const isMajor = Math.random() < 0.5;
+      const root = isMajor ? pickRandom(T1_MAJOR_KEYS) : pickRandom(T1_MINOR_KEYS);
+      key = { root, quality: isMajor ? 'major' : 'minor' };
+    } while (
+      practiceLastKey &&
+      key.root === practiceLastKey.root &&
+      key.quality === practiceLastKey.quality
+    );
+    return key;
+  }
+
+  // Tier 2
+  const stats = practiceStats[2];
+  const askReverse = stats.roundTotal >= 5 && Math.random() < 0.5;
   let key;
   do {
-    const isMajor = Math.random() < 0.5;
-    const root = isMajor ? pickRandom(MAJOR_KEYS) : pickRandom(MINOR_KEYS);
-    key = { root, quality: isMajor ? 'major' : 'minor' };
+    if (askReverse) {
+      const root = pickRandom(T2_MINOR_KEYS);
+      const answer = TRANSFORMS.R.apply(root, 'minor');
+      key = {
+        root,
+        quality: 'minor',
+        direction: 'minor-to-major',
+        correctAnswer: { root: displayNote(answer.root), quality: answer.quality },
+      };
+    } else {
+      const root = pickRandom(T2_MAJOR_KEYS);
+      const answer = TRANSFORMS.R.apply(root, 'major');
+      key = {
+        root,
+        quality: 'major',
+        direction: 'major-to-minor',
+        correctAnswer: { root: displayNote(answer.root), quality: answer.quality },
+      };
+    }
   } while (
     practiceLastKey &&
     key.root === practiceLastKey.root &&
@@ -622,28 +964,82 @@ function generatePracticeRound() {
   return key;
 }
 
+/** Render the practice answer buttons for the current round. */
+function renderPracticeButtons() {
+  const btnArea = $('practice-answer-buttons');
+  btnArea.innerHTML = '';
+
+  if (currentTier === 1) {
+    $('practice-question-text').textContent = 'Is this major or minor?';
+    ['Major', 'Minor'].forEach(label => {
+      const btn = document.createElement('button');
+      btn.className = 'rkt-answer-btn';
+      btn.dataset.answer = label.toLowerCase();
+      btn.textContent = label;
+      btnArea.appendChild(btn);
+    });
+  } else {
+    // Tier 2: dynamic question and 4 answer buttons
+    const dir = practiceKey.direction;
+    if (dir === 'major-to-minor') {
+      $('practice-question-text').textContent =
+        `What is the relative minor of ${displayNote(practiceKey.root)} major?`;
+    } else {
+      $('practice-question-text').textContent =
+        `What is the relative major of ${displayNote(practiceKey.root)} minor?`;
+    }
+
+    const correct = practiceCorrectAnswer;
+    const targetQuality = correct.quality;
+    const distractors = generateDistractors(
+      practiceKey.root, practiceKey.quality, correct.root, targetQuality
+    );
+    const options = shuffleArray([correct, ...distractors]);
+
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'rkt-answer-btn';
+      btn.dataset.answer = `${opt.root}|${opt.quality}`;
+      btn.textContent = `${opt.root} ${opt.quality}`;
+      btnArea.appendChild(btn);
+    });
+  }
+}
+
 /** Start a new Practice round. */
 async function startPracticeRound() {
   practiceKey = generatePracticeRound();
   practiceLastKey = practiceKey;
+  practiceCorrectAnswer = practiceKey.correctAnswer || null;
   practiceAwaitingAnswer = true;
 
   // Reset UI
   $('practice-feedback').className = 'rkt-feedback';
   $('practice-feedback').textContent = '';
   $('practice-next-wrap').style.display = 'none';
+
+  // Render answer buttons
+  renderPracticeButtons();
   setPracticeButtons(true);
 
-  // Grid centered on the key but no triad highlighted — the player
-  // can see the spatial context as scaffolding.
-  // Keyboard in "both" mode so clicking keys plays notes.
+  // Tonnetz + keyboard setup
   HarmonyState.reset();
-  HarmonyState.update({
-    tonnetzCenter: { root: practiceKey.root, quality: practiceKey.quality },
-    tonnetzDepth: 1,
-    annotations: ANN_OFF,
-    keyboardMode: 'both',
-  });
+  if (currentTier === 1) {
+    // Grid centered on key, no triad highlighted
+    HarmonyState.update({
+      tonnetzCenter: { root: practiceKey.root, quality: practiceKey.quality },
+      tonnetzDepth: 1,
+      annotations: ANN_OFF,
+      keyboardMode: 'both',
+    });
+  } else {
+    // Tier 2: show the given key's triad as scaffolding
+    HarmonyState.update({
+      annotations: ANN_TRIAD,
+      keyboardMode: 'both',
+    });
+    HarmonyState.setTriad(practiceKey.root, practiceKey.quality);
+  }
 
   updatePracticeStats();
 
@@ -651,34 +1047,18 @@ async function startPracticeRound() {
   await playProgression(prog, BPM);
 }
 
-/** Handle a Major/Minor answer in Practice. */
+/** Handle a practice answer (delegates to tier-specific logic). */
 function handlePracticeAnswer(answer) {
   if (!practiceAwaitingAnswer) return;
   practiceAwaitingAnswer = false;
-  practiceRoundTotal++;
 
-  const correct = practiceKey.quality === answer;
+  const stats = practiceStats[currentTier];
+  stats.roundTotal++;
 
-  // Reveal triad on Tonnetz + keyboard
-  HarmonyState.update({ annotations: ANN_TRIAD });
-  HarmonyState.setTriad(practiceKey.root, practiceKey.quality);
-
-  if (correct) {
-    practiceStreak++;
-    practiceCorrectTotal++;
-    const msgs = practiceKey.quality === 'major'
-      ? ['Yes! Hear that bright, open quality?', "That's right — major sounds open and resolved.", 'Nice ear!']
-      : ['Yes! Hear that darker, more serious quality?', "That's right — minor sounds heavier and more wistful.", 'Nice ear!'];
-    let msg = pickRandom(msgs);
-    if (practiceStreak === 3) msg += " You're getting the hang of it!";
-    showPracticeFeedback('correct', msg);
+  if (currentTier === 1) {
+    handlePracticeAnswerT1(answer, stats);
   } else {
-    practiceStreak = 0;
-    const name = `${displayNote(practiceKey.root)} ${practiceKey.quality}`;
-    const tip = practiceKey.quality === 'major'
-      ? 'hear how it sounds brighter and more open?'
-      : 'hear how it sounds darker and more serious?';
-    showPracticeFeedback('incorrect', `This one is actually ${name}. Listen again — ${tip}`);
+    handlePracticeAnswerT2(answer, stats);
   }
 
   setPracticeButtons(false);
@@ -689,18 +1069,89 @@ function handlePracticeAnswer(answer) {
   replayPracticeAudio();
 }
 
+/** Tier 1 practice answer handler. */
+function handlePracticeAnswerT1(answer, stats) {
+  const correct = practiceKey.quality === answer;
+
+  // Reveal triad on Tonnetz + keyboard
+  HarmonyState.update({ annotations: ANN_TRIAD });
+  HarmonyState.setTriad(practiceKey.root, practiceKey.quality);
+
+  if (correct) {
+    stats.streak++;
+    stats.correctTotal++;
+    const msgs = practiceKey.quality === 'major'
+      ? ['Yes! Hear that bright, open quality?', "That's right \u2014 major sounds open and resolved.", 'Nice ear!']
+      : ['Yes! Hear that darker, more serious quality?', "That's right \u2014 minor sounds heavier and more wistful.", 'Nice ear!'];
+    let msg = pickRandom(msgs);
+    if (stats.streak === 3) msg += " You're getting the hang of it!";
+    showPracticeFeedback('correct', msg);
+  } else {
+    stats.streak = 0;
+    const name = `${displayNote(practiceKey.root)} ${practiceKey.quality}`;
+    const tip = practiceKey.quality === 'major'
+      ? 'hear how it sounds brighter and more open?'
+      : 'hear how it sounds darker and more serious?';
+    showPracticeFeedback('incorrect', `This one is actually ${name}. Listen again \u2014 ${tip}`);
+  }
+}
+
+/** Tier 2 practice answer handler. */
+function handlePracticeAnswerT2(answer, stats) {
+  // answer is "Root|quality" string
+  const [ansRoot, ansQuality] = answer.split('|');
+  const ca = practiceCorrectAnswer;
+  const correct = noteToPC(ansRoot) === noteToPC(ca.root) && ansQuality === ca.quality;
+
+  if (correct) {
+    stats.streak++;
+    stats.correctTotal++;
+
+    // Animate R transform
+    HarmonyState.update({ annotations: ANN_TRANSFORM });
+    HarmonyState.setTransform('R', practiceKey.root, practiceKey.quality);
+
+    showPracticeFeedback('correct',
+      `Yes! ${ca.root} ${ca.quality} is the relative ${ca.quality} of ${displayNote(practiceKey.root)} ${practiceKey.quality}. They share all the same notes.`
+    );
+  } else {
+    stats.streak = 0;
+
+    // Still animate R transform to show correct answer
+    HarmonyState.update({ annotations: ANN_TRANSFORM });
+    HarmonyState.setTransform('R', practiceKey.root, practiceKey.quality);
+
+    showPracticeFeedback('incorrect',
+      `The relative ${ca.quality} of ${displayNote(practiceKey.root)} ${practiceKey.quality} is ${ca.root} ${ca.quality}. Watch the R arrow on the Tonnetz.`
+    );
+  }
+}
+
 /** Handle the "Show me" button — reveal without penalty. */
 function handlePracticeShowMe() {
   if (!practiceAwaitingAnswer) return;
   practiceAwaitingAnswer = false;
-  practiceRoundTotal++;
 
-  // Reveal
-  HarmonyState.update({ annotations: ANN_TRIAD });
-  HarmonyState.setTriad(practiceKey.root, practiceKey.quality);
+  const stats = practiceStats[currentTier];
+  stats.roundTotal++;
 
-  const name = `${displayNote(practiceKey.root)} ${practiceKey.quality}`;
-  showPracticeFeedback('neutral', `This is ${name}. Listen to how it sounds.`);
+  if (currentTier === 1) {
+    // Reveal
+    HarmonyState.update({ annotations: ANN_TRIAD });
+    HarmonyState.setTriad(practiceKey.root, practiceKey.quality);
+
+    const name = `${displayNote(practiceKey.root)} ${practiceKey.quality}`;
+    showPracticeFeedback('neutral', `This is ${name}. Listen to how it sounds.`);
+  } else {
+    // Tier 2: animate R transform
+    HarmonyState.update({ annotations: ANN_TRANSFORM });
+    HarmonyState.setTransform('R', practiceKey.root, practiceKey.quality);
+
+    const ca = practiceCorrectAnswer;
+    showPracticeFeedback('neutral',
+      `The relative ${ca.quality} of ${displayNote(practiceKey.root)} ${practiceKey.quality} is ${ca.root} ${ca.quality}. Watch the R arrow.`
+    );
+  }
 
   setPracticeButtons(false);
   $('practice-next-wrap').style.display = '';
@@ -733,22 +1184,40 @@ async function replayPracticeAudio() {
 
 /** Update streak, round count, and test-prompt displays. */
 function updatePracticeStats() {
-  $('practice-streak').textContent = `Streak: ${practiceStreak}`;
-  $('practice-rounds').textContent = `Rounds: ${practiceRoundTotal}`;
+  const stats = practiceStats[currentTier];
+  $('practice-streak').textContent = `Streak: ${stats.streak}`;
+  $('practice-rounds').textContent = `Rounds: ${stats.roundTotal}`;
 
   // "Try the Test" prompt
   const prompt = $('practice-test-prompt');
-  if (practiceRoundTotal >= 10) {
+  if (stats.roundTotal >= 10) {
     $('practice-test-prompt-text').textContent = "You've done 10 rounds! ";
-    $('practice-goto-test').textContent = 'Ready for the real test? →';
+    $('practice-goto-test').textContent = 'Ready for the real test? \u2192';
     prompt.style.display = '';
-  } else if (practiceCorrectTotal >= 5) {
+  } else if (stats.correctTotal >= 5) {
     $('practice-test-prompt-text').textContent = '';
-    $('practice-goto-test').textContent = 'Feeling confident? Try the Test →';
+    $('practice-goto-test').textContent = 'Feeling confident? Try the Test \u2192';
     prompt.style.display = '';
   } else {
     prompt.style.display = 'none';
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// TIER SWITCHING
+// ════════════════════════════════════════════════════════════════════
+
+function switchTier(tier) {
+  if (tier === currentTier) return;
+  currentTier = tier;
+
+  // Update tier tab UI
+  document.querySelectorAll('.rkt-tier-tab').forEach(tab => {
+    tab.classList.toggle('rkt-tier-tab--active', Number(tab.dataset.tier) === tier);
+  });
+
+  // Reset to Learn phase for the new tier
+  switchPhase('learn');
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -793,7 +1262,7 @@ function switchPhase(phase) {
 
   // Initialize phase
   if (isLearn) {
-    showLearnStep(learnStep);
+    showLearnStep(getLearnStep());
   } else if (isPractice) {
     startPracticeRound();
   } else if (isTest) {
@@ -812,6 +1281,14 @@ export function init() {
     range: { low: 'C3', high: 'B5' },
   });
 
+  // Tier tabs
+  document.querySelectorAll('.rkt-tier-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (!audioStarted) return;
+      switchTier(Number(tab.dataset.tier));
+    });
+  });
+
   // Phase tabs
   document.querySelectorAll('.rkt-phase-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -823,13 +1300,13 @@ export function init() {
 
   // Learn nav
   $('btn-learn-back').addEventListener('click', () => {
-    if (learnStep > 1) showLearnStep(learnStep - 1);
+    if (getLearnStep() > 1) showLearnStep(getLearnStep() - 1);
   });
 
   $('btn-learn-next').addEventListener('click', () => {
     if (!learnAudioPlayed) return;
-    if (learnStep < 5) {
-      showLearnStep(learnStep + 1);
+    if (getLearnStep() < 5) {
+      showLearnStep(getLearnStep() + 1);
     } else {
       // After step 5 → practice
       switchPhase('practice');
@@ -838,7 +1315,7 @@ export function init() {
 
   $('btn-learn-replay').addEventListener('click', learnReplay);
 
-  // Practice buttons
+  // Practice buttons (event delegation)
   $('practice-answer-buttons').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-answer]');
     if (!btn || btn.disabled) return;

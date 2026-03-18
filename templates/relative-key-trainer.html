@@ -36,15 +36,35 @@
   }
   .rkt-back-link:hover { color: var(--text-primary); }
 
-  /* ── Tier label ────────────────────────────────────────────── */
-  .rkt-tier-label {
-    text-align: center;
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    font-weight: 600;
+  /* ── Tier selector ────────────────────────────────────────────── */
+  .rkt-tier-tabs {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
     margin-bottom: 0.4rem;
+  }
+  .rkt-tier-tab {
+    padding: 4px 14px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: var(--font-main);
+    cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .rkt-tier-tab:hover:not(.rkt-tier-tab--active) {
+    border-color: var(--text-secondary);
+    color: var(--text-secondary);
+  }
+  .rkt-tier-tab--active {
+    background: var(--text-muted);
+    color: var(--bg-primary);
+    border-color: var(--text-muted);
   }
 
   /* ── Phase tabs ────────────────────────────────────────────── */
@@ -410,8 +430,11 @@
     <a href="/" class="rkt-back-link">&larr; Back</a>
   </div>
 
-  <!-- Tier label -->
-  <div class="rkt-tier-label">Tier 1: Major or Minor?</div>
+  <!-- Tier selector -->
+  <div class="rkt-tier-tabs">
+    <button class="rkt-tier-tab rkt-tier-tab--active" data-tier="1">Tier 1: Major or Minor?</button>
+    <button class="rkt-tier-tab" data-tier="2">Tier 2: Find the Relative</button>
+  </div>
 
   <!-- Phase tabs -->
   <div class="rkt-phase-tabs">
@@ -470,11 +493,8 @@
     <!-- ── Practice phase content ────────────────────────── -->
     <div id="practice-content" style="display: none;">
       <div class="rkt-question-card">
-        <div id="practice-question-text" class="rkt-practice-question">Is this major or minor?</div>
-        <div id="practice-answer-buttons">
-          <button class="rkt-answer-btn" data-answer="major">Major</button>
-          <button class="rkt-answer-btn" data-answer="minor">Minor</button>
-        </div>
+        <div id="practice-question-text" class="rkt-practice-question"></div>
+        <div id="practice-answer-buttons"></div>
         <div class="rkt-practice-actions">
           <button class="rkt-nav-btn" id="btn-practice-replay">&#9654; Replay</button>
           <button class="rkt-nav-btn rkt-nav-btn--ghost" id="btn-practice-showme">&#128161; Show me</button>
