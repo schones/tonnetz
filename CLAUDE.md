@@ -1,13 +1,18 @@
-# Tonnetz Project Context
+# Tonnetz — Claude Code Context
 
-Always read these files before starting any task:
-- docs/tonnetz-content-architecture.md (content architecture spec)
-- docs/tonnetz-build-plan.md (phased build plan with current status)
+## Before every task
+1. Read `docs/STATUS.md` — single source of truth for project state
+2. Read the relevant spec doc for your task (see STATUS.md for links)
 
-## Key rules
-- Never run git add, commit, or push. Dustin manages git himself.
-- Shared JS modules live in static/shared/, not static/js/
-- Skratch Studio code lives in static/skratch-studio/
-- Test locally with python3 app.py at http://127.0.0.1:5000
-- Railway deploys from main branch. Dev work on education-layer branch.
+## Reference docs
+- `docs/tonnetz-build-plan.md` — phased build plan with task prompts
+- `docs/tonnetz-content-architecture.md` — content model and topic schema
+- `docs/tonnetz-keyboard-component.md` — shared component spec (RKT tasks)
+- `docs/puzzle-paths-spec.md` — Puzzle Paths game concept
 
+## Rules
+- Never run git add, commit, or push — Dustin manages git himself
+- Shared JS modules: `static/shared/`
+- Skratch Studio code: `static/skratch-studio/`
+- Test locally: `python3 app.py` → http://127.0.0.1:5000
+- Dev branch: `education-layer` · Production: `main` (Railway)

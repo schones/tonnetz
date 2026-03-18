@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}Tonnetz + Keyboard — Integration Test{% endblock %}
+
+{% block head %}
+<style>
+  .ts-page {
+    max-width: 960px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 3rem;
+  }
+  .ts-page h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Button rows ─────────────────────────────────── */
+  .ts-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .ts-row__label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+  .ts-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .ts-btn:hover {
+    border-color: var(--accent);
+  }
+  .ts-btn--active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .ts-btn--transform {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+  .ts-btn--control {
+    background: transparent;
+    border-style: dashed;
+  }
+
+  /* ── Component containers ────────────────────────── */
+  .ts-components {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+  #tonnetz-container {
+    width: 100%;
+    max-width: 520px;
+    height: 380px;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+  #keyboard-container {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    overflow-x: auto;
+  }
+
+  /* ── Event log ───────────────────────────────────── */
+  .ts-log {
+    margin-top: 1.25rem;
+  }
+  .ts-log__label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  #event-log {
+    background: #1a1a2e;
+    color: #a8e6cf;
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    padding: 10px 12px;
+    border-radius: 8px;
+    height: 160px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ts-page">
+  <h1>Tonnetz + Keyboard — Integration Test</h1>
+
+  <!-- Triad buttons -->
+  <div class="ts-row">
+    <span class="ts-row__label">Triads</span>
+    <button class="ts-btn ts-triad-btn" data-root="C"  data-quality="major">C major</button>
+    <button class="ts-btn ts-triad-btn" data-root="A"  data-quality="minor">A minor</button>
+    <button class="ts-btn ts-triad-btn" data-root="G"  data-quality="major">G major</button>
+    <button class="ts-btn ts-triad-btn" data-root="E"  data-quality="minor">E minor</button>
+    <button class="ts-btn ts-triad-btn" data-root="F"  data-quality="major">F major</button>
+    <button class="ts-btn ts-triad-btn" data-root="D"  data-quality="minor">D minor</button>
+    <button class="ts-btn ts-triad-btn" data-root="B♭" data-quality="major">Bb major</button>
+  </div>
+
+  <!-- Transform buttons -->
+  <div class="ts-row">
+    <span class="ts-row__label">Transforms</span>
+    <button class="ts-btn ts-btn--transform" id="btnP">P (Parallel)</button>
+    <button class="ts-btn ts-btn--transform" id="btnL">L (Leading-tone)</button>
+    <button class="ts-btn ts-btn--transform" id="btnR">R (Relative)</button>
+  </div>
+
+  <!-- Interval buttons -->
+  <div class="ts-row">
+    <span class="ts-row__label">Intervals</span>
+    <button class="ts-btn" data-a="C" data-b="E" onclick="setInterval_('C','E')">C-E (M3)</button>
+    <button class="ts-btn" data-a="C" data-b="G" onclick="setInterval_('C','G')">C-G (P5)</button>
+    <button class="ts-btn" data-a="D" data-b="F" onclick="setInterval_('D','F')">D-F (m3)</button>
+    <button class="ts-btn" data-a="E" data-b="B" onclick="setInterval_('E','B')">E-B (P5)</button>
+  </div>
+
+  <!-- Control buttons -->
+  <div class="ts-row">
+    <span class="ts-row__label">Controls</span>
+    <button class="ts-btn ts-btn--control" id="btnReset">Reset</button>
+    <button class="ts-btn ts-btn--control" id="btnAnnotations">Toggle Annotations</button>
+    <button class="ts-btn ts-btn--control" id="btnDepth1">Depth 1</button>
+    <button class="ts-btn ts-btn--control" id="btnDepth2">Depth 2</button>
+  </div>
+
+  <!-- Component containers -->
+  <div class="ts-components">
+    <div id="tonnetz-container"></div>
+    <div id="keyboard-container"></div>
+  </div>
+
+  <!-- Event log -->
+  <div class="ts-log">
+    <div class="ts-log__label">Event Log</div>
+    <div id="event-log"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Tone.js (required by KeyboardView for audio playback) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<script type="module">
+  import { HarmonyState } from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { TonnetzNeighborhood } from '{{ url_for("static", filename="shared/tonnetz-neighborhood.js") }}';
+  import { KeyboardView } from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+  import { TRANSFORMS } from '{{ url_for("static", filename="shared/transforms.js") }}';
+
+  // Expose on window for onclick handlers and console testing
+  window.HarmonyState = HarmonyState;
+  window.TonnetzNeighborhood = TonnetzNeighborhood;
+  window.KeyboardView = KeyboardView;
+  window.TRANSFORMS = TRANSFORMS;
+
+  // ── State tracking ────────────────────────────────
+  let currentRoot = 'C';
+  let currentQuality = 'major';
+
+  // ── Event log ─────────────────────────────────────
+  const logEl = document.getElementById('event-log');
+  function log(msg) {
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+    logEl.textContent += `[${ts}] ${msg}\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ── Triad buttons ─────────────────────────────────
+  const triadBtns = document.querySelectorAll('.ts-triad-btn');
+
+  function updateActiveBtn(root, quality) {
+    triadBtns.forEach(btn => {
+      const matches = btn.dataset.root === root && btn.dataset.quality === quality;
+      btn.classList.toggle('ts-btn--active', matches);
+    });
+  }
+
+  function selectTriad(root, quality) {
+    currentRoot = root;
+    currentQuality = quality;
+    HarmonyState.setTriad(root, quality);
+    updateActiveBtn(root, quality);
+    log(`setTriad("${root}", "${quality}")`);
+  }
+
+  triadBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectTriad(btn.dataset.root, btn.dataset.quality);
+    });
+  });
+
+  // ── Transform buttons ─────────────────────────────
+  document.getElementById('btnP').addEventListener('click', () => applyTransform('P'));
+  document.getElementById('btnL').addEventListener('click', () => applyTransform('L'));
+  document.getElementById('btnR').addEventListener('click', () => applyTransform('R'));
+
+  function applyTransform(type) {
+    HarmonyState.setTransform(type, currentRoot, currentQuality);
+    const result = TRANSFORMS[type].apply(currentRoot, currentQuality);
+    log(`setTransform("${type}", "${currentRoot}", "${currentQuality}") → ${result.root} ${result.quality}`);
+    currentRoot = result.root;
+    currentQuality = result.quality;
+    updateActiveBtn(currentRoot, currentQuality);
+  }
+
+  // ── Interval buttons ──────────────────────────────
+  window.setInterval_ = function(noteA, noteB) {
+    HarmonyState.setInterval(noteA, 4, noteB, 4);
+    updateActiveBtn(null, null);  // clear triad highlight
+    log(`setInterval("${noteA}", "${noteB}")`);
+  };
+
+  // ── Control buttons ───────────────────────────────
+  document.getElementById('btnReset').addEventListener('click', () => {
+    HarmonyState.reset();
+    currentRoot = 'C';
+    currentQuality = 'major';
+    updateActiveBtn(null, null);
+    log('reset()');
+  });
+
+  let annotationsOn = false;
+  document.getElementById('btnAnnotations').addEventListener('click', () => {
+    annotationsOn = !annotationsOn;
+    const prev = HarmonyState.get().annotations;
+    HarmonyState.update({
+      annotations: { ...prev, showTransformLabels: annotationsOn }
+    });
+    log(`annotations.showTransformLabels = ${annotationsOn}`);
+  });
+
+  document.getElementById('btnDepth1').addEventListener('click', () => {
+    HarmonyState.update({ tonnetzDepth: 1 });
+    log('tonnetzDepth = 1');
+  });
+  document.getElementById('btnDepth2').addEventListener('click', () => {
+    HarmonyState.update({ tonnetzDepth: 2 });
+    log('tonnetzDepth = 2');
+  });
+
+  // ── Initialize components ─────────────────────────
+  TonnetzNeighborhood.init('tonnetz-container', {
+    interactive: true,
+    onTriadClick({ root, quality }) {
+      currentRoot = root;
+      currentQuality = quality;
+      HarmonyState.setTriad(root, quality);
+      updateActiveBtn(root, quality);
+      log(`Tonnetz click → setTriad("${root}", "${quality}")`);
+    },
+    onTransformClick({ type, from, to }) {
+      log(`Tonnetz transform click → ${type}: ${from.root} ${from.quality} → ${to.root} ${to.quality}`);
+    },
+    onNodeClick({ pc, note }) {
+      log(`Tonnetz node click → ${note} (pc ${pc})`);
+    },
+  });
+
+  KeyboardView.init('keyboard-container', {
+    mode: 'both',
+    onNotePlay(note, octave) {
+      log(`Keyboard note → ${note}${octave}`);
+    },
+  });
+
+  // ── HarmonyState change logger ────────────────────
+  HarmonyState.on(state => {
+    const triads = (state.activeTriads || []).map(t => `${t.root} ${t.quality} (${t.role})`).join(', ');
+    if (triads) log(`  state → triads: [${triads}]`);
+    if (state.activeInterval) log(`  state → interval: ${state.activeInterval.quality}`);
+  });
+
+  // ── Initial state ─────────────────────────────────
+  HarmonyState.setTriad('C', 'major');
+  updateActiveBtn('C', 'major');
+  log('Initialized — C major');
+</script>
+{% endblock %}
