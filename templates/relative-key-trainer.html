@@ -683,6 +683,67 @@
   .rkt-show-intro-link:hover {
     color: var(--text-secondary);
   }
+
+  /* ── Insight bubbles ───────────────────────────────────────── */
+  #viz-area {
+    position: relative;
+  }
+  .rkt-insight-bubble {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: var(--bg-card, #fff);
+    color: var(--text-primary, #333);
+    border: 1px solid var(--border, #ddd);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    max-width: 320px;
+    width: 90%;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    animation: rkt-insight-in 0.3s ease-out;
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+  .rkt-insight-heading {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary, #888);
+    margin-bottom: 0.25rem;
+  }
+  .rkt-insight-text {
+    margin: 0;
+  }
+  .rkt-insight-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .rkt-insight-thumbsup,
+  .rkt-insight-dismiss {
+    background: none;
+    border: 1px solid var(--border, #ddd);
+    border-radius: 8px;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.15s;
+  }
+  .rkt-insight-thumbsup:hover {
+    background: rgba(74, 144, 217, 0.1);
+  }
+  .rkt-insight-dismiss:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+  .rkt-insight-bubble--fadeout {
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+  }
+  @keyframes rkt-insight-in {
+    from { opacity: 0; transform: translateX(-50%) scale(0.95); }
+    to   { opacity: 1; transform: translateX(-50%) scale(1); }
+  }
 </style>
 {% endblock %}
 

@@ -84,6 +84,189 @@ const ANN_TRANSFORM = {
 };
 
 // ════════════════════════════════════════════════════════════════════
+// INSIGHT BUBBLES
+// ════════════════════════════════════════════════════════════════════
+
+const INSIGHTS = [
+  {
+    id: 'tri-orientation',
+    tier: 1,
+    phase: 'practice',
+    triggerRound: 3,
+    message: 'Notice the triangles? Upward-pointing triangles are always major chords. Downward-pointing are always minor. The shape tells you the answer.',
+    anchor: 'tonnetz',
+  },
+  {
+    id: 'r-common-tones',
+    tier: 2,
+    phase: 'practice',
+    triggerRound: 2,
+    message: 'See how the R arrow connects these chords? Two notes stay the same \u2014 only one moves. That\u2019s why they sound so closely related.',
+    anchor: 'tonnetz',
+  },
+  {
+    id: 'r-bidirectional',
+    tier: 2,
+    phase: 'practice',
+    triggerRound: 7,
+    message: 'It works both ways \u2014 R takes you from minor back to major too. The Tonnetz doesn\u2019t care which direction you go.',
+    anchor: 'tonnetz',
+  },
+  {
+    id: 'transform-edges',
+    tier: 3,
+    phase: 'practice',
+    triggerRound: 2,
+    message: 'Each transform flips the triangle across a different edge. The edge that flips shares the two notes that stay the same.',
+    anchor: 'tonnetz',
+  },
+  {
+    id: 'tonnetz-axes',
+    tier: 'explore',
+    phase: 'explore',
+    triggerRound: 3,
+    message: 'The horizontal lines are all major thirds. The diagonals going up-right are perfect fifths \u2014 the circle of fifths as a straight line.',
+    anchor: 'tonnetz',
+  },
+];
+
+let insightTimer = null; // auto-dismiss timeout handle
+
+/** Get insight engagement state from localStorage. */
+function getInsightEngagement() {
+  return localStorage.getItem('rkt-insight-engagement'); // null | 'pending' | 'opted-in' | 'opted-out'
+}
+
+/** Get dismiss count (number of dismissals without thumbs-up). */
+function getInsightDismissCount() {
+  return parseInt(localStorage.getItem('rkt-insight-dismiss-count') || '0', 10);
+}
+
+/** Check if an insight has already been seen. */
+function insightSeen(id) {
+  return localStorage.getItem(`rkt-insight-seen:${id}`) === '1';
+}
+
+/** Mark an insight as seen. */
+function markInsightSeen(id) {
+  localStorage.setItem(`rkt-insight-seen:${id}`, '1');
+}
+
+/** Remove the current insight bubble with a fade-out. */
+function removeInsightBubble() {
+  if (insightTimer) { clearTimeout(insightTimer); insightTimer = null; }
+  const el = document.getElementById('insight-bubble');
+  if (!el) return;
+  el.classList.add('rkt-insight-bubble--fadeout');
+  setTimeout(() => el.remove(), 300);
+}
+
+/** Show an insight bubble anchored below the Tonnetz container. */
+function showInsightBubble(insight) {
+  // Remove any existing bubble first (no stacking)
+  const existing = document.getElementById('insight-bubble');
+  if (existing) existing.remove();
+  if (insightTimer) { clearTimeout(insightTimer); insightTimer = null; }
+
+  const engagement = getInsightEngagement();
+
+  // Build DOM
+  const bubble = document.createElement('div');
+  bubble.className = 'rkt-insight-bubble';
+  bubble.id = 'insight-bubble';
+
+  // First-time intro heading
+  const isFirstTime = !engagement || engagement === 'pending';
+  let html = '';
+  if (isFirstTime) {
+    html += '<div class="rkt-insight-heading">\ud83d\udca1 Did you notice?</div>';
+  }
+  html += `<p class="rkt-insight-text">${insight.message}</p>`;
+  html += '<div class="rkt-insight-actions">';
+  html += '<button class="rkt-insight-thumbsup" title="Show me more tips">\ud83d\udc4d</button>';
+  html += '<button class="rkt-insight-dismiss" title="Dismiss">\u2715</button>';
+  html += '</div>';
+  bubble.innerHTML = html;
+
+  // Wire up event handlers
+  bubble.querySelector('.rkt-insight-thumbsup').addEventListener('click', () => {
+    localStorage.setItem('rkt-insight-engagement', 'opted-in');
+    markInsightSeen(insight.id);
+    removeInsightBubble();
+  });
+
+  bubble.querySelector('.rkt-insight-dismiss').addEventListener('click', () => {
+    handleInsightDismiss(insight.id);
+  });
+
+  // Append to viz-area, positioned relative to tonnetz container
+  const vizArea = document.getElementById('viz-area');
+  if (!vizArea) return;
+  vizArea.appendChild(bubble);
+
+  // Position dynamically below tonnetz container
+  const tc = document.getElementById('tonnetz-container');
+  if (tc) {
+    bubble.style.top = (tc.offsetTop + tc.offsetHeight) + 'px';
+  }
+
+  // Mark as seen
+  markInsightSeen(insight.id);
+
+  // Set engagement to 'pending' on first insight
+  if (!engagement) {
+    localStorage.setItem('rkt-insight-engagement', 'pending');
+  }
+
+  // Auto-dismiss after 15 seconds (counts as dismissal)
+  insightTimer = setTimeout(() => {
+    handleInsightDismiss(insight.id);
+  }, 15000);
+}
+
+/** Handle a dismissal (✕ or auto-timeout). */
+function handleInsightDismiss(id) {
+  markInsightSeen(id);
+  const count = getInsightDismissCount() + 1;
+  localStorage.setItem('rkt-insight-dismiss-count', String(count));
+  if (count >= 2 && getInsightEngagement() !== 'opted-in') {
+    localStorage.setItem('rkt-insight-engagement', 'opted-out');
+  }
+  removeInsightBubble();
+}
+
+/** Check conditions and maybe show an insight bubble. */
+function maybeShowInsight() {
+  const engagement = getInsightEngagement();
+  if (engagement === 'opted-out') return;
+
+  // Don't stack on top of an existing bubble
+  if (document.getElementById('insight-bubble')) return;
+
+  for (const insight of INSIGHTS) {
+    if (insightSeen(insight.id)) continue;
+
+    // First insight always shows; others require not-opted-out
+    if (insight.id !== 'tri-orientation' && engagement !== 'opted-in' && engagement !== 'pending') continue;
+    // After pending: only show more if opted-in (except first)
+    if (insight.id !== 'tri-orientation' && engagement === 'pending') continue;
+
+    if (insight.phase === 'practice') {
+      if (currentPhase !== 'practice') continue;
+      if (currentTier !== insight.tier) continue;
+      if (practiceStats[currentTier].roundTotal < insight.triggerRound) continue;
+    } else if (insight.phase === 'explore') {
+      if (currentMode !== 'explore') continue;
+      const transformCount = exploreTrail.filter(e => e.transform).length;
+      if (transformCount < insight.triggerRound) continue;
+    }
+
+    showInsightBubble(insight);
+    return; // show only one at a time
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════════════════════
 
@@ -1794,6 +1977,7 @@ function handlePracticeAnswer(answer) {
   setPracticeButtons(false);
   $('practice-next-wrap').style.display = '';
   updatePracticeStats();
+  maybeShowInsight();
 
   // Auto-replay so they hear it with the visual confirmation
   replayPracticeAudio();
@@ -2137,6 +2321,9 @@ function exploreApplyTransform(type) {
   if (exploreTrail.length > MAX_TRAIL) exploreTrail.shift();
   renderExploreTrail();
 
+  // Check for teaching insights
+  maybeShowInsight();
+
   // Play transform audio
   playTransformChords(from.root, from.quality, to.root, to.quality);
 
@@ -2472,11 +2659,7 @@ export function init() {
     $('main-content').style.display = 'block';
 
     if (!localStorage.getItem('rkt-intro-seen')) {
-      if ($('intro-screen')) {
-        showIntroScreen();
-      } else {
-        switchPhase('learn');
-      }
+      showIntroScreen();
     } else {
       switchPhase('learn');
     }
