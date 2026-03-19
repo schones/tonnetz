@@ -1,7 +1,7 @@
 /**
  * relative-key-trainer.js
  * =======================
- * Relative Major & Minor recognition game.
+ * Chord Walks — explore chord connections on the Tonnetz.
  * Three phases: Learn → Practice → Test.
  *
  * Tier 1: "Major or Minor?"
@@ -128,6 +128,7 @@ let practiceStats = {
 let isPlaying = false;
 let sampler = null;   // shared Tone.Sampler from KeyboardView
 let audioStarted = false;
+let playbackGeneration = 0; // incremented on phase switch to cancel in-flight progressions
 
 // Education layer
 let tipsPill = null;
@@ -169,6 +170,20 @@ function displayNote(name) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Convert voicing strings (e.g. ['C4', 'E4', 'G4']) to HarmonyState activeNotes format.
+ * @param {string[]} voicingNotes — array of "NoteName+Octave" strings (e.g. 'Bb4', 'F#3')
+ * @param {string} source — 'triad', 'playback', 'scale', etc.
+ * @returns {Array<{note: string, octave: number, source: string, color: null}>}
+ */
+function voicingToActiveNotes(voicingNotes, source) {
+  return voicingNotes.map(n => {
+    const match = n.match(/^([A-Ga-g][#b]?)(\d+)$/);
+    if (!match) return null;
+    return { note: match[1], octave: Number(match[2]), source: source || 'playback', color: null };
+  }).filter(Boolean);
 }
 
 /** Return the tips-pill topic list for the given tier. */
@@ -270,36 +285,41 @@ async function playProgression(chords, bpm) {
   });
 
   isPlaying = true;
+  const myGen = playbackGeneration;
 
   const beatDur = 60 / bpm;
-  const now = Tone.now();
-  // console logging - 
-  // console.log('velocities:', chords.map(() => (0.55 + Math.random() * 0.3).toFixed(2)));
-
   const drama = 0.3 + Math.random() * 0.7;  // 0.3 = subtle, 1.0 = full dynamics
 
-  chords.forEach((chord, i) => {
-    const time = now + i * beatDur;
+  for (let i = 0; i < chords.length; i++) {
+    // Check cancellation before each chord
+    if (playbackGeneration !== myGen) { isPlaying = false; return; }
+
+    const chord = chords[i];
     const baseVol = [-2, -8, -5, 2][i] || 0;
-    const vol = baseVol * drama;  // scale the whole shape by drama
+    const vol = baseVol * drama;
     const jitter = (Math.random() * 3 - 1.5) * drama;
-    sampler.volume.setValueAtTime(vol + jitter, time);
-    sampler.triggerAttackRelease(chord.notes, beatDur * 0.9, time);
-  });
+    sampler.volume.value = vol + jitter;
 
-  // Reset volume after progression
-  const resetTime = now + chords.length * beatDur;
-  sampler.volume.setValueAtTime(0, resetTime);
+    // Highlight the chord on the keyboard
+    HarmonyState.update({ activeNotes: voicingToActiveNotes(chord.notes, 'playback') });
 
+    sampler.triggerAttackRelease(chord.notes, beatDur * 0.9, Tone.now());
 
-  const totalMs = chords.length * beatDur * 1000 + 100;
-  await new Promise(r => setTimeout(r, totalMs));
+    await delay(beatDur * 1000);
+  }
+
+  // Reset volume and clear highlights after progression
+  if (playbackGeneration === myGen) {
+    sampler.volume.value = 0;
+    HarmonyState.update({ activeNotes: [] });
+  }
   isPlaying = false;
 }
 
 /** Stop any sounding notes and reset playing flag. */
 function stopAllAudio() {
   isPlaying = false;
+  playbackGeneration++;  // Cancel any in-flight progressions
   try {
     if (sampler) sampler.releaseAll();
   } catch (_) { /* ignore */ }
@@ -2011,15 +2031,29 @@ async function playTransformChords(fromRoot, fromQuality, toRoot, toQuality) {
   if (isPlaying) return;
   await ensureAudio();
   isPlaying = true;
+  const myGen = playbackGeneration;
   const beatDur = 60 / BPM;
-  const now = Tone.now();
   const fromVoicing = chordVoicing(fromRoot, fromQuality, 4);
   const toVoicing = chordVoicing(toRoot, toQuality, 4);
-  sampler.volume.setValueAtTime(-3, now);  // "from" chord softer
-  sampler.triggerAttackRelease(fromVoicing, beatDur * 0.5, now);
-  sampler.volume.setValueAtTime(0, now + beatDur * 0.7);  // "to" chord full
-  sampler.triggerAttackRelease(toVoicing, beatDur * 0.9, now + beatDur * 0.7);
-  await new Promise(r => setTimeout(r, beatDur * 1.8 * 1000));
+
+  // "from" chord — softer
+  sampler.volume.value = -3;
+  HarmonyState.update({ activeNotes: voicingToActiveNotes(fromVoicing, 'playback') });
+  sampler.triggerAttackRelease(fromVoicing, beatDur * 0.5, Tone.now());
+  await delay(beatDur * 0.7 * 1000);
+
+  if (playbackGeneration !== myGen) { isPlaying = false; return; }
+
+  // "to" chord — full volume
+  sampler.volume.value = 0;
+  HarmonyState.update({ activeNotes: voicingToActiveNotes(toVoicing, 'playback') });
+  sampler.triggerAttackRelease(toVoicing, beatDur * 0.9, Tone.now());
+  await delay(beatDur * 1.1 * 1000);
+
+  // Clear highlights on normal completion
+  if (playbackGeneration === myGen) {
+    HarmonyState.update({ activeNotes: [] });
+  }
   isPlaying = false;
 }
 
@@ -2223,6 +2257,8 @@ function switchPhase(phase) {
   currentPhase = phase;
   currentMode = 'phases';
   stopAllAudio();
+  HarmonyState.update({ activeNotes: [] });  // Clear stale keyboard highlights
+  playbackGeneration++;  // Cancel any in-flight progressions from previous phase
   learnPlaybackId++;   // Cancel any in-flight Learn playback
   awaitingAnswer = false; // Cancel any pending Test answer
   practiceAwaitingAnswer = false;
