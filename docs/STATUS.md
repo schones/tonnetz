@@ -1,8 +1,9 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-03-18
+**Last updated:** 2026-03-19
 **Branch:** `education-layer`
-**Last commit:** fa13687 — RKT9
+**Last commit:** b10ebe4 — B3/B7: sound bleed fix, key colors, rename game to Chord Walks, add tier subtitles
+
 
 
 ---
@@ -28,6 +29,7 @@
 - [x] RKT-7: Tier 2 "Find the Relative" — Learn/Practice/Test phases, tier selector, distractor generation, R transform animations
 - [x] RKT-8: Explore mode — interactive Tonnetz, P/R/L buttons, breadcrumb trail, depth 1-4
 - [x] RKT-9: Tiers 3-4 PLR and chaining
+- [x] RKT-10 (education wiring)
 
 
 ### Other
@@ -35,6 +37,10 @@
 - [x] MAX_CONTENT_LENGTH added to Flask config
 - [x] Debug console.log statements stripped
 - [x] CLAUDE.md added for Claude Code context
+- [x] B1: Audio bleed fix (playbackGeneration cancellation token)
+- [x] B2: Keyboard highlights during Learn/Practice/Test playback
+- [x] B3: Common tone colors (blue held, orange moving)
+- [x] B7: Game renamed to "Chord Walks" with tier subtitles
 
 ---
 
@@ -44,12 +50,8 @@
 - Content exists for 12 topics but needs quality review and polish
 - Status: needs a review pass, not new writing
 
-
-### Relative Key Trainer — Tier 2+
-- Tier 1 and Tier 2 both have Learn/Practice/Test built
-- Known text fix applied: "moves up a whole step" (Step 2 narration)
-- Next: RKT-10 (education wiring)
-
+### Phase 3: Auth & Persistence
+ - JUST GETTING STARTED
 
 ---
 
