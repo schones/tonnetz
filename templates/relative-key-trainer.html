@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Relative Major & Minor — Tonnetz{% endblock %}
+{% block title %}Chord Walks — Tonnetz{% endblock %}
 
 {% block head %}
 <!-- Tone.js -->
@@ -65,6 +65,11 @@
     background: var(--text-muted);
     color: var(--bg-primary);
     border-color: var(--text-muted);
+  }
+  .rkt-tier-subtitle {
+    font-size: 0.75em;
+    opacity: 0.7;
+    display: block;
   }
 
   /* ── Phase tabs ────────────────────────────────────────────── */
@@ -686,7 +691,7 @@
 
   <!-- Top bar -->
   <div class="rkt-top-bar">
-    <h1 class="rkt-title">Relative Major & Minor</h1>
+    <h1 class="rkt-title">Chord Walks</h1>
     <div class="rkt-top-bar-right">
       <a href="#" class="rkt-show-intro-link" id="btn-show-intro" title="About this game">?</a>
       <button class="rkt-explore-btn" id="btn-explore">Explore &#9835;</button>
@@ -696,10 +701,10 @@
 
   <!-- Tier selector -->
   <div class="rkt-tier-tabs">
-    <button class="rkt-tier-tab rkt-tier-tab--active" data-tier="1">Tier 1: Major or Minor?</button>
-    <button class="rkt-tier-tab" data-tier="2">Tier 2: Find the Relative</button>
-    <button class="rkt-tier-tab" data-tier="3">Tier 3: Name the Transform</button>
-    <button class="rkt-tier-tab" data-tier="4">Tier 4: Follow the Chain</button>
+    <button class="rkt-tier-tab rkt-tier-tab--active" data-tier="1">Tier 1<span class="rkt-tier-subtitle">Major or Minor?</span></button>
+    <button class="rkt-tier-tab" data-tier="2">Tier 2<span class="rkt-tier-subtitle">Relative Keys</span></button>
+    <button class="rkt-tier-tab" data-tier="3">Tier 3<span class="rkt-tier-subtitle">Name the Transform</span></button>
+    <button class="rkt-tier-tab" data-tier="4">Tier 4<span class="rkt-tier-subtitle">Follow the Chain</span></button>
   </div>
 
   <!-- Phase tabs -->
@@ -722,10 +727,10 @@
 
     <!-- ── Intro screen (first visit) ────────────────────── -->
     <div class="rkt-intro-overlay" id="intro-screen">
-      <div class="rkt-intro-title">Relative Key Trainer</div>
+      <div class="rkt-intro-title">Chord Walks</div>
       <div class="rkt-intro-desc">
-        Learn how major and minor keys are connected &mdash; and discover
-        the three transforms that map the entire Tonnetz.
+        Explore how chords connect on the Tonnetz &mdash; from major vs. minor
+        to PLR transforms and beyond.
       </div>
       <ul class="rkt-intro-list">
         <li>Recognizing major vs. minor by ear (Tier 1)</li>
