@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-19
 **Branch:** `education-layer`
-**Last commit:** b10ebe4 — B3/B7: sound bleed fix, key colors, rename game to Chord Walks, add tier subtitles
+**Last commit:** b52e504
 
 
 
@@ -40,11 +40,18 @@
 - [x] B1: Audio bleed fix (playbackGeneration cancellation token)
 - [x] B2: Keyboard highlights during Learn/Practice/Test playback
 - [x] B3: Common tone colors (blue held, orange moving)
+- [x] B5: Tonnetz recenter slide animation (400ms ease-out)
+- [x] B6: "Did you notice?" teaching bubble system (5 insights, opt-in engagement)
 - [x] B7: Game renamed to "Chord Walks" with tier subtitles
+- [x] B11: Intro screen fix + CSS
+- [x] Keyboard playback highlight CSS (kv-key--playback)
+- [x] Dashboard link fix (/relative → /games/relative-key-trainer)
+```
 
 ---
 
 ## In Progress
+
 
 ### Phase 4: Playful Lens — Refinement
 - Content exists for 12 topics but needs quality review and polish
