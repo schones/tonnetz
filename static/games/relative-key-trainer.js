@@ -32,6 +32,8 @@ import {
   noteToPC,
   pcToNote,
 } from '../shared/transforms.js';
+import { TipsPill } from '../shared/tips-pill.js';
+import { initTheoryTooltips } from '../shared/theory-engine.js';
 
 // ════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -127,6 +129,10 @@ let isPlaying = false;
 let sampler = null;   // shared Tone.Sampler from KeyboardView
 let audioStarted = false;
 
+// Education layer
+let tipsPill = null;
+let tooltipEngine = null;
+
 // Explore state
 let currentMode = 'phases';      // 'phases' | 'explore'
 let exploreTrail = [];           // [{ root, quality, transform? }]
@@ -163,6 +169,19 @@ function displayNote(name) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/** Return the tips-pill topic list for the given tier. */
+function tipsForTier(tier) {
+  if (tier === 1) return [{ id: 'triads', relevance: 'high' }];
+  if (tier === 2) return [
+    { id: 'relative_minor_major', relevance: 'high' },
+    { id: 'triads', relevance: 'medium' },
+  ];
+  return [
+    { id: 'tonnetz_transforms', relevance: 'high' },
+    { id: 'relative_minor_major', relevance: 'medium' },
+  ];
 }
 
 /** Get the current tier's learn step. */
@@ -214,7 +233,7 @@ function buildProgression(root, quality) {
 
   if (quality === 'major') {
     const IV = spell((rootPC + 5) % 12);
-    const V  = spell((rootPC + 7) % 12);
+    const V = spell((rootPC + 7) % 12);
     return [
       { notes: chordVoicing(root, 'major') },
       { notes: chordVoicing(IV, 'major') },
@@ -223,7 +242,7 @@ function buildProgression(root, quality) {
     ];
   } else {
     const iv = spell((rootPC + 5) % 12);
-    const V  = spell((rootPC + 7) % 12);
+    const V = spell((rootPC + 7) % 12);
     return [
       { notes: chordVoicing(root, 'minor') },
       { notes: chordVoicing(iv, 'minor') },
@@ -238,18 +257,40 @@ function buildProgression(root, quality) {
  * Uses the shared Salamander piano sampler from KeyboardView.
  */
 async function playProgression(chords, bpm) {
+  console.log('[playProg] called, isPlaying:', isPlaying);
+
   if (isPlaying) return;
-  isPlaying = true;
 
   await ensureAudio();
 
+  console.log('[playProg]', {
+    samplerExists: !!sampler,
+    toneState: Tone.context.state,
+    samplerLoaded: sampler?.loaded,
+  });
+
+  isPlaying = true;
+
   const beatDur = 60 / bpm;
   const now = Tone.now();
+  // console logging - 
+  // console.log('velocities:', chords.map(() => (0.55 + Math.random() * 0.3).toFixed(2)));
+
+  const drama = 0.3 + Math.random() * 0.7;  // 0.3 = subtle, 1.0 = full dynamics
 
   chords.forEach((chord, i) => {
     const time = now + i * beatDur;
+    const baseVol = [-2, -8, -5, 2][i] || 0;
+    const vol = baseVol * drama;  // scale the whole shape by drama
+    const jitter = (Math.random() * 3 - 1.5) * drama;
+    sampler.volume.setValueAtTime(vol + jitter, time);
     sampler.triggerAttackRelease(chord.notes, beatDur * 0.9, time);
   });
+
+  // Reset volume after progression
+  const resetTime = now + chords.length * beatDur;
+  sampler.volume.setValueAtTime(0, resetTime);
+
 
   const totalMs = chords.length * beatDur * 1000 + 100;
   await new Promise(r => setTimeout(r, totalMs));
@@ -474,7 +515,7 @@ const LEARN_SCRIPTS_T2 = [
   // ── Step 1: "Every Major Has a Relative Minor" ──────────────────
   {
     narration:
-      'You already know major sounds bright and minor sounds dark. Now here\u2019s the secret \u2014 every major key has a partner minor key that uses the exact same notes.',
+      'You already know <span data-theory="triads">major</span> sounds bright and <span data-theory="triads">minor</span> sounds dark. Now here\u2019s the secret \u2014 every major key has a <span data-theory="relative_minor_major">relative minor</span> that uses the exact same notes.',
     setup() {
       HarmonyState.update({ annotations: ANN_TRIAD });
       HarmonyState.setTriad('C', 'major');
@@ -494,7 +535,7 @@ const LEARN_SCRIPTS_T2 = [
   // ── Step 2: "The R Transform" ───────────────────────────────────
   {
     narration:
-      'On the Tonnetz, the R arrow always points from a major chord to its relative minor. Two notes stay \u2014 one moves up by a whole step.',
+      'On the Tonnetz, the <span data-theory="tonnetz_transforms">R arrow</span> always points from a <span data-theory="triads">major chord</span> to its <span data-theory="relative_minor_major">relative minor</span>. Two notes stay \u2014 one moves up by a whole step.',
     afterText:
       'R stands for Relative \u2014 the closest minor key to any major key.',
     setup() {
@@ -518,7 +559,7 @@ const LEARN_SCRIPTS_T2 = [
   // ── Step 3: "It Works in Every Key" ─────────────────────────────
   {
     narration:
-      'The R transform works the same way no matter what key you\u2019re in. Watch.',
+      'The <span data-theory="tonnetz_transforms">R transform</span> works the same way no matter what key you\u2019re in. Watch.',
     subSteps: 3,
     subStepLabel: 'Another key →',
     afterText:
@@ -546,7 +587,7 @@ const LEARN_SCRIPTS_T2 = [
   // ── Step 4: "Going the Other Direction" ─────────────────────────
   {
     narration:
-      'It works backwards too. Every minor key has a relative major. The R arrow goes both ways.',
+      'It works backwards too. Every minor key has a <span data-theory="relative_minor_major">relative major</span>. The <span data-theory="tonnetz_transforms">R arrow</span> goes both ways.',
     subSteps: 2,
     subStepLabel: 'Show the reverse →',
     afterText:
@@ -574,8 +615,8 @@ const LEARN_SCRIPTS_T2 = [
   // ── Step 5: "Your Turn" ─────────────────────────────────────────
   {
     narration:
-      'Now you know the relationship. In Practice mode, you\u2019ll hear a major key and pick its relative minor. Listen for the shared notes \u2014 that\u2019s your clue.',
-    afterText: 'Ready to try it yourself →',
+      'Now you know the relationship. In Practice mode, you\u2019ll hear a major key and pick its <span data-theory="relative_minor_major">relative minor</span>. Listen for the shared notes \u2014 that\u2019s your clue.',
+    afterText: 'Ready to try it yourself \u2192',
     setup() {
       HarmonyState.update({ annotations: ANN_TRIAD });
       HarmonyState.setTriad('C', 'major');
@@ -599,7 +640,7 @@ const LEARN_SCRIPTS_T3 = [
   // ── Step 1: "You Know R — Now Meet P and L" ─────────────────────
   {
     narration:
-      'You already know R — it connects relative major and minor. Now meet P: the Parallel transform. Same root, opposite quality.',
+      'You already know <span data-theory="tonnetz_transforms">R</span> \u2014 it connects <span data-theory="relative_minor_major">relative major and minor</span>. Now meet <span data-theory="tonnetz_transforms">P</span>: the Parallel transform. Same root, opposite quality.',
     setup() {
       HarmonyState.update({ annotations: ANN_TRIAD });
       HarmonyState.setTriad('C', 'major');
@@ -619,7 +660,7 @@ const LEARN_SCRIPTS_T3 = [
   // ── Step 2: "P: Same Root, New Mood" ────────────────────────────
   {
     narration:
-      'P keeps the root the same — only the third moves. Major becomes minor, minor becomes major.',
+      '<span data-theory="tonnetz_transforms">P</span> keeps the root the same \u2014 only the third moves. <span data-theory="triads">Major</span> becomes <span data-theory="triads">minor</span>, minor becomes major.',
     subSteps: 2,
     subStepLabel: 'Another key →',
     afterText:
@@ -646,9 +687,9 @@ const LEARN_SCRIPTS_T3 = [
   // ── Step 3: "L: The Leading-Tone Exchange" ─────────────────────
   {
     narration:
-      'L connects chords that share two notes, but the root changes. Watch: C major becomes E minor.',
+      '<span data-theory="tonnetz_transforms">L</span> connects chords that share two notes, but the root changes. Watch: C major becomes E minor.',
     afterText:
-      'L stands for Leading-tone — the note that moves is always a half step.',
+      'L stands for Leading-tone \u2014 the note that moves is always a half step.',
     setup() {
       HarmonyState.update({ annotations: ANN_TRIAD });
       HarmonyState.setTriad('C', 'major');
@@ -668,7 +709,7 @@ const LEARN_SCRIPTS_T3 = [
   // ── Step 4: "Three Transforms, Three Relationships" ─────────────
   {
     narration:
-      'From any chord, P, L, and R each go to a different neighbor. Watch all three from C major.',
+      'From any chord, <span data-theory="tonnetz_transforms">P, L, and R</span> each go to a different neighbor. Watch all three from C major.',
     subSteps: 3,
     subStepLabel: 'Next transform →',
     afterText:
@@ -702,7 +743,7 @@ const LEARN_SCRIPTS_T3 = [
   // ── Step 5: "Your Turn" ────────────────────────────────────────
   {
     narration:
-      'You\'ll hear two chords. Your job: which transform connects them — P, R, or L?',
+      'You\'ll hear two chords. Your job: which transform connects them \u2014 <span data-theory="tonnetz_transforms">P, R, or L</span>?',
     afterText: 'Ready to try it yourself →',
     setup() {
       HarmonyState.update({ annotations: ANN_TRIAD });
@@ -727,7 +768,7 @@ const LEARN_SCRIPTS_T4 = [
   // ── Step 1: "Combining Transforms" ──────────────────────────────
   {
     narration:
-      'You\'ve learned P, L, and R individually. Now let\'s combine them. Watch: C major → R → A minor → P → A major.',
+      'You\'ve learned <span data-theory="tonnetz_transforms">P, L, and R</span> individually. Now let\'s combine them. Watch: C major \u2192 R \u2192 A minor \u2192 P \u2192 A major.',
     subSteps: 2,
     subStepLabel: 'Next step →',
     setup(sub) {
@@ -764,7 +805,7 @@ const LEARN_SCRIPTS_T4 = [
   // ── Step 2: "R then L" ─────────────────────────────────────────
   {
     narration:
-      'Each transform is one edge on the Tonnetz — chains trace a path. Watch: C major → R → A minor → L → F major.',
+      'Each transform is one edge on the Tonnetz \u2014 chains trace a path. Watch: C major \u2192 <span data-theory="tonnetz_transforms">R</span> \u2192 A minor \u2192 <span data-theory="tonnetz_transforms">L</span> \u2192 F major.',
     subSteps: 2,
     subStepLabel: 'Next step →',
     afterText:
@@ -804,7 +845,7 @@ const LEARN_SCRIPTS_T4 = [
   // ── Step 3: "Any Combination Works" ────────────────────────────
   {
     narration:
-      'Any combination works. Watch P then R from G major.',
+      'Any combination works. Watch <span data-theory="tonnetz_transforms">P</span> then <span data-theory="tonnetz_transforms">R</span> from G major.',
     subSteps: 2,
     subStepLabel: 'Next step →',
     afterText:
@@ -844,7 +885,7 @@ const LEARN_SCRIPTS_T4 = [
   // ── Step 4: "Reading the Chain" ────────────────────────────────
   {
     narration:
-      'You\'ll see chain notation like "P → R". Starting from D major, follow the path.',
+      'You\'ll see chain notation like "<span data-theory="tonnetz_transforms">P</span> \u2192 <span data-theory="tonnetz_transforms">R</span>". Starting from D major, follow the path.',
     subSteps: 2,
     subStepLabel: 'Next step →',
     afterText:
@@ -1090,8 +1131,11 @@ async function showLearnStep(step) {
   narEl.style.opacity = '0';
   await delay(150);
   if (learnPlaybackId !== myId) return;
-  narEl.textContent = script.narration;
+  narEl.innerHTML = script.narration;
   narEl.style.opacity = '1';
+
+  // Re-scan for [data-theory] tooltip triggers in new narration
+  if (tooltipEngine) tooltipEngine.refreshTriggers();
 
   // Step indicator
   $('step-indicator').textContent = `Step ${step} of 5`;
@@ -1106,6 +1150,9 @@ async function showLearnStep(step) {
 
   // Setup visuals
   script.setup(0);
+
+  // console logging
+  console.log('[learn] about to play step', step, 'tier', currentTier);
 
   // Play audio
   await script.play(0);
@@ -1950,8 +1997,12 @@ async function playTriadChord(root, quality) {
   if (!voicing.length) return;
   isPlaying = true;
   const beatDur = 60 / BPM;
+  const velocity = 0.55 + Math.random() * 0.3;
+  sampler.triggerAttackRelease(voicing, beatDur * 0.9, Tone.now(), velocity); await new Promise(r => setTimeout(r, beatDur * 1000 + 100));
+
+  sampler.volume.setValueAtTime(Math.random() * 5 - 2.5, Tone.now());  // ±2.5 dB
   sampler.triggerAttackRelease(voicing, beatDur * 0.9, Tone.now());
-  await new Promise(r => setTimeout(r, beatDur * 1000 + 100));
+
   isPlaying = false;
 }
 
@@ -1964,7 +2015,9 @@ async function playTransformChords(fromRoot, fromQuality, toRoot, toQuality) {
   const now = Tone.now();
   const fromVoicing = chordVoicing(fromRoot, fromQuality, 4);
   const toVoicing = chordVoicing(toRoot, toQuality, 4);
+  sampler.volume.setValueAtTime(-3, now);  // "from" chord softer
   sampler.triggerAttackRelease(fromVoicing, beatDur * 0.5, now);
+  sampler.volume.setValueAtTime(0, now + beatDur * 0.7);  // "to" chord full
   sampler.triggerAttackRelease(toVoicing, beatDur * 0.9, now + beatDur * 0.7);
   await new Promise(r => setTimeout(r, beatDur * 1.8 * 1000));
   isPlaying = false;
@@ -2147,6 +2200,9 @@ function switchTier(tier) {
     tab.classList.toggle('rkt-tier-tab--active', Number(tab.dataset.tier) === tier);
   });
 
+  // Update tips pill for new tier
+  if (tipsPill) tipsPill.update(tipsForTier(tier));
+
   // Reset to Learn phase for the new tier
   switchPhase('learn');
 }
@@ -2162,6 +2218,8 @@ const PHASE_HINTS = {
 };
 
 function switchPhase(phase) {
+  console.log('[switchPhase] called with:', phase);
+
   currentPhase = phase;
   currentMode = 'phases';
   stopAllAudio();
@@ -2181,21 +2239,24 @@ function switchPhase(phase) {
   $('phase-hint').textContent = PHASE_HINTS[phase];
 
   // Show/hide areas
-  const isLearn    = phase === 'learn';
-  const isTest     = phase === 'test';
+  const isLearn = phase === 'learn';
+  const isTest = phase === 'test';
   const isPractice = phase === 'practice';
 
-  $('learn-header').style.display    = isLearn ? '' : 'none';
-  $('learn-footer').style.display    = isLearn ? '' : 'none';
-  $('viz-area').style.display        = (isLearn || isTest || isPractice) ? '' : 'none';
-  $('test-content').style.display    = isTest ? '' : 'none';
+  $('learn-header').style.display = isLearn ? '' : 'none';
+  $('learn-footer').style.display = isLearn ? '' : 'none';
+  $('viz-area').style.display = (isLearn || isTest || isPractice) ? '' : 'none';
+  $('test-content').style.display = isTest ? '' : 'none';
   $('practice-content').style.display = isPractice ? '' : 'none';
-  $('results-area').style.display    = 'none';
+  $('results-area').style.display = 'none';
 
   // Reset keyboard to display mode (Practice overrides to 'both')
   if (!isPractice) {
     HarmonyState.update({ keyboardMode: 'display' });
   }
+
+  // Hide tips pill during Test (could leak answers)
+  if (tipsPill) tipsPill.setVisible(!isTest);
 
   // Initialize phase
   if (isLearn) {
@@ -2211,12 +2272,33 @@ function switchPhase(phase) {
 // INIT
 // ════════════════════════════════════════════════════════════════════
 
+/** Show the intro screen overlay. */
+function showIntroScreen() {
+  const el = $('intro-screen');
+  if (el) el.style.display = 'flex';
+}
+
+/** Hide the intro screen overlay and start the game. */
+
+async function dismissIntro() {
+  const el = $('intro-screen');
+  if (el) el.style.display = 'none';
+  localStorage.setItem('rkt-intro-seen', '1');
+  await ensureAudio();
+  switchPhase('learn');
+}
+
 export function init() {
   // Initialize shared components
   TonnetzNeighborhood.init('tonnetz-container', { interactive: false });
   KeyboardView.init('keyboard-container', {
     range: { low: 'C3', high: 'B5' },
   });
+
+  // Education layer: tooltip engine + tips pill
+  tooltipEngine = initTheoryTooltips();
+  tipsPill = TipsPill.init(document.body, { tooltipEngine });
+  tipsPill.update(tipsForTier(currentTier));
 
   // Tier tabs
   document.querySelectorAll('.rkt-tier-tab').forEach(tab => {
@@ -2324,13 +2406,44 @@ export function init() {
     exitExplore();
   });
 
+  // Intro screen "Start Learning" button
+  const introBtn = $('btn-intro-start');
+  if (introBtn) introBtn.addEventListener('click', dismissIntro);
+
+  // "Show intro" link (re-trigger)
+  const showIntroLink = $('btn-show-intro');
+  if (showIntroLink) {
+    showIntroLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showIntroScreen();
+    });
+  }
+
   // Start overlay (audio gate)
   $('start-overlay').addEventListener('click', async () => {
+    console.log('[start] overlay clicked');
+
     await Tone.start();
+
+    console.log('[start] Tone started');
+
     audioStarted = true;
     await ensureAudio();
+
+    console.log('[start] audio ensured');
+
     $('start-overlay').style.display = 'none';
     $('main-content').style.display = 'block';
-    switchPhase('learn');
+
+    if (!localStorage.getItem('rkt-intro-seen')) {
+      if ($('intro-screen')) {
+        showIntroScreen();
+      } else {
+        switchPhase('learn');
+      }
+    } else {
+      switchPhase('learn');
+    }
   });
+
 }

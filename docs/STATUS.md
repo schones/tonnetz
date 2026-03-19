@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-18
 **Branch:** `education-layer`
-**Last commit:** b3a5b4d — RKT7
+**Last commit:** fa13687 — RKT9
 
 
 ---
@@ -27,7 +27,7 @@
 - [x] Salamander sample URL fix (v1 suffix)
 - [x] RKT-7: Tier 2 "Find the Relative" — Learn/Practice/Test phases, tier selector, distractor generation, R transform animations
 - [x] RKT-8: Explore mode — interactive Tonnetz, P/R/L buttons, breadcrumb trail, depth 1-4
-
+- [x] RKT-9: Tiers 3-4 PLR and chaining
 
 
 ### Other
@@ -48,7 +48,7 @@
 ### Relative Key Trainer — Tier 2+
 - Tier 1 and Tier 2 both have Learn/Practice/Test built
 - Known text fix applied: "moves up a whole step" (Step 2 narration)
-- Next: RKT-9 (levels 4-5), RKT-10 (education wiring)
+- Next: RKT-10 (education wiring)
 
 
 ---
