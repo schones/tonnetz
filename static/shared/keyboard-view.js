@@ -211,13 +211,13 @@ const KV_CSS = /* css */ `
 /* ── Moving-tone emphasis (new position) ─────────────────── */
 
 .kv-key--moving.kv-key--white {
-  background: var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7));
-  box-shadow: 0 0 14px var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7));
+  background: #E8913A;
+  box-shadow: 0 0 14px #E8913A;
   animation: kv-glow 1s ease-in-out infinite alternate;
 }
 .kv-key--moving.kv-key--black {
-  background: var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7));
-  box-shadow: 0 0 14px var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7));
+  background: #E8913A;
+  box-shadow: 0 0 14px #E8913A;
   animation: kv-glow 1s ease-in-out infinite alternate;
 }
 
@@ -229,7 +229,7 @@ const KV_CSS = /* css */ `
   left: 50%;
   transform: translateX(-50%);
   border-radius: 50%;
-  background: var(--color-success, #22c55e);
+  background: #4A90D9;
   border: 1.5px solid #fff;
   pointer-events: none;
   z-index: 3;
@@ -286,8 +286,8 @@ const KV_CSS = /* css */ `
 /* ── Animations ──────────────────────────────────────────── */
 
 @keyframes kv-glow {
-  from { box-shadow: 0 0 8px  var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7)); }
-  to   { box-shadow: 0 0 18px var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7)); }
+  from { box-shadow: 0 0 8px  #E8913A; }
+  to   { box-shadow: 0 0 18px #E8913A; }
 }
 
 @media (prefers-reduced-motion: reduce) {

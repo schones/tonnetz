@@ -195,25 +195,25 @@ const TONNETZ_CSS = /* css */ `
 /* ── Common-tone / moving-tone markers ────────────────────── */
 
 .tn-common-dot {
-  fill: #22c55e;
+  fill: #4A90D9;
   stroke: #fff;
   stroke-width: 1.5;
 }
 .tn-moving-arrow {
-  stroke: #f59e0b;
+  stroke: #E8913A;
   stroke-width: 2.5;
   fill: none;
 }
 .tn-node--moving-tone circle {
-  fill: #f59e0b;
-  stroke: #f59e0b;
+  fill: #E8913A;
+  stroke: #E8913A;
   animation: tn-mt-pulse 1s ease-in-out infinite;
 }
 .tn-node--moving-tone .tn-node-label {
   fill: #fff;
 }
 .tn-moving-label {
-  fill: #f59e0b;
+  fill: #E8913A;
   font-size: 10px;
   font-weight: 700;
   text-anchor: middle;
@@ -255,7 +255,7 @@ const TONNETZ_CSS = /* css */ `
   fill: var(--tonnetz-accent, var(--accent, #6c63ff));
 }
 #tn-moving-arrowhead polygon {
-  fill: #f59e0b;
+  fill: #E8913A;
 }
 
 /* ── Animations ───────────────────────────────────────────── */
