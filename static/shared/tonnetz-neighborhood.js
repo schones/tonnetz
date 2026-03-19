@@ -40,6 +40,7 @@ const NODE_R = 20;        // node circle radius
 const FONT_SIZE = 12;     // note-name font size
 const PAD = 80;           // viewBox padding around outermost nodes
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const RECENTER_MS = 400;  // slide animation duration
 
 // ════════════════════════════════════════════════════════════════════
 // CSS
@@ -510,6 +511,9 @@ function _renderAll(svg, neighborhood, state, opts) {
   // ── Update viewBox ─────────────────────────────────────────────
   svg.setAttribute('viewBox', _computeViewBox(nodes));
 
+  // ── Scene wrapper group ───────────────────────────────────────
+  const gScene = _svgEl('g', { class: 'tn-scene' });
+
   // ── Classify active PCs ────────────────────────────────────────
   const activePCs   = new Set();
   const ghostPCs    = new Set();
@@ -550,7 +554,7 @@ function _renderAll(svg, neighborhood, state, opts) {
       class: 'tn-edge',
     }));
   }
-  svg.appendChild(gEdges);
+  gScene.appendChild(gEdges);
 
   // ═══════════════════════════════════════════════════════════════
   // 2. TRIANGLE FILLS
@@ -581,7 +585,7 @@ function _renderAll(svg, neighborhood, state, opts) {
     }
     gTris.appendChild(poly);
   }
-  svg.appendChild(gTris);
+  gScene.appendChild(gTris);
 
   // ═══════════════════════════════════════════════════════════════
   // 3. TRANSFORM ARROWS
@@ -651,7 +655,7 @@ function _renderAll(svg, neighborhood, state, opts) {
         gArr.appendChild(lbl);
       }
     }
-    svg.appendChild(gArr);
+    gScene.appendChild(gArr);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -685,7 +689,7 @@ function _renderAll(svg, neighborhood, state, opts) {
         }
       }
     }
-    svg.appendChild(gInt);
+    gScene.appendChild(gInt);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -728,7 +732,7 @@ function _renderAll(svg, neighborhood, state, opts) {
     }
     gNodes.appendChild(g);
   }
-  svg.appendChild(gNodes);
+  gScene.appendChild(gNodes);
 
   // ═══════════════════════════════════════════════════════════════
   // 6. COMMON-TONE / MOVING-TONE MARKERS
@@ -798,7 +802,7 @@ function _renderAll(svg, neighborhood, state, opts) {
         gMark.appendChild(mtLabel);
       }
     }
-    svg.appendChild(gMark);
+    gScene.appendChild(gMark);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -857,8 +861,11 @@ function _renderAll(svg, neighborhood, state, opts) {
       gLbl.appendChild(lbl);
     }
 
-    svg.appendChild(gLbl);
+    gScene.appendChild(gLbl);
   }
+
+  // ── Attach scene to SVG ───────────────────────────────────────
+  svg.appendChild(gScene);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -874,6 +881,8 @@ const TonnetzNeighborhood = {
   _centerQuality: null,
   _depth: 1,
   _neighborhood: null,
+  _hasRendered: false,
+  _animationId: 0,
 
   /**
    * Create the SVG, subscribe to HarmonyState, do initial render.
@@ -935,6 +944,8 @@ const TonnetzNeighborhood = {
     svg.appendChild(defs);
     this._container.appendChild(svg);
     this._svg = svg;
+    this._hasRendered = false;
+    this._animationId = 0;
 
     // Subscribe to HarmonyState
     this._unsub = HarmonyState.on((st) => this.render(st));
@@ -944,10 +955,27 @@ const TonnetzNeighborhood = {
   },
 
   /**
-   * Re-center the view on a different triad.
-   * (Instant transition for now — smooth slide animation is a future enhancement.)
+   * Re-center the view on a different triad, with a smooth slide animation.
    */
   recenter(root, quality) {
+    const oldNeighborhood = this._neighborhood;
+    const shouldAnimate = this._hasRendered && oldNeighborhood && this._centerRoot != null;
+
+    // Find the target triad's lattice position in the OLD neighborhood
+    let offsetX = 0, offsetY = 0;
+    if (shouldAnimate) {
+      const targetPC = noteToPC(root);
+      for (const [, tri] of oldNeighborhood.triads) {
+        if (noteToPC(tri.root) === targetPC && tri.quality === quality) {
+          const pos = toSVG(tri.tq, tri.tr);
+          offsetX = pos.x;
+          offsetY = pos.y;
+          break;
+        }
+      }
+    }
+
+    // Rebuild
     this._centerRoot    = root;
     this._centerQuality = quality;
     this._neighborhood  = buildNeighborhood(root, quality, this._depth);
@@ -959,6 +987,48 @@ const TonnetzNeighborhood = {
     }
 
     _renderAll(this._svg, this._neighborhood, HarmonyState.get(), this._opts);
+    this._hasRendered = true;
+
+    // Animate if we have an offset
+    if (shouldAnimate && (offsetX !== 0 || offsetY !== 0)) {
+      this._animateSlide(offsetX, offsetY);
+    }
+  },
+
+  /** Animate the scene group from an offset back to (0,0). */
+  _animateSlide(fromOffsetX, fromOffsetY) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const scene = this._svg && this._svg.querySelector('.tn-scene');
+    if (!scene) return;
+
+    // Cancel any in-flight animation
+    this._animationId++;
+    const myId = this._animationId;
+
+    // Start at the offset (content appears at old position)
+    scene.style.transition = 'none';
+    scene.setAttribute('transform', `translate(${fromOffsetX}, ${fromOffsetY})`);
+
+    // Next frame: enable transition and animate to (0,0)
+    requestAnimationFrame(() => {
+      if (this._animationId !== myId) return;
+      requestAnimationFrame(() => {
+        if (this._animationId !== myId) return;
+        scene.style.transition = `transform ${RECENTER_MS}ms ease-out`;
+        scene.setAttribute('transform', 'translate(0, 0)');
+
+        // Clean up after animation completes
+        const cleanup = () => {
+          if (this._animationId !== myId) return;
+          scene.style.transition = '';
+          scene.removeAttribute('transform');
+        };
+        scene.addEventListener('transitionend', cleanup, { once: true });
+        // Fallback timeout in case transitionend doesn't fire
+        setTimeout(cleanup, RECENTER_MS + 50);
+      });
+    });
   },
 
   /** Change the visible depth (1, 2, 3…) and re-render. */
@@ -998,6 +1068,7 @@ const TonnetzNeighborhood = {
     }
 
     _renderAll(this._svg, this._neighborhood, state, this._opts);
+    this._hasRendered = true;
   },
 
   /** Unsubscribe from HarmonyState, remove SVG. */
@@ -1011,6 +1082,7 @@ const TonnetzNeighborhood = {
     this._neighborhood = null;
     this._centerRoot   = null;
     this._centerQuality = null;
+    this._hasRendered   = false;
   },
 };
 
