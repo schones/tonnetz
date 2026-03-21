@@ -301,6 +301,22 @@
             font-size: 0.8rem;
             color: var(--text-muted);
         }
+
+        /* ── Voice type sub-selector ───────────────────────────── */
+        .voice-type-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Slightly smaller buttons inside the voice-type row */
+        .voice-type-row .inst-btn {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+        }
     </style>
 {% endblock %}
 
@@ -348,6 +364,15 @@
                                 id="setup-inst-voice" aria-pressed="false">Voice</button>
                     </div>
                     <span class="inst-status" id="inst-status" aria-live="polite" hidden></span>
+                </div>
+                <div class="voice-type-row" id="setup-voice-type-row" hidden>
+                    <span class="inst-label">Type:</span>
+                    <div class="inst-group" role="group" aria-label="Voice type">
+                        <button class="inst-btn inst-btn--active" data-vtype="choir_aahs"
+                                aria-pressed="true">Choir</button>
+                        <button class="inst-btn" data-vtype="voice_oohs"
+                                aria-pressed="false">Oohs</button>
+                    </div>
                 </div>
 
                 <button id="btn-start" class="btn btn--primary btn--large" style="width:100%">Start Playing</button>
@@ -416,6 +441,15 @@
                                 id="game-inst-piano" aria-pressed="true">Piano</button>
                         <button class="inst-btn" data-inst="voice"
                                 id="game-inst-voice" aria-pressed="false">Voice</button>
+                    </div>
+                </div>
+                <div class="voice-type-row" id="game-voice-type-row" hidden>
+                    <span class="inst-label">Type:</span>
+                    <div class="inst-group" role="group" aria-label="Voice type">
+                        <button class="inst-btn inst-btn--active" data-vtype="choir_aahs"
+                                aria-pressed="true">Choir</button>
+                        <button class="inst-btn" data-vtype="voice_oohs"
+                                aria-pressed="false">Oohs</button>
                     </div>
                 </div>
 
@@ -1059,12 +1093,14 @@
       import { initTheoryTooltips } from '{{ url_for("static", filename="shared/theory-engine.js") }}';
       import { KeyboardView } from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
 
-      // ── Instrument toggle ───────────────────────────────────────────
-      const INST_PREF_KEY = 'tonnetz_harmony_instrument';
+      // ── Instrument + voice-type toggles ────────────────────────────
+      const INST_PREF_KEY       = 'tonnetz_harmony_instrument';
+      const VOICE_TYPE_PREF_KEY = 'tonnetz_harmony_voice_type';
 
       /**
-       * Update every [data-inst] button to reflect the current instrument and
-       * its loading state ('loading' | 'loaded' | 'error').
+       * Update every [data-inst] button and show/hide the voice-type sub-rows.
+       * @param {'piano'|'voice'} activeInst
+       * @param {'loading'|'loaded'|'error'} loadState
        */
       function _syncInstButtons(activeInst, loadState) {
         const loading = loadState === 'loading';
@@ -1089,6 +1125,13 @@
           btn.textContent = voiceLoading ? 'Voice\u2026' : 'Voice';
         });
 
+        // Show the voice-type sub-row only while voice is active (any load state).
+        // Keep it visible during loading so the user can see their current selection.
+        const showVoiceRow = activeInst === 'voice' && !error;
+        document.querySelectorAll('.voice-type-row').forEach(row => {
+          row.hidden = !showVoiceRow;
+        });
+
         // Status message (only present on the setup screen)
         const statusEl = document.getElementById('inst-status');
         if (statusEl) {
@@ -1105,6 +1148,31 @@
         }
       }
 
+      /**
+       * Update every [data-vtype] button to reflect the active voice type and
+       * its loading state. Also disables buttons during loading to prevent races.
+       * @param {string} activeType  - e.g. 'choir_aahs'
+       * @param {'loading'|'loaded'|'error'} loadState
+       */
+      function _syncVoiceTypeButtons(activeType, loadState) {
+        const loading = loadState === 'loading';
+        const vtypes  = KeyboardView.getVoiceTypes();  // { sfName: label }
+
+        document.querySelectorAll('[data-vtype]').forEach(btn => {
+          const sfName    = btn.dataset.vtype;
+          const isActive  = sfName === activeType;
+          const isLoading = isActive && loading;
+          btn.classList.toggle('inst-btn--active',  isActive && !loading);
+          btn.classList.toggle('inst-btn--loading', isLoading);
+          btn.setAttribute('aria-pressed', String(isActive));
+          btn.disabled = loading;
+          // Show a spinner ellipsis on the active button while it loads
+          btn.textContent = isLoading
+            ? (vtypes[sfName] ?? sfName) + '\u2026'
+            : (vtypes[sfName] ?? sfName);
+        });
+      }
+
       /** Switch the active instrument, persist the preference, update UI. */
       async function _switchInstrument(name) {
         _syncInstButtons(name, 'loading');
@@ -1112,11 +1180,40 @@
           await KeyboardView.setInstrument(name);
           localStorage.setItem(INST_PREF_KEY, name);
           _syncInstButtons(name, 'loaded');
+          // After a successful voice switch, sync the voice-type buttons too
+          if (name === 'voice') {
+            _syncVoiceTypeButtons(KeyboardView.getVoiceType(), 'loaded');
+          }
         } catch (err) {
           console.warn('[harmony] Instrument switch failed, falling back to piano:', err);
           try { await KeyboardView.setInstrument('piano'); } catch (_) {}
           localStorage.setItem(INST_PREF_KEY, 'piano');
-          // Briefly show the error on voice, then settle on piano
+          _syncInstButtons('voice', 'error');
+          setTimeout(() => _syncInstButtons('piano', 'loaded'), 2500);
+        }
+      }
+
+      /**
+       * Switch the voice soundfont type. Only callable while voice is the
+       * active instrument (the sub-row is hidden otherwise).
+       * Persists the choice and re-triggers the full load flow.
+       * @param {string} sfName - e.g. 'choir_aahs' or 'voice_oohs'
+       */
+      async function _switchVoiceType(sfName) {
+        _syncVoiceTypeButtons(sfName, 'loading');
+        // Also show the parent voice row in loading state (disables inst buttons)
+        _syncInstButtons('voice', 'loading');
+        try {
+          KeyboardView.setVoiceType(sfName);         // dispose old, set new sfName
+          await KeyboardView.setInstrument('voice'); // fetch + build new sampler
+          localStorage.setItem(VOICE_TYPE_PREF_KEY, sfName);
+          _syncInstButtons('voice', 'loaded');
+          _syncVoiceTypeButtons(sfName, 'loaded');
+        } catch (err) {
+          console.warn('[harmony] Voice type switch failed, falling back to piano:', err);
+          try { await KeyboardView.setInstrument('piano'); } catch (_) {}
+          localStorage.setItem(INST_PREF_KEY, 'piano');
+          localStorage.removeItem(VOICE_TYPE_PREF_KEY);
           _syncInstButtons('voice', 'error');
           setTimeout(() => _syncInstButtons('piano', 'loaded'), 2500);
         }
@@ -1131,13 +1228,23 @@
         btn.addEventListener('click', () => _switchInstrument(btn.dataset.inst));
       });
 
+      // Wire all [data-vtype] buttons (both screens) to _switchVoiceType
+      document.querySelectorAll('[data-vtype]').forEach(btn => {
+        btn.addEventListener('click', () => _switchVoiceType(btn.dataset.vtype));
+      });
+
       // Start loading the piano immediately (pre-warms the sampler).
-      // Once it resolves we also apply the saved instrument preference.
+      // Once it resolves, apply saved instrument + voice-type preferences.
       KeyboardView.getSampler()
         .then(proxy => {
           window.__harmonyAudio.sampler = proxy;
-          const saved = localStorage.getItem(INST_PREF_KEY) || 'piano';
-          if (saved === 'voice') {
+          const savedInst      = localStorage.getItem(INST_PREF_KEY)       || 'piano';
+          const savedVoiceType = localStorage.getItem(VOICE_TYPE_PREF_KEY) || 'choir_aahs';
+          if (savedInst === 'voice') {
+            // Restore voice type silently before triggering the load, so
+            // _ensureVoice() fetches the correct soundfont on first call.
+            KeyboardView.setVoiceType(savedVoiceType);
+            _syncVoiceTypeButtons(savedVoiceType, 'loading');
             _switchInstrument('voice');
           } else {
             _syncInstButtons('piano', 'loaded');

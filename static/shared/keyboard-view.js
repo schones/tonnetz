@@ -318,6 +318,16 @@ const _FLAT_TO_SHARP = { Eb: 'D#', Gb: 'F#' };
 const MUSYNGKITE_BASE = 'https://gleitz.github.io/midi-js-soundfonts/MusyngKite/';
 
 /**
+ * Available voice soundfonts — keys are soundfont filenames (without the -mp3.js
+ * suffix), values are human-readable display labels used by the UI.
+ * Both are served from MUSYNGKITE_BASE; no other URL config is needed.
+ */
+const VOICE_TYPES = {
+  choir_aahs: 'Choir',
+  voice_oohs: 'Oohs',
+};
+
+/**
  * Per-instrument state records.
  *   state: 'unloaded' | 'loading' | 'loaded' | 'error'
  *   _promise: in-flight load promise (prevents duplicate fetches)
@@ -377,10 +387,15 @@ async function _loadSoundfontSampler(sfName) {
   const text = await resp.text();
 
   // File format: `MIDI.Soundfont.xxx = { "C2": "data:audio/mp3;base64,...", ... };`
-  const eqIdx   = text.indexOf('=');
-  const semiIdx = text.lastIndexOf(';');
-  if (eqIdx < 0 || semiIdx < 0) throw new Error(`[KeyboardView] Unexpected soundfont format: ${sfName}`);
-  const allNotes = JSON.parse(text.slice(eqIdx + 1, semiIdx).trim());
+  // Anchored to the assignment line to avoid matching the `=== 'undefined'` guard clauses.
+  const sfMatch = /MIDI\.Soundfont\.\w+\s*=\s*(\{[\s\S]+\})\s*;?\s*$/.exec(text);
+  if (!sfMatch) throw new Error(`[KeyboardView] Unexpected soundfont format: ${sfName}`);
+  // Use Function constructor instead of JSON.parse: soundfont files are JS object
+  // literals (not strict JSON) and may contain trailing commas after the last entry.
+  // This is safe because the source is the known CDN gleitz.github.io/midi-js-soundfonts,
+  // not user input.
+  // eslint-disable-next-line no-new-func
+  const allNotes = new Function('return ' + sfMatch[1])();
 
   // Build URL subset — try flat name first, then sharp enharmonic equivalent
   const urls = {};
@@ -746,6 +761,50 @@ const KeyboardView = {
    */
   isInstrumentLoaded(name) {
     return _instState[name]?.state === 'loaded';
+  },
+
+  /**
+   * Return the active voice soundfont name (e.g. 'choir_aahs', 'voice_oohs').
+   * @returns {string}
+   */
+  getVoiceType() {
+    return _instState.voice.sfName;
+  },
+
+  /**
+   * Return a shallow copy of the VOICE_TYPES catalogue { sfName: label }.
+   * @returns {Record<string, string>}
+   */
+  getVoiceTypes() {
+    return { ...VOICE_TYPES };
+  },
+
+  /**
+   * Change the voice soundfont. Disposes the current voice sampler if a
+   * different type is requested so the next setInstrument('voice') call
+   * fetches and builds the new soundfont from scratch.
+   *
+   * Does NOT start loading — call setInstrument('voice') afterwards to
+   * trigger the load (or let the existing _switchInstrument flow do it).
+   *
+   * @param {string} sfName - Key from VOICE_TYPES (e.g. 'choir_aahs')
+   */
+  setVoiceType(sfName) {
+    if (!VOICE_TYPES[sfName]) throw new Error(`[KeyboardView] Unknown voice type: "${sfName}"`);
+    const inst = _instState.voice;
+    if (inst.sfName === sfName) return;   // nothing to do
+    // Dispose the current voice sampler so the next load uses the new sfName.
+    if (inst.sampler) {
+      try { inst.sampler.releaseAll(); inst.sampler.dispose(); } catch (_) {}
+      inst.sampler = null;
+    }
+    if (inst.volume) {
+      try { inst.volume.dispose(); } catch (_) {}
+      inst.volume = null;
+    }
+    inst.state    = 'unloaded';
+    inst._promise = null;
+    inst.sfName   = sfName;
   },
 
   /**
