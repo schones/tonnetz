@@ -296,52 +296,195 @@ const KV_CSS = /* css */ `
 `;
 
 // ════════════════════════════════════════════════════════════════════
-// SAMPLER (lazy init)
+// INSTRUMENT ENGINE (multi-instrument, lazy load)
 // ════════════════════════════════════════════════════════════════════
 
-let _sampler = null;
-let _samplerReady = false;
-let _samplerVolume = null;
+/**
+ * Notes to sample when loading a soundfont — spaced every minor 3rd so
+ * Tone.Sampler can pitch-shift to fill the gaps while keeping the
+ * download small (~17 samples).
+ */
+const _SF_SUBSET = [
+  'C2', 'Eb2', 'Gb2', 'A2',
+  'C3', 'Eb3', 'Gb3', 'A3',
+  'C4', 'Eb4', 'Gb4', 'A4',
+  'C5', 'Eb5', 'Gb5', 'A5',
+  'C6',
+];
 
-function _ensureSampler() {
-  if (_sampler) return;
-  if (typeof Tone === 'undefined') {
-    console.warn('[KeyboardView] Tone.js not loaded — audio playback disabled');
-    return;
-  }
-  _samplerVolume = new Tone.Volume(-6).toDestination();
-  _sampler = new Tone.Sampler({
-    urls: SAMPLER_URLS,
-    baseUrl: SALAMANDER_BASE,
-    onload: () => { _samplerReady = true; },
-  }).connect(_samplerVolume);
+/** Enharmonic flat→sharp map for notes used in our subset. */
+const _FLAT_TO_SHARP = { Eb: 'D#', Gb: 'F#' };
+
+const MUSYNGKITE_BASE = 'https://gleitz.github.io/midi-js-soundfonts/MusyngKite/';
+
+/**
+ * Per-instrument state records.
+ *   state: 'unloaded' | 'loading' | 'loaded' | 'error'
+ *   _promise: in-flight load promise (prevents duplicate fetches)
+ */
+const _instState = {
+  piano: { sampler: null, volume: null, state: 'unloaded', _promise: null },
+  voice: { sampler: null, volume: null, state: 'unloaded', _promise: null, sfName: 'choir_aahs' },
+};
+
+let _activeInst = 'piano';
+
+// ── Active sampler lookup ──────────────────────────────────────────
+
+/** Return the currently active Tone.Sampler, or fall back to piano, or null. */
+function _getActiveSampler() {
+  const inst = _instState[_activeInst];
+  if (inst?.state === 'loaded') return inst.sampler;
+  // While the chosen instrument is still loading, fall back to piano if available
+  const piano = _instState.piano;
+  return piano.state === 'loaded' ? piano.sampler : null;
 }
 
-function _playNote(noteWithOctave) {
-  if (!_samplerReady || !_sampler) return;
-  // Ensure audio context is started
-  if (Tone.context.state !== 'running') {
-    Tone.start();
+// ── Piano (Salamander) ─────────────────────────────────────────────
+
+function _ensurePiano() {
+  const inst = _instState.piano;
+  if (inst._promise) return inst._promise;
+  if (typeof Tone === 'undefined') {
+    console.warn('[KeyboardView] Tone.js not loaded — audio playback disabled');
+    inst.state = 'error';
+    return Promise.reject(new Error('Tone.js not loaded'));
   }
-  _sampler.triggerAttack(noteWithOctave, Tone.now());
+  inst.state = 'loading';
+  inst._promise = new Promise((resolve, reject) => {
+    inst.volume = new Tone.Volume(-6).toDestination();
+    inst.sampler = new Tone.Sampler({
+      urls: SAMPLER_URLS,
+      baseUrl: SALAMANDER_BASE,
+      onload: () => { inst.state = 'loaded'; resolve(inst.sampler); },
+      onerror: (err) => { inst.state = 'error'; reject(err); },
+    }).connect(inst.volume);
+  });
+  return inst._promise;
+}
+
+// ── Voice / choir (MusyngKite soundfont) ──────────────────────────
+
+/**
+ * Fetch a MusyngKite soundfont JS file, parse the embedded base-64 data URIs,
+ * pick a sparse subset of notes, and return a Tone.Sampler wired to the
+ * same volume node chain.
+ */
+async function _loadSoundfontSampler(sfName) {
+  const url = `${MUSYNGKITE_BASE}${sfName}-mp3.js`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`[KeyboardView] Soundfont fetch failed (${resp.status}): ${url}`);
+  const text = await resp.text();
+
+  // File format: `MIDI.Soundfont.xxx = { "C2": "data:audio/mp3;base64,...", ... };`
+  const eqIdx   = text.indexOf('=');
+  const semiIdx = text.lastIndexOf(';');
+  if (eqIdx < 0 || semiIdx < 0) throw new Error(`[KeyboardView] Unexpected soundfont format: ${sfName}`);
+  const allNotes = JSON.parse(text.slice(eqIdx + 1, semiIdx).trim());
+
+  // Build URL subset — try flat name first, then sharp enharmonic equivalent
+  const urls = {};
+  for (const target of _SF_SUBSET) {
+    const m = target.match(/^([A-G][b#]?)(\d)$/);
+    if (!m) continue;
+    const [, notePart, oct] = m;
+    const altPart = _FLAT_TO_SHARP[notePart];   // e.g. 'Eb' → 'D#'
+    if (allNotes[target]) {
+      urls[target] = allNotes[target];
+    } else if (altPart && allNotes[altPart + oct]) {
+      urls[altPart + oct] = allNotes[altPart + oct];
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const vol = new Tone.Volume(-6).toDestination();
+    const s = new Tone.Sampler({
+      urls,
+      release: 1.2,
+      onload:  () => resolve({ sampler: s, volume: vol }),
+      onerror: reject,
+    }).connect(vol);
+  });
+}
+
+function _ensureVoice() {
+  const inst = _instState.voice;
+  if (inst._promise) return inst._promise;
+  if (typeof Tone === 'undefined') {
+    inst.state = 'error';
+    return Promise.reject(new Error('Tone.js not loaded'));
+  }
+  inst.state = 'loading';
+  inst._promise = _loadSoundfontSampler(inst.sfName)
+    .then(({ sampler, volume }) => {
+      inst.sampler = sampler;
+      inst.volume  = volume;
+      inst.state   = 'loaded';
+      return sampler;
+    })
+    .catch(err => {
+      inst.state   = 'error';
+      inst._promise = null;   // allow retry on next setInstrument('voice') call
+      throw err;
+    });
+  return inst._promise;
+}
+
+// ── Smart proxy ────────────────────────────────────────────────────
+
+/**
+ * Returned by getSampler() so existing callers (e.g. relative-key-trainer.js)
+ * automatically route through whichever instrument is currently active,
+ * without any changes on their end.
+ */
+const _samplerProxy = {
+  triggerAttack(notes, time, velocity) {
+    const s = _getActiveSampler();
+    if (s) s.triggerAttack(notes, time, velocity);
+  },
+  triggerRelease(notes, time) {
+    const s = _getActiveSampler();
+    if (s) s.triggerRelease(notes, time);
+  },
+  triggerAttackRelease(notes, dur, time, velocity) {
+    const s = _getActiveSampler();
+    if (s) s.triggerAttackRelease(notes, dur, time, velocity);
+  },
+  releaseAll() {
+    const s = _getActiveSampler();
+    if (s) s.releaseAll();
+  },
+};
+
+// ── Internal note helpers ──────────────────────────────────────────
+
+function _playNote(noteWithOctave) {
+  const s = _getActiveSampler();
+  if (!s) return;
+  if (Tone.context.state !== 'running') Tone.start();
+  s.triggerAttack(noteWithOctave, Tone.now());
 }
 
 function _stopNote(noteWithOctave) {
-  if (!_samplerReady || !_sampler) return;
-  _sampler.triggerRelease(noteWithOctave, Tone.now() + 0.1);
+  const s = _getActiveSampler();
+  if (!s) return;
+  s.triggerRelease(noteWithOctave, Tone.now() + 0.1);
 }
 
-function _destroySampler() {
-  if (_sampler) {
-    _sampler.releaseAll();
-    _sampler.dispose();
-    _sampler = null;
+function _destroyAllSamplers() {
+  for (const inst of Object.values(_instState)) {
+    if (inst.sampler) {
+      try { inst.sampler.releaseAll(); inst.sampler.dispose(); } catch (_) {}
+      inst.sampler = null;
+    }
+    if (inst.volume) {
+      try { inst.volume.dispose(); } catch (_) {}
+      inst.volume = null;
+    }
+    inst.state    = 'unloaded';
+    inst._promise = null;
   }
-  if (_samplerVolume) {
-    _samplerVolume.dispose();
-    _samplerVolume = null;
-  }
-  _samplerReady = false;
+  _activeInst = 'piano';
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -405,7 +548,7 @@ const KeyboardView = {
     // Init sampler if mode needs audio
     const mode = options.mode || stState.keyboardMode || 'display';
     if (mode === 'input' || mode === 'both') {
-      _ensureSampler();
+      _ensurePiano();
     }
 
     // Build DOM
@@ -453,7 +596,7 @@ const KeyboardView = {
 
     // Ensure sampler for playable modes
     if (mode === 'input' || mode === 'both') {
-      _ensureSampler();
+      _ensurePiano();
     }
 
     // ── Collect highlight data ─────────────────────────────────
@@ -551,17 +694,58 @@ const KeyboardView = {
   },
 
   /**
-   * Return a Promise that resolves with the shared Tone.Sampler instance
-   * once it has finished loading. Lazily initialises the sampler if needed.
+   * Return a Promise resolving with a smart proxy once the piano sampler has
+   * loaded. The proxy automatically routes triggerAttack / triggerRelease /
+   * triggerAttackRelease / releaseAll to whichever instrument is active at
+   * call time — callers never need to hold a reference to the raw sampler.
    */
   getSampler() {
-    _ensureSampler();
-    return new Promise(resolve => {
-      if (_samplerReady) return resolve(_sampler);
+    _ensurePiano();
+    return new Promise((resolve, reject) => {
       const check = setInterval(() => {
-        if (_samplerReady) { clearInterval(check); resolve(_sampler); }
+        const { state } = _instState.piano;
+        if (state === 'loaded') { clearInterval(check); resolve(_samplerProxy); }
+        else if (state === 'error') { clearInterval(check); reject(new Error('[KeyboardView] Piano sampler failed to load')); }
       }, 100);
     });
+  },
+
+  /**
+   * Switch the active instrument. Lazily loads the soundfont on first use.
+   * @param {'piano'|'voice'} name
+   * @returns {Promise<void>} Resolves when the instrument is ready to play.
+   */
+  async setInstrument(name) {
+    if (!_instState[name]) throw new Error(`[KeyboardView] Unknown instrument: "${name}"`);
+    _activeInst = name;
+    if (name === 'piano') {
+      await _ensurePiano();
+    } else if (name === 'voice') {
+      await _ensureVoice();
+    }
+  },
+
+  /** Return the name of the currently active instrument ('piano' or 'voice'). */
+  getInstrument() {
+    return _activeInst;
+  },
+
+  /**
+   * Return the loading state for a named instrument.
+   * @param {'piano'|'voice'} name
+   * @returns {'unloaded'|'loading'|'loaded'|'error'}
+   */
+  getInstrumentLoadingState(name) {
+    return _instState[name]?.state ?? 'unloaded';
+  },
+
+  /**
+   * Return true if the named instrument is fully loaded and ready to play.
+   * @param {'piano'|'voice'} name
+   * @returns {boolean}
+   */
+  isInstrumentLoaded(name) {
+    return _instState[name]?.state === 'loaded';
   },
 
   /**
@@ -579,7 +763,7 @@ const KeyboardView = {
     this._keyEls      = {};
     this._keys        = [];
     this._pressedKey  = null;
-    _destroySampler();
+    _destroyAllSamplers();
   },
 
   // ══════════════════════════════════════════════════════════════

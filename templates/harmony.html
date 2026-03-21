@@ -233,6 +233,74 @@
             max-width: 500px;
             margin: 2rem auto;
         }
+
+        /* ── Instrument toggle ─────────────────────────────────── */
+        .instrument-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .inst-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .inst-group {
+            display: flex;
+            border: 2px solid var(--border-input);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .inst-btn {
+            padding: 0.375rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s, color 0.15s;
+            line-height: 1.5;
+        }
+
+        .inst-btn + .inst-btn {
+            border-left: 2px solid var(--border-input);
+        }
+
+        .inst-btn:hover:not(:disabled):not(.inst-btn--active) {
+            background: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .inst-btn--active {
+            background: #1565c0;
+            color: #fff;
+        }
+
+        .inst-btn--loading {
+            opacity: 0.65;
+            cursor: wait;
+        }
+
+        .inst-btn--error {
+            color: var(--text-error, #f44336);
+        }
+
+        .inst-btn:disabled {
+            cursor: not-allowed;
+        }
+
+        .inst-status {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
     </style>
 {% endblock %}
 
@@ -269,6 +337,17 @@
                         <label class="form-label" for="select-root">Root Note</label>
                         <select id="select-root" class="form-select"></select>
                     </div>
+                </div>
+
+                <div class="instrument-toggle" style="margin-bottom:1rem">
+                    <span class="inst-label" id="inst-group-label">Prompt sound</span>
+                    <div class="inst-group" role="group" aria-labelledby="inst-group-label">
+                        <button class="inst-btn inst-btn--active" data-inst="piano"
+                                id="setup-inst-piano" aria-pressed="true">Piano</button>
+                        <button class="inst-btn" data-inst="voice"
+                                id="setup-inst-voice" aria-pressed="false">Voice</button>
+                    </div>
+                    <span class="inst-status" id="inst-status" aria-live="polite" hidden></span>
                 </div>
 
                 <button id="btn-start" class="btn btn--primary btn--large" style="width:100%">Start Playing</button>
@@ -327,6 +406,17 @@
                     <button id="btn-play-root" class="btn btn--secondary">Play Root</button>
                     <button id="btn-play-target" class="btn btn--secondary">Play Target</button>
                     <button id="btn-play-both" class="btn btn--primary">Play Both</button>
+                </div>
+
+                <!-- Instrument selector — always visible in game -->
+                <div class="instrument-toggle">
+                    <span class="inst-label">Sound:</span>
+                    <div class="inst-group" role="group" aria-label="Prompt sound">
+                        <button class="inst-btn inst-btn--active" data-inst="piano"
+                                id="game-inst-piano" aria-pressed="true">Piano</button>
+                        <button class="inst-btn" data-inst="voice"
+                                id="game-inst-voice" aria-pressed="false">Voice</button>
+                    </div>
                 </div>
 
                 <!-- Practice info panel -->
@@ -440,11 +530,16 @@
         }
 
         function playNote(noteName, duration = 0.8) {
+            // Route through sampler (piano or voice) if available, else fall back to synth
+            const s = window.__harmonyAudio?.sampler;
+            if (s) { s.triggerAttackRelease(noteName, duration); return; }
             if (synth) synth.triggerAttackRelease(noteName, duration);
         }
 
         function playInterval(rootNote, intervalSemitones, mode = "melodic-up", noteDuration = 0.8) {
-            if (!synth) return;
+            const s = window.__harmonyAudio?.sampler;
+            const instrument = s || synth;
+            if (!instrument) return;
             const rootFreq = noteToFrequency(rootNote);
             const rootMidiFloat = 12 * Math.log2(rootFreq / A4_FREQ) + A4_MIDI;
             const secondMidiFloat = rootMidiFloat + intervalSemitones;
@@ -452,11 +547,11 @@
 
             const now = Tone.now();
             if (mode === "harmonic") {
-                synth.triggerAttackRelease(rootFreq, noteDuration, now);
-                synth.triggerAttackRelease(secondFreq, noteDuration, now);
+                instrument.triggerAttackRelease(rootFreq, noteDuration, now);
+                instrument.triggerAttackRelease(secondFreq, noteDuration, now);
             } else {
-                synth.triggerAttackRelease(rootFreq, noteDuration, now);
-                synth.triggerAttackRelease(secondFreq, noteDuration, now + noteDuration + 0.15);
+                instrument.triggerAttackRelease(rootFreq, noteDuration, now);
+                instrument.triggerAttackRelease(secondFreq, noteDuration, now + noteDuration + 0.15);
             }
         }
 
@@ -962,6 +1057,96 @@
     <script type="module">
       import { TipsPill } from '{{ url_for("static", filename="shared/tips-pill.js") }}';
       import { initTheoryTooltips } from '{{ url_for("static", filename="shared/theory-engine.js") }}';
+      import { KeyboardView } from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+
+      // ── Instrument toggle ───────────────────────────────────────────
+      const INST_PREF_KEY = 'tonnetz_harmony_instrument';
+
+      /**
+       * Update every [data-inst] button to reflect the current instrument and
+       * its loading state ('loading' | 'loaded' | 'error').
+       */
+      function _syncInstButtons(activeInst, loadState) {
+        const loading = loadState === 'loading';
+        const error   = loadState === 'error';
+
+        document.querySelectorAll('[data-inst="piano"]').forEach(btn => {
+          const on = activeInst === 'piano';
+          btn.classList.toggle('inst-btn--active', on);
+          btn.setAttribute('aria-pressed', String(on));
+          btn.disabled = loading;
+        });
+
+        document.querySelectorAll('[data-inst="voice"]').forEach(btn => {
+          const voiceLoading = activeInst === 'voice' && loading;
+          const voiceError   = activeInst === 'voice' && error;
+          const on = activeInst === 'voice' && !error;
+          btn.classList.toggle('inst-btn--active',  on);
+          btn.classList.toggle('inst-btn--loading',  voiceLoading);
+          btn.classList.toggle('inst-btn--error',    voiceError);
+          btn.setAttribute('aria-pressed', String(on));
+          btn.disabled = loading;
+          btn.textContent = voiceLoading ? 'Voice\u2026' : 'Voice';
+        });
+
+        // Status message (only present on the setup screen)
+        const statusEl = document.getElementById('inst-status');
+        if (statusEl) {
+          if (activeInst === 'voice' && loading) {
+            statusEl.textContent = 'Loading\u2026';
+            statusEl.hidden = false;
+          } else if (activeInst === 'voice' && error) {
+            statusEl.textContent = 'Load failed \u2014 using Piano';
+            statusEl.hidden = false;
+          } else {
+            statusEl.textContent = '';
+            statusEl.hidden = true;
+          }
+        }
+      }
+
+      /** Switch the active instrument, persist the preference, update UI. */
+      async function _switchInstrument(name) {
+        _syncInstButtons(name, 'loading');
+        try {
+          await KeyboardView.setInstrument(name);
+          localStorage.setItem(INST_PREF_KEY, name);
+          _syncInstButtons(name, 'loaded');
+        } catch (err) {
+          console.warn('[harmony] Instrument switch failed, falling back to piano:', err);
+          try { await KeyboardView.setInstrument('piano'); } catch (_) {}
+          localStorage.setItem(INST_PREF_KEY, 'piano');
+          // Briefly show the error on voice, then settle on piano
+          _syncInstButtons('voice', 'error');
+          setTimeout(() => _syncInstButtons('piano', 'loaded'), 2500);
+        }
+      }
+
+      // Expose bridge so the non-module game script can play notes through
+      // whichever instrument is currently active.
+      window.__harmonyAudio = { sampler: null };
+
+      // Wire all [data-inst] buttons (both screens) to _switchInstrument
+      document.querySelectorAll('[data-inst]').forEach(btn => {
+        btn.addEventListener('click', () => _switchInstrument(btn.dataset.inst));
+      });
+
+      // Start loading the piano immediately (pre-warms the sampler).
+      // Once it resolves we also apply the saved instrument preference.
+      KeyboardView.getSampler()
+        .then(proxy => {
+          window.__harmonyAudio.sampler = proxy;
+          const saved = localStorage.getItem(INST_PREF_KEY) || 'piano';
+          if (saved === 'voice') {
+            _switchInstrument('voice');
+          } else {
+            _syncInstButtons('piano', 'loaded');
+          }
+        })
+        .catch(err => {
+          console.warn('[harmony] Piano sampler failed to load:', err);
+          _syncInstButtons('piano', 'error');
+        });
 
       // Map current interval to relevant theory topics (2-4 keys).
       // Fix 5: independent if-blocks so multiple topics can surface simultaneously
