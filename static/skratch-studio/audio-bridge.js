@@ -10,6 +10,7 @@
 // sustain simply defer triggerRelease() until the pedal is lifted.
 
 import { startPitchDetection, stopPitchDetection } from '../shared/audio.js';
+import { loadSoundfontSampler, VOICE_TYPES } from '../shared/keyboard-view.js';
 
 // ── Salamander Grand Piano sample map ────────────────────────────────────────
 const SALAMANDER_BASE_URL = 'https://tonejs.github.io/audio/salamander/';
@@ -26,6 +27,9 @@ const SALAMANDER_URLS = {
 
 // ── Non-piano presets (unchanged) ────────────────────────────────────────────
 // 'piano' key kept only for setSoundType() validation.
+// Voice presets (choir_aahs, voice_oohs) use soundfont samplers loaded via
+// the shared loadSoundfontSampler() — they behave like the piano sampler
+// (triggerAttack / triggerRelease), so sustain pedal works correctly.
 const SOUND_PRESETS = {
   piano: {},   // handled by Sampler — options not used
   organ: {
@@ -51,7 +55,14 @@ const SOUND_PRESETS = {
       return [chorus, filt];
     },
   },
+  choir_aahs: { soundfont: true },   // loaded via loadSoundfontSampler
+  voice_oohs: { soundfont: true },   // loaded via loadSoundfontSampler
 };
+
+/** True if a sound type is a soundfont-based voice instrument. */
+function _isSoundfont(type) {
+  return SOUND_PRESETS[type]?.soundfont === true;
+}
 
 export class AudioBridge {
   constructor() {
@@ -87,6 +98,14 @@ export class AudioBridge {
     this._pianoSamplerReady = false;
     this._samplerLoadCallbacks = [];
     this._initSampler();
+
+    // ── Voice (soundfont) sampler ─────────────────────────────────
+    // Lazily loaded on first switch to a voice instrument.
+    this._voiceSampler = null;
+    this._voiceVolume  = null;
+    this._voiceSfName  = null;       // currently loaded soundfont name
+    this._voiceLoading = false;
+    this._voiceReady   = false;
   }
 
   // ── Piano sampler init ────────────────────────────────────────────────────
@@ -129,8 +148,11 @@ export class AudioBridge {
       throw new Error('Tone.js not loaded');
     }
     await Tone.start();
-    // Piano uses the sampler (already created) — only build synth for other types
-    if (this._soundType !== 'piano') {
+    // Piano uses the sampler (already created); voices need async soundfont load;
+    // organ/synth get built synchronously.
+    if (_isSoundfont(this._soundType)) {
+      await this._ensureVoiceSampler(this._soundType);
+    } else if (this._soundType !== 'piano') {
       this._buildSynth();
     }
     this._toneStarted = true;
@@ -192,7 +214,13 @@ export class AudioBridge {
     }
   }
 
-  setSoundType(type) {
+  /**
+   * Switch instrument. Returns a Promise that resolves when the instrument is
+   * ready to play (instant for piano/organ/synth, async for voice soundfonts).
+   * @param {string} type - One of the SOUND_PRESETS keys.
+   * @returns {Promise<void>}
+   */
+  async setSoundType(type) {
     if (!SOUND_PRESETS[type] || type === this._soundType) return;
     if (this._toneStarted) {
       // Release notes in the CURRENT instrument before switching
@@ -202,7 +230,11 @@ export class AudioBridge {
       this._sustain = false;
 
       this._soundType = type;
-      if (type !== 'piano') {
+      if (_isSoundfont(type)) {
+        // Dispose organ/synth bus if switching from one of those
+        this._disposeAll();
+        await this._ensureVoiceSampler(type);
+      } else if (type !== 'piano') {
         this._buildSynth();
       } else {
         // Switching to piano: dispose the organ/synth output bus/effects
@@ -213,6 +245,61 @@ export class AudioBridge {
     }
   }
 
+  /**
+   * Load (or reuse) a soundfont-based voice sampler.
+   * @param {string} sfName - e.g. 'choir_aahs', 'voice_oohs'
+   * @returns {Promise<void>}
+   */
+  async _ensureVoiceSampler(sfName) {
+    // Already loaded this exact soundfont — reuse it
+    if (this._voiceReady && this._voiceSfName === sfName) return;
+
+    // Different soundfont requested — dispose old one
+    this._disposeVoiceSampler();
+
+    this._voiceLoading = true;
+    this._voiceSfName  = sfName;
+    try {
+      const { sampler, volume } = await loadSoundfontSampler(sfName);
+      // Guard: user may have switched away while we were loading
+      if (this._soundType !== sfName) {
+        try { sampler.dispose(); } catch (_) {}
+        try { volume.dispose(); } catch (_) {}
+        return;
+      }
+      this._voiceSampler = sampler;
+      this._voiceVolume  = volume;
+      this._voiceReady   = true;
+    } finally {
+      this._voiceLoading = false;
+    }
+  }
+
+  _disposeVoiceSampler() {
+    if (this._voiceSampler) {
+      try { this._voiceSampler.releaseAll(); this._voiceSampler.dispose(); } catch (_) {}
+      this._voiceSampler = null;
+    }
+    if (this._voiceVolume) {
+      try { this._voiceVolume.dispose(); } catch (_) {}
+      this._voiceVolume = null;
+    }
+    this._voiceReady  = false;
+    this._voiceSfName = null;
+  }
+
+  /** True if the current sound type is loaded and ready to play. */
+  isReady() {
+    if (this._soundType === 'piano') return this._pianoSamplerReady;
+    if (_isSoundfont(this._soundType)) return this._voiceReady;
+    return true; // organ/synth are always ready once built
+  }
+
+  /** Return the VOICE_TYPES catalogue for UI rendering. */
+  static getVoiceTypes() {
+    return { ...VOICE_TYPES };
+  }
+
   /** Release all currently ringing notes in the current instrument (used during setSoundType). */
   _releaseCurrentInstrument() {
     if (this._soundType === 'piano') {
@@ -221,6 +308,10 @@ export class AudioBridge {
         for (const note of all) {
           try { this._pianoSampler.triggerRelease(note); } catch (_) {}
         }
+      }
+    } else if (_isSoundfont(this._soundType)) {
+      if (this._voiceReady && this._voiceSampler) {
+        try { this._voiceSampler.releaseAll(); } catch (_) {}
       }
     } else {
       const notes = [...this._voiceMap.keys()];
@@ -236,6 +327,10 @@ export class AudioBridge {
     if (this._soundType === 'piano') {
       if (this._pianoSamplerReady) {
         this._pianoSampler.triggerAttackRelease(noteName, '8n');
+      }
+    } else if (_isSoundfont(this._soundType)) {
+      if (this._voiceReady && this._voiceSampler) {
+        this._voiceSampler.triggerAttackRelease(noteName, '8n');
       }
     } else {
       const voice = this._createVoice();
@@ -268,6 +363,11 @@ export class AudioBridge {
       if (this._pianoSamplerReady) {
         this._pianoSampler.triggerAttack(noteName, Tone.now());
       }
+    } else if (_isSoundfont(this._soundType)) {
+      // Soundfont sampler handles polyphony like the piano sampler
+      if (this._voiceReady && this._voiceSampler) {
+        this._voiceSampler.triggerAttack(noteName, Tone.now());
+      }
     } else {
       // If a voice already exists (e.g., sustained), release it first
       if (this._voiceMap.has(noteName)) {
@@ -299,6 +399,16 @@ export class AudioBridge {
           try { this._pianoSampler.triggerRelease(noteName, Tone.now()); } catch (_) {}
         }
       }
+    } else if (_isSoundfont(this._soundType)) {
+      // Soundfont voice instruments support sustain via the same
+      // triggerAttack/triggerRelease pattern as the piano sampler.
+      if (this._sustain) {
+        this._sustainedNotes.add(noteName);
+      } else {
+        if (this._voiceReady && this._voiceSampler) {
+          try { this._voiceSampler.triggerRelease(noteName, Tone.now()); } catch (_) {}
+        }
+      }
     } else {
       if (!this._outputBus) return;
       if (this._sustain) {
@@ -326,6 +436,12 @@ export class AudioBridge {
             try { this._pianoSampler.triggerRelease(note, Tone.now()); } catch (_) {}
           }
         }
+      } else if (_isSoundfont(this._soundType)) {
+        if (this._voiceReady && this._voiceSampler) {
+          for (const note of this._sustainedNotes) {
+            try { this._voiceSampler.triggerRelease(note, Tone.now()); } catch (_) {}
+          }
+        }
       } else {
         for (const note of this._sustainedNotes) {
           this._releaseVoice(note);
@@ -349,6 +465,10 @@ export class AudioBridge {
         for (const note of allNotes) {
           try { this._pianoSampler.triggerRelease(note); } catch (_) {}
         }
+      }
+    } else if (_isSoundfont(this._soundType)) {
+      if (this._voiceReady && this._voiceSampler) {
+        try { this._voiceSampler.releaseAll(); } catch (_) {}
       }
     } else {
       if (this._voiceMap && this._voiceMap.size > 0) {
@@ -421,6 +541,7 @@ export class AudioBridge {
     this.releaseAll();
     clearTimeout(this._noteTimeout);
     this._disposeAll();
+    this._disposeVoiceSampler();
 
     if (this._pianoSampler) {
       try { this._pianoSampler.dispose(); } catch (_) {}

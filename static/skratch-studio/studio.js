@@ -663,11 +663,46 @@ export function init() {
       }
     },
   });
-  // Sound selector
+  // Sound selector — async for soundfont-based voices, with loading state + persistence
+  const STUDIO_INST_KEY = 'skratch-studio-instrument';
   const soundSelect = document.getElementById('soundSelect');
+  const pianoLoadingIndicator = document.getElementById('pianoLoadingIndicator');
+
+  async function switchStudioInstrument(type) {
+    soundSelect.disabled = true;
+    if (pianoLoadingIndicator) {
+      pianoLoadingIndicator.textContent = 'Loading…';
+      pianoLoadingIndicator.hidden = false;
+    }
+    try {
+      await audioBridge.setSoundType(type);
+      localStorage.setItem(STUDIO_INST_KEY, type);
+    } catch (err) {
+      console.warn('[studio] Instrument switch failed, falling back to piano:', err);
+      soundSelect.value = 'piano';
+      try { await audioBridge.setSoundType('piano'); } catch (_) {}
+      localStorage.setItem(STUDIO_INST_KEY, 'piano');
+    } finally {
+      soundSelect.disabled = false;
+      if (pianoLoadingIndicator) pianoLoadingIndicator.hidden = true;
+    }
+  }
+
   soundSelect.addEventListener('change', () => {
-    audioBridge.setSoundType(soundSelect.value);
+    switchStudioInstrument(soundSelect.value);
   });
+
+  // Restore persisted instrument choice
+  const savedInst = localStorage.getItem(STUDIO_INST_KEY);
+  if (savedInst && soundSelect.querySelector(`option[value="${savedInst}"]`)) {
+    soundSelect.value = savedInst;
+    // Defer the switch so Tone.js context starts on first user gesture, not page load.
+    // For piano this is a no-op (already the default). For voices, the load happens
+    // on the first user interaction that calls ensureTone().
+    if (savedInst !== 'piano') {
+      audioBridge._soundType = savedInst;
+    }
+  }
 
   // Piano label mode selector
   const pianoLabelSelect = document.getElementById('pianoLabelSelect');

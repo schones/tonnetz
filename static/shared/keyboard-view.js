@@ -925,7 +925,7 @@ const KeyboardView = {
 // EXPORTS
 // ════════════════════════════════════════════════════════════════════
 
-export { KeyboardView };
+export { KeyboardView, _loadSoundfontSampler as loadSoundfontSampler, VOICE_TYPES };
 
 if (typeof window !== 'undefined') {
   window.KeyboardView = KeyboardView;

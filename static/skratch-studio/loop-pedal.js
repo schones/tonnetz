@@ -3,11 +3,13 @@
 //
 // Keyboard data model: layers[n] = [{note, startTime, duration, instrument}]
 //   startTime, duration: seconds relative to loop start.
-//   instrument: 'piano' | 'organ' | 'synth'
+//   instrument: 'piano' | 'organ' | 'synth' | 'choir_aahs' | 'voice_oohs'
 //
 // Mic data model: _layerAudio[n] = AudioBuffer (null for keyboard layers)
 //
 // State machine: idle → recording1 → playing ↔ overdubbing / paused
+
+import { loadSoundfontSampler } from '../shared/keyboard-view.js';
 
 const LAYER_COLORS = ['#a29bfe', '#fd79a8', '#74b9ff']; // L1 purple, L2 pink, L3 blue
 const NUM_LAYERS   = 3;
@@ -152,6 +154,32 @@ export class LoopPedal {
       }).toDestination();
     }
     this._toneReady = true;
+  }
+
+  /**
+   * Lazily load any voice soundfonts needed by the recorded layers.
+   * Called before playback so the samplers are available in Tone.Part.
+   */
+  async _ensureVoiceSynths() {
+    const needed = new Set();
+    for (const layer of this.layers) {
+      for (const ev of layer) {
+        if ((ev.instrument === 'choir_aahs' || ev.instrument === 'voice_oohs') &&
+            !this._synths[ev.instrument]) {
+          needed.add(ev.instrument);
+        }
+      }
+    }
+    const loads = [...needed].map(async (sfName) => {
+      try {
+        const { sampler } = await loadSoundfontSampler(sfName);
+        sampler.volume.value = -8;
+        this._synths[sfName] = sampler;
+      } catch (err) {
+        console.warn(`[LoopPedal] Failed to load voice "${sfName}", will fall back to piano:`, err);
+      }
+    });
+    await Promise.all(loads);
   }
 
   // ── Mic recording ─────────────────────────────────────────────────────────
@@ -300,7 +328,7 @@ export class LoopPedal {
       }
       this.loopLength = this._quantize(Math.max(raw, 0.1));
       this.state = 'playing';
-      this._startPlayback();
+      await this._startPlayback();
     } else if (this.state === 'overdubbing') {
       const li = this._overdubLayerIdx;
       if (this._isMicMode()) {
@@ -356,7 +384,7 @@ export class LoopPedal {
       this.state = 'paused';
     } else if (this.state === 'paused') {
       this.state = 'playing';
-      this._startPlayback();
+      await this._startPlayback();
     }
     this._updateUI();
   }
@@ -431,8 +459,11 @@ export class LoopPedal {
 
   // ── Playback ──────────────────────────────────────────────────────────────
 
-  _startPlayback() {
+  async _startPlayback() {
     this._clearPart();
+
+    // Ensure any voice soundfonts needed by recorded layers are loaded
+    await this._ensureVoiceSynths();
 
     // Notify studio.js so it can pause any running Blockly music
     if (this._onTakeoverTransport) this._onTakeoverTransport();
@@ -493,7 +524,8 @@ export class LoopPedal {
   }
 
   /** Rebuild Part mid-playback (after overdub finalize or clear layer). */
-  _rebuildPart() {
+  async _rebuildPart() {
+    await this._ensureVoiceSynths();
     const offset = Math.max(0, Tone.Transport.seconds % this.loopLength);
     this._clearPart();
     this._buildAndStartPart(Tone.now() + 0.01, offset);
