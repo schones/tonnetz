@@ -1,8 +1,9 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-03-19
+**Last updated:** 2026-03-23
 **Branch:** `education-layer`
-**Last commit:** b52e504
+**Last commit:** 2ca7076
+
 
 
 
@@ -46,24 +47,24 @@
 - [x] B11: Intro screen fix + CSS
 - [x] Keyboard playback highlight CSS (kv-key--playback)
 - [x] Dashboard link fix (/relative → /games/relative-key-trainer)
+[x] Visual layer system (visual-config.js, visual-layer.js, visual-toggle.js)
+- [x] Tonnetz pop-out panel in Harmony Trainer (depth control, HarmonyState wiring)
+- [x] Visual layer wired into Chord Walks
+- [x] Sampler proxy fix in Chord Walks (voice instrument compatibility)
+- [x] MVP tracker replaces sprint tracker
 ```
 
 ---
 
 ## In Progress
 
-
 ### MVP Push (target: April 20, 2026)
 See `docs/tonnetz-mvp-tracker.md` for the focused shipping checklist.
-Current priorities: visual layer validation, backend API proxy, intro module.
+Next priorities: backend API proxy, intro module (4 chapters).
 
-### Visual Layer System (2026-03-23)
-- Prompt running in Claude Code
-- New files: visual-config.js, visual-layer.js, visual-toggle.js
-- Patches: harmony-state.js (updateSilent), tonnetz-neighborhood.js (color map)
-- Integration: Harmony Trainer only (other games in polish pass)
-- Status: awaiting test validation
-
+### Visual tuning (parked)
+Visual layer infrastructure works in both games. Preset refinement
+and effect tuning deferred — will revisit before launch.
 
 ### Phase 4: Playful Lens — Refinement
 - Content exists for 12 topics but needs quality review and polish
