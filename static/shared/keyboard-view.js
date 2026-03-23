@@ -469,6 +469,9 @@ const _samplerProxy = {
     const s = _getActiveSampler();
     if (s) s.releaseAll();
   },
+  get volume() {
+    return _instState[_activeInst].volume;
+  },
 };
 
 // ── Internal note helpers ──────────────────────────────────────────

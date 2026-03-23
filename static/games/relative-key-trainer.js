@@ -34,6 +34,8 @@ import {
 } from '../shared/transforms.js';
 import { TipsPill } from '../shared/tips-pill.js';
 import { initTheoryTooltips } from '../shared/theory-engine.js';
+import { VisualLayer } from '../shared/visual-layer.js';
+import { VisualToggle } from '../shared/visual-toggle.js';
 
 // ════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -2664,5 +2666,11 @@ export function init() {
       switchPhase('learn');
     }
   });
+
+  // Visual layer and toggle — init after all DOM setup so the controls bar exists
+  const controlsBar = document.querySelector('.rkt-top-bar-right');
+  if (controlsBar) controlsBar.id = 'rkt-controls-bar';
+  VisualLayer.init('tonnetz-container');
+  VisualToggle.init('rkt-controls-bar');
 
 }

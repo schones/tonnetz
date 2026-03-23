@@ -317,6 +317,126 @@
             padding: 0.25rem 0.75rem;
             font-size: 0.8rem;
         }
+
+        /* ── Tonnetz pop-out panel ──────────────────────────────── */
+        .tonnetz-toggle-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tonnetz-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35em;
+            padding: 0.35rem 0.85rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid var(--border, #444);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .tonnetz-toggle-btn:hover {
+            background: var(--bg-hover, #313244);
+            border-color: var(--accent, #6c63ff);
+        }
+
+        .tonnetz-toggle-btn[aria-expanded="true"] {
+            border-color: var(--accent, #6c63ff);
+            color: var(--accent, #6c63ff);
+        }
+
+        .tonnetz-panel-wrap {
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.25s ease-out, opacity 0.2s ease-out;
+            margin: 0 auto;
+        }
+
+        .tonnetz-panel-wrap--open {
+            max-height: 560px;
+            opacity: 1;
+        }
+
+        .tonnetz-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border, #444);
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+            margin: 0 auto 0.75rem;
+            max-width: 380px;
+            overflow: hidden;
+        }
+
+        .tonnetz-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.4rem 0.75rem;
+            border-bottom: 1px solid var(--border, #333);
+            gap: 0.5rem;
+        }
+
+        .tonnetz-panel-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            flex: 1;
+        }
+
+        .tonnetz-depth-ctrl {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .tonnetz-depth-btn {
+            width: 20px;
+            height: 20px;
+            border: 1px solid var(--border, #444);
+            border-radius: 4px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-family: inherit;
+        }
+
+        .tonnetz-depth-btn:hover:not(:disabled) {
+            border-color: var(--accent, #6c63ff);
+            color: var(--accent, #6c63ff);
+        }
+
+        .tonnetz-depth-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        #tonnetz-svg-container {
+            width: 100%;
+            min-height: 220px;
+            position: relative;
+        }
+
+        #tonnetz-visuals-target {
+            position: relative;
+        }
     </style>
 {% endblock %}
 
@@ -381,8 +501,8 @@
 
         <!-- ===== Game Screen ===== -->
         <section id="screen-game" hidden>
-            <div class="harmony-game card">
-                <div class="stats-bar">
+            <div class="harmony-game card" id="tonnetz-container">
+                <div class="stats-bar" id="game-controls-bar">
                     <div class="stat">
                         <div class="stat__value" id="stat-score">0</div>
                         <div class="stat__label">Score</div>
@@ -452,6 +572,7 @@
                                 aria-pressed="false">Oohs</button>
                     </div>
                 </div>
+
 
                 <!-- Practice info panel -->
                 <div class="practice-info" id="practice-info">
@@ -587,6 +708,9 @@
                 instrument.triggerAttackRelease(rootFreq, noteDuration, now);
                 instrument.triggerAttackRelease(secondFreq, noteDuration, now + noteDuration + 0.15);
             }
+
+            // Push interval to Tonnetz panel via bridge
+            window.__harmonyTonnetz?.push?.(rootNote, intervalSemitones);
         }
 
         // --- 2. Tuner Geometry ---
@@ -1079,6 +1203,10 @@
         populateSelectors();
         buildTuner();
 
+        // ── Tonnetz panel bridge ────────────────────────────────────────
+        // Module script registers .push() and .clear() handlers here.
+        window.__harmonyTonnetz = { push: null, clear: null };
+
         // ── Tips pill integration ───────────────────────────────────────
         // Expose hooks so the module script below can call back into game state.
         window.__harmonyTips = {
@@ -1092,6 +1220,10 @@
       import { TipsPill } from '{{ url_for("static", filename="shared/tips-pill.js") }}';
       import { initTheoryTooltips } from '{{ url_for("static", filename="shared/theory-engine.js") }}';
       import { KeyboardView } from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+      import { TonnetzNeighborhood } from '{{ url_for("static", filename="shared/tonnetz-neighborhood.js") }}';
+      import { HarmonyState } from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+      import { VisualLayer } from '{{ url_for("static", filename="shared/visual-layer.js") }}';
+      import { VisualToggle } from '{{ url_for("static", filename="shared/visual-toggle.js") }}';
 
       // ── Instrument + voice-type toggles ────────────────────────────
       const INST_PREF_KEY       = 'tonnetz_harmony_instrument';
@@ -1317,5 +1449,176 @@
 
       // Initial tips for the default interval
       refreshTips();
+
+      // ── Tonnetz Panel ─────────────────────────────────────────────
+      // All DOM elements are created here in JS, after the Harmony Trainer's
+      // own init completes. Nothing below depends on template HTML for the
+      // Tonnetz UI — it's fully self-contained.
+      {
+        const NOTE_NAMES_TN = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+        const MIN_DEPTH = 1, MAX_DEPTH = 4;
+        let currentDepth = 1;
+        let panelInitialized = false;
+
+        // ── Build DOM ─────────────────────────────────────────────
+
+        // Toggle row — just the 🔷 button; Visuals control lives inside the panel
+        const toggleRow = document.createElement('div');
+        toggleRow.className = 'tonnetz-toggle-row';
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'btn-tonnetz-toggle';
+        toggleBtn.className = 'tonnetz-toggle-btn';
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.setAttribute('aria-controls', 'tonnetz-panel-wrap');
+        toggleBtn.textContent = '🔷 Tonnetz';
+        toggleRow.appendChild(toggleBtn);
+
+        // Collapsible panel wrapper
+        const panelWrap = document.createElement('div');
+        panelWrap.id = 'tonnetz-panel-wrap';
+        panelWrap.className = 'tonnetz-panel-wrap';
+        panelWrap.setAttribute('aria-hidden', 'true');
+
+        const panel = document.createElement('div');
+        panel.className = 'tonnetz-panel';
+
+        // Panel header: title | depth controls | visuals toggle target
+        const panelHeader = document.createElement('div');
+        panelHeader.className = 'tonnetz-panel-header';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'tonnetz-panel-title';
+        titleSpan.textContent = 'Tonnetz View';
+
+        const depthCtrl = document.createElement('div');
+        depthCtrl.className = 'tonnetz-depth-ctrl';
+        depthCtrl.innerHTML =
+          '<span>Depth</span>' +
+          '<button id="btn-depth-dec" class="tonnetz-depth-btn" aria-label="Decrease depth" disabled>\u2212</button>' +
+          '<span id="tonnetz-depth-val">1</span>' +
+          '<button id="btn-depth-inc" class="tonnetz-depth-btn" aria-label="Increase depth">+</button>';
+
+        // VisualToggle target lives inside the panel header so it only appears
+        // when the Tonnetz panel is open.
+        const visualsTarget = document.createElement('div');
+        visualsTarget.id = 'tonnetz-visuals-target';
+
+        panelHeader.appendChild(titleSpan);
+        panelHeader.appendChild(depthCtrl);
+        panelHeader.appendChild(visualsTarget);
+
+        // SVG container — TonnetzNeighborhood and VisualLayer render here
+        const svgContainer = document.createElement('div');
+        svgContainer.id = 'tonnetz-svg-container';
+
+        panel.appendChild(panelHeader);
+        panel.appendChild(svgContainer);
+        panelWrap.appendChild(panel);
+
+        // Insert both into the game card, just before #practice-info
+        const practiceInfo = document.getElementById('practice-info');
+        const gameCard = practiceInfo.parentNode;
+        gameCard.insertBefore(toggleRow, practiceInfo);
+        gameCard.insertBefore(panelWrap, practiceInfo);
+
+        // Grab depth buttons (now in DOM)
+        const depthDecBtn = document.getElementById('btn-depth-dec');
+        const depthIncBtn = document.getElementById('btn-depth-inc');
+        const depthVal    = document.getElementById('tonnetz-depth-val');
+
+        // ── Logic ─────────────────────────────────────────────────
+
+        function _updateDepthButtons() {
+          depthDecBtn.disabled = currentDepth <= MIN_DEPTH;
+          depthIncBtn.disabled = currentDepth >= MAX_DEPTH;
+          depthVal.textContent = currentDepth;
+        }
+
+        /** Parse "C#4" → { note: "C#", octave: 4 } */
+        function _parseNote(full) {
+          const m = full.match(/^([A-G]#?)(\d+)$/);
+          return m ? { note: m[1], octave: parseInt(m[2], 10) } : { note: 'C', octave: 4 };
+        }
+
+        /** Compute target note from root full name + semitone offset. */
+        function _targetNote(rootFull, semitones) {
+          const { note, octave } = _parseNote(rootFull);
+          const noteIdx = NOTE_NAMES_TN.indexOf(note);
+          if (noteIdx < 0) return { note: 'C', octave: 4 };
+          const rootMidi   = (octave + 1) * 12 + noteIdx;
+          const targetMidi = rootMidi + semitones;
+          return {
+            note: NOTE_NAMES_TN[((targetMidi % 12) + 12) % 12],
+            octave: Math.floor(targetMidi / 12) - 1,
+          };
+        }
+
+        // Lazy init: TonnetzNeighborhood needs the SVG container to be visible
+        // (non-zero dimensions) on first render, so we defer until first open.
+        // VisualLayer and VisualToggle are initialized here too, since they
+        // only make sense while the Tonnetz panel is visible.
+        function _initPanel() {
+          if (panelInitialized) return;
+          panelInitialized = true;
+
+          // Seed a default center so the Tonnetz renders immediately
+          if (!HarmonyState.get().tonnetzCenter) {
+            HarmonyState.update({ tonnetzCenter: { root: 'C', quality: 'major' } });
+          }
+
+          TonnetzNeighborhood.init('tonnetz-svg-container', { depth: currentDepth });
+          VisualLayer.init('tonnetz-svg-container');
+          VisualToggle.init('tonnetz-visuals-target', { position: 'top-right' });
+        }
+
+        function _openPanel() {
+          _initPanel();
+          panelWrap.classList.add('tonnetz-panel-wrap--open');
+          panelWrap.setAttribute('aria-hidden', 'false');
+          toggleBtn.setAttribute('aria-expanded', 'true');
+        }
+
+        function _closePanel() {
+          panelWrap.classList.remove('tonnetz-panel-wrap--open');
+          panelWrap.setAttribute('aria-hidden', 'true');
+          toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        toggleBtn.addEventListener('click', () => {
+          const isOpen = panelWrap.classList.contains('tonnetz-panel-wrap--open');
+          if (isOpen) _closePanel(); else _openPanel();
+        });
+
+        depthDecBtn.addEventListener('click', () => {
+          if (currentDepth > MIN_DEPTH) {
+            currentDepth--;
+            _updateDepthButtons();
+            TonnetzNeighborhood.setDepth(currentDepth);
+          }
+        });
+
+        depthIncBtn.addEventListener('click', () => {
+          if (currentDepth < MAX_DEPTH) {
+            currentDepth++;
+            _updateDepthButtons();
+            TonnetzNeighborhood.setDepth(currentDepth);
+          }
+        });
+
+        _updateDepthButtons();
+
+        // Register bridge handlers so the inline game script can push state
+        window.__harmonyTonnetz.push = (rootFull, semitones) => {
+          const root   = _parseNote(rootFull);
+          const target = _targetNote(rootFull, semitones);
+          HarmonyState.setInterval(root.note, root.octave, target.note, target.octave);
+        };
+
+        window.__harmonyTonnetz.clear = () => {
+          HarmonyState.update({ activeInterval: null, activeNotes: [], activeTriads: [] });
+        };
+      }
+
     </script>
 {% endblock %}

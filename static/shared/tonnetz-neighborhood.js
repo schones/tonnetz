@@ -702,6 +702,13 @@ function _renderAll(svg, neighborhood, state, opts) {
     if (mt.to) _movingToPC = noteToPC(mt.to);
   }
 
+  // Build a color map from activeNotes written by VisualLayer.
+  // noteColorMap is empty when VisualLayer is not active — no visual change.
+  const noteColorMap = new Map();
+  for (const an of (state.activeNotes || [])) {
+    if (an.color) noteColorMap.set(an.note, an.color);
+  }
+
   const gNodes = _svgEl('g', { class: 'tonnetz-nodes' });
   for (const [, node] of nodes) {
     const pos        = toSVG(node.q, node.r);
@@ -718,7 +725,16 @@ function _renderAll(svg, neighborhood, state, opts) {
 
     const r = isMovingTo ? NODE_R + 5 : NODE_R;
     const g = _svgEl('g', { class: cls, 'data-pc': node.pc, 'data-note': node.note });
-    g.appendChild(_svgEl('circle', { cx: pos.x, cy: pos.y, r }));
+    const circleEl = _svgEl('circle', { cx: pos.x, cy: pos.y, r });
+
+    // Apply VisualLayer color if present (purely additive — no-op when map is empty)
+    const nodeColor = noteColorMap.get(node.note);
+    if (nodeColor) {
+      circleEl.style.fill   = nodeColor;
+      circleEl.style.stroke = nodeColor;
+    }
+
+    g.appendChild(circleEl);
 
     if (ann.showNoteNames !== false) {
       const txt = _svgEl('text', { x: pos.x, y: pos.y, class: 'tn-node-label' });

@@ -83,6 +83,16 @@ const HarmonyState = {
   },
 
   /**
+   * Shallow-merge partial into state WITHOUT notifying listeners.
+   * Use only for internal bookkeeping that other subscribers should
+   * not react to (e.g. visual-layer writing computed colors back into
+   * activeNotes so the SVG renderer can read them on its NEXT render).
+   */
+  updateSilent(partial) {
+    Object.assign(this._state, partial);
+  },
+
+  /**
    * Batch multiple mutations into a single notification.
    * fn receives the live state object for direct mutation.
    */
