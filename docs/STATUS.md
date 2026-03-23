@@ -53,6 +53,18 @@
 ## In Progress
 
 
+### MVP Push (target: April 20, 2026)
+See `docs/tonnetz-mvp-tracker.md` for the focused shipping checklist.
+Current priorities: visual layer validation, backend API proxy, intro module.
+
+### Visual Layer System (2026-03-23)
+- Prompt running in Claude Code
+- New files: visual-config.js, visual-layer.js, visual-toggle.js
+- Patches: harmony-state.js (updateSilent), tonnetz-neighborhood.js (color map)
+- Integration: Harmony Trainer only (other games in polish pass)
+- Status: awaiting test validation
+
+
 ### Phase 4: Playful Lens — Refinement
 - Content exists for 12 topics but needs quality review and polish
 - Status: needs a review pass, not new writing
