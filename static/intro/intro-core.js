@@ -63,27 +63,49 @@ export const IntroCore = {
         container.appendChild(el);
       });
 
+      const activatedSections = new Set();
+
       const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
-          if (!entry.isIntersecting) return;
-
           const sectionEl = entry.target;
-          sectionEl.classList.add('intro-section--active');
-
           const sectionId = sectionEl.id;
           const sectionDef = sections.find(s => s.id === sectionId);
 
-          if (sectionDef?.onActivate) {
-            try {
-              sectionDef.onActivate(sectionEl);
-            } catch (e) {
-              console.warn('[intro-core] onActivate error for', sectionId, e);
+          if (entry.isIntersecting) {
+            sectionEl.classList.add('intro-section--active');
+
+            // First time entering: schedule --seen after sentences animate in
+            if (!sectionEl.classList.contains('intro-section--seen')) {
+              const spans = sectionEl.querySelectorAll('.intro-narration__sentence');
+              const animDuration = Math.max(spans.length - 1, 0) * 200 + 400;
+              setTimeout(() => sectionEl.classList.add('intro-section--seen'), animDuration + 50);
+            }
+
+            if (sectionDef?.onActivate && !activatedSections.has(sectionId)) {
+              activatedSections.add(sectionId);
+              try { sectionDef.onActivate(sectionEl); } catch (e) {
+                console.warn('[intro-core] onActivate error for', sectionId, e);
+              }
+            }
+
+            if (sectionDef?.onEnter) {
+              try { sectionDef.onEnter(sectionEl); } catch (e) {
+                console.warn('[intro-core] onEnter error for', sectionId, e);
+              }
+            }
+
+            IntroCore.markSectionComplete(chapterNum, sectionId, sections);
+          } else {
+            sectionEl.classList.remove('intro-section--active');
+
+            if (sectionDef?.onLeave) {
+              try { sectionDef.onLeave(sectionEl); } catch (e) {
+                console.warn('[intro-core] onLeave error for', sectionId, e);
+              }
             }
           }
-
-          IntroCore.markSectionComplete(chapterNum, sectionId, sections);
         });
-      }, { threshold: 0.5 });
+      }, { threshold: [0.3] });
 
       container.querySelectorAll('.intro-section').forEach(el => observer.observe(el));
     }
@@ -276,15 +298,27 @@ function _buildStepCard(step) {
   return el;
 }
 
+function _buildNarrationSentences(container, text) {
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+  const parts = sentences.length > 0 ? sentences : [text];
+  parts.forEach((sentence, i) => {
+    const span = document.createElement('span');
+    span.className = 'intro-narration__sentence';
+    span.textContent = i < parts.length - 1 ? sentence + ' ' : sentence;
+    span.style.transitionDelay = `${i * 200}ms`;
+    container.appendChild(span);
+  });
+}
+
 function _buildSection(section) {
   const el = document.createElement('div');
   el.className = 'intro-section';
   el.id = section.id;
 
-  // Narration
+  // Narration — split into sentences for progressive reveal
   const narration = document.createElement('div');
   narration.className = 'intro-narration';
-  narration.textContent = section.narration;
+  _buildNarrationSentences(narration, section.narration);
   el.appendChild(narration);
 
   // Interactive placeholder

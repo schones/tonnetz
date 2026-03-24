@@ -31,6 +31,17 @@ let _oboeSamplerReady = false;
 /** Set of section IDs whose interactive has already been mounted. */
 const _mounted = new Set();
 
+// Shared keyboard state (sections 2–4)
+let _sharedKb = null;         // current keyboard instance { el, keys, cleanup }
+let _sharedKbScrollEl = null; // the .ch1-kb-scroll wrapper (moves between sections)
+let _sharedKbInfo = null;     // the .ch1-kb-info note-display line
+let _sharedKbHostEl = null;   // which widget element currently owns the keyboard
+let _s2Widget = null;         // section 2's .ch1-widget container
+let _s3Widget = null;         // section 3's .ch1-widget container
+let _s4Widget = null;         // section 4's .ch1-widget container
+let _a440Widget = null;       // section 3's A440 buttons div (built once, show/hide)
+let _findWidget = null;       // section 4's find buttons div (built once, show/hide)
+
 // ════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ════════════════════════════════════════════════════════════════════
@@ -129,7 +140,7 @@ async function _loadOboeSampler() {
     const sparseKeys = ['A2', 'A3', 'A4', 'A5', 'A6'];
     const urls = {};
     sparseKeys.forEach(k => { if (allNotes[k]) urls[k] = allNotes[k]; });
-    const vol = new Tone.Volume(-6).toDestination();
+    const vol = new Tone.Volume(0).toDestination();
     _oboeSampler = new Tone.Sampler({
       urls,
       onload: () => { _oboeSamplerReady = true; },
@@ -330,6 +341,23 @@ const CH1_CSS = /* css */ `
   box-shadow: 0 0 12px rgba(108, 92, 231, 0.5);
 }
 
+/* Drag-to-play cursor */
+.ch1-kb-key {
+  cursor: grab;
+}
+.ch1-kb--dragging .ch1-kb-key {
+  cursor: grabbing;
+}
+
+/* QWERTY hint label */
+.ch1-kb-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted, #b2bec3);
+  text-align: center;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
 /* Octave highlight (same-note color) */
 .ch1-kb-key--octave-hl.ch1-kb-key--white {
   background: var(--color-secondary, #00cec9);
@@ -505,8 +533,23 @@ const CH1_CSS = /* css */ `
   max-width: 540px;
   overflow-x: auto;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   padding: 28px 4px 4px;
+}
+
+/* ── A4 pulse animation ─────────────────────────────────── */
+
+@keyframes ch1-a4-pulse {
+  0%, 100% { background: var(--keyboard-white-key-bg, #e8e8f0); box-shadow: none; }
+  50% {
+    background: color-mix(in srgb, var(--color-primary, #6c5ce7) 25%, var(--keyboard-white-key-bg, #e8e8f0));
+    box-shadow: 0 0 10px rgba(108, 92, 231, 0.4);
+  }
+}
+
+.ch1-kb-key--a4-pulse.ch1-kb-key--white {
+  animation: ch1-a4-pulse 1.8s ease-in-out infinite;
 }
 
 /* ── Responsive ────────────────────────────────────────────── */
@@ -526,6 +569,65 @@ function _injectCSS() {
   el.id = 'ch1-styles';
   el.textContent = CH1_CSS;
   document.head.appendChild(el);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SHARED KEYBOARD MANAGER
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Rebuild the shared keyboard inside hostEl (a .ch1-widget div).
+ * Cleans up the previous instance, builds the new keyboard, fades it in.
+ * The keyboard is inserted at the front of hostEl; the info line follows it.
+ * Supplementary widgets already in hostEl remain after the info line.
+ * @param {HTMLElement} hostEl       — the .ch1-widget to build into
+ * @param {number}      startOctave
+ * @param {number}      numOctaves
+ * @param {Object}      [opts]       — passed through to _buildKeyboard
+ * @param {string}      [opts.containerStyle]  — inline style for the scroll wrapper
+ */
+function _rebuildKeyboard(hostEl, startOctave, numOctaves, opts = {}) {
+  // Clean up previous keyboard
+  if (_sharedKb) {
+    _sharedKb.cleanup();
+    _sharedKb = null;
+  }
+  if (_sharedKbScrollEl) {
+    _sharedKbScrollEl.remove();
+    _sharedKbScrollEl = null;
+  }
+
+  // Ensure persistent info line exists
+  if (!_sharedKbInfo) {
+    _sharedKbInfo = document.createElement('div');
+    _sharedKbInfo.className = 'ch1-kb-info';
+    _sharedKbInfo.innerHTML = '&nbsp;';
+  }
+
+  // Build new scroll wrapper
+  const scroll = document.createElement('div');
+  scroll.className = 'ch1-kb-scroll';
+  if (opts.containerStyle) {
+    scroll.setAttribute('style', opts.containerStyle);
+  }
+  scroll.style.opacity = '0';
+  scroll.style.transition = 'opacity 0.15s ease';
+  _sharedKbScrollEl = scroll;
+
+  const kb = _buildKeyboard(scroll, startOctave, numOctaves, opts);
+  _sharedKb = kb;
+  _sharedKbHostEl = hostEl;
+
+  // Insert scroll at the front; info line immediately after it
+  hostEl.insertBefore(scroll, hostEl.firstChild);
+  scroll.insertAdjacentElement('afterend', _sharedKbInfo);
+
+  // Fade in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      scroll.style.opacity = '1';
+    });
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -550,6 +652,84 @@ function _buildKeyboard(container, startOctave, numOctaves, opts = {}) {
   const keys = new Map(); // "C4" → el
   let pressedKey = null;
 
+  // ── Drag-to-play state ──────────────────────────────────────────
+  let _dragging = false;
+  let _dragNote = null; // noteId currently held by drag
+
+  function _dragPress(noteId, noteName, oct, el) {
+    if (_dragNote === noteId) return;
+    if (_dragNote) {
+      const prevEl = keys.get(_dragNote);
+      if (prevEl) prevEl.classList.remove('ch1-kb-key--pressed');
+      _releaseSamplerNote(_dragNote);
+      if (opts.onNoteUp) {
+        const prev = CHROMATIC.find(n => toAscii(n.name) === _dragNote.slice(0, -1));
+        if (prev) opts.onNoteUp(prev.name, parseInt(_dragNote.slice(-1)), prevEl);
+      }
+    }
+    _dragNote = noteId;
+    el.classList.add('ch1-kb-key--pressed');
+    _playSamplerAttack(noteId);
+    if (opts.onNoteDown) opts.onNoteDown(noteName, oct, el);
+  }
+
+  function _dragRelease() {
+    if (_dragNote) {
+      const el = keys.get(_dragNote);
+      if (el) el.classList.remove('ch1-kb-key--pressed');
+      _releaseSamplerNote(_dragNote);
+      if (opts.onNoteUp) {
+        const noteStr = _dragNote;
+        const el2 = keys.get(noteStr);
+        const oct = parseInt(noteStr.slice(-1));
+        const name = noteStr.slice(0, -1);
+        const chromNote = CHROMATIC.find(n => toAscii(n.name) === name);
+        if (chromNote && opts.onNoteUp) opts.onNoteUp(chromNote.name, oct, el2);
+      }
+    }
+    _dragging = false;
+    _dragNote = null;
+    wrap.classList.remove('ch1-kb--dragging');
+  }
+
+  // Mouse drag handlers on the container
+  const onMouseOver = (e) => {
+    if (!_dragging) return;
+    const keyEl = e.target.closest('.ch1-kb-key');
+    if (!keyEl) return;
+    const noteId = keyEl.dataset.note;
+    const noteName = keyEl.dataset.noteName;
+    const oct = parseInt(keyEl.dataset.octave);
+    _dragPress(noteId, noteName, oct, keyEl);
+  };
+  wrap.addEventListener('mouseover', onMouseOver);
+
+  // Touch drag: use document-level touchmove + elementFromPoint
+  const onTouchMove = (e) => {
+    if (!_dragging) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!el) return;
+    const keyEl = el.closest('.ch1-kb-key');
+    if (!keyEl || !keys.has(keyEl.dataset.note)) return;
+    const noteId = keyEl.dataset.note;
+    const noteName = keyEl.dataset.noteName;
+    const oct = parseInt(keyEl.dataset.octave);
+    _dragPress(noteId, noteName, oct, keyEl);
+  };
+  document.addEventListener('touchmove', onTouchMove, { passive: false });
+
+  // Global mouseup/touchend to end drag even outside the keyboard
+  const onWindowMouseUp = () => {
+    if (_dragging) _dragRelease();
+  };
+  const onWindowTouchEnd = () => {
+    if (_dragging) _dragRelease();
+  };
+  window.addEventListener('mouseup', onWindowMouseUp);
+  window.addEventListener('touchend', onWindowTouchEnd);
+
   for (let oct = startOctave; oct < startOctave + numOctaves; oct++) {
     for (const note of CHROMATIC) {
       const el = document.createElement('div');
@@ -566,27 +746,26 @@ function _buildKeyboard(container, startOctave, numOctaves, opts = {}) {
       label.textContent = note.name;
       el.appendChild(label);
 
-      // Pointer events
+      // Pointer events (click + drag start)
       const down = (e) => {
         e.preventDefault();
         _ensureTone();
         _ensureSampler();
+        // Start drag
+        _dragging = true;
+        _dragNote = null;
+        wrap.classList.add('ch1-kb--dragging');
+        _dragPress(noteId, note.name, oct, el);
         pressedKey = noteId;
-        el.classList.add('ch1-kb-key--pressed');
-        _playSamplerAttack(noteId);
-        if (opts.onNoteDown) opts.onNoteDown(note.name, oct, el);
       };
       const up = () => {
         if (pressedKey !== noteId) return;
         pressedKey = null;
-        el.classList.remove('ch1-kb-key--pressed');
-        _releaseSamplerNote(noteId);
-        if (opts.onNoteUp) opts.onNoteUp(note.name, oct, el);
+        // drag release handles the actual note-off via window handler
       };
 
       el.addEventListener('mousedown', down);
       el.addEventListener('mouseup', up);
-      el.addEventListener('mouseleave', up);
       el.addEventListener('touchstart', down, { passive: false });
       el.addEventListener('touchend', (e) => { e.preventDefault(); up(); });
 
@@ -595,12 +774,69 @@ function _buildKeyboard(container, startOctave, numOctaves, opts = {}) {
     }
   }
 
+  // ── QWERTY keyboard mapping (octave 4) ─────────────────────────
+  const QWERTY_MAP = {
+    a: `C4`, w: `C#4`, s: `D4`, e: `D#4`, d: `E4`,
+    f: `F4`, t: `F#4`, g: `G4`, y: `G#4`, h: `A4`,
+    u: `A#4`, j: `B4`,
+  };
+  // Track which QWERTY-held notes are currently pressed
+  const _qwertyHeld = new Set();
+
+  const onKeyDown = (e) => {
+    if (e.repeat) return;
+    // Only activate if this keyboard's section is active
+    const section = container.closest('.intro-section');
+    if (section && !section.classList.contains('intro-section--active')) return;
+    const noteId = QWERTY_MAP[e.key.toLowerCase()];
+    if (!noteId) return;
+    if (_qwertyHeld.has(noteId)) return;
+    const el = keys.get(noteId);
+    if (!el) return; // this keyboard may not cover octave 4
+    _qwertyHeld.add(noteId);
+    _ensureTone();
+    _ensureSampler();
+    el.classList.add('ch1-kb-key--pressed');
+    _playSamplerAttack(noteId);
+    const noteName = el.dataset.noteName;
+    const oct = parseInt(el.dataset.octave);
+    if (opts.onNoteDown) opts.onNoteDown(noteName, oct, el);
+  };
+
+  const onKeyUp = (e) => {
+    const noteId = QWERTY_MAP[e.key.toLowerCase()];
+    if (!noteId) return;
+    if (!_qwertyHeld.has(noteId)) return;
+    _qwertyHeld.delete(noteId);
+    const el = keys.get(noteId);
+    if (!el) return;
+    el.classList.remove('ch1-kb-key--pressed');
+    _releaseSamplerNote(noteId);
+    const noteName = el.dataset.noteName;
+    const oct = parseInt(el.dataset.octave);
+    if (opts.onNoteUp) opts.onNoteUp(noteName, oct, el);
+  };
+
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+
+  // ── Hint label ──────────────────────────────────────────────────
+  const hint = document.createElement('div');
+  hint.className = 'ch1-kb-hint ch1-widget__label';
+  hint.textContent = 'drag across keys or use A S D F G H J to play';
   container.appendChild(wrap);
+  container.appendChild(hint);
 
   return {
     el: wrap,
     keys,
-    cleanup: () => { /* no external resources to dispose */ },
+    cleanup: () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('mouseup', onWindowMouseUp);
+      window.removeEventListener('touchend', onWindowTouchEnd);
+    },
   };
 }
 
@@ -781,96 +1017,22 @@ function _mountOscillator(sectionEl) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// SECTION 2: MEET THE NOTES (playable keyboards)
+// SECTION 3: A440 WIDGET BUILDER
 // ════════════════════════════════════════════════════════════════════
 
-function _mountMeetTheNotes(sectionEl) {
-  _injectCSS();
-  _ensureSampler();
-
-  const host = sectionEl.querySelector('.intro-interactive');
-  if (!host) return;
-
-  const widget = document.createElement('div');
-  widget.className = 'ch1-widget';
-
-  // Info line
-  const info = document.createElement('div');
-  info.className = 'ch1-kb-info';
-  info.innerHTML = '&nbsp;';
-
-  // Subtitle: one octave
-  const sub1 = document.createElement('div');
-  sub1.className = 'ch1-widget__label';
-  sub1.textContent = 'One octave — 12 notes';
-
-  // Build one-octave keyboard (C4–B4)
-  const kb1Container = document.createElement('div');
-  const kb1 = _buildKeyboard(kb1Container, 4, 1, {
-    showLabels: true,
-    onNoteDown: (name, oct) => {
-      const freq = noteFreq(name, oct).toFixed(1);
-      info.textContent = `${name}${oct} = ${freq} Hz`;
-    },
-  });
-
-  // Subtitle: two octaves
-  const sub2 = document.createElement('div');
-  sub2.className = 'ch1-widget__label';
-  sub2.textContent = 'Two octaves — same notes, higher and lower';
-  sub2.style.marginTop = '20px';
-
-  // Build two-octave keyboard (C3–B4)
-  const kb2Container = document.createElement('div');
-  kb2Container.className = 'ch1-kb-scroll';
-  const kb2 = _buildKeyboard(kb2Container, 3, 2, {
-    showLabels: true,
-    onNoteDown: (name, oct) => {
-      const freq = noteFreq(name, oct).toFixed(1);
-      info.textContent = `${name}${oct} = ${freq} Hz`;
-
-      // Highlight all keys with the same note name
-      kb2.keys.forEach((el, noteId) => {
-        if (el.dataset.noteName === name && !el.classList.contains('ch1-kb-key--pressed')) {
-          el.classList.add('ch1-kb-key--octave-hl');
-        }
-      });
-    },
-    onNoteUp: (name) => {
-      kb2.keys.forEach((el) => {
-        el.classList.remove('ch1-kb-key--octave-hl');
-      });
-    },
-  });
-
-  widget.append(sub1, kb1Container, info, sub2, kb2Container);
-  host.appendChild(widget);
-}
-
-// ════════════════════════════════════════════════════════════════════
-// SECTION 3: A = 440
-// ════════════════════════════════════════════════════════════════════
-
-function _mountA440(sectionEl) {
-  _injectCSS();
-  _ensureSampler();
-  _loadOboeSampler();
-
-  const host = sectionEl.querySelector('.intro-interactive');
-  if (!host) return;
-
-  const widget = document.createElement('div');
-  widget.className = 'ch1-widget';
+/** Build the A440 oboe-demo widget. Returns a div; caller mounts and shows/hides it. */
+function _buildA440Widget() {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:12px; width:100%; padding-top:4px;';
 
   const explain = document.createElement('div');
   explain.className = 'ch1-a440-explain';
   explain.innerHTML = '&nbsp;';
 
-  // Octave buttons: A3, A4, A5
   const notes = [
-    { note: 'A3', freq: 220,  label: 'A3' },
-    { note: 'A4', freq: 440,  label: 'A4' },
-    { note: 'A5', freq: 880,  label: 'A5' },
+    { note: 'A3', freq: 220, label: 'A3' },
+    { note: 'A4', freq: 440, label: 'A4' },
+    { note: 'A5', freq: 880, label: 'A5' },
   ];
 
   const btnRow = document.createElement('div');
@@ -897,7 +1059,6 @@ function _mountA440(sectionEl) {
       await _ensureTone();
       _ensureSampler();
 
-      // Visual feedback
       if (activeBtn) activeBtn.classList.remove('ch1-a440-btn--playing');
       if (activeTimeout) clearTimeout(activeTimeout);
       btn.classList.add('ch1-a440-btn--playing');
@@ -913,7 +1074,6 @@ function _mountA440(sectionEl) {
         _playSamplerNote(note, '2n');
       }
 
-      // Show doubling explanation
       if (note === 'A3') {
         explain.textContent = 'A3 = 220 Hz — half the frequency of A4';
       } else if (note === 'A4') {
@@ -926,62 +1086,24 @@ function _mountA440(sectionEl) {
     btnRow.appendChild(btn);
   });
 
-  // Doubling summary
   const doublingLine = document.createElement('div');
   doublingLine.className = 'ch1-widget__label';
   doublingLine.textContent = 'Each octave doubles the frequency: 220 → 440 → 880';
   doublingLine.style.marginTop = '8px';
 
-  widget.append(btnRow, explain, doublingLine);
-  host.appendChild(widget);
+  wrap.append(btnRow, explain, doublingLine);
+  return wrap;
 }
 
 // ════════════════════════════════════════════════════════════════════
-// SECTION 4: THE KEYBOARD PATTERN
+// SECTION 4: FIND WIDGET BUILDER
 // ════════════════════════════════════════════════════════════════════
 
-function _mountKeyboardPattern(sectionEl) {
-  _injectCSS();
-  _ensureSampler();
+/** Build the "Find every ___" buttons widget. Returns a div; caller mounts and shows/hides it. */
+function _buildFindWidget() {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; padding-top:4px;';
 
-  const host = sectionEl.querySelector('.intro-interactive');
-  if (!host) return;
-
-  const widget = document.createElement('div');
-  widget.className = 'ch1-widget';
-
-  // Info line
-  const info = document.createElement('div');
-  info.className = 'ch1-kb-info';
-  info.innerHTML = '&nbsp;';
-
-  // Build 3-octave keyboard (C3–B5) — shrunk to fit ~540px without scrolling
-  const kbContainer = document.createElement('div');
-  kbContainer.className = 'ch1-kb-scroll';
-  kbContainer.style.cssText = 'position:relative; overflow-x:visible; --ch1-kb-ww:28px; --ch1-kb-bw:18px; --ch1-kb-h:110px;';
-
-  const kb = _buildKeyboard(kbContainer, 3, 3, {
-    showLabels: false,
-    onNoteDown: (name, oct, el) => {
-      // Show label on click
-      el.classList.add('ch1-kb-key--show-label');
-      const freq = noteFreq(name, oct).toFixed(1);
-      info.textContent = `${name}${oct} = ${freq} Hz`;
-    },
-    onNoteUp: (name, oct, el) => {
-      // Keep showing labels for a bit after release
-      setTimeout(() => {
-        if (!el.classList.contains('ch1-kb-key--pressed')) {
-          el.classList.remove('ch1-kb-key--show-label');
-        }
-      }, 1200);
-    },
-  });
-
-  // Add group brackets for 2-black and 3-black key groups
-  _addGroupBrackets(kb);
-
-  // "Find every ___" buttons
   const findRow = document.createElement('div');
   findRow.className = 'ch1-find-row';
 
@@ -996,26 +1118,24 @@ function _mountKeyboardPattern(sectionEl) {
     btn.addEventListener('click', async () => {
       await _ensureTone();
       _ensureSampler();
+      if (!_sharedKb) return;
 
-      // Toggle
       if (activeFind === noteName) {
-        _clearHighlights(kb);
+        _clearHighlights(_sharedKb);
         activeFind = null;
         btn.classList.remove('ch1-find-btn--active');
-        info.innerHTML = '&nbsp;';
+        if (_sharedKbInfo) _sharedKbInfo.innerHTML = '&nbsp;';
         return;
       }
 
-      // Deactivate previous
       findRow.querySelectorAll('.ch1-find-btn--active').forEach(b => b.classList.remove('ch1-find-btn--active'));
-      _clearHighlights(kb);
+      _clearHighlights(_sharedKb);
 
       activeFind = noteName;
       btn.classList.add('ch1-find-btn--active');
 
-      // Highlight all matching keys and play an arpeggio
       const matchingKeys = [];
-      kb.keys.forEach((el, noteId) => {
+      _sharedKb.keys.forEach((el, noteId) => {
         if (el.dataset.noteName === noteName) {
           el.classList.add('ch1-kb-key--pattern-hl');
           el.classList.add('ch1-kb-key--show-label');
@@ -1023,12 +1143,11 @@ function _mountKeyboardPattern(sectionEl) {
         }
       });
 
-      // Play ascending arpeggio
       matchingKeys.forEach((noteId, i) => {
         setTimeout(() => _playSamplerNote(noteId, '8n'), i * 250);
       });
 
-      info.textContent = `Every ${noteName} across 3 octaves`;
+      if (_sharedKbInfo) _sharedKbInfo.textContent = `Every ${noteName} across 3 octaves`;
     });
 
     findRow.appendChild(btn);
@@ -1038,8 +1157,8 @@ function _mountKeyboardPattern(sectionEl) {
   hint.className = 'ch1-widget__label';
   hint.textContent = 'Click a key to hear it, or use the buttons to find every instance of a note';
 
-  widget.append(kbContainer, info, findRow, hint);
-  host.appendChild(widget);
+  wrap.append(findRow, hint);
+  return wrap;
 }
 
 /** Clear all custom highlights from a keyboard */
@@ -1141,7 +1260,29 @@ export const sections = [
     onActivate(sectionEl) {
       if (_mounted.has('ch1-meet-the-notes')) return;
       _mounted.add('ch1-meet-the-notes');
-      _mountMeetTheNotes(sectionEl);
+      _injectCSS();
+      _ensureSampler();
+      const host = sectionEl.querySelector('.intro-interactive');
+      if (!host) return;
+      _s2Widget = document.createElement('div');
+      _s2Widget.className = 'ch1-widget';
+      host.appendChild(_s2Widget);
+      // _sharedKbInfo created lazily in _rebuildKeyboard; keyboard built in onEnter
+    },
+    onEnter(sectionEl) {
+      if (!_s2Widget) return;
+      if (_sharedKbHostEl === _s2Widget) return; // already here, skip rebuild
+      _rebuildKeyboard(_s2Widget, 4, 1, {
+        showLabels: true,
+        onNoteDown(name, oct) {
+          if (_sharedKbInfo) {
+            const freq = noteFreq(name, oct).toFixed(1);
+            _sharedKbInfo.textContent = `${name}${oct} = ${freq} Hz`;
+          }
+        },
+      });
+      if (_a440Widget) _a440Widget.style.display = 'none';
+      if (_findWidget) _findWidget.style.display = 'none';
     },
   },
   {
@@ -1157,7 +1298,41 @@ export const sections = [
     onActivate(sectionEl) {
       if (_mounted.has('ch1-concert-pitch')) return;
       _mounted.add('ch1-concert-pitch');
-      _mountA440(sectionEl);
+      _loadOboeSampler();
+      const host = sectionEl.querySelector('.intro-interactive');
+      if (!host) return;
+      _s3Widget = document.createElement('div');
+      _s3Widget.className = 'ch1-widget';
+      host.appendChild(_s3Widget);
+      _a440Widget = _buildA440Widget();
+      _a440Widget.style.display = 'none';
+      _s3Widget.appendChild(_a440Widget);
+      // Keyboard built in onEnter
+    },
+    onEnter(sectionEl) {
+      if (!_s3Widget) return;
+      if (_sharedKbHostEl !== _s3Widget) {
+        _rebuildKeyboard(_s3Widget, 3, 2, {
+          showLabels: true,
+          onNoteDown(name, oct) {
+            if (_sharedKbInfo) {
+              const freq = noteFreq(name, oct).toFixed(1);
+              _sharedKbInfo.textContent = `${name}${oct} = ${freq} Hz`;
+            }
+          },
+        });
+      }
+      const a4Key = _sharedKb?.keys.get('A4');
+      if (a4Key) a4Key.classList.add('ch1-kb-key--a4-pulse');
+      if (_a440Widget) _a440Widget.style.display = '';
+      if (_findWidget) _findWidget.style.display = 'none';
+    },
+    onLeave(sectionEl) {
+      if (_sharedKb) {
+        const a4Key = _sharedKb.keys.get('A4');
+        if (a4Key) a4Key.classList.remove('ch1-kb-key--a4-pulse');
+      }
+      if (_a440Widget) _a440Widget.style.display = 'none';
     },
   },
   {
@@ -1173,12 +1348,55 @@ export const sections = [
     gameLink: {
       game: 'harmony-trainer',
       label: 'Ready to train your ear?',
-      url: '/games/harmony-trainer',
+      url: '/harmony',
     },
     onActivate(sectionEl) {
       if (_mounted.has('ch1-keyboard-pattern')) return;
       _mounted.add('ch1-keyboard-pattern');
-      _mountKeyboardPattern(sectionEl);
+      _injectCSS();
+      _ensureSampler();
+      const host = sectionEl.querySelector('.intro-interactive');
+      if (!host) return;
+      _s4Widget = document.createElement('div');
+      _s4Widget.className = 'ch1-widget';
+      host.appendChild(_s4Widget);
+      _findWidget = _buildFindWidget();
+      _findWidget.style.display = 'none';
+      _s4Widget.appendChild(_findWidget);
+      // Keyboard built in onEnter
+    },
+    onEnter(sectionEl) {
+      if (!_s4Widget) return;
+      if (_sharedKbHostEl !== _s4Widget) {
+        _rebuildKeyboard(_s4Widget, 3, 3, {
+          showLabels: false,
+          containerStyle: 'position:relative; overflow-x:visible; --ch1-kb-ww:28px; --ch1-kb-bw:18px; --ch1-kb-h:110px;',
+          onNoteDown(name, oct, el) {
+            el.classList.add('ch1-kb-key--show-label');
+            if (_sharedKbInfo) {
+              const freq = noteFreq(name, oct).toFixed(1);
+              _sharedKbInfo.textContent = `${name}${oct} = ${freq} Hz`;
+            }
+          },
+          onNoteUp(_name, _oct, el) {
+            setTimeout(() => {
+              if (!el.classList.contains('ch1-kb-key--pressed')) {
+                el.classList.remove('ch1-kb-key--show-label');
+              }
+            }, 1200);
+          },
+        });
+        _addGroupBrackets(_sharedKb);
+      }
+      if (_a440Widget) _a440Widget.style.display = 'none';
+      if (_findWidget) _findWidget.style.display = '';
+    },
+    onLeave(sectionEl) {
+      if (_sharedKb) _clearHighlights(_sharedKb);
+      if (_findWidget) {
+        _findWidget.querySelectorAll('.ch1-find-btn--active').forEach(b => b.classList.remove('ch1-find-btn--active'));
+        _findWidget.style.display = 'none';
+      }
     },
   },
 ];
