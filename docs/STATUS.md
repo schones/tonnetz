@@ -53,6 +53,8 @@
 - [x] Sampler proxy fix in Chord Walks (voice instrument compatibility)
 - [x] MVP tracker replaces sprint tracker
 - [x] Install python-dotenv, verify API proxy setup
+[x] Intro module scaffolding (routes, hub, scroll engine, progress tracking, placeholder chapters)
+- [x] "Start Here" card on landing page
 
 ```
 
