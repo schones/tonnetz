@@ -9,14 +9,22 @@ Routes:
     POST /play              — Receive uploaded audio → detect chord + pitch → score → JSON
     POST /process_audio_chunk — Receive raw Float32 audio chunk → detect pitch → JSON
     GET  /status            — Leaderboard + challenges dict
+    POST /api/chat          — Proxy to Anthropic API (key kept server-side)
+                              Set ANTHROPIC_API_KEY in Railway environment variables for production.
 """
 
 from datetime import datetime
 import io
+import os
 import struct
+import time
+
+from dotenv import load_dotenv
+load_dotenv()  # loads .env in local dev; no-op in production
 
 import numpy as np
 import librosa
+import requests as http_requests
 from flask import Flask, jsonify, render_template, request
 
 from chord_detector import ChordDetector
@@ -35,10 +43,87 @@ from pitch_matcher import PitchMatcher
 # App + singletons
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
+
+# ---------------------------------------------------------------------------
+# Rate limiting (in-memory, per-IP, max 30 req/min) — no extra dependencies
+# ---------------------------------------------------------------------------
+_rate_limit: dict[str, list[float]] = {}
+_RATE_LIMIT_MAX = 30
+_RATE_LIMIT_WINDOW = 60  # seconds
+
+
+def _check_rate_limit(ip: str) -> bool:
+    now = time.time()
+    window_start = now - _RATE_LIMIT_WINDOW
+
+    # Filter to timestamps within the current window
+    _rate_limit[ip] = [t for t in _rate_limit.get(ip, []) if t > window_start]
+
+    # Periodically clean up IPs with no recent requests
+    if len(_rate_limit) > 1000:
+        stale = [k for k, v in _rate_limit.items() if not v]
+        for k in stale:
+            del _rate_limit[k]
+
+    if len(_rate_limit[ip]) >= _RATE_LIMIT_MAX:
+        return False
+
+    _rate_limit[ip].append(now)
+    return True
+
+
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB upload limit
 
 detector = ChordDetector(sample_rate=SAMPLE_RATE)
 matcher = PitchMatcher(sample_rate=SAMPLE_RATE)
+
+
+# ---------------------------------------------------------------------------
+# AI proxy — keeps ANTHROPIC_API_KEY server-side
+# ---------------------------------------------------------------------------
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    """Proxy Claude API requests so the API key never reaches the client.
+
+    Expects JSON body: { model, messages, max_tokens, system }
+    Returns the Anthropic response JSON directly.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "AI features not configured"}), 503
+
+    ip = request.remote_addr or "unknown"
+    if not _check_rate_limit(ip):
+        return jsonify({"error": "Rate limit exceeded. Try again in a minute."}), 429
+
+    body = request.get_json(force=True, silent=True) or {}
+    messages = body.get("messages")
+    if not messages:
+        return jsonify({"error": "messages is required"}), 400
+
+    payload = {
+        "model": body.get("model", "claude-haiku-4-5-20251001"),
+        "messages": messages,
+        "max_tokens": min(int(body.get("max_tokens", 300)), 1024),
+    }
+    if body.get("system"):
+        payload["system"] = body["system"]
+
+    try:
+        resp = http_requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json=payload,
+            timeout=30,
+        )
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({"error": "Upstream request failed"}), 502
 
 
 # ---------------------------------------------------------------------------

@@ -9,18 +9,6 @@
  */
 
 /* ---------------------------------------------------------- */
-/*  Config — dynamic import for graceful degradation           */
-/* ---------------------------------------------------------- */
-
-let CLAUDE_API_KEY = "";
-try {
-  const config = await import("./config.js");
-  CLAUDE_API_KEY = config.CLAUDE_API_KEY || "";
-} catch {
-  // config.js not found — AI features disabled
-}
-
-/* ---------------------------------------------------------- */
 /*  Constants                                                  */
 /* ---------------------------------------------------------- */
 
@@ -304,12 +292,13 @@ export function getPerformanceSummary(game) {
 /* ---------------------------------------------------------- */
 
 /**
- * Check if a Claude API key is configured.
+ * Check if AI features are available.
+ * The server returns 503 if ANTHROPIC_API_KEY is not configured.
  *
  * @returns {boolean}
  */
 export function isAIAvailable() {
-  return typeof CLAUDE_API_KEY === "string" && CLAUDE_API_KEY.length > 0;
+  return true;
 }
 
 /**
@@ -321,8 +310,6 @@ export function isAIAvailable() {
  * @returns {Promise<string|null>} Encouraging feedback text, or null
  */
 export async function getSessionFeedback(game, sessionData) {
-  if (!isAIAvailable()) return null;
-
   const summary = getPerformanceSummary(game);
 
   const userMessage = [
@@ -334,14 +321,9 @@ export async function getSessionFeedback(game, sessionData) {
   ].join("\n");
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("/api/chat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 300,

@@ -2,8 +2,7 @@
  * Music Theory Games — Configuration
  * shared/config.js
  *
- * NOT committed to git. Copy config.example.js to config.js
- * and add your own API key.
+ * API keys are no longer stored here. The Anthropic API key is set as
+ * ANTHROPIC_API_KEY on the server (Railway env vars for production,
+ * .env file for local dev). See .env.example.
  */
-
-export const CLAUDE_API_KEY = "";
