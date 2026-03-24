@@ -133,6 +133,128 @@
         filter: drop-shadow(0 0 6px currentColor);
     }
 
+    /* ── Start Here ── */
+    .start-here-section {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 0;
+    }
+
+    .start-here-card {
+        display: block;
+        position: relative;
+        overflow: hidden;
+        border-radius: 18px;
+        border: 1.5px solid transparent;
+        background:
+            linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+            linear-gradient(135deg, #f59e0b 0%, #a78bfa 50%, #38bdf8 100%) border-box;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .start-here-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 40px rgba(108, 99, 255, 0.15);
+        text-decoration: none;
+    }
+
+    [data-theme="dark"] .start-here-card:hover {
+        box-shadow: 0 16px 40px rgba(108, 99, 255, 0.3);
+    }
+
+    .start-here-card__glow {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse 70% 60% at 20% 50%,
+            rgba(108, 99, 255, 0.06) 0%, transparent 70%);
+        pointer-events: none;
+    }
+
+    .start-here-card__inner {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
+        padding: 2rem 2.5rem;
+    }
+
+    .start-here-card__left {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .start-here-card__eyebrow {
+        font-family: var(--font-main);
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--accent);
+        margin-bottom: 0.3rem;
+    }
+
+    .start-here-card__title {
+        font-family: var(--font-main);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 900;
+        color: var(--text-primary);
+        margin: 0 0 0.4rem;
+        line-height: 1.1;
+    }
+
+    .start-here-card__tagline {
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        margin-bottom: 1rem;
+        max-width: 380px;
+        font-weight: 600;
+    }
+
+    .start-here-card__cta {
+        font-family: var(--font-main);
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: var(--accent);
+    }
+
+    .start-here-card__chapters {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        flex-shrink: 0;
+    }
+
+    .start-here-chapter-pill {
+        font-family: var(--font-main);
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.3rem 0.85rem;
+        border-radius: 20px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    @media (max-width: 600px) {
+        .start-here-card__inner {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 1.5rem;
+            gap: 1rem;
+        }
+        .start-here-card__chapters {
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+    }
+
     /* ── Games Section ── */
     .games-section {
         max-width: 1100px;
@@ -529,6 +651,30 @@
         <div class="wordmark">tonnetz</div>
         <div class="hero-sub">Music Theory Games</div>
         <div class="hero-tagline">Train your ear. Explore harmony. Learn through play.</div>
+    </section>
+
+    <!-- ===== Start Here ===== -->
+    <section class="start-here-section">
+      <a href="/intro" class="start-here-card">
+        <div class="start-here-card__glow" aria-hidden="true"></div>
+        <div class="start-here-card__inner">
+          <div class="start-here-card__left">
+            <div class="start-here-card__eyebrow">New here?</div>
+            <h2 class="start-here-card__title">Start Here</h2>
+            <p class="start-here-card__tagline">
+              An interactive guide from sound to the Tonnetz — 5 chapters, no prior theory needed.
+            </p>
+            <span class="start-here-card__cta">Begin the course →</span>
+          </div>
+          <div class="start-here-card__chapters" aria-hidden="true">
+            <span class="start-here-chapter-pill" style="--delay:0s">Sound</span>
+            <span class="start-here-chapter-pill" style="--delay:0.05s">Scales</span>
+            <span class="start-here-chapter-pill" style="--delay:0.1s">Chords</span>
+            <span class="start-here-chapter-pill" style="--delay:0.15s">Tonnetz</span>
+            <span class="start-here-chapter-pill" style="--delay:0.2s">Transforms</span>
+          </div>
+        </div>
+      </a>
     </section>
 
     <!-- ===== Practice Games ===== -->

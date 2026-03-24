@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Chapter {{ chapter }} — Tonnetz{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='intro/intro.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="intro-chapter" data-chapter="{{ chapter }}" data-tone="">
+  <!-- Chapter header -->
+  <header class="intro-chapter__header">
+    <a href="/intro" class="intro-back-link">← Back to chapters</a>
+    <div class="intro-chapter__meta">
+      <span class="intro-chapter__eyebrow">Chapter {{ chapter }}</span>
+      <h1 class="intro-chapter__title">Loading…</h1>
+    </div>
+    <div class="intro-chapter__progress-track">
+      <div class="intro-chapter__progress-bar">
+        <div class="intro-chapter__progress-fill"></div>
+      </div>
+      <span class="intro-chapter__progress-label">0 of 0 sections</span>
+    </div>
+  </header>
+
+  <!-- Sections are rendered here by intro-core.js -->
+  <div class="intro-sections"></div>
+
+  <!-- Chapter footer — rendered by intro-core.js after sections are built -->
+  <footer class="intro-chapter__footer" hidden>
+    {% if chapter < 5 %}
+    <a href="/intro/{{ chapter + 1 }}" class="intro-next-btn">
+      Chapter {{ chapter + 1 }} →
+    </a>
+    {% else %}
+    <a href="/" class="intro-next-btn intro-next-btn--done">
+      You're ready — explore the games
+    </a>
+    {% endif %}
+  </footer>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { IntroCore } from '/static/intro/intro-core.js';
+  IntroCore.init({{ chapter }});
+</script>
+{% endblock %}

@@ -25,7 +25,7 @@ load_dotenv()  # loads .env in local dev; no-op in production
 import numpy as np
 import librosa
 import requests as http_requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, redirect, render_template, request
 
 from chord_detector import ChordDetector
 from game_engine import (
@@ -221,6 +221,18 @@ def test_tooltips():
 @app.route("/test/shared")
 def test_shared():
     return render_template("test-shared.html")
+
+
+@app.route("/intro")
+def intro_hub():
+    return render_template("intro/hub.html")
+
+
+@app.route("/intro/<int:n>")
+def intro_chapter(n):
+    if n < 1 or n > 5:
+        return redirect("/intro")
+    return render_template("intro/chapter.html", chapter=n)
 
 
 @app.route("/play", methods=["POST"])

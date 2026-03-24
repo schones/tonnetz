@@ -1,0 +1,295 @@
+/* ============================================================
+   intro.css — Scrollytelling course layout
+   Tonnetz intro module
+   ============================================================ */
+
+/* ── Chapter page shell ─────────────────────────────────── */
+
+.intro-chapter {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Chapter header ─────────────────────────────────────── */
+
+.intro-chapter__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.intro-back-link {
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+  align-self: flex-start;
+}
+
+.intro-back-link:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.intro-chapter__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.intro-chapter__eyebrow {
+  font-family: var(--font-main);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.intro-chapter__title {
+  font-family: var(--font-main);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.intro-chapter__progress-track {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.intro-chapter__progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.intro-chapter__progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* Tone-specific progress bar colors */
+.intro-chapter[data-tone="playful"]  .intro-chapter__progress-fill { background: #f59e0b; }
+.intro-chapter[data-tone="moderate"] .intro-chapter__progress-fill { background: #a78bfa; }
+.intro-chapter[data-tone="formal"]   .intro-chapter__progress-fill { background: #38bdf8; }
+
+.intro-chapter__progress-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Sections container ─────────────────────────────────── */
+
+.intro-sections {
+  flex: 1;
+  padding-bottom: 4rem;
+}
+
+/* ── Individual section ─────────────────────────────────── */
+
+.intro-section {
+  min-height: 80vh;
+  padding: 4rem 1.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 700px;
+  margin: 0 auto;
+  opacity: 0.3;
+  transition: opacity 0.6s ease;
+}
+
+.intro-section--active {
+  opacity: 1;
+}
+
+/* ── Narration text ─────────────────────────────────────── */
+
+.intro-narration {
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+  max-width: 600px;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+/* Tone-specific narration sizing */
+.intro-chapter[data-tone="playful"]  .intro-narration { font-size: 1.2rem; }
+.intro-chapter[data-tone="moderate"] .intro-narration { font-size: 1.1rem; }
+.intro-chapter[data-tone="formal"]   .intro-narration { font-size: 1rem; }
+
+/* ── Interactive component placeholder ──────────────────── */
+
+.intro-interactive {
+  width: 100%;
+  max-width: 560px;
+  min-height: 200px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  background: var(--bg-secondary);
+  transition: border-color 0.2s;
+  position: relative;
+}
+
+.intro-interactive::before {
+  content: 'Interactive: ' attr(data-component);
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* When the real component is mounted, hide the placeholder text */
+.intro-interactive:not(:empty)::before {
+  display: none;
+}
+
+/* ── Try It callout ─────────────────────────────────────── */
+
+.intro-try-it {
+  width: 100%;
+  max-width: 560px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.intro-try-it::before {
+  content: '▶ ';
+  font-style: normal;
+  color: var(--accent);
+  font-size: 0.7rem;
+  margin-right: 0.2rem;
+}
+
+/* Tone-specific try-it accent */
+.intro-chapter[data-tone="playful"]  .intro-try-it { border-color: color-mix(in srgb, #f59e0b 25%, var(--border)); }
+.intro-chapter[data-tone="moderate"] .intro-try-it { border-color: color-mix(in srgb, #a78bfa 25%, var(--border)); }
+.intro-chapter[data-tone="formal"]   .intro-try-it { border-color: color-mix(in srgb, #38bdf8 25%, var(--border)); }
+
+/* ── Game link card ─────────────────────────────────────── */
+
+.intro-game-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  margin-top: 0.5rem;
+}
+
+.intro-game-link::after {
+  content: '→';
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.intro-game-link:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+[data-theme="dark"] .intro-game-link:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+
+/* ── Chapter footer / next button ───────────────────────── */
+
+.intro-chapter__footer {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1.5rem 4rem;
+  border-top: 1px solid var(--border);
+}
+
+.intro-chapter__footer[hidden] {
+  display: none;
+}
+
+.intro-next-btn {
+  font-family: var(--font-main);
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 0.85rem 2rem;
+  border-radius: 10px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.15s;
+  display: inline-block;
+}
+
+.intro-next-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+
+.intro-next-btn--done {
+  background: linear-gradient(135deg, #16a34a, #0284c7);
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .intro-section {
+    min-height: 70vh;
+    padding: 3rem 1rem 2.5rem;
+  }
+
+  .intro-narration {
+    font-size: 1rem !important;
+  }
+
+  .intro-interactive {
+    min-height: 160px;
+  }
+
+  .intro-chapter__header {
+    padding: 0.6rem 1rem 0.5rem;
+  }
+}

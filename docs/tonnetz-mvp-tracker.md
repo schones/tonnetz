@@ -114,6 +114,8 @@ Merge education-layer → main. Verify Railway deploy. Test the live URL.
 - B10: Playable input as assessment
 - Learn → scaffold → quiz shared framework (extract after more games adopt the pattern)
 - Mobile optimization
+- AI tutor feedback — wire session analysis into Melody Match and Strumming via /api/chat proxy
+
 
 ---
 
@@ -125,8 +127,12 @@ Merge education-layer → main. Verify Railway deploy. Test the live URL.
 Scale Explorer can ship as view-only (no quiz/practice mode).
 Polish pass can be minimal.
 
+
 **If ahead:** Pull in B9 (chord colors on Tonnetz). Add a simple
 "about this project" page. Wire visual layer into Skratch Studio too.
+Add AI tutor feedback to Melody Match and/or Strumming — session
+data summary → /api/chat → actionable musical advice. Proxy is
+already built.
 
 ---
 

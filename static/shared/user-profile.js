@@ -73,6 +73,11 @@ export function initProfile(preset) {
     games: {},
     paths: {},
     skratch: {},
+    intro: {
+      lastChapter: null,
+      lastSection: null,
+      chapters: {},
+    },
     preferences: {
       show_tooltips: true,
       tooltip_frequency: 'sometimes',
@@ -173,6 +178,79 @@ export function setActiveLens(lens) {
   profile.active_lens = lens;
   _save(profile);
   return profile;
+}
+
+// ── Intro progress helpers ────────────────────────────────────────────────
+
+/**
+ * Returns the intro progress object, or a default empty structure.
+ * Safe to call even if the profile has no intro field yet.
+ */
+export function getIntroProgress() {
+  const profile = _load();
+  if (!profile) return { lastChapter: null, lastSection: null, chapters: {} };
+  return profile.intro ?? { lastChapter: null, lastSection: null, chapters: {} };
+}
+
+/**
+ * Mark a section as viewed. Updates lastChapter and lastSection.
+ * @param {number} chapterNum
+ * @param {string} sectionId
+ * @param {number} totalSections  — total sections in this chapter (for progress math)
+ */
+export function updateIntroProgress(chapterNum, sectionId, totalSections) {
+  const profile = _load();
+  if (!profile) return;
+
+  if (!profile.intro) {
+    profile.intro = { lastChapter: null, lastSection: null, chapters: {} };
+  }
+
+  const ch = profile.intro.chapters[chapterNum] ?? {
+    viewed: [],
+    total: totalSections,
+    completed: false,
+  };
+
+  if (!ch.viewed.includes(sectionId)) {
+    ch.viewed.push(sectionId);
+  }
+  ch.total = totalSections;
+
+  profile.intro.chapters[chapterNum] = ch;
+  profile.intro.lastChapter = chapterNum;
+  profile.intro.lastSection = sectionId;
+
+  _save(profile);
+}
+
+/**
+ * Mark an entire chapter as completed.
+ * @param {number} chapterNum
+ */
+export function markChapterComplete(chapterNum) {
+  const profile = _load();
+  if (!profile) return;
+
+  if (!profile.intro) {
+    profile.intro = { lastChapter: null, lastSection: null, chapters: {} };
+  }
+
+  if (!profile.intro.chapters[chapterNum]) {
+    profile.intro.chapters[chapterNum] = { viewed: [], total: 0, completed: false };
+  }
+
+  profile.intro.chapters[chapterNum].completed = true;
+  _save(profile);
+}
+
+/**
+ * Returns true if the chapter's completed flag is set.
+ * @param {number} chapterNum
+ */
+export function isChapterComplete(chapterNum) {
+  const profile = _load();
+  return profile?.intro?.chapters?.[chapterNum]?.completed ?? false;
 }
 
 /** Clears localStorage profile entirely. */
