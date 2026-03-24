@@ -40,7 +40,7 @@ export const IntroCore = {
     }
 
     const mod = await import(modulePath);
-    const { sections, chapterMeta } = mod;
+    const { sections, acts, chapterMeta } = mod;
 
     // ── Wire chapter-level UI ──────────────────────────────────────────
     const chapterEl = document.querySelector('.intro-chapter');
@@ -49,48 +49,51 @@ export const IntroCore = {
     const titleEl = document.querySelector('.intro-chapter__title');
     if (titleEl) titleEl.textContent = chapterMeta.title;
 
-    // ── Render sections ────────────────────────────────────────────────
+    // ── Render content ─────────────────────────────────────────────────
     const container = document.querySelector('.intro-sections');
     if (!container) return;
 
-    sections.forEach(section => {
-      const el = _buildSection(section);
-      container.appendChild(el);
-    });
+    if (acts) {
+      // Scrollytelling acts path — sticky interactive + scroll-driven steps
+      IntroCore._initActs(acts, sections, chapterNum, container);
+    } else {
+      // Legacy sections path (backward compatible)
+      sections.forEach(section => {
+        const el = _buildSection(section);
+        container.appendChild(el);
+      });
 
-    // Show footer after sections are in the DOM
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+
+          const sectionEl = entry.target;
+          sectionEl.classList.add('intro-section--active');
+
+          const sectionId = sectionEl.id;
+          const sectionDef = sections.find(s => s.id === sectionId);
+
+          if (sectionDef?.onActivate) {
+            try {
+              sectionDef.onActivate(sectionEl);
+            } catch (e) {
+              console.warn('[intro-core] onActivate error for', sectionId, e);
+            }
+          }
+
+          IntroCore.markSectionComplete(chapterNum, sectionId, sections);
+        });
+      }, { threshold: 0.5 });
+
+      container.querySelectorAll('.intro-section').forEach(el => observer.observe(el));
+    }
+
+    // Show footer after content is in the DOM
     const footer = document.querySelector('.intro-chapter__footer');
     if (footer) footer.hidden = false;
 
     // ── Progress bar (initial state) ───────────────────────────────────
     IntroCore._updateProgressBar(chapterNum, sections);
-
-    // ── IntersectionObserver ───────────────────────────────────────────
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-
-        const sectionEl = entry.target;
-        sectionEl.classList.add('intro-section--active');
-
-        const sectionId = sectionEl.id;
-        const sectionDef = sections.find(s => s.id === sectionId);
-
-        // Run mount hook if defined
-        if (sectionDef?.onActivate) {
-          try {
-            sectionDef.onActivate(sectionEl);
-          } catch (e) {
-            console.warn('[intro-core] onActivate error for', sectionId, e);
-          }
-        }
-
-        // Track progress
-        IntroCore.markSectionComplete(chapterNum, sectionId, sections);
-      });
-    }, { threshold: 0.5 });
-
-    container.querySelectorAll('.intro-section').forEach(el => observer.observe(el));
   },
 
   // ── Progress API ─────────────────────────────────────────────────────────
@@ -141,6 +144,90 @@ export const IntroCore = {
     };
   },
 
+  // ── Acts (scrollytelling) ─────────────────────────────────────────────────
+
+  _initActs(acts, sections, chapterNum, container) {
+    const actActiveStepId = new Map(); // actId → currently active stepId
+
+    const stepObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const stepEl = entry.target;
+        const actEl = stepEl.closest('.intro-act');
+        const actId = actEl?.dataset.actId;
+        const stepId = stepEl.dataset.stepId;
+        if (!actId || !stepId) return;
+
+        const act = acts.find(a => a.id === actId);
+        if (!act) return;
+        const step = act.steps.find(s => s.id === stepId);
+        if (!step) return;
+
+        const stickyEl = actEl.querySelector('.intro-act__sticky');
+
+        if (entry.isIntersecting) {
+          const prevStepId = actActiveStepId.get(actId);
+          if (prevStepId === stepId) return; // already active — no-op
+
+          // Deactivate previous step
+          if (prevStepId) {
+            const prevStepEl = actEl.querySelector(`[data-step-id="${prevStepId}"]`);
+            if (prevStepEl) prevStepEl.classList.remove('intro-step--active');
+            const prevStep = act.steps.find(s => s.id === prevStepId);
+            if (prevStep?.onLeave) {
+              try { prevStep.onLeave(stickyEl); } catch (e) {
+                console.warn('[intro-core] onLeave error for', prevStepId, e);
+              }
+            }
+          }
+
+          // Activate new step
+          actActiveStepId.set(actId, stepId);
+          stepEl.classList.add('intro-step--active');
+
+          if (step.onEnter) {
+            try { step.onEnter(stickyEl); } catch (e) {
+              console.warn('[intro-core] onEnter error for', stepId, e);
+            }
+          }
+
+          IntroCore.markSectionComplete(chapterNum, stepId, sections);
+        }
+      });
+    }, { rootMargin: '-33% 0px -33% 0px', threshold: 0 });
+
+    acts.forEach(act => {
+      const actEl = document.createElement('div');
+      actEl.className = 'intro-act';
+      actEl.dataset.actId = act.id;
+
+      // Sticky container for the interactive widget
+      const stickyEl = document.createElement('div');
+      stickyEl.className = 'intro-act__sticky';
+      actEl.appendChild(stickyEl);
+
+      if (act.mountInteractive) {
+        try {
+          act.mountInteractive(stickyEl);
+        } catch (e) {
+          console.warn('[intro-core] mountInteractive error for', act.id, e);
+        }
+      }
+
+      // Steps container
+      const stepsEl = document.createElement('div');
+      stepsEl.className = 'intro-act__steps';
+      actEl.appendChild(stepsEl);
+
+      act.steps.forEach(step => {
+        const stepEl = _buildStepCard(step);
+        stepsEl.appendChild(stepEl);
+        stepObserver.observe(stepEl);
+      });
+
+      container.appendChild(actEl);
+    });
+  },
+
   // ── Internal helpers ──────────────────────────────────────────────────────
 
   _updateProgressBar(chapterNum, sections) {
@@ -159,6 +246,35 @@ export const IntroCore = {
 };
 
 // ── DOM builder ────────────────────────────────────────────────────────────
+
+function _buildStepCard(step) {
+  const el = document.createElement('div');
+  el.className = 'intro-step';
+  el.id = step.id;
+  el.dataset.stepId = step.id;
+
+  const narration = document.createElement('div');
+  narration.className = 'intro-narration';
+  narration.textContent = step.narration;
+  el.appendChild(narration);
+
+  if (step.tryIt) {
+    const tryIt = document.createElement('div');
+    tryIt.className = 'intro-try-it';
+    tryIt.textContent = step.tryIt;
+    el.appendChild(tryIt);
+  }
+
+  if (step.gameLink) {
+    const link = document.createElement('a');
+    link.className = 'intro-game-link';
+    link.href = step.gameLink.url;
+    link.textContent = step.gameLink.label;
+    el.appendChild(link);
+  }
+
+  return el;
+}
 
 function _buildSection(section) {
   const el = document.createElement('div');

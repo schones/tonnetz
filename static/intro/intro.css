@@ -293,3 +293,108 @@
     padding: 0.6rem 1rem 0.5rem;
   }
 }
+
+/* ── Scrollytelling acts layout ─────────────────────────────── */
+
+.intro-act {
+  position: relative;
+  margin-bottom: 4rem;
+}
+
+.intro-act__sticky {
+  position: sticky;
+  top: calc(var(--header-height, 80px) + 16px);
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  padding: 1rem 1.5rem;
+  transition: opacity 0.4s ease;
+  pointer-events: auto;
+  background: var(--bg-primary, #f8f9fd);
+  max-height: 45vh;
+  overflow: hidden;
+}
+
+/* Soft fade at the bottom edge so content scrolling under looks clean */
+.intro-act__sticky::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2rem;
+  background: linear-gradient(to bottom, transparent, var(--bg-primary, #f8f9fd));
+  pointer-events: none;
+}
+
+[data-theme="dark"] .intro-act__sticky {
+  background: var(--bg-primary, #1a1a2e);
+}
+
+[data-theme="dark"] .intro-act__sticky::after {
+  background: linear-gradient(to bottom, transparent, var(--bg-primary, #1a1a2e));
+}
+
+.intro-act__steps {
+  position: relative;
+  z-index: 6; /* steps render above sticky's padding area */
+  padding-top: 10vh;
+}
+
+/* ── Step cards ──────────────────────────────────────────────── */
+
+.intro-step {
+  min-height: 60vh;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  opacity: 0.3;
+  transition: opacity 0.5s ease;
+  pointer-events: none; /* let clicks pass through to sticky interactive below */
+}
+
+.intro-step--active {
+  opacity: 1;
+}
+
+/* Narration gets a semi-transparent backdrop so text stays readable
+   when the step card overlaps the sticky widget's padding area */
+.intro-step .intro-narration {
+  background: color-mix(in srgb, var(--bg-primary, #f8f9fd) 95%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.2rem 1.4rem;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  pointer-events: auto; /* restore clicks for narration text */
+}
+
+[data-theme="dark"] .intro-step .intro-narration {
+  background: color-mix(in srgb, var(--bg-primary, #1a1a2e) 95%, transparent);
+}
+
+/* Restore pointer events for interactive children inside step cards */
+.intro-step .intro-try-it,
+.intro-step .intro-game-link {
+  pointer-events: auto;
+}
+
+/* Extra bottom padding on the last step so the sticky has room to unstick */
+.intro-act__steps .intro-step:last-child {
+  padding-bottom: 40vh;
+}
+
+/* Fade class for act transitions */
+.intro-act__sticky--exiting {
+  opacity: 0;
+}
+
+@media (max-width: 600px) {
+  .intro-step {
+    min-height: 45vh;
+  }
+}

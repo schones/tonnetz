@@ -18,7 +18,6 @@
 // ════════════════════════════════════════════════════════════════════
 
 let _toneStarted = false;
-let _toneLoadPromise = null;
 let _oscillator = null;
 let _oscillatorGain = null;
 let _sampler = null;
@@ -27,9 +26,6 @@ let _samplerReady = false;
 let _oboeSampler = null;
 let _oboeSamplerLoading = false;
 let _oboeSamplerReady = false;
-
-/** Set of section IDs whose interactive has already been mounted. */
-const _mounted = new Set();
 
 // ════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -79,7 +75,13 @@ function toAscii(name) {
 // AUDIO HELPERS
 // ════════════════════════════════════════════════════════════════════
 
-/** Ensure Tone.js is available, loading it from CDN if needed. */
+/** Cached promise so the Tone.js <script> is only injected once. */
+let _toneLoadPromise = null;
+
+/**
+ * Ensures Tone.js is available globally. If window.Tone already exists,
+ * resolves immediately. Otherwise injects a <script> tag and waits for it.
+ */
 function _ensureToneLoaded() {
   if (window.Tone) return Promise.resolve();
   if (_toneLoadPromise) return _toneLoadPromise;
@@ -87,7 +89,7 @@ function _ensureToneLoaded() {
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
     script.onload = resolve;
-    script.onerror = () => reject(new Error('Failed to load Tone.js'));
+    script.onerror = () => reject(new Error('[ch1] Failed to load Tone.js'));
     document.head.appendChild(script);
   });
   return _toneLoadPromise;
@@ -102,8 +104,8 @@ async function _ensureTone() {
 
 async function _ensureSampler() {
   if (_sampler || _samplerLoading) return;
-  await _ensureToneLoaded();
   _samplerLoading = true;
+  await _ensureToneLoaded();
   const vol = new Tone.Volume(-6).toDestination();
   _sampler = new Tone.Sampler({
     urls: SAMPLER_URLS,
@@ -120,15 +122,17 @@ async function _loadOboeSampler() {
   await _ensureToneLoaded();
   try {
     const resp = await fetch('https://gleitz.github.io/midi-js-soundfonts/MusyngKite/oboe-mp3.js');
-    if (!resp.ok) throw new Error(`Soundfont fetch failed (${resp.status})`);
     const text = await resp.text();
-    const sfMatch = /MIDI\.Soundfont\.\w+\s*=\s*(\{[\s\S]+\})\s*;?\s*$/.exec(text);
-    if (!sfMatch) throw new Error('Unexpected soundfont format');
+    // Evaluate the soundfont JS in a controlled scope — sets MIDI.Soundfont.oboe
+    const container = {};
+    const MIDI = { Soundfont: container };
     // eslint-disable-next-line no-new-func
-    const allNotes = new Function('return ' + sfMatch[1])();
+    new Function('MIDI', text)(MIDI);
+    const data = container.oboe || {};
+    // Sparse subset — we only play A notes in this module
     const sparseKeys = ['A2', 'A3', 'A4', 'A5', 'A6'];
     const urls = {};
-    sparseKeys.forEach(k => { if (allNotes[k]) urls[k] = allNotes[k]; });
+    sparseKeys.forEach(k => { if (data[k]) urls[k] = data[k]; });
     const vol = new Tone.Volume(-6).toDestination();
     _oboeSampler = new Tone.Sampler({
       urls,
@@ -509,6 +513,18 @@ const CH1_CSS = /* css */ `
   padding: 28px 4px 4px;
 }
 
+/* ── A4 concert-pitch pulse animation ──────────────────────── */
+
+@keyframes ch1-a4-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); }
+  50%       { box-shadow: 0 0 0 8px rgba(255, 165, 0, 0.5); }
+}
+
+.ch1-kb-key--a4-pulse.ch1-kb-key--white {
+  background: #ffeaa7;
+  animation: ch1-a4-pulse 1.4s ease-in-out infinite;
+}
+
 /* ── Responsive ────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
@@ -605,31 +621,40 @@ function _buildKeyboard(container, startOctave, numOctaves, opts = {}) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// SECTION 1: OSCILLATOR WIDGET
+// ACT 1: OSCILLATOR WIDGET STATE + BUILDER
 // ════════════════════════════════════════════════════════════════════
 
-function _mountOscillator(sectionEl) {
+let _act1SliderRow = null;
+let _act1PlayBtn = null;
+let _act1StopOsc = null;
+
+/**
+ * Build the oscillator widget into containerEl.
+ * Called once by act-sound's mountInteractive.
+ */
+function _buildOscWidget(containerEl) {
   _injectCSS();
-  const host = sectionEl.querySelector('.intro-interactive');
-  if (!host) return;
+  _ensureToneLoaded(); // preload Tone.js in background
 
   const widget = document.createElement('div');
   widget.className = 'ch1-widget';
+  widget.style.pointerEvents = 'auto';
 
-  // Frequency display
-  const freqDisplay = document.createElement('div');
-  freqDisplay.className = 'ch1-freq-display';
-  freqDisplay.textContent = '440 Hz';
-
-  // Canvas for waveform
+  // Canvas for waveform (always visible from step 1)
   const canvas = document.createElement('canvas');
   canvas.className = 'ch1-osc-canvas';
   canvas.width = 500;
   canvas.height = 120;
 
-  // Slider row
+  // Frequency display (shown alongside slider)
+  const freqDisplay = document.createElement('div');
+  freqDisplay.className = 'ch1-freq-display';
+  freqDisplay.textContent = '440 Hz';
+
+  // Slider row — hidden initially, revealed by step 2
   const sliderRow = document.createElement('div');
   sliderRow.className = 'ch1-slider-row';
+  sliderRow.style.cssText = 'opacity:0; pointer-events:none; transition:opacity 0.4s ease;';
 
   const lowLabel = document.createElement('label');
   lowLabel.textContent = '100 Hz';
@@ -646,40 +671,40 @@ function _mountOscillator(sectionEl) {
   slider.setAttribute('aria-label', 'Frequency');
 
   sliderRow.append(lowLabel, slider, highLabel);
+  _act1SliderRow = sliderRow;
 
-  // Play button
+  // Play button — hidden initially, revealed by step 2
   const playBtn = document.createElement('button');
   playBtn.className = 'ch1-play-btn';
   playBtn.textContent = '▶ Play tone';
+  playBtn.style.cssText = 'opacity:0; pointer-events:none; transition:opacity 0.4s ease;';
+  _act1PlayBtn = playBtn;
 
-  widget.append(freqDisplay, canvas, sliderRow, playBtn);
-  host.appendChild(widget);
+  widget.append(canvas, freqDisplay, sliderRow, playBtn);
+  containerEl.appendChild(widget);
 
-  // State
+  // ── Audio / animation state ───────────────────────────────────────
+
   let isPlaying = false;
   let animId = null;
   let currentFreq = 440;
 
-  // Drawing
   const ctx = canvas.getContext('2d');
-  const accentColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--color-primary').trim() || '#6c5ce7';
+  const accentColor =
+    getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() ||
+    '#6c5ce7';
 
-  // Logical (CSS) dimensions — updated by resizeCanvas
   let logW = 500;
   let logH = 120;
 
   function drawWave() {
     ctx.clearRect(0, 0, logW, logH);
-
     const cycles = 2 + (currentFreq - 100) / 900 * 8;
     const amplitude = logH * 0.38;
     const midY = logH / 2;
-
     ctx.beginPath();
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2.5;
-
     for (let x = 0; x <= logW; x++) {
       const t = x / logW;
       const y = midY + Math.sin(t * cycles * Math.PI * 2 + performance.now() * 0.003) * amplitude;
@@ -687,24 +712,18 @@ function _mountOscillator(sectionEl) {
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
-
-    if (isPlaying) {
-      animId = requestAnimationFrame(drawWave);
-    }
+    if (isPlaying) animId = requestAnimationFrame(drawWave);
   }
 
   function drawStatic() {
     ctx.clearRect(0, 0, logW, logH);
-
     const cycles = 2 + (currentFreq - 100) / 900 * 8;
     const amplitude = logH * 0.38;
     const midY = logH / 2;
-
     ctx.beginPath();
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2.5;
     ctx.globalAlpha = 0.4;
-
     for (let x = 0; x <= logW; x++) {
       const t = x / logW;
       const y = midY + Math.sin(t * cycles * Math.PI * 2) * amplitude;
@@ -715,14 +734,22 @@ function _mountOscillator(sectionEl) {
     ctx.globalAlpha = 1.0;
   }
 
+  function stopOsc() {
+    if (_oscillator) { try { _oscillator.stop(); } catch (_) {} }
+    isPlaying = false;
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    playBtn.textContent = '▶ Play tone';
+    playBtn.classList.remove('ch1-play-btn--active');
+    drawStatic();
+  }
+  _act1StopOsc = stopOsc;
+
   function startOsc() {
     _ensureTone().then(() => {
       if (!_oscillator) {
         _oscillatorGain = new Tone.Gain(0.25).toDestination();
-        _oscillator = new Tone.Oscillator({
-          frequency: currentFreq,
-          type: 'sine',
-        }).connect(_oscillatorGain);
+        _oscillator = new Tone.Oscillator({ frequency: currentFreq, type: 'sine' })
+          .connect(_oscillatorGain);
       }
       _oscillator.frequency.value = currentFreq;
       _oscillator.start();
@@ -733,32 +760,15 @@ function _mountOscillator(sectionEl) {
     });
   }
 
-  function stopOsc() {
-    if (_oscillator) {
-      try { _oscillator.stop(); } catch (_) {}
-    }
-    isPlaying = false;
-    if (animId) { cancelAnimationFrame(animId); animId = null; }
-    playBtn.textContent = '▶ Play tone';
-    playBtn.classList.remove('ch1-play-btn--active');
-    drawStatic();
-  }
-
-  playBtn.addEventListener('click', () => {
-    if (isPlaying) stopOsc();
-    else startOsc();
-  });
+  playBtn.addEventListener('click', () => { if (isPlaying) stopOsc(); else startOsc(); });
 
   slider.addEventListener('input', () => {
     currentFreq = parseInt(slider.value, 10);
     freqDisplay.textContent = `${currentFreq} Hz`;
-    if (_oscillator && isPlaying) {
-      _oscillator.frequency.value = currentFreq;
-    }
+    if (_oscillator && isPlaying) _oscillator.frequency.value = currentFreq;
     if (!isPlaying) drawStatic();
   });
 
-  // Resize canvas for retina/HiDPI
   function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -770,280 +780,229 @@ function _mountOscillator(sectionEl) {
     if (!isPlaying) drawStatic();
   }
 
-  // Initial draw
-  requestAnimationFrame(() => {
-    resizeCanvas();
-    drawStatic();
-  });
-
+  requestAnimationFrame(() => { resizeCanvas(); drawStatic(); });
   const resizeObs = new ResizeObserver(() => resizeCanvas());
   resizeObs.observe(canvas);
 }
 
 // ════════════════════════════════════════════════════════════════════
-// SECTION 2: MEET THE NOTES (playable keyboards)
+// ACT 2: NOTES KEYBOARD STATE + BUILDER
 // ════════════════════════════════════════════════════════════════════
 
-function _mountMeetTheNotes(sectionEl) {
-  _injectCSS();
-  _ensureSampler();
+let _act2KbScrollEl = null;
+let _act2KbEl = null;
+let _act2Keys = null;
+let _act2Info = null;
+let _act2OboeRow = null;
+let _act2FindRow = null;
+let _act2ActiveFind = null;
+let _act2KbConfig = null;   // "startOctave-numOctaves" — skip rebuild when same
+let _act2ResizePending = false;
 
-  const host = sectionEl.querySelector('.intro-interactive');
-  if (!host) return;
-
-  const widget = document.createElement('div');
-  widget.className = 'ch1-widget';
-
-  // Info line
-  const info = document.createElement('div');
-  info.className = 'ch1-kb-info';
-  info.innerHTML = '&nbsp;';
-
-  // Subtitle: one octave
-  const sub1 = document.createElement('div');
-  sub1.className = 'ch1-widget__label';
-  sub1.textContent = 'One octave — 12 notes';
-
-  // Build one-octave keyboard (C4–B4)
-  const kb1Container = document.createElement('div');
-  const kb1 = _buildKeyboard(kb1Container, 4, 1, {
-    showLabels: true,
-    onNoteDown: (name, oct) => {
-      const freq = noteFreq(name, oct).toFixed(1);
-      info.textContent = `${name}${oct} = ${freq} Hz`;
-    },
-  });
-
-  // Subtitle: two octaves
-  const sub2 = document.createElement('div');
-  sub2.className = 'ch1-widget__label';
-  sub2.textContent = 'Two octaves — same notes, higher and lower';
-  sub2.style.marginTop = '20px';
-
-  // Build two-octave keyboard (C3–B4)
-  const kb2Container = document.createElement('div');
-  kb2Container.className = 'ch1-kb-scroll';
-  const kb2 = _buildKeyboard(kb2Container, 3, 2, {
-    showLabels: true,
-    onNoteDown: (name, oct) => {
-      const freq = noteFreq(name, oct).toFixed(1);
-      info.textContent = `${name}${oct} = ${freq} Hz`;
-
-      // Highlight all keys with the same note name
-      kb2.keys.forEach((el, noteId) => {
-        if (el.dataset.noteName === name && !el.classList.contains('ch1-kb-key--pressed')) {
-          el.classList.add('ch1-kb-key--octave-hl');
-        }
-      });
-    },
-    onNoteUp: (name) => {
-      kb2.keys.forEach((el) => {
-        el.classList.remove('ch1-kb-key--octave-hl');
-      });
-    },
-  });
-
-  widget.append(sub1, kb1Container, info, sub2, kb2Container);
-  host.appendChild(widget);
+function _showAct2Row(rowEl, show) {
+  if (!rowEl) return;
+  rowEl.style.opacity = show ? '1' : '0';
+  rowEl.style.pointerEvents = show ? 'auto' : 'none';
 }
 
-// ════════════════════════════════════════════════════════════════════
-// SECTION 3: A = 440
-// ════════════════════════════════════════════════════════════════════
+function _clearAct2Highlights() {
+  if (!_act2Keys) return;
+  _act2Keys.forEach(el => {
+    el.classList.remove(
+      'ch1-kb-key--pattern-hl',
+      'ch1-kb-key--octave-hl',
+      'ch1-kb-key--show-label',
+      'ch1-kb-key--a4-pulse',
+    );
+  });
+}
 
-function _mountA440(sectionEl) {
+/**
+ * Rebuild the Act 2 keyboard with a 150 ms fade transition.
+ * No-ops if the same startOctave/numOctaves config is already built.
+ */
+async function _resizeAct2Keyboard(startOctave, numOctaves, opts) {
+  const configKey = `${startOctave}-${numOctaves}`;
+  if (_act2KbConfig === configKey && _act2KbEl) return;
+  if (_act2ResizePending) return;
+
+  _act2ResizePending = true;
+  _act2KbConfig = configKey;
+
+  try {
+    if (_act2KbEl) {
+      _act2KbEl.style.transition = 'opacity 0.15s ease';
+      _act2KbEl.style.opacity = '0';
+      await new Promise(r => setTimeout(r, 160));
+      _act2KbEl.remove();
+      _act2KbEl = null;
+      _act2Keys = null;
+    }
+
+    if (_act2KbScrollEl) {
+      const result = _buildKeyboard(_act2KbScrollEl, startOctave, numOctaves, opts);
+      _act2KbEl = result.el;
+      _act2Keys = result.keys;
+      _act2KbEl.style.opacity = '0';
+      _act2KbEl.style.transition = 'opacity 0.15s ease';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (_act2KbEl) _act2KbEl.style.opacity = '1';
+        });
+      });
+    }
+  } finally {
+    _act2ResizePending = false;
+  }
+}
+
+/**
+ * Build the full notes widget into containerEl.
+ * Called once by act-notes' mountInteractive.
+ */
+function _buildNotesWidget(containerEl) {
   _injectCSS();
   _ensureSampler();
   _loadOboeSampler();
 
-  const host = sectionEl.querySelector('.intro-interactive');
-  if (!host) return;
-
   const widget = document.createElement('div');
   widget.className = 'ch1-widget';
+  widget.style.pointerEvents = 'auto';
 
-  const explain = document.createElement('div');
-  explain.className = 'ch1-a440-explain';
-  explain.innerHTML = '&nbsp;';
+  // Info line — stable across keyboard rebuilds
+  const info = document.createElement('div');
+  info.className = 'ch1-kb-info';
+  info.innerHTML = '&nbsp;';
+  _act2Info = info;
 
-  // Octave buttons: A3, A4, A5
-  const notes = [
-    { note: 'A3', freq: 220,  label: 'A3' },
-    { note: 'A4', freq: 440,  label: 'A4' },
-    { note: 'A5', freq: 880,  label: 'A5' },
-  ];
+  // Scroll wrapper for the keyboard (rebuilt per step via _resizeAct2Keyboard)
+  const kbScrollEl = document.createElement('div');
+  kbScrollEl.className = 'ch1-kb-scroll';
+  _act2KbScrollEl = kbScrollEl;
 
-  const btnRow = document.createElement('div');
-  btnRow.className = 'ch1-a440-row';
+  // ── Oboe A440 row (hidden initially, shown in ch1-concert-pitch) ──
 
-  let activeBtn = null;
-  let activeTimeout = null;
+  const oboeRow = document.createElement('div');
+  oboeRow.className = 'ch1-widget';
+  oboeRow.style.cssText = 'opacity:0; pointer-events:none; transition:opacity 0.4s ease; padding:0; gap:8px;';
+  _act2OboeRow = oboeRow;
 
-  notes.forEach(({ note, freq, label }) => {
+  const oboeBtnRow = document.createElement('div');
+  oboeBtnRow.className = 'ch1-a440-row';
+
+  const oboeExplain = document.createElement('div');
+  oboeExplain.className = 'ch1-a440-explain';
+  oboeExplain.innerHTML = '&nbsp;';
+
+  let activeOboeBtn = null;
+  let activeOboeTimeout = null;
+
+  [
+    { note: 'A3', freq: 220, label: 'A3' },
+    { note: 'A4', freq: 440, label: 'A4' },
+    { note: 'A5', freq: 880, label: 'A5' },
+  ].forEach(({ note, freq, label }) => {
     const btn = document.createElement('button');
     btn.className = 'ch1-a440-btn';
-
     const nameEl = document.createElement('span');
     nameEl.className = 'ch1-a440-note';
     nameEl.textContent = label;
-
     const freqEl = document.createElement('span');
     freqEl.className = 'ch1-a440-freq';
     freqEl.textContent = `${freq} Hz`;
-
     btn.append(nameEl, freqEl);
-
     btn.addEventListener('click', async () => {
       await _ensureTone();
-      _ensureSampler();
-
-      // Visual feedback
-      if (activeBtn) activeBtn.classList.remove('ch1-a440-btn--playing');
-      if (activeTimeout) clearTimeout(activeTimeout);
+      if (activeOboeBtn) activeOboeBtn.classList.remove('ch1-a440-btn--playing');
+      if (activeOboeTimeout) clearTimeout(activeOboeTimeout);
       btn.classList.add('ch1-a440-btn--playing');
-      activeBtn = btn;
-      activeTimeout = setTimeout(() => {
+      activeOboeBtn = btn;
+      activeOboeTimeout = setTimeout(() => {
         btn.classList.remove('ch1-a440-btn--playing');
-        activeBtn = null;
+        activeOboeBtn = null;
       }, 1800);
-
       if (_oboeSamplerReady && _oboeSampler) {
         _oboeSampler.triggerAttackRelease(note, '2n', Tone.now());
       } else {
         _playSamplerNote(note, '2n');
       }
-
-      // Show doubling explanation
-      if (note === 'A3') {
-        explain.textContent = 'A3 = 220 Hz — half the frequency of A4';
-      } else if (note === 'A4') {
-        explain.textContent = 'A4 = 440 Hz — the universal tuning reference';
-      } else {
-        explain.textContent = 'A5 = 880 Hz — double the frequency of A4';
-      }
+      if (note === 'A3')      oboeExplain.textContent = 'A3 = 220 Hz — half the frequency of A4';
+      else if (note === 'A4') oboeExplain.textContent = 'A4 = 440 Hz — the universal tuning reference';
+      else                    oboeExplain.textContent = 'A5 = 880 Hz — double the frequency of A4';
     });
-
-    btnRow.appendChild(btn);
+    oboeBtnRow.appendChild(btn);
   });
 
-  // Doubling summary
   const doublingLine = document.createElement('div');
   doublingLine.className = 'ch1-widget__label';
   doublingLine.textContent = 'Each octave doubles the frequency: 220 → 440 → 880';
-  doublingLine.style.marginTop = '8px';
 
-  widget.append(btnRow, explain, doublingLine);
-  host.appendChild(widget);
-}
+  oboeRow.append(oboeBtnRow, oboeExplain, doublingLine);
 
-// ════════════════════════════════════════════════════════════════════
-// SECTION 4: THE KEYBOARD PATTERN
-// ════════════════════════════════════════════════════════════════════
+  // ── Find buttons row (hidden initially, shown in ch1-keyboard-pattern) ──
 
-function _mountKeyboardPattern(sectionEl) {
-  _injectCSS();
-  _ensureSampler();
-
-  const host = sectionEl.querySelector('.intro-interactive');
-  if (!host) return;
-
-  const widget = document.createElement('div');
-  widget.className = 'ch1-widget';
-
-  // Info line
-  const info = document.createElement('div');
-  info.className = 'ch1-kb-info';
-  info.innerHTML = '&nbsp;';
-
-  // Build 3-octave keyboard (C3–B5) — shrunk to fit ~540px without scrolling
-  const kbContainer = document.createElement('div');
-  kbContainer.className = 'ch1-kb-scroll';
-  kbContainer.style.cssText = 'position:relative; overflow-x:visible; --ch1-kb-ww:28px; --ch1-kb-bw:18px; --ch1-kb-h:110px;';
-
-  const kb = _buildKeyboard(kbContainer, 3, 3, {
-    showLabels: false,
-    onNoteDown: (name, oct, el) => {
-      // Show label on click
-      el.classList.add('ch1-kb-key--show-label');
-      const freq = noteFreq(name, oct).toFixed(1);
-      info.textContent = `${name}${oct} = ${freq} Hz`;
-    },
-    onNoteUp: (name, oct, el) => {
-      // Keep showing labels for a bit after release
-      setTimeout(() => {
-        if (!el.classList.contains('ch1-kb-key--pressed')) {
-          el.classList.remove('ch1-kb-key--show-label');
-        }
-      }, 1200);
-    },
-  });
-
-  // Add group brackets for 2-black and 3-black key groups
-  _addGroupBrackets(kb);
-
-  // "Find every ___" buttons
   const findRow = document.createElement('div');
   findRow.className = 'ch1-find-row';
+  findRow.style.cssText = 'opacity:0; pointer-events:none; transition:opacity 0.4s ease;';
+  _act2FindRow = findRow;
 
-  const findNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-  let activeFind = null;
-
-  findNotes.forEach(noteName => {
+  ['C', 'D', 'E', 'F', 'G', 'A', 'B'].forEach(noteName => {
     const btn = document.createElement('button');
     btn.className = 'ch1-find-btn';
     btn.textContent = noteName;
-
     btn.addEventListener('click', async () => {
       await _ensureTone();
-      _ensureSampler();
-
-      // Toggle
-      if (activeFind === noteName) {
-        _clearHighlights(kb);
-        activeFind = null;
+      if (_act2ActiveFind === noteName) {
+        _clearAct2Highlights();
+        _act2ActiveFind = null;
         btn.classList.remove('ch1-find-btn--active');
         info.innerHTML = '&nbsp;';
         return;
       }
-
-      // Deactivate previous
       findRow.querySelectorAll('.ch1-find-btn--active').forEach(b => b.classList.remove('ch1-find-btn--active'));
-      _clearHighlights(kb);
-
-      activeFind = noteName;
+      _clearAct2Highlights();
+      _act2ActiveFind = noteName;
       btn.classList.add('ch1-find-btn--active');
-
-      // Highlight all matching keys and play an arpeggio
       const matchingKeys = [];
-      kb.keys.forEach((el, noteId) => {
-        if (el.dataset.noteName === noteName) {
-          el.classList.add('ch1-kb-key--pattern-hl');
-          el.classList.add('ch1-kb-key--show-label');
-          matchingKeys.push(noteId);
-        }
-      });
-
-      // Play ascending arpeggio
+      if (_act2Keys) {
+        _act2Keys.forEach((el, noteId) => {
+          if (el.dataset.noteName === noteName) {
+            el.classList.add('ch1-kb-key--pattern-hl', 'ch1-kb-key--show-label');
+            matchingKeys.push(noteId);
+          }
+        });
+      }
       matchingKeys.forEach((noteId, i) => {
         setTimeout(() => _playSamplerNote(noteId, '8n'), i * 250);
       });
-
       info.textContent = `Every ${noteName} across 3 octaves`;
     });
-
     findRow.appendChild(btn);
   });
 
-  const hint = document.createElement('div');
-  hint.className = 'ch1-widget__label';
-  hint.textContent = 'Click a key to hear it, or use the buttons to find every instance of a note';
+  widget.append(kbScrollEl, info, oboeRow, findRow);
+  containerEl.appendChild(widget);
 
-  widget.append(kbContainer, info, findRow, hint);
-  host.appendChild(widget);
+  // Build initial 1-octave keyboard for step 1
+  const result = _buildKeyboard(kbScrollEl, 4, 1, {
+    showLabels: true,
+    onNoteDown(name, oct) {
+      const freq = noteFreq(name, oct).toFixed(1);
+      if (_act2Info) _act2Info.textContent = `${name}${oct} = ${freq} Hz`;
+    },
+  });
+  _act2KbEl = result.el;
+  _act2Keys = result.keys;
+  _act2KbConfig = '4-1';
 }
 
-/** Clear all custom highlights from a keyboard */
+// ════════════════════════════════════════════════════════════════════
+// KEYBOARD HELPERS
+// ════════════════════════════════════════════════════════════════════
+
+/** Clear all custom highlight classes from a keyboard returned by _buildKeyboard. */
 function _clearHighlights(kb) {
+  if (!kb?.keys) return;
   kb.keys.forEach(el => {
     el.classList.remove(
       'ch1-kb-key--pattern-hl',
@@ -1053,18 +1012,12 @@ function _clearHighlights(kb) {
   });
 }
 
-/** Add subtle group indicators above the black keys */
+/** Add group-of-2 / group-of-3 glows to black keys. */
 function _addGroupBrackets(kb) {
-  // Find pairs/triples of consecutive black keys
-  const blackKeys = [];
-  kb.keys.forEach((el, noteId) => {
-    if (el.classList.contains('ch1-kb-key--black')) {
-      blackKeys.push({ el, noteId, pc: parseInt(el.dataset.pc, 10) });
-    }
-  });
-
-  // Group: pc 1,3 = group of 2; pc 6,8,10 = group of 3
-  blackKeys.forEach(({ el, pc }) => {
+  if (!kb?.keys) return;
+  kb.keys.forEach((el) => {
+    if (!el.classList.contains('ch1-kb-key--black')) return;
+    const pc = parseInt(el.dataset.pc, 10);
     if (pc === 1 || pc === 3) {
       el.classList.add('ch1-kb-key--group-2');
     } else {
@@ -1092,6 +1045,22 @@ function _cleanup() {
     _samplerReady = false;
     _samplerLoading = false;
   }
+  if (_oboeSampler) {
+    try { _oboeSampler.releaseAll(); _oboeSampler.dispose(); } catch (_) {}
+    _oboeSampler = null;
+    _oboeSamplerReady = false;
+    _oboeSamplerLoading = false;
+  }
+  _act1SliderRow = null;
+  _act1PlayBtn = null;
+  _act1StopOsc = null;
+  _act2KbScrollEl = null;
+  _act2KbEl = null;
+  _act2Keys = null;
+  _act2Info = null;
+  _act2OboeRow = null;
+  _act2FindRow = null;
+  _act2KbConfig = null;
 }
 
 if (typeof window !== 'undefined') {
@@ -1101,7 +1070,7 @@ if (typeof window !== 'undefined') {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// SECTION DEFINITIONS (exported for intro-core.js)
+// CHAPTER META
 // ════════════════════════════════════════════════════════════════════
 
 export const chapterMeta = {
@@ -1111,74 +1080,242 @@ export const chapterMeta = {
   description: 'What is sound? Meet the 12 notes and the spaces between them.',
 };
 
-export const sections = [
+// ════════════════════════════════════════════════════════════════════
+// ACT DEFINITIONS
+// ════════════════════════════════════════════════════════════════════
+
+export const acts = [
+
+  // ── Act 1: Sound (oscillator) ────────────────────────────────────
   {
-    id: 'ch1-what-is-sound',
-    title: 'What is Sound?',
-    narration:
-      'Tap your desk. Hum. Clap your hands. ' +
-      'That\'s sound — something vibrating, pushing air into your ears. ' +
-      'The faster it vibrates, the higher it sounds. ' +
-      'That speed has a name: frequency. ' +
-      'And frequency is what gives every sound its pitch.',
-    interactive: 'oscillator',
-    tryIt: 'Drag the slider. Hear how the pitch rises?',
-    onActivate(sectionEl) {
-      if (_mounted.has('ch1-what-is-sound')) return;
-      _mounted.add('ch1-what-is-sound');
-      _mountOscillator(sectionEl);
+    id: 'act-sound',
+
+    mountInteractive(containerEl) {
+      _buildOscWidget(containerEl);
     },
+
+    unmountInteractive() {
+      if (_act1StopOsc) _act1StopOsc();
+      _act1SliderRow = null;
+      _act1PlayBtn = null;
+      _act1StopOsc = null;
+    },
+
+    steps: [
+      {
+        id: 'ch1-what-is-sound',
+        narration:
+          'Tap your desk. Hum. Clap your hands. ' +
+          "That's sound — something vibrating, pushing air into your ears. " +
+          'The faster it vibrates, the higher it sounds.',
+        onEnter(_el) {
+          // Show static waveform only; hide slider + play button
+          if (_act1SliderRow) {
+            _act1SliderRow.style.opacity = '0';
+            _act1SliderRow.style.pointerEvents = 'none';
+          }
+          if (_act1PlayBtn) {
+            _act1PlayBtn.style.opacity = '0';
+            _act1PlayBtn.style.pointerEvents = 'none';
+          }
+          if (_act1StopOsc) _act1StopOsc();
+        },
+        onLeave(_el) {},
+        tryIt: null,
+      },
+      {
+        id: 'ch1-oscillator-play',
+        narration:
+          "That speed has a name: frequency. " +
+          'Slow vibrations are low notes. Fast vibrations are high notes. ' +
+          "Every pitch you've ever heard is just air wiggling at a particular speed.",
+        onEnter(_el) {
+          // Reveal frequency slider and play button
+          if (_act1SliderRow) {
+            _act1SliderRow.style.opacity = '1';
+            _act1SliderRow.style.pointerEvents = 'auto';
+          }
+          if (_act1PlayBtn) {
+            _act1PlayBtn.style.opacity = '1';
+            _act1PlayBtn.style.pointerEvents = 'auto';
+          }
+        },
+        onLeave(_el) {
+          // Stop oscillator when leaving
+          if (_act1StopOsc) _act1StopOsc();
+        },
+        tryIt: 'Drag the slider. Hear how the pitch rises?',
+      },
+    ],
   },
+
+  // ── Act 2: Notes (evolving keyboard) ────────────────────────────
   {
-    id: 'ch1-meet-the-notes',
-    title: 'Meet the Notes',
-    narration:
-      'You could slide through every possible pitch forever. But musicians carved out ' +
-      '12 specific pitches that sound good together. They repeat over and over, higher and higher. ' +
-      'Each repetition is called an octave — the same note, just higher.',
-    interactive: 'keyboard-12',
-    tryIt: 'Click any key. These 12 notes are all of music.',
-    onActivate(sectionEl) {
-      if (_mounted.has('ch1-meet-the-notes')) return;
-      _mounted.add('ch1-meet-the-notes');
-      _mountMeetTheNotes(sectionEl);
+    id: 'act-notes',
+
+    mountInteractive(containerEl) {
+      _buildNotesWidget(containerEl);
     },
-  },
-  {
-    id: 'ch1-concert-pitch',
-    title: 'A = 440',
-    narration:
-      'Of all the notes, one has a special job. A4 — the A above middle C — vibrates at exactly ' +
-      '440 times per second. This is the universal tuning reference. Every instrument in every ' +
-      'orchestra in the world tunes to this note. When you hear an orchestra warming up, that\'s the ' +
-      'oboe playing A440 and everyone matching it.',
-    interactive: 'a440-demo',
-    tryIt: 'This is the note the whole world agrees on.',
-    onActivate(sectionEl) {
-      if (_mounted.has('ch1-concert-pitch')) return;
-      _mounted.add('ch1-concert-pitch');
-      _mountA440(sectionEl);
+
+    unmountInteractive() {
+      if (_sampler) { try { _sampler.releaseAll(); } catch (_) {} }
+      _act2KbScrollEl = null;
+      _act2KbEl = null;
+      _act2Keys = null;
+      _act2Info = null;
+      _act2OboeRow = null;
+      _act2FindRow = null;
+      _act2KbConfig = null;
     },
-  },
-  {
-    id: 'ch1-keyboard-pattern',
-    title: 'The Keyboard Pattern',
-    narration:
-      'Look at the keyboard. See the pattern? Two black keys, then three black keys, ' +
-      'repeating forever. That pattern is how you find any note instantly. ' +
-      'C is always just left of the two black keys. F is always just left of the three. ' +
-      'Once you see it, you can never unsee it.',
-    interactive: 'keyboard-pattern',
-    tryIt: 'Can you find all the C notes? How about F?',
-    gameLink: {
-      game: 'harmony-trainer',
-      label: 'Ready to train your ear?',
-      url: '/games/harmony-trainer',
-    },
-    onActivate(sectionEl) {
-      if (_mounted.has('ch1-keyboard-pattern')) return;
-      _mounted.add('ch1-keyboard-pattern');
-      _mountKeyboardPattern(sectionEl);
-    },
+
+    steps: [
+      {
+        id: 'ch1-meet-the-notes',
+        narration:
+          'You could slide through every possible pitch forever. But musicians carved out ' +
+          '12 specific pitches that sound particularly good together. ' +
+          'These 12 notes repeat over and over — higher and higher — covering the full range of music.',
+        async onEnter(_el) {
+          await _resizeAct2Keyboard(4, 1, {
+            showLabels: true,
+            onNoteDown(name, oct) {
+              const freq = noteFreq(name, oct).toFixed(1);
+              if (_act2Info) _act2Info.textContent = `${name}${oct} = ${freq} Hz`;
+            },
+          });
+          _clearAct2Highlights();
+          _showAct2Row(_act2OboeRow, false);
+          _showAct2Row(_act2FindRow, false);
+          _act2ActiveFind = null;
+        },
+        onLeave(_el) {},
+        tryIt: 'Click any key. These 12 notes are all of music.',
+      },
+
+      {
+        id: 'ch1-octaves',
+        narration:
+          'Each repetition is called an octave — the same note, just higher. ' +
+          'C4 and C5 are both called C. They sound like the same note because ' +
+          'one vibrates at exactly twice the frequency of the other.',
+        async onEnter(_el) {
+          await _resizeAct2Keyboard(3, 2, {
+            showLabels: true,
+            onNoteDown(name, oct) {
+              const freq = noteFreq(name, oct).toFixed(1);
+              if (_act2Info) _act2Info.textContent = `${name}${oct} = ${freq} Hz`;
+            },
+          });
+          _clearAct2Highlights();
+          // Highlight all C keys in teal to show "same note, different octave"
+          if (_act2Keys) {
+            _act2Keys.forEach(el => {
+              if (el.dataset.noteName === 'C') el.classList.add('ch1-kb-key--octave-hl');
+            });
+          }
+          _showAct2Row(_act2OboeRow, false);
+          _showAct2Row(_act2FindRow, false);
+          _act2ActiveFind = null;
+        },
+        onLeave(_el) {},
+        tryIt: 'Play a note, then find it an octave higher.',
+      },
+
+      {
+        id: 'ch1-concert-pitch',
+        narration:
+          'A4 — the A above middle C — vibrates at exactly 440 times per second. ' +
+          'This is the universal tuning reference. Every instrument in every orchestra ' +
+          "in the world tunes to this note. When you hear an orchestra warming up, " +
+          "that's the oboe playing A440 and everyone matching it.",
+        async onEnter(_el) {
+          // Keep 2-octave keyboard, pulse A4, show oboe buttons
+          await _resizeAct2Keyboard(3, 2, {
+            showLabels: true,
+            onNoteDown(name, oct) {
+              const freq = noteFreq(name, oct).toFixed(1);
+              if (_act2Info) _act2Info.textContent = `${name}${oct} = ${freq} Hz`;
+            },
+          });
+          _clearAct2Highlights();
+          if (_act2Keys) {
+            const a4Key = _act2Keys.get('A4');
+            if (a4Key) a4Key.classList.add('ch1-kb-key--a4-pulse');
+          }
+          _showAct2Row(_act2OboeRow, true);
+          _showAct2Row(_act2FindRow, false);
+          _act2ActiveFind = null;
+        },
+        onLeave(_el) {
+          if (_act2Keys) {
+            const a4Key = _act2Keys.get('A4');
+            if (a4Key) a4Key.classList.remove('ch1-kb-key--a4-pulse');
+          }
+          _showAct2Row(_act2OboeRow, false);
+        },
+        tryIt: 'This is the note the whole world agrees on.',
+      },
+
+      {
+        id: 'ch1-keyboard-pattern',
+        narration:
+          'Look at the keyboard. See the pattern? Two black keys, then three black keys, ' +
+          'repeating forever. That pattern is how you find any note instantly. ' +
+          'C is always just left of the two black keys. F is always just left of the three. ' +
+          'Once you see it, you can never unsee it.',
+        async onEnter(_el) {
+          await _resizeAct2Keyboard(3, 3, {
+            showLabels: false,
+            onNoteDown(name, oct, keyEl) {
+              keyEl.classList.add('ch1-kb-key--show-label');
+              const freq = noteFreq(name, oct).toFixed(1);
+              if (_act2Info) _act2Info.textContent = `${name}${oct} = ${freq} Hz`;
+            },
+            onNoteUp(_name, _oct, keyEl) {
+              setTimeout(() => {
+                if (!keyEl.classList.contains('ch1-kb-key--pressed')) {
+                  keyEl.classList.remove('ch1-kb-key--show-label');
+                }
+              }, 1200);
+            },
+          });
+          _clearAct2Highlights();
+          if (_act2Keys) _addGroupBrackets({ keys: _act2Keys });
+          _showAct2Row(_act2OboeRow, false);
+          _showAct2Row(_act2FindRow, true);
+          // Reset any leftover find-button active state
+          if (_act2FindRow) {
+            _act2FindRow.querySelectorAll('.ch1-find-btn--active')
+              .forEach(b => b.classList.remove('ch1-find-btn--active'));
+          }
+          _act2ActiveFind = null;
+        },
+        onLeave(_el) {
+          _showAct2Row(_act2FindRow, false);
+          if (_act2FindRow) {
+            _act2FindRow.querySelectorAll('.ch1-find-btn--active')
+              .forEach(b => b.classList.remove('ch1-find-btn--active'));
+          }
+          _act2ActiveFind = null;
+        },
+        tryIt: 'Can you find all the C notes? How about F?',
+        gameLink: {
+          game: 'harmony-trainer',
+          label: 'Ready to train your ear?',
+          url: '/games/harmony-trainer',
+        },
+      },
+    ],
   },
 ];
+
+// ── Flat sections list for progress-tracking compatibility ──────────
+
+export const sections = acts.flatMap(act =>
+  act.steps.map(step => ({
+    id: step.id,
+    narration: step.narration,
+    tryIt: step.tryIt ?? null,
+    gameLink: step.gameLink ?? null,
+  })),
+);
