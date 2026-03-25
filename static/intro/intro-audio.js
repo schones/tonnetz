@@ -46,6 +46,49 @@ export const CHROMATIC = [
   { name: 'B',  pc: 11, isBlack: false },
 ];
 
+/** Interval step patterns. */
+export const MAJOR_PATTERN = [2, 2, 1, 2, 2, 2, 1];
+export const MINOR_PATTERN = [2, 1, 2, 2, 1, 2, 2];
+
+/**
+ * Returns an array of 7 pitch classes for the given root and interval pattern.
+ * buildScale(0, MAJOR_PATTERN) → [0, 2, 4, 5, 7, 9, 11]
+ */
+export function buildScale(rootPc, pattern) {
+  const pcs = [];
+  let current = rootPc % 12;
+  pcs.push(current);
+  for (let i = 0; i < pattern.length - 1; i++) {
+    current = (current + pattern[i]) % 12;
+    pcs.push(current);
+  }
+  return pcs;
+}
+
+/**
+ * Returns the triad (root, third, fifth) built from a scale at a given degree
+ * by taking every other scale note, wrapping around.
+ */
+export function buildTriad(scalePCs, degreeIndex) {
+  const i = degreeIndex;
+  return [scalePCs[i], scalePCs[(i + 2) % 7], scalePCs[(i + 4) % 7]];
+}
+
+/**
+ * Returns the quality of a triad given three pitch classes.
+ * root-to-third: 4 semitones → major; 3 → minor; 3+3 → dim.
+ */
+export function chordQuality([r, t, f]) {
+  const int1 = (t - r + 12) % 12;
+  const int2 = (f - t + 12) % 12;
+  if (int1 === 3 && int2 === 3) return 'dim';
+  if (int1 === 3) return 'minor';
+  return 'major';
+}
+
+/** Roman numeral labels for the 7 diatonic scale degrees. */
+export const ROMAN = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'];
+
 // ════════════════════════════════════════════════════════════════════
 // HELPERS
 // ════════════════════════════════════════════════════════════════════

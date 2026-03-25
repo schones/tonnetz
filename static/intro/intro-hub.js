@@ -7,7 +7,7 @@
 import { IntroCore } from '/static/intro/intro-core.js';
 
 // Total sections per chapter (kept in sync with chapter JS files)
-const CHAPTER_TOTALS = { 1: 4, 2: 3, 3: 3, 4: 3, 5: 3 };
+const CHAPTER_TOTALS = { 1: 4, 2: 3, 3: 4, 4: 3, 5: 3 };
 
 document.addEventListener('DOMContentLoaded', () => {
   const progress = IntroCore.getProgress();

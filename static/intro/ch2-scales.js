@@ -16,14 +16,10 @@ import {
   buildKeyboard,
   injectSharedCSS,
   registerCleanup,
+  MAJOR_PATTERN,
+  MINOR_PATTERN,
+  buildScale,
 } from '/static/intro/intro-audio.js';
-
-// ════════════════════════════════════════════════════════════════════
-// MUSIC THEORY
-// ════════════════════════════════════════════════════════════════════
-
-const MAJOR_PATTERN = [2, 2, 1, 2, 2, 2, 1];
-const MINOR_PATTERN = [2, 1, 2, 2, 1, 2, 2];
 
 const INTERVAL_NAMES = {
   0: 'Unison', 1: 'Minor 2nd (half step)', 2: 'Major 2nd (whole step)',
@@ -34,21 +30,6 @@ const INTERVAL_NAMES = {
 
 // Enharmonic flat names for display (CHROMATIC uses sharps)
 const FLAT_NAMES = { 'C♯': 'D♭', 'D♯': 'E♭', 'F♯': 'G♭', 'G♯': 'A♭', 'A♯': 'B♭' };
-
-/**
- * Returns an array of 7 pitch classes for the given root and interval pattern.
- * buildScale(0, [2,2,1,2,2,2,1]) → [0, 2, 4, 5, 7, 9, 11]
- */
-function buildScale(rootPc, pattern) {
-  const pcs = [];
-  let current = rootPc % 12;
-  pcs.push(current);
-  for (let i = 0; i < pattern.length - 1; i++) {
-    current = (current + pattern[i]) % 12;
-    pcs.push(current);
-  }
-  return pcs;
-}
 
 /** Display name for a pitch class; optionally prefer flats for black keys. */
 function getNoteName(pc, preferFlats = false) {
