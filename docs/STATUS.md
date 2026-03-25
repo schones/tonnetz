@@ -33,6 +33,29 @@
 - [x] RKT-10 (education wiring)
 
 
+## Intro Module (Phase 5: Meet the Tonnetz)
+
+### Completed
+- Chapter 1: Sound & Notes — 4 sections (oscillator, keyboard, A440 oboe, keyboard pattern)
+- Chapter 2: Intervals & Scales — 3 sections (interval explorer, major scale builder + root picker, major/minor toggle)
+- Chapter 3: Chords & Progressions — 4 sections (triad builder, major/minor chords, diatonic harmony, progression player)
+- Shared utilities refactored into intro-audio.js (keyboard builder, audio helpers, drag-to-play, QWERTY input)
+- Scrollytelling engine: bidirectional IntersectionObserver (onEnter/onLeave), progressive narration reveal, section transitions
+- Dynamic Tone.js loader (self-contained, no template changes needed)
+
+### In Progress
+- Chapter 4: The Tonnetz (not started)
+- Chapter 5: Transforms (not started)
+
+### Architecture Notes
+- intro-audio.js: shared keyboard builder, sampler management, constants (CHROMATIC, buildScale, MAJOR_PATTERN, MINOR_PATTERN, buildTriad, chordQuality)
+- ch1-sound.js: oscillator + oboe sampler (ch1-only)
+- ch2-scales.js: interval explorer, scale builder, root picker, major/minor toggle
+- ch3-chords.js: triad builder, chord explorer, diatonic chords, progression player with key transposition
+- intro-core.js: supports onActivate (mount once), onEnter/onLeave (scroll state), progressive narration, .intro-section--seen persistence
+- All keyboards support click, drag-to-play (glissando), and QWERTY input
+
+
 ### Other
 - [x] Clear All canvas bugfix (Skratch Studio)
 - [x] MAX_CONTENT_LENGTH added to Flask config
@@ -83,7 +106,7 @@ and effect tuning deferred — will revisit before launch.
 
 ### Build Plan Phases
 - [ ] Phase 3: Auth & Persistence (Supabase, hybrid storage, API proxy)
-- [ ] Phase 5: Intro Module ("Meet the Tonnetz" — 4 chapters, animated walkthrough)
+-
 - [ ] Phase 6: Starters, Paths, Hub (Skratch Studio starters, learning paths, Theory Hub page)
 - [ ] Phase 7: Game Progression & Assessment (intro screens, level system, auto-assessment)
 - [ ] Phase 8: Fog of War (Tonnetz grid as spatial progress map)
