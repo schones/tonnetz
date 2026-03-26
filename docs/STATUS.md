@@ -1,22 +1,24 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-03-25
+**Last updated:** 2026-03-26
 **Branch:** `main` (merged from `education-layer`)
 **Deploy:** Railway from `main`
-**Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v2)
+**Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v3)
 
 ---
 
 ## Current Focus
 
-Shipping the MVP: backend API proxy, intro module rebuilt on Explorer components, polish pass. Goal is a shareable URL within 1–2 weeks, followed by user testing with 15–20 participants.
+MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Walks, Harmony Trainer, Skratch Studio). Starting Phase A (missing foundational concepts) while finishing the last MVP items (backend proxy, intro chapter 4 rebuild, polish).
 
 **Immediate next steps:**
 1. Backend API proxy (1 session — non-negotiable before sharing)
 2. Rebuild intro module chapter 4 on Explorer components
-3. Polish pass — landing page, navigation, first-visit experience
-4. Security review — no exposed keys, CORS, CSP header
-5. User testing across 4 segments (curious players, producers, students/teachers, beginners)
+3. Phase A: Circle of Fifths interactive module (A1) — partially prototyped
+4. Phase A: Tonal centers, modes, chord progressions (A2–A4)
+5. Polish pass — landing page, navigation, first-visit experience
+
+**Goal:** Shareable URL within 1–2 weeks, followed by user testing with 15–20 participants across 4 segments (curious players, producers, students/teachers, beginners).
 
 ---
 
@@ -36,6 +38,7 @@ Shipping the MVP: backend API proxy, intro module rebuilt on Explorer components
 - `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring
 - `keyboard-view.js` — highlight layer, click interaction
 - `chord-wheel.js` — dual-ring circle of fifths
+- `song-examples.js` — 67 curated real-song theory references (Song Examples DB v1)
 
 ### Intro Module (Chapters 1–3 complete, 4+ paused)
 - Chapter 1: Sound & Notes (4 sections)
@@ -61,12 +64,13 @@ Shipping the MVP: backend API proxy, intro module rebuilt on Explorer components
 
 See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 
-- **Phase A:** Explorer lesson overlay, tonal centers/keys lessons, chord progressions, modes, "Hear It in Music" panel
-- **Phase B:** Scale Builder, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation, Skratch Studio starter system + challenges
-- **Phase C:** Curriculum paths, path runner UI, Explorer as curriculum map, assessment model, skill guide topics
-- **Phase D:** Differentiated experiences by user level
-- **Phase E:** AI-powered feedback (session analysis, cross-game competency graph)
-- **Phase F:** Puzzle Paths, auth/Supabase, MIDI input, sound-to-visual mapping, social features
+- **Phase A:** Circle of fifths module, tonal centers/keys, modes overview, chord progressions with Song Examples DB integration
+- **Phase B:** Scale Builder, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation
+- **Phase B.5:** Auth & Persistence — Supabase auth, profile migration, resolve Practice vs Test schema (B8), song preferences table
+- **Phase C:** Curriculum paths, path runner UI, Tonnetz curriculum map, onboarding routing, Song Examples DB v2 (preference feedback UI)
+- **Phase D:** Differentiated experiences by user level (beginner/student/advanced modes, achievements)
+- **Phase E:** AI-powered feedback (session analysis, cross-game competency graph, Song Examples DB v3)
+- **Phase F:** Puzzle Paths, MIDI input, fog of war, social features
 
 ---
 
@@ -85,10 +89,10 @@ See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 
 | Doc | Purpose |
 |---|---|
-| `docs/tonnetz-next-build-plan.md` | **Active roadmap** — Phases A–F, session budgets, dependency graph |
+| `docs/tonnetz-next-build-plan.md` | **Active roadmap** — Phases A–F + B.5, Song Examples DB, dependency graph |
 | `docs/tonnetz-explorer-spec.md` | Explorer design, panel specs, canonical orientation |
 | `docs/tonnetz-content-architecture.md` | Content model, topic schema, lens system, starters, challenges |
-| `docs/game-flow-pattern.md` | Learn → Practice → Test pattern, "Hear It in Music" spec |
+| `docs/game-flow-pattern.md` | Learn → Practice → Test pattern |
 | `docs/auth-architecture.md` | Supabase auth, profile migration, security checklist |
 | `docs/puzzle-paths-spec.md` | Puzzle Paths game concept and progression library |
 | `docs/tonnetz-keyboard-component.md` | HarmonyState API, animation queue, component reuse |
