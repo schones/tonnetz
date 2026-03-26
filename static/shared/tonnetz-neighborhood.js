@@ -281,6 +281,46 @@ const TONNETZ_CSS = /* css */ `
   .tn-tri--incorrect,
   .tn-node--moving-tone circle { animation: none; }
 }
+
+/* ── Chord quality coloring ───────────────────────────────────────
+ * Applied alongside role classes.  Quality classes set fill color;
+ * role classes control opacity.  The combined-selector rules below
+ * override both fill and opacity for the active (primary) chord.
+ * Ghost/target/correct/incorrect roles override quality fill to
+ * preserve their existing visual semantics.
+ * ──────────────────────────────────────────────────────────────── */
+
+/* Inactive neighborhood triads: subtle quality tint */
+.tn-tri--quality-major { fill: var(--tn-major-fill, #2563eb); opacity: 0.10; }
+.tn-tri--quality-minor { fill: var(--tn-minor-fill, #e64a19); opacity: 0.10; }
+
+/* Active (primary) chord: stronger fill + light stroke accent */
+.tn-tri--primary.tn-tri--quality-major {
+  fill: var(--tn-major-fill, #2563eb);
+  opacity: 0.45;
+  stroke: var(--tn-major-fill, #2563eb);
+  stroke-width: 2;
+}
+.tn-tri--primary.tn-tri--quality-minor {
+  fill: var(--tn-minor-fill, #e64a19);
+  opacity: 0.45;
+  stroke: var(--tn-minor-fill, #e64a19);
+  stroke-width: 2;
+}
+
+/* Ghost: keep dashed-stroke appearance, suppress quality fill + restore opacity */
+.tn-tri--ghost.tn-tri--quality-major,
+.tn-tri--ghost.tn-tri--quality-minor { fill: none; opacity: 0.5; }
+
+/* Target pulse: keep transparent fill + restore opacity for animation */
+.tn-tri--target.tn-tri--quality-major,
+.tn-tri--target.tn-tri--quality-minor { fill: none; opacity: 0.7; }
+
+/* Feedback flash: restore game colors + opacity */
+.tn-tri--correct.tn-tri--quality-major,
+.tn-tri--correct.tn-tri--quality-minor  { fill: #22c55e; opacity: 0.5; }
+.tn-tri--incorrect.tn-tri--quality-major,
+.tn-tri--incorrect.tn-tri--quality-minor { fill: #ef4444; opacity: 0.5; }
 `;
 
 // ════════════════════════════════════════════════════════════════════
@@ -572,6 +612,9 @@ function _renderAll(svg, neighborhood, state, opts) {
     else if (role === 'target')    cls += ' tn-tri--target';
     else if (role === 'correct')   cls += ' tn-tri--correct';
     else if (role === 'incorrect') cls += ' tn-tri--incorrect';
+    // Quality-based fill color (applied to all triads; CSS overrides per role above)
+    if      (triad.quality === 'major') cls += ' tn-tri--quality-major';
+    else if (triad.quality === 'minor') cls += ' tn-tri--quality-minor';
     if (opts.interactive) cls += ' tn-tri--interactive';
 
     const poly = _svgEl('polygon', { points: pts, class: cls });

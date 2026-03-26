@@ -223,6 +223,11 @@ def test_shared():
     return render_template("test-shared.html")
 
 
+@app.route("/explorer")
+def explorer():
+    return render_template("explorer.html")
+
+
 @app.route("/chord-wheel-test")
 def chord_wheel_test():
     return render_template("chord-wheel-test.html")

@@ -1,0 +1,623 @@
+{% extends "base.html" %}
+{% block title %}Tonnetz Explorer{% endblock %}
+
+{% block head %}
+<!-- Tone.js — must be in <head> so window.Tone is defined before any module runs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<style>
+  /* ── Page ────────────────────────────────────────────────────── */
+  .exp-page {
+    max-width: 1280px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 3rem;
+  }
+
+  .exp-page h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+  }
+  .exp-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+  }
+
+  /* ── Status strip ─────────────────────────────────────────────── */
+  .exp-status {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+    flex-wrap: wrap;
+  }
+  .exp-status-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .exp-chord-badge {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.28rem 0.9rem;
+    min-width: 110px;
+    text-align: center;
+  }
+  .exp-transform-badge {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.28rem 0.75rem;
+    min-width: 70px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .exp-transform-badge--visible {
+    opacity: 1;
+  }
+
+  /* ── Top row: Tonnetz + Chord Wheel ───────────────────────────── */
+  .exp-top {
+    display: flex;
+    gap: 1rem;
+    align-items: stretch;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ── Panel shell ─────────────────────────────────────────────── */
+  .exp-panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+  .exp-panel-header {
+    padding: 0.38rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Tonnetz panel ───────────────────────────────────────────── */
+  .exp-panel--tonnetz {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .exp-panel--tonnetz .exp-panel-body {
+    height: 470px;
+    padding: 0;
+    position: relative;
+  }
+  #exp-tonnetz-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Chord Wheel panel ───────────────────────────────────────── */
+  .exp-panel--chord-wheel {
+    flex: 0 0 auto;
+    width: 430px;
+  }
+  .exp-panel--chord-wheel .exp-panel-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    height: 470px;
+    box-sizing: border-box;
+  }
+  #exp-chord-wheel-container {
+    width: 400px;
+    height: 400px;
+    overflow: visible;
+  }
+
+  /* Font overrides for larger chord wheel labels (same approach as chord-wheel-test) */
+  #exp-chord-wheel-container .cw-label {
+    font-size: 12px;   /* base is 10px */
+  }
+  #exp-chord-wheel-container .cw-roman {
+    font-size: 9px;    /* base is 8px */
+  }
+
+  /* ── Keyboard panel ──────────────────────────────────────────── */
+  .exp-panel--keyboard {
+    margin-bottom: 0.75rem;
+  }
+  .exp-panel--keyboard .exp-panel-body {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 0.75rem 0.75rem;
+    overflow-x: auto;
+  }
+
+  /* ── Controls bar ────────────────────────────────────────────── */
+  .exp-controls {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    padding: 0.7rem 1.1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: center;
+  }
+  .exp-ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .exp-ctrl-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .exp-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────────── */
+  .exp-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    font-family: var(--font-main);
+    line-height: 1.4;
+  }
+  .exp-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .exp-btn--prl {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    min-width: 32px;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  .exp-btn--prl:hover {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border-color: var(--accent);
+  }
+  .exp-btn--sound {
+    border-style: dashed;
+    background: transparent;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .exp-btn--sound-on {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    border-style: solid;
+  }
+
+  /* ── Selects ─────────────────────────────────────────────────── */
+  .exp-select {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-main);
+  }
+
+  /* ── Responsive ──────────────────────────────────────────────── */
+  @media (max-width: 860px) {
+    .exp-top {
+      flex-direction: column;
+    }
+    .exp-panel--chord-wheel {
+      width: 100%;
+    }
+    .exp-panel--chord-wheel .exp-panel-body {
+      height: 380px;
+    }
+    #exp-chord-wheel-container {
+      width: 340px;
+      height: 340px;
+    }
+    .exp-panel--tonnetz .exp-panel-body {
+      height: 380px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="exp-page">
+
+  <h1>Tonnetz Explorer</h1>
+  <p class="exp-subtitle">
+    Click any chord on the Tonnetz or wheel — all panels stay in sync.
+    Use P, R, L to navigate harmonic transforms. Enable sound to hear each chord.
+  </p>
+
+  <!-- Status strip -->
+  <div class="exp-status">
+    <span class="exp-status-label">Chord</span>
+    <div class="exp-chord-badge" id="exp-chord-badge">C major</div>
+    <div class="exp-transform-badge" id="exp-transform-badge">P →</div>
+  </div>
+
+  <!-- Top row: Tonnetz (left) + Chord Wheel (right) -->
+  <div class="exp-top">
+
+    <div class="exp-panel exp-panel--tonnetz">
+      <div class="exp-panel-header">Tonnetz Neighborhood</div>
+      <div class="exp-panel-body">
+        <div id="exp-tonnetz-container"></div>
+      </div>
+    </div>
+
+    <div class="exp-panel exp-panel--chord-wheel">
+      <div class="exp-panel-header">Chord Wheel</div>
+      <div class="exp-panel-body">
+        <div id="exp-chord-wheel-container"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Keyboard (full width) -->
+  <div class="exp-panel exp-panel--keyboard">
+    <div class="exp-panel-header">Keyboard</div>
+    <div class="exp-panel-body">
+      <div id="exp-keyboard-container"></div>
+    </div>
+  </div>
+
+  <!-- Controls bar -->
+  <div class="exp-controls">
+
+    <!-- PLR transforms -->
+    <div class="exp-ctrl-group">
+      <span class="exp-ctrl-label">Transform</span>
+      <button class="exp-btn exp-btn--prl" id="btn-P" title="Parallel — swap major/minor, keep root">P</button>
+      <button class="exp-btn exp-btn--prl" id="btn-R" title="Relative — share two notes, move by whole step">R</button>
+      <button class="exp-btn exp-btn--prl" id="btn-L" title="Leading-tone — share two notes, move by semitone">L</button>
+    </div>
+
+    <div class="exp-divider"></div>
+
+    <!-- Depth selector -->
+    <div class="exp-ctrl-group">
+      <label class="exp-ctrl-label" for="exp-depth">Depth</label>
+      <select class="exp-select" id="exp-depth" title="How many PLR hops to show on the Tonnetz">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </div>
+
+    <div class="exp-divider"></div>
+
+    <!-- Key selector -->
+    <div class="exp-ctrl-group">
+      <label class="exp-ctrl-label" for="exp-key">Key</label>
+      <select class="exp-select" id="exp-key" title="Set the diatonic key context on the chord wheel">
+        <option value="0">C</option>
+        <option value="1">G</option>
+        <option value="2">D</option>
+        <option value="3">A</option>
+        <option value="4">E</option>
+        <option value="5">B</option>
+        <option value="6">F♯</option>
+        <option value="7">D♭</option>
+        <option value="8">A♭</option>
+        <option value="9">E♭</option>
+        <option value="10">B♭</option>
+        <option value="11">F</option>
+      </select>
+    </div>
+
+    <div class="exp-divider"></div>
+
+    <!-- Sound toggle -->
+    <div class="exp-ctrl-group">
+      <button class="exp-btn exp-btn--sound" id="btn-audio">▶ Enable Sound</button>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { HarmonyState }
+    from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { TRANSFORMS, triadNotes, noteToPC }
+    from '{{ url_for("static", filename="shared/transforms.js") }}';
+  import { TonnetzNeighborhood }
+    from '{{ url_for("static", filename="shared/tonnetz-neighborhood.js") }}';
+  import { KeyboardView }
+    from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+  import { ChordWheel, COF_MAJOR }
+    from '{{ url_for("static", filename="js/chord-wheel.js") }}';
+
+  // Expose for console debugging
+  window.HarmonyState        = HarmonyState;
+  window.TonnetzNeighborhood = TonnetzNeighborhood;
+
+  // ════════════════════════════════════════════════════════════════
+  // CHORD TRACKING
+  // ════════════════════════════════════════════════════════════════
+
+  let currentRoot    = 'C';
+  let currentQuality = 'major';
+
+  // ════════════════════════════════════════════════════════════════
+  // AUDIO
+  // Same pattern as chord-wheel-test.html and relative-key-trainer.js:
+  //   Step 1: "Enable Sound" click → Tone.start() in the gesture handler
+  //   Step 2: ensureAudio() loads Salamander via KeyboardView.getSampler()
+  //   Step 3: playChord() calls ensureAudio() then triggerAttackRelease()
+  // ════════════════════════════════════════════════════════════════
+
+  let sampler    = null;
+  let audioReady = false;
+  const BPM      = 80;
+  const BEAT     = 60 / BPM;
+
+  /** Belt-and-suspenders Tone.js fallback loader (mirrors intro-audio.js). */
+  let _toneLoadPromise = null;
+  async function loadToneIfNeeded() {
+    if (window.Tone) return;
+    if (_toneLoadPromise) return _toneLoadPromise;
+    _toneLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+      script.onload  = resolve;
+      script.onerror = () => reject(new Error('Tone.js failed to load'));
+      document.head.appendChild(script);
+    });
+    return _toneLoadPromise;
+  }
+
+  async function ensureAudio() {
+    if (sampler) return;
+    sampler = await KeyboardView.getSampler();
+  }
+
+  /** Build a voiced triad ascending from octave 4. Mirrors chord-wheel-test. */
+  function chordVoicing(root, quality) {
+    const notes = triadNotes(root, quality);
+    if (!notes) return [];
+    let oct = 4, prevPC = -1;
+    return notes.map(n => {
+      const ascii = n.replace(/♯/g, '#').replace(/♭/g, 'b');
+      const pc = noteToPC(n);
+      if (prevPC >= 0 && pc <= prevPC) oct++;
+      prevPC = pc;
+      return `${ascii}${oct}`;
+    });
+  }
+
+  async function playChord(root, quality) {
+    if (!audioReady) return;
+    try { if (sampler) sampler.releaseAll(); } catch (_) {}
+    await ensureAudio();
+    if (!sampler) return;
+    const voicing = chordVoicing(root, quality);
+    if (!voicing.length) return;
+    const velocity = 0.55 + Math.random() * 0.3;
+    sampler.volume.value = Math.random() * 4 - 2;
+    sampler.triggerAttackRelease(voicing, BEAT * 0.9, Tone.now(), velocity);
+  }
+
+  // ── Audio enable / mute button ────────────────────────────────────
+  const audioBtn = document.getElementById('btn-audio');
+
+  audioBtn.addEventListener('click', async () => {
+    if (audioReady) {
+      // Second click = mute
+      audioReady = false;
+      try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      audioBtn.textContent = '▶ Enable Sound';
+      audioBtn.className = 'exp-btn exp-btn--sound';
+      return;
+    }
+
+    audioBtn.disabled = true;
+    audioBtn.textContent = 'Loading piano…';
+
+    try {
+      await loadToneIfNeeded();
+      await Tone.start();               // AudioContext — must be a direct user gesture
+      await ensureAudio();              // load Salamander via KeyboardView
+      audioReady = true;
+      audioBtn.disabled = false;
+      audioBtn.textContent = '♪ Sound on';
+      audioBtn.className = 'exp-btn exp-btn--sound-on';
+      // Play the currently selected chord right away
+      playChord(currentRoot, currentQuality).catch(() => {});
+    } catch (err) {
+      audioBtn.disabled = false;
+      audioBtn.textContent = '▶ Enable Sound (retry)';
+      audioBtn.className = 'exp-btn exp-btn--sound';
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // INITIALIZE PANNELS
+  // ════════════════════════════════════════════════════════════════
+
+  // ── Tonnetz Neighborhood ─────────────────────────────────────────
+  TonnetzNeighborhood.init('exp-tonnetz-container', {
+    interactive: true,
+    onTriadClick({ root, quality }) {
+      // Clicking a Tonnetz triangle selects that chord → updates all panels
+      HarmonyState.setTriad(root, quality);
+    },
+    onTransformClick({ type, from }) {
+      // Clicking a PLR arrow label applies that transform
+      HarmonyState.setTransform(type, from.root, from.quality);
+    },
+  });
+
+  // ── Chord Wheel ──────────────────────────────────────────────────
+  // ChordWheel auto-subscribes to HarmonyState and its click handlers
+  // call HarmonyState.setTriad() / HarmonyState.update({ currentKey })
+  // internally — no extra wiring needed here.
+  const wheel = new ChordWheel('#exp-chord-wheel-container', { initialKey: 0 });
+  window.wheel = wheel;
+
+  // ── Keyboard View ────────────────────────────────────────────────
+  // Subscribes to HarmonyState for highlight display ('both' mode also
+  // allows clicks).  onNotePlay publishes back to HarmonyState so clicking
+  // a key re-centers the Tonnetz and chord wheel on that chord.
+
+  // Circle-of-fifths pitch-class tables (mirrors chord-wheel.js constants).
+  const _COF_MAJOR_PC = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+  const _COF_MINOR_PC = [9, 4, 11, 6, 1, 8, 3, 10, 5, 0, 7, 2];
+
+  /**
+   * Guess major vs minor quality for a note PC given the current key index.
+   * Diatonic major roots (IV, I, V) → major; diatonic minor roots (ii, vi, iii) → minor.
+   * Non-diatonic notes default to major.
+   */
+  function _guessQuality(pc, keyIdx) {
+    const prev = (keyIdx + 11) % 12;
+    const next = (keyIdx + 1)  % 12;
+    if ([_COF_MAJOR_PC[prev], _COF_MAJOR_PC[keyIdx], _COF_MAJOR_PC[next]].includes(pc)) return 'major';
+    if ([_COF_MINOR_PC[prev], _COF_MINOR_PC[keyIdx], _COF_MINOR_PC[next]].includes(pc)) return 'minor';
+    return 'major';
+  }
+
+  KeyboardView.init('exp-keyboard-container', {
+    showLabels: true,
+    mode: 'both',          // display HarmonyState highlights AND allow key clicks
+    onNotePlay(noteName, _octave) {
+      // Normalize Unicode sharps/flats before PC lookup
+      const ascii = noteName.replace(/♯/g, '#').replace(/♭/g, 'b');
+      const pc    = noteToPC(ascii);
+      const state = HarmonyState.get();
+      const keyIdx = typeof state.currentKey === 'number' ? state.currentKey : 0;
+      const quality = _guessQuality(pc, keyIdx);
+      HarmonyState.setTriad(noteName, quality);
+    },
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // CONTROLS
+  // ════════════════════════════════════════════════════════════════
+
+  // ── PLR transform buttons ────────────────────────────────────────
+  ['P', 'R', 'L'].forEach(type => {
+    document.getElementById(`btn-${type}`).addEventListener('click', () => {
+      HarmonyState.setTransform(type, currentRoot, currentQuality);
+    });
+  });
+
+  // ── Depth selector ───────────────────────────────────────────────
+  document.getElementById('exp-depth').addEventListener('change', e => {
+    HarmonyState.update({ tonnetzDepth: parseInt(e.target.value, 10) });
+  });
+
+  // ── Key selector ─────────────────────────────────────────────────
+  document.getElementById('exp-key').addEventListener('change', e => {
+    const idx = parseInt(e.target.value, 10);
+    // Update the key context on the chord wheel, then play the tonic
+    HarmonyState.update({ currentKey: idx });
+    HarmonyState.setTriad(COF_MAJOR[idx], 'major');
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // HARMONYSTATE SUBSCRIBER — UI sync + audio playback
+  // All chord changes (Tonnetz click, wheel click, PLR, controls)
+  // flow through HarmonyState and land here.
+  // ════════════════════════════════════════════════════════════════
+
+  let _lastRoot = null, _lastQuality = null;
+
+  const chordBadge     = document.getElementById('exp-chord-badge');
+  const transformBadge = document.getElementById('exp-transform-badge');
+  const keySelect      = document.getElementById('exp-key');
+
+  HarmonyState.on(state => {
+    // ── Resolve primary triad ──────────────────────────────────────
+    const primary = Array.isArray(state.activeTriads)
+      ? state.activeTriads.find(t => t.role === 'primary')
+      : null;
+
+    if (primary) {
+      currentRoot    = primary.root;
+      currentQuality = primary.quality;
+
+      // Update chord badge
+      const qualLabel = primary.quality === 'major' ? 'major' : 'minor';
+      chordBadge.textContent = `${primary.root} ${qualLabel}`;
+
+      // Play audio on chord change
+      if (primary.root !== _lastRoot || primary.quality !== _lastQuality) {
+        _lastRoot    = primary.root;
+        _lastQuality = primary.quality;
+        playChord(primary.root, primary.quality).catch(() => {});
+      }
+    }
+
+    // ── Show transform label if a PLR move just happened ──────────
+    if (state.activeTransform) {
+      const t = state.activeTransform;
+      transformBadge.textContent = `${t.type}: ${t.from.root} ${t.from.quality[0]} → ${t.to.root} ${t.to.quality[0]}`;
+      transformBadge.classList.add('exp-transform-badge--visible');
+    } else {
+      transformBadge.classList.remove('exp-transform-badge--visible');
+    }
+
+    // ── Sync key dropdown from state.currentKey ────────────────────
+    if (typeof state.currentKey === 'number' && state.currentKey >= 0) {
+      if (keySelect.value !== String(state.currentKey)) {
+        keySelect.value = String(state.currentKey);
+      }
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // INITIAL STATE — C major at depth 2, key of C
+  // Use batch so the Tonnetz only rebuilds once.
+  // ════════════════════════════════════════════════════════════════
+
+  HarmonyState.batch(state => {
+    state.tonnetzDepth = 2;
+    state.currentKey   = 0;
+  });
+  HarmonyState.setTriad('C', 'major');
+</script>
+{% endblock %}

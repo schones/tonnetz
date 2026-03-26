@@ -73,15 +73,53 @@
 
 <body>
   <nav style="display:flex; align-items:center; justify-content:space-between;
-              padding:0.75rem 1.5rem; border-bottom:1px solid var(--border);">
-    <a href="/" style="text-decoration:none;">
+              padding:0.75rem 1.5rem; border-bottom:1px solid var(--border); gap:1rem;">
+    <a href="/" style="text-decoration:none; flex-shrink:0;">
       <img id="site-logo"
            src="{{ url_for('static', filename='shared/tonnetz-logo-light.svg') }}"
            alt="Tonnetz" height="44" style="display:block;">
     </a>
+    <div style="display:flex; align-items:center; gap:0.25rem; flex-wrap:wrap;">
+      <a href="/explorer"
+         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
+                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
+                transition:border-color 0.12s, background 0.12s;"
+         onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
+         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
+        Explorer
+      </a>
+      <a href="/games/relative-key-trainer"
+         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
+                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
+                transition:border-color 0.12s, background 0.12s;"
+         onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
+         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
+        Chord Walks
+      </a>
+      <a href="/harmony"
+         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
+                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
+                transition:border-color 0.12s, background 0.12s;"
+         onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
+         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
+        Harmony Trainer
+      </a>
+      <a href="/intro"
+         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
+                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
+                transition:border-color 0.12s, background 0.12s;"
+         onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
+         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
+        Start Here
+      </a>
+    </div>
     <button id="theme-toggle" aria-label="Toggle dark mode"
             style="background:none;border:none;cursor:pointer;
-                   font-size:20px;padding:4px 8px;">🌙</button>
+                   font-size:20px;padding:4px 8px; flex-shrink:0;">🌙</button>
   </nav>
 
   {% block content %}{% endblock %}
