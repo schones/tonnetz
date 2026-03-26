@@ -59,20 +59,24 @@ A circular arrangement of all 12 pitch classes in circle-of-fifths order.
 
 **Existing component:** None — new component. Consider `note-wheel.js`.
 
-### 4. Chord Wheel
+### 4. Chord Wheel (Dual-ring diatonic arc)
 
-A circle-of-fifths-based chord reference showing diatonic chord relationships within a key. Inspired by the Jim Fleser Chord Wheel concept, but with our own original design.
+A dual-ring circle-of-fifths display that highlights the diatonic "window" for the selected key. Chosen design: **Approach 3 (Highlighted Arc)** from prototyping.
 
-- **Outer ring** — All 12 keys arranged in circle-of-fifths order.
-- **Inner rings** — For the currently selected key, show the diatonic chords by function:
-  - Ring 1 (outermost): Key roots (circle of fifths)
-  - Ring 2: Diatonic triads (I, ii, iii, IV, V, vi, vii°) with quality indicated by color
-  - Ring 3: Common chord tones / extensions (optional, for advanced lens)
-- **Rotatable key selector** — Clicking a key on the outer ring rotates the wheel to center on that key, updating the diatonic chord display.
-- **Current chord highlight** — The currently active chord is highlighted in its position within the key context, showing its Roman numeral function.
-- **Functional context** — When a chord is selected on any panel, the chord wheel shows where it lives functionally: "This A minor chord is the vi in C major, the ii in G major, the iii in F major..."
+**Design concept:** Both rings are always the full circle of fifths. Selecting a key highlights the contiguous arc of 7 diatonic chords — visually teaching that diatonic harmony is a *sliding window* on the circle of fifths.
 
-**Existing component:** None — new component. Consider `chord-wheel.js`. This is the most design-intensive new panel.
+- **Outer ring** — All 12 major keys arranged in circle-of-fifths order. Diatonic major chords (I, IV, V) are highlighted in blue; non-diatonic keys are dimmed. The selected key is accented in purple.
+- **Inner ring** — All 12 relative minor keys in circle-of-fifths order. Diatonic minor chords (ii, iii, vi) are highlighted in coral/warm; non-diatonic minors are dimmed.
+- **Diatonic arc shading** — A subtle background arc highlights the contiguous diatonic region on each ring, reinforcing the "window" concept.
+- **Roman numeral labels** — Diatonic chords display their function (I, ii, iii, IV, V, vi) adjacent to the node.
+- **Relative key connections** — Lines between outer and inner rings connect relative major/minor pairs when both are diatonic.
+- **Clickable key selection** — Clicking any key on either ring re-centers the diatonic window on that key, updating all panels.
+- **Current chord highlight** — When a chord is selected on any panel, the chord wheel highlights it in its diatonic context.
+- **Functional context** — When a chord is selected, the wheel can show where it functions across multiple keys (e.g., "Am is vi in C, ii in G, iii in F").
+
+**Existing component:** None — new component. Consider `chord-wheel.js`.
+
+**Note on Note Wheel consolidation:** The chord wheel's dual-ring design inherently shows all 12 pitch classes in circle-of-fifths order. Consider whether the Note Wheel (panel 3) is still needed as a separate component, or whether the chord wheel subsumes its functionality. If both are kept, ensure they show complementary information (note wheel = individual pitch highlighting, chord wheel = chord/key context).
 
 ---
 
@@ -203,7 +207,7 @@ The intro module can be restructured as a progressive reveal of the Explorer:
 ## Decisions (Resolved)
 
 1. **Tonnetz orientation** — Settled. See "Orientation (CANONICAL)" in the Tonnetz Neighborhood panel spec above. Horizontal = P5, up-right = M3, down-right = m3, major = △, minor = ▽.
-2. **Chord wheel design** — Will prototype multiple visual approaches (concentric rings, segmented pie, network graph) before committing to a final design.
+2. **Chord wheel design** — Settled. **Approach 3: Dual-ring with diatonic arc.** Both rings show the full circle of fifths (outer = major, inner = relative minor). Selecting a key highlights the diatonic arc — the 7 contiguous chords belonging to that key's scale. This visually teaches that diatonic harmony is a sliding window on the circle of fifths. See prototype in chat history for reference.
 3. **Seventh chords** — Punted. The Explorer will be triadic for now. Seventh chord support can be revisited as a future enhancement once the core triadic tool is solid.
 4. **Key detection** — Manual key selection for now. Auto-detection deferred until MIDI input implementation (Phase 4 `NoteInputProvider`), at which point real-time key detection becomes more natural and useful.
 5. **Navigation placement** — Top-level tool, alongside Harmony Trainer, Chord Walks, etc. Can consolidate/reorganize the nav later.
