@@ -1,8 +1,8 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-03-23
+**Last updated:** 2026-03-25
 **Branch:** `education-layer`
-**Last commit:** 2ca7076
+**Last commit:** d9fbfa2
 
 
 
@@ -44,7 +44,7 @@
 - Dynamic Tone.js loader (self-contained, no template changes needed)
 
 ### In Progress
-- Chapter 4: The Tonnetz (not started)
+- Chapter 4: The Tonnetz - started but will need to be udpated to exploit the Tonnetz Explorer
 - Chapter 5: Transforms (not started)
 
 ### Architecture Notes
@@ -101,6 +101,20 @@ and effect tuning deferred — will revisit before launch.
  - JUST GETTING STARTED
 
 ---
+## Recent Changes
+- Tonnetz Explorer added as top-level tool at /explorer
+- New component: chord-wheel.js (dual-ring circle of fifths with diatonic arc highlighting)
+- Tonnetz neighborhood now has chord-quality coloring (blue=major, coral=minor)
+- All three Explorer panels (Tonnetz, Chord Wheel, Keyboard) synchronized via HarmonyState pub/sub
+- Audio playback wired through existing music-engine.js / Tone.js / Salamander stack
+- Canonical Tonnetz orientation documented: horizontal=P5, up-right=M3, down-right=m3, major=△, minor=▽
+- New spec: docs/tonnetz-explorer-spec.md
+
+## Current State
+- Intro module Chapter 4 built but paused pending Explorer component stabilization
+- Tonnetz Explorer functional with three synchronized panels
+- Chord wheel test page at /chord-wheel-test (can be removed later)
+
 
 ## Not Started
 
