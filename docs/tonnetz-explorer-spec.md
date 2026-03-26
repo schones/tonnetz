@@ -1,0 +1,219 @@
+# Tonnetz Explorer — Specification
+
+## Overview
+
+The Tonnetz Explorer is a standalone interactive tool that synchronizes four music theory visualizations into a single unified view. Users can interact with any panel — click a note, select a chord, apply a transform — and all panels update in concert.
+
+### Strategic Role
+
+The Explorer serves three purposes:
+
+1. **Standalone tool** — A "Tonnetz Playground" where users freely explore notes, chords, and harmonic relationships across multiple visual representations simultaneously.
+2. **Component showcase / ground truth** — The canonical reference implementation of all shared visualization components. If the Explorer looks right, every game that draws from the same components inherits correctness.
+3. **Foundation for the intro module** — Phase 5 (Meet the Tonnetz) can be structured as a guided tour that progressively reveals each Explorer panel chapter by chapter, culminating in the full Explorer as the "graduation" tool.
+
+---
+
+## Panels
+
+### 1. Tonnetz Neighborhood
+
+The primary visualization. A hexagonal lattice showing the local region around the current chord.
+
+- **Depth selector** — Default: 2. Range: 1–4. Controls how many hops from the current chord are visible.
+  - Depth 1: Current triad + 6 immediate neighbors
+  - Depth 2: Two hops out — enough to see PLR chains and relative/parallel relationships
+  - Depth 3+: For advanced users exploring longer transform chains
+- **Chord coloring** — Major triads and minor triads rendered in distinct colors (e.g., warm for major, cool for minor — exact palette TBD, should match platform accent color system).
+- **PRL arrows** — Transform arrows displayed on the lattice edges showing available P, R, and L operations from the current chord. These are a distinctive feature of our platform and should be present uniformly.
+- **Node interaction** — Clicking a node selects that note. Clicking a triangle selects that chord.
+- **Orientation (CANONICAL — applies platform-wide):**
+  - Horizontal axis: **Perfect Fifths** (7 semitones, increasing to the right)
+  - Diagonal up-right: **Major Thirds** (4 semitones)
+  - Diagonal down-right: **Minor Thirds** (3 semitones)
+  - Major triads form upward-pointing triangles (△)
+  - Minor triads form downward-pointing triangles (▽)
+  - This orientation is the platform standard. All games, tools, and the intro module must match it.
+
+**Existing component:** `tonnetz-neighborhood.js` — may need enhancement for chord-quality coloring and click-to-select interactions.
+
+### 2. Keyboard
+
+A piano keyboard view synchronized with the current harmonic state.
+
+- **Highlighted chord tones** — Active chord tones highlighted in the chord's color.
+- **Clickable** — Clicking a key adds/removes a note from the selection, triggering chord detection across all panels.
+- **Range** — 2 octaves centered on the current chord's register (scrollable or transposable).
+- **Note labels** — Optional toggle for note names on keys.
+
+**Existing component:** `keyboard-view.js` — already functional in Chord Walks. May need click-to-select enhancement.
+
+### 3. Note Wheel (Circle of Fifths)
+
+A circular arrangement of all 12 pitch classes in circle-of-fifths order.
+
+- **Highlighted active notes** — Pitch classes in the current chord are highlighted.
+- **Key region shading** — Optional: shade the arc of the current key's diatonic notes (7 consecutive notes on the circle of fifths).
+- **Clickable** — Clicking a note on the wheel selects it, updating all panels.
+- **Visual design** — Clean circular layout. Consider concentric rings: outer ring = note names, inner region available for key/scale shading.
+
+**Existing component:** None — new component. Consider `note-wheel.js`.
+
+### 4. Chord Wheel
+
+A circle-of-fifths-based chord reference showing diatonic chord relationships within a key. Inspired by the Jim Fleser Chord Wheel concept, but with our own original design.
+
+- **Outer ring** — All 12 keys arranged in circle-of-fifths order.
+- **Inner rings** — For the currently selected key, show the diatonic chords by function:
+  - Ring 1 (outermost): Key roots (circle of fifths)
+  - Ring 2: Diatonic triads (I, ii, iii, IV, V, vi, vii°) with quality indicated by color
+  - Ring 3: Common chord tones / extensions (optional, for advanced lens)
+- **Rotatable key selector** — Clicking a key on the outer ring rotates the wheel to center on that key, updating the diatonic chord display.
+- **Current chord highlight** — The currently active chord is highlighted in its position within the key context, showing its Roman numeral function.
+- **Functional context** — When a chord is selected on any panel, the chord wheel shows where it lives functionally: "This A minor chord is the vi in C major, the ii in G major, the iii in F major..."
+
+**Existing component:** None — new component. Consider `chord-wheel.js`. This is the most design-intensive new panel.
+
+---
+
+## Interaction Model
+
+### HarmonyState as Central Hub
+
+All four panels communicate through the existing `HarmonyState` pub/sub system. The flow:
+
+```
+User clicks anywhere (keyboard, Tonnetz node, wheel)
+  → Event dispatched to HarmonyState
+    → HarmonyState updates current state (active notes, detected chord, current key)
+      → All subscribed panels re-render
+```
+
+### State Properties
+
+HarmonyState should track (extending current implementation as needed):
+
+- `activeNotes` — Set of currently active pitch classes
+- `currentChord` — Detected chord object: `{ root, quality, name, notes }`
+- `currentKey` — Currently selected key context (for chord wheel functional analysis)
+- `previousChord` — For displaying the most recent transform (PRL arrow context)
+- `transform` — The PLR operation that moved from `previousChord` to `currentChord` (if applicable)
+
+### Interaction Modes
+
+1. **Note mode** — User clicks individual notes. Chord detection runs automatically. If 3+ notes form a recognized chord, all panels highlight accordingly.
+2. **Chord mode** — User clicks a chord directly (triangle on Tonnetz, chord on wheel). All notes populate automatically.
+3. **Transform mode** — User clicks a PRL button or arrow. The current chord transforms, and the new chord propagates to all panels. The Tonnetz neighborhood animates/transitions to re-center on the new chord.
+
+---
+
+## Audio Integration
+
+- **Chord playback** — Selecting a chord triggers audio playback via the existing `music-engine.js` / Tone.js / Salamander sampler stack.
+- **Arpeggiate option** — Toggle to arpeggiate chord tones on selection (hear the notes individually, then together).
+- **Sustained mode** — Notes hold until explicitly released, allowing exploration of extensions (add a 7th, etc.).
+- **Mute toggle** — For silent exploration.
+
+---
+
+## Layout
+
+### Desktop (primary)
+
+```
+┌─────────────────────────────────────────────────┐
+│                 Tonnetz Explorer                  │
+├──────────────────────┬──────────────────────────┤
+│                      │    Note        Chord      │
+│   Tonnetz            │    Wheel       Wheel      │
+│   Neighborhood       │    ○           ○          │
+│                      │                           │
+├──────────────────────┴──────────────────────────┤
+│              Keyboard                            │
+├──────────────────────────────────────────────────┤
+│  [P] [R] [L]    Depth: [2 ▾]    Key: [C ▾]     │
+│  ♪ Sound [on]   Arpeggiate [off]                │
+└─────────────────────────────────────────────────┘
+```
+
+- Tonnetz neighborhood gets the largest area (left/top).
+- Note wheel and chord wheel sit side by side (right/top).
+- Keyboard spans the full width below.
+- Controls bar at the bottom: PRL buttons, depth selector, key selector, audio toggles.
+
+### Mobile
+
+Stack vertically: Tonnetz → Wheels (side by side, smaller) → Keyboard → Controls. Consider a tab/swipe interface for panels if screen real estate is too tight.
+
+---
+
+## Component Reuse Plan
+
+| Component | Status | Needed Changes |
+|---|---|---|
+| `tonnetz-neighborhood.js` | Exists | Add chord-quality coloring, click-to-select chord/note, ensure orientation matches Chord Walks |
+| `keyboard-view.js` | Exists | Add click-to-select note interaction |
+| `harmony-state.js` | Exists | Extend with `currentKey`, `previousChord`, `transform` properties |
+| `note-wheel.js` | **New** | Circle of fifths note display with highlighting |
+| `chord-wheel.js` | **New** | Diatonic chord rings, key rotation, functional analysis |
+| `music-engine.js` | Exists | Arpeggiate mode (minor addition) |
+| `transforms.js` | Exists | No changes expected |
+
+---
+
+## Relationship to Other Games
+
+Once the Explorer and its components are solid, other games become thin wrappers:
+
+| Game | Explorer Panels Used | Additional Game Logic |
+|---|---|---|
+| Chord Walks | Tonnetz + Keyboard + PRL | Tier system, scoring, learn/practice/test flow |
+| Harmony Trainer | Tonnetz + Keyboard | Chord progression exercises, functional analysis |
+| Relative Key Trainer | Tonnetz + Keyboard | Relative key identification challenges |
+| Intro Module (Phase 5) | All — revealed progressively | Chapter-based guided narrative |
+| Puzzle Paths (Phase 10) | Tonnetz + PRL | Pathfinding game, progression library |
+
+---
+
+## Relationship to Intro Module (Phase 5)
+
+The intro module can be restructured as a progressive reveal of the Explorer:
+
+- **Chapter 1–3** (existing): Musical foundations, intervals, chords — no Explorer panels yet.
+- **Chapter 4**: "Meet the Tonnetz" — introduces the Tonnetz neighborhood panel alone.
+- **Chapter 5**: "The Keyboard Connection" — adds the keyboard panel, shows how Tonnetz and keyboard are synchronized.
+- **Chapter 6**: "The Circle of Fifths" — introduces the note wheel. Shows how the same notes appear in different visual contexts.
+- **Chapter 7**: "Chords in Context" — introduces the chord wheel. Shows functional harmony (I, IV, V, vi).
+- **Chapter 8**: "Transforms" — introduces PRL with arrows on the Tonnetz. All four panels now active.
+- **Graduation**: Full Explorer unlocked as a standalone tool.
+
+*Note: Chapter structure is illustrative — actual intro module chapters may differ. The key idea is progressive panel reveal.*
+
+---
+
+## Design Principles
+
+1. **Internal consistency above all** — The Tonnetz orientation, coloring scheme, and PRL arrow style must be identical everywhere. The Explorer is the ground truth.
+2. **Depth as progressive disclosure** — Default to simplicity (depth 2, basic chord detection). Advanced features (key analysis, extensions, arpeggiation) available but not in your face.
+3. **Every click makes a sound** — Unless muted, interactions produce audio feedback. The tool should feel like an instrument.
+4. **Lens system compatibility** — Content and labeling should respect the user's chosen lens (playful/musician/theorist/math) from the existing profile system. The chord wheel might show "happy chord" vs "I" vs "tonic triad" depending on lens.
+
+---
+
+## Decisions (Resolved)
+
+1. **Tonnetz orientation** — Settled. See "Orientation (CANONICAL)" in the Tonnetz Neighborhood panel spec above. Horizontal = P5, up-right = M3, down-right = m3, major = △, minor = ▽.
+2. **Chord wheel design** — Will prototype multiple visual approaches (concentric rings, segmented pie, network graph) before committing to a final design.
+3. **Seventh chords** — Punted. The Explorer will be triadic for now. Seventh chord support can be revisited as a future enhancement once the core triadic tool is solid.
+4. **Key detection** — Manual key selection for now. Auto-detection deferred until MIDI input implementation (Phase 4 `NoteInputProvider`), at which point real-time key detection becomes more natural and useful.
+5. **Navigation placement** — Top-level tool, alongside Harmony Trainer, Chord Walks, etc. Can consolidate/reorganize the nav later.
+6. **Build priority** — **Build now, before continuing the intro module.** The Explorer establishes the canonical components and visual ground truth. The intro module (Phase 5) should be built on top of these finalized components, not the other way around. Current intro module work pauses until the Explorer is solid.
+
+---
+
+## Technical Notes
+
+- All new components should follow the existing pattern: ES6 modules, SVG-based rendering, event-driven via HarmonyState.
+- The chord wheel will likely need a chord-in-key lookup utility — consider `diatonic.js` or extending `transforms.js`.
+- Circle rendering (note wheel, chord wheel) can share a base `circle-view.js` component for the radial layout math.
+- Audio should use the existing Salamander piano sampler via `music-engine.js` — no new audio dependencies.
