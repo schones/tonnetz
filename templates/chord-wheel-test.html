@@ -1,0 +1,571 @@
+{% extends "base.html" %}
+{% block title %}Chord Wheel — Isolation Test{% endblock %}
+
+{% block head %}
+<!-- Tone.js — must be in <head> so window.Tone is defined before any module runs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<style>
+  /* ── Page layout ─────────────────────────────── */
+  .cw-page {
+    max-width: 1100px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 3rem;
+  }
+
+  .cw-page h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+  }
+
+  .cw-page .cw-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Main content: wheel + controls side-by-side ─ */
+  .cw-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  /* ── Chord Wheel container ───────────────────── */
+  #chord-wheel-container {
+    flex: 0 0 auto;
+    width: 510px;   /* 1.5× original 340px */
+    height: 510px;  /* 1.5× original 340px */
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: visible;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Chord Wheel label overrides (this page only) ──────────────
+     chord-wheel.js injects its own <style> dynamically, so we use
+     an ID-prefixed selector (higher specificity) to win the cascade
+     without touching the shared component.
+     Base sizes in chord-wheel.js: .cw-label = 10px, .cw-roman = 8px
+  ─────────────────────────────────────────────────────────────── */
+  #chord-wheel-container .cw-label {
+    font-size: 13px;   /* was 10px — easier to read at a glance */
+  }
+  #chord-wheel-container .cw-roman {
+    font-size: 10px;   /* was 8px */
+  }
+
+  /* ── Controls panel ──────────────────────────── */
+  .cw-controls {
+    flex: 1 1 280px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .cw-section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+  }
+
+  /* ── Button rows ────────────────────────────── */
+  .cw-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .cw-btn {
+    padding: 5px 11px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    font-family: var(--font-main);
+  }
+
+  .cw-btn:hover {
+    border-color: var(--accent);
+  }
+
+  .cw-btn--active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .cw-btn--chord {
+    background: var(--bg-card);
+  }
+
+  .cw-btn--chord-minor {
+    background: var(--bg-card);
+    border-color: #e64a19;
+    color: #e64a19;
+  }
+
+  .cw-btn--chord-minor:hover {
+    background: #e64a19;
+    color: #fff;
+  }
+
+  .cw-btn--transform {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+
+  .cw-btn--control {
+    background: transparent;
+    border-style: dashed;
+  }
+
+  /* ── Key info box ─────────────────────────────── */
+  .cw-key-info {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.83rem;
+  }
+
+  .cw-key-info__title {
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+  }
+
+  .cw-key-info__chords {
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ── Legend ───────────────────────────────────── */
+  .cw-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+  .cw-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .cw-legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Event log ────────────────────────────────── */
+  .cw-log-wrap {
+    margin-top: 1.5rem;
+  }
+
+  #cw-event-log {
+    background: #1a1a2e;
+    color: #a8e6cf;
+    font-family: monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    padding: 10px 14px;
+    border-radius: 8px;
+    height: 130px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cw-page">
+  <h1>Chord Wheel — Isolation Test</h1>
+  <p class="cw-subtitle">
+    Dual-ring circle of fifths. Outer ring = major keys (I IV V in blue, tonic in purple).
+    Inner ring = relative minors (ii iii vi in coral). Click any node to re-center the diatonic window.
+  </p>
+
+  <div class="cw-layout">
+
+    <!-- ── Chord Wheel ─────────────────────────────── -->
+    <div id="chord-wheel-container"></div>
+
+    <!-- ── Controls ───────────────────────────────── -->
+    <div class="cw-controls">
+
+      <!-- Key info summary -->
+      <div class="cw-key-info">
+        <div class="cw-key-info__title" id="key-title">Key of C major</div>
+        <div class="cw-key-info__chords" id="key-chords">
+          I=C &nbsp; ii=Dm &nbsp; iii=Em &nbsp; IV=F &nbsp; V=G &nbsp; vi=Am
+        </div>
+      </div>
+
+      <!-- Major key selector -->
+      <div>
+        <div class="cw-section-label">Select key</div>
+        <div class="cw-row" id="key-buttons">
+          <button class="cw-btn cw-key-btn cw-btn--active" data-index="0"  data-key="C">C</button>
+          <button class="cw-btn cw-key-btn" data-index="1"  data-key="G">G</button>
+          <button class="cw-btn cw-key-btn" data-index="2"  data-key="D">D</button>
+          <button class="cw-btn cw-key-btn" data-index="3"  data-key="A">A</button>
+          <button class="cw-btn cw-key-btn" data-index="4"  data-key="E">E</button>
+          <button class="cw-btn cw-key-btn" data-index="5"  data-key="B">B</button>
+          <button class="cw-btn cw-key-btn" data-index="6"  data-key="F♯">F♯</button>
+          <button class="cw-btn cw-key-btn" data-index="7"  data-key="D♭">D♭</button>
+          <button class="cw-btn cw-key-btn" data-index="8"  data-key="A♭">A♭</button>
+          <button class="cw-btn cw-key-btn" data-index="9"  data-key="E♭">E♭</button>
+          <button class="cw-btn cw-key-btn" data-index="10" data-key="B♭">B♭</button>
+          <button class="cw-btn cw-key-btn" data-index="11" data-key="F">F</button>
+        </div>
+      </div>
+
+      <!-- Active chord (fires HarmonyState.setTriad) -->
+      <div>
+        <div class="cw-section-label">Set active chord</div>
+        <div class="cw-row">
+          <button class="cw-btn cw-btn--chord" data-root="C"   data-q="major">C maj</button>
+          <button class="cw-btn cw-btn--chord-minor" data-root="A" data-q="minor">A min</button>
+          <button class="cw-btn cw-btn--chord" data-root="G"   data-q="major">G maj</button>
+          <button class="cw-btn cw-btn--chord-minor" data-root="E" data-q="minor">E min</button>
+          <button class="cw-btn cw-btn--chord" data-root="F"   data-q="major">F maj</button>
+          <button class="cw-btn cw-btn--chord-minor" data-root="D" data-q="minor">D min</button>
+          <button class="cw-btn cw-btn--chord" data-root="D"   data-q="major">D maj</button>
+          <button class="cw-btn cw-btn--chord-minor" data-root="B" data-q="minor">B min</button>
+        </div>
+      </div>
+
+      <!-- PLR transforms -->
+      <div>
+        <div class="cw-section-label">PLR transform (from current chord)</div>
+        <div class="cw-row">
+          <button class="cw-btn cw-btn--transform" id="btn-P">P — Parallel</button>
+          <button class="cw-btn cw-btn--transform" id="btn-R">R — Relative</button>
+          <button class="cw-btn cw-btn--transform" id="btn-L">L — Leading-tone</button>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div>
+        <div class="cw-section-label">Controls</div>
+        <div class="cw-row">
+          <button class="cw-btn cw-btn--control" id="btn-enable-audio">▶ Enable Audio</button>
+          <button class="cw-btn cw-btn--control" id="btn-reset">Reset state</button>
+          <button class="cw-btn cw-btn--control" id="btn-theme">Toggle dark/light</button>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div>
+        <div class="cw-section-label">Legend</div>
+        <div class="cw-legend">
+          <div class="cw-legend-item">
+            <div class="cw-legend-dot" style="background:#6c63ff; border: 2px solid #5147d6;"></div>
+            <span>Tonic (I)</span>
+          </div>
+          <div class="cw-legend-item">
+            <div class="cw-legend-dot" style="background:#2563eb; border: 2px solid #1d4ed8;"></div>
+            <span>Major diatonic (IV, V)</span>
+          </div>
+          <div class="cw-legend-item">
+            <div class="cw-legend-dot" style="background:#e64a19; border: 2px solid #bf360c;"></div>
+            <span>Minor diatonic (ii, iii, vi)</span>
+          </div>
+          <div class="cw-legend-item">
+            <div class="cw-legend-dot" style="background:var(--bg-card); border: 1px solid var(--border); opacity:0.4;"></div>
+            <span>Non-diatonic (dimmed)</span>
+          </div>
+          <div class="cw-legend-item">
+            <div class="cw-legend-dot" style="background:transparent; border: 3px solid #fbbf24;"></div>
+            <span>Active chord</span>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /controls -->
+  </div> <!-- /layout -->
+
+  <!-- Event log -->
+  <div class="cw-log-wrap">
+    <div class="cw-section-label">Event log</div>
+    <div id="cw-event-log"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { HarmonyState } from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { TRANSFORMS, triadNotes, noteToPC }
+                          from '{{ url_for("static", filename="shared/transforms.js") }}';
+  import { KeyboardView } from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+  import { ChordWheel, COF_MAJOR, COF_MINOR }
+                          from '{{ url_for("static", filename="js/chord-wheel.js") }}';
+
+  // Expose on window for console testing
+  window.HarmonyState = HarmonyState;
+  window.TRANSFORMS   = TRANSFORMS;
+  window.ChordWheel   = ChordWheel;
+
+  // ════════════════════════════════════════════════
+  // AUDIO  (same pattern as Chord Walks / relative-key-trainer.js)
+  //
+  // Step 1: User clicks "Enable Audio" → Tone.start() called directly
+  //         in that click handler (AudioContext user-gesture requirement).
+  // Step 2: ensureAudio() loads the Salamander sampler via KeyboardView.
+  // Step 3: playChord() calls ensureAudio() (no-op if already loaded)
+  //         then fires sampler.triggerAttackRelease().
+  // ════════════════════════════════════════════════
+
+  let sampler   = null;
+  let isPlaying = false;
+  const BPM     = 80;
+  const BEAT    = 60 / BPM;
+
+  /** Belt-and-suspenders: load Tone.js from CDN if window.Tone isn't defined yet.
+   *  The static <script> tag in <head> handles the normal case; this dynamic
+   *  fallback fires only if that tag failed (network blip, cold CDN, etc.).
+   *  Mirrors _ensureToneLoaded() in intro-audio.js.
+   */
+  let _toneLoadPromise = null;
+  async function loadToneIfNeeded() {
+    if (window.Tone) return;
+    if (_toneLoadPromise) return _toneLoadPromise;
+    _toneLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+      script.onload  = resolve;
+      script.onerror = () => reject(new Error('Failed to load Tone.js'));
+      document.head.appendChild(script);
+    });
+    return _toneLoadPromise;
+  }
+
+  /**
+   * Load the Salamander piano sampler via KeyboardView.
+   * Does NOT call Tone.start() — that must happen first in a direct
+   * user-gesture handler (see audio-enable button below).
+   * Mirrors ensureAudio() in relative-key-trainer.js exactly.
+   */
+  async function ensureAudio() {
+    if (sampler) return;
+    sampler = await KeyboardView.getSampler();
+  }
+
+  /**
+   * Build a voiced triad ascending from octave 4.
+   * e.g. chordVoicing("C", "major") → ["C4", "E4", "G4"]
+   * Mirrors chordVoicing() in relative-key-trainer.js.
+   */
+  function chordVoicing(root, quality) {
+    const notes = triadNotes(root, quality);
+    if (!notes) return [];
+    let oct = 4, prevPC = -1;
+    return notes.map(n => {
+      const ascii = n.replace(/♯/g, '#').replace(/♭/g, 'b');
+      const pc = noteToPC(n);
+      if (prevPC >= 0 && pc <= prevPC) oct++;
+      prevPC = pc;
+      return `${ascii}${oct}`;
+    });
+  }
+
+  /**
+   * Play a single triad.  Mirrors playTriadChord() in relative-key-trainer.js.
+   * Silently skips if sampler isn't loaded yet (audio not enabled).
+   */
+  async function playChord(root, quality) {
+    try { if (sampler) sampler.releaseAll(); } catch (_) {}
+    isPlaying = false;
+    await ensureAudio();
+    if (!sampler) return;
+    const voicing = chordVoicing(root, quality);
+    if (!voicing.length) return;
+    isPlaying = true;
+    const velocity = 0.55 + Math.random() * 0.3;
+    sampler.volume.value = Math.random() * 4 - 2;
+    sampler.triggerAttackRelease(voicing, BEAT * 0.9, Tone.now(), velocity);
+    await new Promise(r => setTimeout(r, BEAT * 1000 + 100));
+    isPlaying = false;
+  }
+
+  // ════════════════════════════════════════════════
+  // AUDIO ENABLE BUTTON
+  // Mirrors the start-overlay in relative-key-trainer.html:
+  //   overlay click → await Tone.start() → await ensureAudio() → hide overlay
+  // ════════════════════════════════════════════════
+
+  const audioBtn = document.getElementById('btn-enable-audio');
+
+  audioBtn.addEventListener('click', async () => {
+    audioBtn.disabled  = true;
+    audioBtn.textContent = 'Loading piano…';
+    try {
+      await loadToneIfNeeded();     // ensure window.Tone is defined (static tag may not have loaded)
+      await Tone.start();           // AudioContext activation — must be direct user gesture
+      await ensureAudio();          // load Salamander sampler via KeyboardView
+      audioBtn.textContent = '♪ Audio ready';
+      audioBtn.style.borderColor = 'var(--text-success)';
+      audioBtn.style.color       = 'var(--text-success)';
+      log('Audio ready — piano sampler loaded.');
+    } catch (err) {
+      audioBtn.disabled    = false;
+      audioBtn.textContent = 'Enable Audio (retry)';
+      log('Audio error: ' + err.message);
+    }
+  });
+
+  // ════════════════════════════════════════════════
+  // CHORD WHEEL
+  // ════════════════════════════════════════════════
+
+  const wheel = new ChordWheel('#chord-wheel-container', { initialKey: 0 });
+  window.wheel = wheel;
+
+  // ════════════════════════════════════════════════
+  // KEY INFO PANEL
+  // ════════════════════════════════════════════════
+
+  const keyTitle  = document.getElementById('key-title');
+  const keyChords = document.getElementById('key-chords');
+
+  function getDiatonicInfo(idx) {
+    const prev = ((idx - 1) + 12) % 12;
+    const next  = (idx + 1) % 12;
+    return {
+      I: COF_MAJOR[idx], IV: COF_MAJOR[prev], V: COF_MAJOR[next],
+      ii: COF_MINOR[prev], vi: COF_MINOR[idx], iii: COF_MINOR[next],
+    };
+  }
+
+  function updateKeyInfo(idx) {
+    const d = getDiatonicInfo(idx);
+    keyTitle.textContent = `Key of ${COF_MAJOR[idx]} major`;
+    keyChords.innerHTML =
+      `I=${d.I} &nbsp; ii=${d.ii}m &nbsp; iii=${d.iii}m &nbsp; ` +
+      `IV=${d.IV} &nbsp; V=${d.V} &nbsp; vi=${d.vi}m`;
+  }
+
+  // ════════════════════════════════════════════════
+  // CONTROLS
+  // ════════════════════════════════════════════════
+
+  const keyBtns = document.querySelectorAll('.cw-key-btn');
+
+  function setKeyActive(idx) {
+    keyBtns.forEach(btn =>
+      btn.classList.toggle('cw-btn--active', parseInt(btn.dataset.index, 10) === idx));
+    updateKeyInfo(idx);
+  }
+
+  // Key buttons: update key context and play the tonic chord
+  keyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index, 10);
+      HarmonyState.update({ currentKey: idx });
+      playChord(COF_MAJOR[idx], 'major').catch(() => {});
+      log(`Key: ${COF_MAJOR[idx]} major`);
+    });
+  });
+
+  // Chord buttons → setTriad → HarmonyState subscriber handles audio
+  document.querySelectorAll('[data-root][data-q]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      HarmonyState.setTriad(btn.dataset.root, btn.dataset.q);
+      log(`Chord: ${btn.dataset.root} ${btn.dataset.q}`);
+    });
+  });
+
+  // PLR buttons → setTransform → subscriber handles audio for "to" chord
+  let currentRoot    = 'C';
+  let currentQuality = 'major';
+
+  ['P', 'R', 'L'].forEach(type => {
+    document.getElementById(`btn-${type}`).addEventListener('click', () => {
+      const result = TRANSFORMS[type].apply(currentRoot, currentQuality);
+      HarmonyState.setTransform(type, currentRoot, currentQuality);
+      log(`${type}: ${currentRoot} ${currentQuality} → ${result.root} ${result.quality}`);
+    });
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    try { if (sampler) sampler.releaseAll(); } catch (_) {}
+    isPlaying = false;
+    HarmonyState.reset();
+    log('Reset');
+  });
+
+  document.getElementById('btn-theme').addEventListener('click', () => {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    log(`Theme: ${next}`);
+  });
+
+  // ════════════════════════════════════════════════
+  // HARMONYSTATE SUBSCRIBER
+  // All chord selections (wheel clicks, chord buttons, PLR) route through
+  // setTriad/setTransform → this subscriber → playChord.
+  // Key buttons call playChord directly (they don't change the triad).
+  // ════════════════════════════════════════════════
+
+  let _lastRoot    = null;
+  let _lastQuality = null;
+
+  HarmonyState.on(state => {
+    if (typeof state.currentKey === 'number' && state.currentKey >= 0) {
+      setKeyActive(state.currentKey);
+    }
+
+    const primary = Array.isArray(state.activeTriads)
+      ? state.activeTriads.find(t => t.role === 'primary')
+      : null;
+
+    if (primary) {
+      currentRoot    = primary.root;
+      currentQuality = primary.quality;
+
+      if (primary.root !== _lastRoot || primary.quality !== _lastQuality) {
+        _lastRoot    = primary.root;
+        _lastQuality = primary.quality;
+        playChord(primary.root, primary.quality).catch(() => {});
+      }
+    }
+  });
+
+  // ════════════════════════════════════════════════
+  // EVENT LOG
+  // ════════════════════════════════════════════════
+
+  const logEl = document.getElementById('cw-event-log');
+  function log(msg) {
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+    logEl.textContent += `[${ts}] ${msg}\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  setKeyActive(0);
+  log('Click "Enable Audio" first, then click any node on the wheel to play.');
+  log('Console: HarmonyState.setTriad("G","major")  or  wheel.setKey(1)');
+</script>
+{% endblock %}
