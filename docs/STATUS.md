@@ -1,7 +1,7 @@
 # Tonnetz Project Status
 
 **Last updated:** 2026-03-26
-**Branch:** `main` (merged from `education-layer`)
+**Branch:** `dev`
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v3)
 
