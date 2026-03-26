@@ -1,161 +1,109 @@
 # Tonnetz Project Status
 
 **Last updated:** 2026-03-25
-**Branch:** `education-layer`
-**Last commit:** d9fbfa2
-
-
-
+**Branch:** `main` (merged from `education-layer`)
+**Deploy:** Railway from `main`
+**Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v2)
 
 ---
 
-## Completed
+## Current Focus
 
-### Build Plan Phases
-- [x] **Phase 1: Schema Migration** — content_type, difficulty, related_games, visualizations, creative_prompts added to all 33 topics
-- [x] **Phase 2: Profile & Onboarding** — localStorage profile manager, onboarding UI, tips pill wired to profile
-- [x] **Phase 4: Playful Lens** — DRAFT COMPLETE, NEEDS REFINEMENT. 12 topics have playful lens content. Review and polish before considering done.
+Shipping the MVP: backend API proxy, intro module rebuilt on Explorer components, polish pass. Goal is a shareable URL within 1–2 weeks, followed by user testing with 15–20 participants.
 
-### Shared Components (from tonnetz-keyboard-component.md)
-- [x] RKT-1: `transforms.js` — PLR math, pitch utilities, interval utilities
-- [x] RKT-2: `harmony-state.js` — pub/sub state model
-- [x] RKT-3: `tonnetz-neighborhood.js` — SVG renderer (triangle + edge mode) + bugfixes
-- [x] RKT-4: `keyboard-view.js` — highlight layer + bugfixes
-- [x] RKT-5: Integration test page (`/test/shared`) — working, cleaned up
-
-### Relative Key Trainer
-- [x] RKT-6: Levels 1-2 (listen mode) + answer visibility fix
-- [x] RKT-REFACTOR: Learn/Practice/Test 3-phase tab structure, 5-step Learn tutorial, shared Salamander sampler
-- [x] Salamander sample URL fix (v1 suffix)
-- [x] RKT-7: Tier 2 "Find the Relative" — Learn/Practice/Test phases, tier selector, distractor generation, R transform animations
-- [x] RKT-8: Explore mode — interactive Tonnetz, P/R/L buttons, breadcrumb trail, depth 1-4
-- [x] RKT-9: Tiers 3-4 PLR and chaining
-- [x] RKT-10 (education wiring)
-
-
-## Intro Module (Phase 5: Meet the Tonnetz)
-
-### Completed
-- Chapter 1: Sound & Notes — 4 sections (oscillator, keyboard, A440 oboe, keyboard pattern)
-- Chapter 2: Intervals & Scales — 3 sections (interval explorer, major scale builder + root picker, major/minor toggle)
-- Chapter 3: Chords & Progressions — 4 sections (triad builder, major/minor chords, diatonic harmony, progression player)
-- Shared utilities refactored into intro-audio.js (keyboard builder, audio helpers, drag-to-play, QWERTY input)
-- Scrollytelling engine: bidirectional IntersectionObserver (onEnter/onLeave), progressive narration reveal, section transitions
-- Dynamic Tone.js loader (self-contained, no template changes needed)
-
-### In Progress
-- Chapter 4: The Tonnetz - started but will need to be udpated to exploit the Tonnetz Explorer
-- Chapter 5: Transforms (not started)
-
-### Architecture Notes
-- intro-audio.js: shared keyboard builder, sampler management, constants (CHROMATIC, buildScale, MAJOR_PATTERN, MINOR_PATTERN, buildTriad, chordQuality)
-- ch1-sound.js: oscillator + oboe sampler (ch1-only)
-- ch2-scales.js: interval explorer, scale builder, root picker, major/minor toggle
-- ch3-chords.js: triad builder, chord explorer, diatonic chords, progression player with key transposition
-- intro-core.js: supports onActivate (mount once), onEnter/onLeave (scroll state), progressive narration, .intro-section--seen persistence
-- All keyboards support click, drag-to-play (glissando), and QWERTY input
-
-
-### Other
-- [x] Clear All canvas bugfix (Skratch Studio)
-- [x] MAX_CONTENT_LENGTH added to Flask config
-- [x] Debug console.log statements stripped
-- [x] CLAUDE.md added for Claude Code context
-- [x] B1: Audio bleed fix (playbackGeneration cancellation token)
-- [x] B2: Keyboard highlights during Learn/Practice/Test playback
-- [x] B3: Common tone colors (blue held, orange moving)
-- [x] B5: Tonnetz recenter slide animation (400ms ease-out)
-- [x] B6: "Did you notice?" teaching bubble system (5 insights, opt-in engagement)
-- [x] B7: Game renamed to "Chord Walks" with tier subtitles
-- [x] B11: Intro screen fix + CSS
-- [x] Keyboard playback highlight CSS (kv-key--playback)
-- [x] Dashboard link fix (/relative → /games/relative-key-trainer)
-[x] Visual layer system (visual-config.js, visual-layer.js, visual-toggle.js)
-- [x] Tonnetz pop-out panel in Harmony Trainer (depth control, HarmonyState wiring)
-- [x] Visual layer wired into Chord Walks
-- [x] Sampler proxy fix in Chord Walks (voice instrument compatibility)
-- [x] MVP tracker replaces sprint tracker
-- [x] Install python-dotenv, verify API proxy setup
-[x] Intro module scaffolding (routes, hub, scroll engine, progress tracking, placeholder chapters)
-- [x] "Start Here" card on landing page
-
-```
+**Immediate next steps:**
+1. Backend API proxy (1 session — non-negotiable before sharing)
+2. Rebuild intro module chapter 4 on Explorer components
+3. Polish pass — landing page, navigation, first-visit experience
+4. Security review — no exposed keys, CORS, CSP header
+5. User testing across 4 segments (curious players, producers, students/teachers, beginners)
 
 ---
 
-## In Progress
+## What's Working
 
-### MVP Push (target: April 20, 2026)
-See `docs/tonnetz-mvp-tracker.md` for the focused shipping checklist.
-Next priorities: backend API proxy, intro module (4 chapters).
+### Tonnetz Explorer
+- Three-panel tool at `/explorer`: Tonnetz neighborhood, chord wheel, keyboard
+- All panels synchronized via HarmonyState pub/sub
+- Chord-quality coloring (blue=major, coral=minor)
+- Chord wheel: dual-ring circle of fifths with diatonic arc highlighting
+- Audio playback via music-engine.js / Tone.js / Salamander sampler
+- Canonical orientation locked: horizontal=P5, up-right=M3, down-right=m3, major=△, minor=▽
 
-### Visual tuning (parked)
-Visual layer infrastructure works in both games. Preset refinement
-and effect tuning deferred — will revisit before launch.
+### Shared Components
+- `transforms.js` — PLR math, pitch utilities, interval utilities
+- `harmony-state.js` — pub/sub state model
+- `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring
+- `keyboard-view.js` — highlight layer, click interaction
+- `chord-wheel.js` — dual-ring circle of fifths
 
-### Phase 4: Playful Lens — Refinement
-- Content exists for 12 topics but needs quality review and polish
-- Status: needs a review pass, not new writing
+### Intro Module (Chapters 1–3 complete, 4+ paused)
+- Chapter 1: Sound & Notes (4 sections)
+- Chapter 2: Intervals & Scales (3 sections)
+- Chapter 3: Chords & Progressions (4 sections)
+- Chapter 4+: paused — will rebuild on Explorer components
+- Scrollytelling engine, dynamic Tone.js loader, intro-audio.js utilities
 
-### Phase 3: Auth & Persistence
- - JUST GETTING STARTED
+### Games & Tools
+- Chord Walks: 4 tiers, Learn/Practice/Test, Explore mode
+- Harmony Trainer: tips pill, Tonnetz pop-out, education wiring
+- Skratch Studio: Blockly + audio + music creation blocks
+- Visual layer system (visual-config.js, visual-layer.js, visual-toggle.js)
+
+### Education Infrastructure
+- Onboarding & profile system (localStorage)
+- Theory Hub page (34 topics, content type taxonomy)
+- Phase 1 schema migration complete (content_type, difficulty, related_games, visualizations, creative_prompts)
 
 ---
-## Recent Changes
-- Tonnetz Explorer added as top-level tool at /explorer
-- New component: chord-wheel.js (dual-ring circle of fifths with diatonic arc highlighting)
-- Tonnetz neighborhood now has chord-quality coloring (blue=major, coral=minor)
-- All three Explorer panels (Tonnetz, Chord Wheel, Keyboard) synchronized via HarmonyState pub/sub
-- Audio playback wired through existing music-engine.js / Tone.js / Salamander stack
-- Canonical Tonnetz orientation documented: horizontal=P5, up-right=M3, down-right=m3, major=△, minor=▽
-- New spec: docs/tonnetz-explorer-spec.md
-
-## Current State
-- Intro module Chapter 4 built but paused pending Explorer component stabilization
-- Tonnetz Explorer functional with three synchronized panels
-- Chord wheel test page at /chord-wheel-test (can be removed later)
-
 
 ## Not Started
 
-### Build Plan Phases
-- [ ] Phase 3: Auth & Persistence (Supabase, hybrid storage, API proxy)
--
-- [ ] Phase 6: Starters, Paths, Hub (Skratch Studio starters, learning paths, Theory Hub page)
-- [ ] Phase 7: Game Progression & Assessment (intro screens, level system, auto-assessment)
-- [ ] Phase 8: Fog of War (Tonnetz grid as spatial progress map)
-- [ ] Phase 9: Competency Graph (adaptive branching, skill-map.js, mode transitions)
-- [ ] Phase 10: Puzzle Paths (new game — pathfinding, progression tracing, ear puzzles)
+See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 
-### Harmony Trainer Enhancements
-- [ ] RKT-11: Add keyboard highlight layer
-- [ ] RKT-12: Add collapsible Tonnetz panel
-- [ ] RKT-13: Wire difficulty-dependent visual behavior
+- **Phase A:** Explorer lesson overlay, tonal centers/keys lessons, chord progressions, modes, "Hear It in Music" panel
+- **Phase B:** Scale Builder, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation, Skratch Studio starter system + challenges
+- **Phase C:** Curriculum paths, path runner UI, Explorer as curriculum map, assessment model, skill guide topics
+- **Phase D:** Differentiated experiences by user level
+- **Phase E:** AI-powered feedback (session analysis, cross-game competency graph)
+- **Phase F:** Puzzle Paths, auth/Supabase, MIDI input, sound-to-visual mapping, social features
 
 ---
 
 ## Known Issues
-- Sustain pedal bug: Organ/Synth in Skratch Studio (conflict between triggerAttackRelease and sustain state)
-- "Clear All" clears blocks but does not reset canvas visuals
-- `TonnetzNeighborhood.recenter()` doesn't internally call `HarmonyState.setTriad()` — callers must invoke both
-- Full known issues list: `docs/KNOWN-ISSUES.md`
+
+- Sustain pedal bug: Organ/Synth in Skratch Studio — `triggerAttackRelease` bypasses sustain state
+- Mobile viewport jitter: tooltip uses `100vh` instead of `dvh`
+- Focus trapping / aria-modal missing on tooltips
+- Z-index audit needed across platform
+- stopPropagation collisions with tooltip click delegation
+- Full list: `docs/KNOWN-ISSUES.md`
 
 ---
 
 ## Key Docs
-- `docs/tonnetz-build-plan.md` — phased roadmap (10 phases)
-- `docs/tonnetz-content-architecture.md` — content model and topic schema
-- `docs/tonnetz-keyboard-component.md` — shared component spec (tasks RKT-1 through RKT-13)
-- `docs/game-flow-pattern.md` — Learn → Practice → Test pattern
-- `docs/puzzle-paths-spec.md` — Puzzle Paths game concept (NEW — add to repo)
-- `docs/KNOWN-ISSUES.md` — tracked bugs and fixes
-- `docs/AGENT_GUIDE.md` — Claude Code workflow conventions
+
+| Doc | Purpose |
+|---|---|
+| `docs/tonnetz-next-build-plan.md` | **Active roadmap** — Phases A–F, session budgets, dependency graph |
+| `docs/tonnetz-explorer-spec.md` | Explorer design, panel specs, canonical orientation |
+| `docs/tonnetz-content-architecture.md` | Content model, topic schema, lens system, starters, challenges |
+| `docs/game-flow-pattern.md` | Learn → Practice → Test pattern, "Hear It in Music" spec |
+| `docs/auth-architecture.md` | Supabase auth, profile migration, security checklist |
+| `docs/puzzle-paths-spec.md` | Puzzle Paths game concept and progression library |
+| `docs/tonnetz-keyboard-component.md` | HarmonyState API, animation queue, component reuse |
+| `docs/KNOWN-ISSUES.md` | Tracked bugs and fixes |
+| `docs/claude-code-preferences.md` | Claude Code workflow conventions |
+| `docs/archive/tonnetz-build-plan.md` | Original 10-phase plan (superseded) |
+| `docs/archive/tonnetz-mvp-tracker.md` | Original MVP tracker (superseded) |
 
 ---
 
-## Update Checklist
+## Update Protocol
+
 After every work session:
-1. Update "Last updated" date and "Last commit" hash
-2. Move completed items from "In Progress" to "Completed"
-3. Update "In Progress" with current state
-4. `git add docs/STATUS.md && git commit -m "Update project status"`
+1. Update "Last updated" date
+2. Update "Current Focus" with what's active and what's next
+3. Move completed items into "What's Working"
+4. Add new bugs to "Known Issues"
+5. Commit: `git add STATUS.md && git commit -m "Update project status"`
