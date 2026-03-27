@@ -12,11 +12,10 @@
 MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Walks, Harmony Trainer, Skratch Studio). Starting Phase A (missing foundational concepts) while finishing the last MVP items (backend proxy, intro chapter 4 rebuild, polish).
 
 **Immediate next steps:**
-1. Backend API proxy (1 session — non-negotiable before sharing)
-2. Rebuild intro module chapter 4 on Explorer components
-3. Phase A: Circle of Fifths interactive module (A1) — partially prototyped
-4. Phase A: Tonal centers, modes, chord progressions (A2–A4)
-5. Polish pass — landing page, navigation, first-visit experience
+1. Rebuild intro module chapter 4 on Explorer components
+2. Phase A: Circle of Fifths interactive module (A1) — partially prototyped
+3. Phase A: Tonal centers, modes, chord progressions (A2–A4)
+4. Polish pass — landing page, navigation, first-visit experience
 
 **Goal:** Shareable URL within 1–2 weeks, followed by user testing with 15–20 participants across 4 segments (curious players, producers, students/teachers, beginners).
 
@@ -57,6 +56,10 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 - Onboarding & profile system (localStorage)
 - Theory Hub page (34 topics, content type taxonomy)
 - Phase 1 schema migration complete (content_type, difficulty, related_games, visualizations, creative_prompts)
+
+### General stuff
+- Backend API proxy (1 session — non-negotiable before sharing) 
+
 
 ---
 

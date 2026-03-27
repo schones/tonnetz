@@ -204,6 +204,34 @@ const CW_CSS = /* css */ `
 [data-theme="dark"] .cw-roman {
   fill: var(--text-muted, #aaaaaa);
 }
+
+/* ── vii° diminished marker ─────────────────────────────── */
+
+.cw-dim-node {
+  fill: var(--cw-dim-fill, rgba(180, 148, 0, 0.10));
+  stroke: var(--cw-dim-stroke, #a07800);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .cw-dim-node {
+  fill: rgba(200, 165, 0, 0.14);
+  stroke: #c9a227;
+}
+
+.cw-dim-label {
+  pointer-events: none;
+  font-size: 7px;
+  font-weight: 800;
+  fill: var(--cw-dim-text, #7a5c00);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+[data-theme="dark"] .cw-dim-label {
+  fill: #c9a227;
+}
 `;
 
 // ════════════════════════════════════════════════════════════════════
@@ -258,6 +286,7 @@ class ChordWheel {
     // Layer groups — drawn back to front
     this._gArc    = _svgEl('g'); svg.appendChild(this._gArc);
     this._gConn   = _svgEl('g'); svg.appendChild(this._gConn);
+    this._gDim    = _svgEl('g'); svg.appendChild(this._gDim);
     this._gNodes  = _svgEl('g'); svg.appendChild(this._gNodes);
     this._gLabels = _svgEl('g'); svg.appendChild(this._gLabels);
     this._gRomans = _svgEl('g'); svg.appendChild(this._gRomans);
@@ -309,6 +338,7 @@ class ChordWheel {
 
     this._renderArc(p);
     this._renderConnectors(prev, p, next);
+    this._renderDimMarker(p);
     this._renderNodes(p, prev, next);
     this._renderRomans(p, prev, next);
     this._renderActiveRing();
@@ -358,6 +388,32 @@ class ChordWheel {
         class: 'cw-connector',
       }));
     }
+  }
+
+  /**
+   * Draw the vii° diminished chord marker between the rings.
+   * The vii° root sits 5 positions clockwise of the tonic on the CoF:
+   * e.g. C major (p=0) → vii° = B = index 5; G major (p=1) → F♯ = index 6.
+   * Placed at the midpoint radius between the outer and inner rings.
+   */
+  _renderDimMarker(p) {
+    _clear(this._gDim);
+
+    const dimIdx    = _mod(p + 5);
+    const angle     = START + dimIdx * STEP;
+    const MID_R     = (OUTER_R + INNER_R) / 2;          // 142.5 — between the rings
+    const DIM_R     = Math.round(NODE_R * 0.55);         // 11 — fits in gap between rings
+    const mx = CX + MID_R * Math.cos(angle);
+    const my = CY + MID_R * Math.sin(angle);
+
+    this._gDim.appendChild(_svgEl('circle', {
+      cx: mx, cy: my, r: DIM_R,
+      class: 'cw-dim-node',
+    }));
+
+    const lbl = _svgEl('text', { x: mx, y: my, class: 'cw-dim-label' });
+    lbl.textContent = 'vii°';
+    this._gDim.appendChild(lbl);
   }
 
   /** Apply color classes to all 24 nodes based on current key selection. */

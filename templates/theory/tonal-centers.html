@@ -1,0 +1,1178 @@
+{% extends "base.html" %}
+{% block title %}Tonal Centers & Keys — Tonnetz{% endblock %}
+
+{% block head %}
+<!-- Tone.js — must be in <head> so window.Tone is defined before any module runs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<style>
+  /* ── Page ────────────────────────────────────────────────────── */
+  .tc-page {
+    max-width: 1280px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 3rem;
+  }
+
+  .tc-page h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+  }
+
+  .tc-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+  }
+
+  /* ── Two-column layout ────────────────────────────────────────── */
+  .tc-layout {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+  }
+
+  /* Left: keyboard column (~60%) */
+  .tc-keyboard-col {
+    flex: 0 0 60%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  /* Right: wheel + content column (~40%) */
+  .tc-side-col {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  /* ── Panel shell ──────────────────────────────────────────────── */
+  .tc-panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+
+  .tc-panel-header {
+    padding: 0.38rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── Keyboard panel ───────────────────────────────────────────── */
+  .tc-keyboard-body {
+    padding: 1rem 0.75rem 0.75rem;
+    overflow-x: auto;
+  }
+
+  #tc-keyboard-container {
+    --keyboard-white-key-w: 36px;
+    --keyboard-white-key-h: 130px;
+    --keyboard-black-key-w: 22px;
+    --keyboard-black-key-h: 85px;
+  }
+
+  /* ── Playback controls ────────────────────────────────────────── */
+  .tc-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0.75rem 0.6rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Sound button ─────────────────────────────────────────────── */
+  .tc-btn-sound {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-main);
+    white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+
+  .tc-btn-sound:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .tc-btn-sound--on {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── Chord wheel panel ────────────────────────────────────────── */
+  .tc-wheel-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    box-sizing: border-box;
+  }
+
+  #tc-wheel-container {
+    width: 300px;
+    height: 300px;
+    overflow: visible;
+  }
+
+  #tc-wheel-container .cw-label {
+    font-size: 11px;
+  }
+
+  #tc-wheel-container .cw-roman {
+    font-size: 8px;
+  }
+
+  /* ── Content cards ────────────────────────────────────────────── */
+  .tc-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    padding: 1rem 1.1rem;
+  }
+
+  .tc-card h2 {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 0.55rem 0;
+    letter-spacing: 0.01em;
+  }
+
+  .tc-card p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 0 0 0.45rem 0;
+  }
+
+  .tc-card p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* ── Walkthrough ──────────────────────────────────────────────── */
+  .tc-walkthrough {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+
+  .tc-walkthrough-header {
+    padding: 0.38rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .tc-step-indicator {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .tc-walkthrough-body {
+    padding: 1rem 1.1rem;
+  }
+
+  .tc-step-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+  }
+
+  .tc-step-text {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .tc-step-text em {
+    color: var(--text-primary);
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  .tc-after-text {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0.6rem 0 0 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    display: none;
+  }
+
+  .tc-after-text.tc-visible {
+    display: block;
+  }
+
+  .tc-after-text em {
+    color: var(--accent);
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────────── */
+  .tc-btn-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+
+  .tc-btn {
+    padding: 6px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: background 0.12s, border-color 0.12s;
+  }
+
+  .tc-btn:hover:not(:disabled) {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .tc-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .tc-btn--ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .tc-btn--ghost:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .tc-btn--nav {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 5px 12px;
+    font-size: 0.78rem;
+  }
+
+  .tc-btn--nav:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .tc-nav-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Ear Exercise ─────────────────────────────────────────────── */
+  .tc-exercise {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+
+  .tc-exercise-header {
+    padding: 0.38rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .tc-streak {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .tc-exercise-body {
+    padding: 1rem 1.1rem;
+  }
+
+  .tc-exercise-intro {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .tc-key-choices {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+  }
+
+  .tc-key-choice {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    min-width: 56px;
+    text-align: center;
+  }
+
+  .tc-key-choice:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .tc-key-choice:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .tc-key-choice--correct {
+    border-color: var(--text-success) !important;
+    background: rgba(22,163,74,0.1) !important;
+    color: var(--text-success) !important;
+  }
+
+  .tc-key-choice--wrong {
+    border-color: var(--text-error) !important;
+    background: rgba(220,38,38,0.1) !important;
+    color: var(--text-error) !important;
+  }
+
+  .tc-feedback {
+    font-size: 0.83rem;
+    line-height: 1.55;
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem;
+    margin-top: 0.5rem;
+    display: none;
+  }
+
+  .tc-feedback.tc-visible {
+    display: block;
+  }
+
+  .tc-feedback--correct {
+    color: var(--text-success);
+    background: rgba(22,163,74,0.08);
+    border: 1px solid var(--text-success);
+  }
+
+  .tc-feedback--wrong {
+    color: var(--text-error);
+    background: rgba(220,38,38,0.08);
+    border: 1px solid var(--text-error);
+  }
+
+  /* ── Exercise wheel reveal ────────────────────────────────────── */
+  #tc-exercise-wheel-wrap {
+    display: none;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    text-align: center;
+  }
+
+  #tc-exercise-wheel-wrap.tc-visible {
+    display: block;
+  }
+
+  #tc-exercise-wheel-container {
+    width: 200px;
+    height: 200px;
+    display: inline-block;
+    overflow: visible;
+  }
+
+  #tc-exercise-wheel-container .cw-label {
+    font-size: 9px;
+  }
+
+  #tc-exercise-wheel-container .cw-roman {
+    font-size: 6px;
+  }
+
+  /* ── Responsive ───────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .tc-layout {
+      flex-direction: column;
+    }
+
+    .tc-keyboard-col {
+      flex: none;
+      width: 100%;
+    }
+
+    .tc-side-col {
+      width: 100%;
+    }
+
+    #tc-keyboard-container {
+      --keyboard-white-key-w: 30px;
+      --keyboard-white-key-h: 110px;
+      --keyboard-black-key-w: 18px;
+      --keyboard-black-key-h: 72px;
+    }
+
+    #tc-wheel-container {
+      width: 240px;
+      height: 240px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tc-page">
+
+  <h1>Tonal Centers &amp; Keys</h1>
+  <p class="tc-subtitle">
+    Every piece of music has a home base. Here's what that means — and how to hear it.
+  </p>
+
+  <div class="tc-layout">
+
+    <!-- ── Left: keyboard + walkthrough ───────────────────────────── -->
+    <div class="tc-keyboard-col">
+
+      <!-- Keyboard panel -->
+      <div class="tc-panel">
+        <div class="tc-panel-header">
+          <span>Keyboard</span>
+          <button class="tc-btn-sound" id="tc-btn-audio">▶ Enable Sound</button>
+        </div>
+        <div class="tc-keyboard-body">
+          <div id="tc-keyboard-container"></div>
+        </div>
+        <div class="tc-controls" id="tc-controls" style="display:none;">
+          <!-- populated by walkthrough step JS -->
+        </div>
+      </div>
+
+      <!-- Step-by-step walkthrough -->
+      <div class="tc-walkthrough" id="tc-walkthrough">
+        <div class="tc-walkthrough-header">
+          <span>Part 1 — Walkthrough</span>
+          <span class="tc-step-indicator" id="tc-step-indicator">Step 1 of 4</span>
+        </div>
+        <div class="tc-walkthrough-body" id="tc-walkthrough-body">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- Ear exercise -->
+      <div class="tc-exercise" id="tc-exercise">
+        <div class="tc-exercise-header">
+          <span>Part 2 — Find the Tonic</span>
+          <span class="tc-streak" id="tc-streak">Streak: 0</span>
+        </div>
+        <div class="tc-exercise-body">
+          <p class="tc-exercise-intro">
+            A chord progression will play. Listen for which note feels like <em>home</em> — that's the tonic.
+            Pick the key from the options below.
+          </p>
+          <div class="tc-btn-row">
+            <button class="tc-btn" id="tc-ex-play">▶ Play Progression</button>
+            <button class="tc-btn tc-btn--ghost" id="tc-ex-replay" style="display:none;">↩ Replay</button>
+            <button class="tc-btn tc-btn--ghost" id="tc-ex-next" style="display:none;">Next →</button>
+          </div>
+          <div class="tc-key-choices" id="tc-key-choices">
+            <!-- populated by JS -->
+          </div>
+          <div class="tc-feedback" id="tc-feedback"></div>
+          <div id="tc-exercise-wheel-wrap">
+            <p style="font-size:0.75rem;color:var(--text-secondary);margin:0 0 0.4rem 0;font-weight:700;">
+              Diatonic arc for correct key
+            </p>
+            <div id="tc-exercise-wheel-container"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.tc-keyboard-col -->
+
+    <!-- ── Right: chord wheel + info cards ────────────────────────── -->
+    <div class="tc-side-col">
+
+      <div class="tc-panel">
+        <div class="tc-panel-header">
+          <span>Circle of Fifths</span>
+        </div>
+        <div class="tc-wheel-body">
+          <div id="tc-wheel-container"></div>
+        </div>
+      </div>
+
+      <div class="tc-card">
+        <h2>What is a tonal center?</h2>
+        <p>
+          The tonal center — also called the <em>tonic</em> — is the note that functions as home base
+          in a piece of music. Everything else gravitates toward it.
+        </p>
+        <p>
+          It's not about one note being "prettier" than others. It's about <em>relationship</em>:
+          the tonic is the note that resolves tension and makes the music feel finished.
+        </p>
+      </div>
+
+      <div class="tc-card">
+        <h2>Key = tonic + diatonic family</h2>
+        <p>
+          When you choose a tonal center, you get a family of seven chords that
+          naturally belong together — the <em>diatonic</em> chords. The Circle of Fifths
+          shows this as a sliding window: the highlighted arc is your key's chord family.
+        </p>
+        <p>
+          Adjacent keys on the circle share six of seven chords. Keys across the circle
+          share almost none. That's why modulating to a nearby key sounds smooth,
+          and to a distant one sounds dramatic.
+        </p>
+      </div>
+
+    </div><!-- /.tc-side-col -->
+
+  </div><!-- /.tc-layout -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { HarmonyState }
+    from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { noteToPC, pcToNote, triadNotes }
+    from '{{ url_for("static", filename="shared/transforms.js") }}';
+  import { KeyboardView }
+    from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+  import { ChordWheel, COF_MAJOR, COF_MAJOR_PC }
+    from '{{ url_for("static", filename="js/chord-wheel.js") }}';
+
+  // ════════════════════════════════════════════════════════════════
+  // AUDIO STATE
+  // ════════════════════════════════════════════════════════════════
+
+  let sampler    = null;
+  let audioReady = false;
+  let isPlaying  = false;   // guard against overlapping playback
+
+  let _toneLoadPromise = null;
+  async function loadToneIfNeeded() {
+    if (window.Tone) return;
+    if (_toneLoadPromise) return _toneLoadPromise;
+    _toneLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+      script.onload  = resolve;
+      script.onerror = () => reject(new Error('Tone.js failed to load'));
+      document.head.appendChild(script);
+    });
+    return _toneLoadPromise;
+  }
+
+  async function ensureAudio() {
+    if (sampler) return;
+    sampler = await KeyboardView.getSampler();
+  }
+
+  const audioBtn = document.getElementById('tc-btn-audio');
+
+  audioBtn.addEventListener('click', async () => {
+    if (audioReady) return;
+
+    audioBtn.disabled = true;
+    audioBtn.textContent = 'Loading piano…';
+
+    try {
+      await loadToneIfNeeded();
+      await Tone.start();
+      await ensureAudio();
+      audioReady = true;
+      audioBtn.disabled = false;
+      audioBtn.textContent = '♪ Sound on';
+      audioBtn.className = 'tc-btn-sound tc-btn-sound--on';
+    } catch (err) {
+      audioBtn.disabled = false;
+      audioBtn.textContent = '▶ Enable Sound (retry)';
+      audioBtn.className = 'tc-btn-sound';
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // MUSIC UTILITIES
+  // ════════════════════════════════════════════════════════════════
+
+  // Major scale intervals from root (semitones)
+  const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
+
+  // Diatonic chord qualities: I ii iii IV V vi vii°
+  const DIATONIC_QUALITY = ['major','minor','minor','major','major','minor','diminished'];
+
+  /**
+   * Build triad note names (with octave) for a diatonic degree in a major key.
+   * degree: 0=I, 1=ii, 2=iii, 3=IV, 4=V, 5=vi, 6=vii°
+   * Returns e.g. ["C3","E3","G3"] for key=C, degree=0
+   */
+  function diatonicTriad(keyPC, degree, baseOctave) {
+    baseOctave = baseOctave ?? 3;
+    const rootSemitones = MAJOR_SCALE[degree];
+    const rootPC = (keyPC + rootSemitones) % 12;
+    const quality = DIATONIC_QUALITY[degree];
+    const intervals = quality === 'major' ? [0,4,7]
+                    : quality === 'minor' ? [0,3,7]
+                    : [0,3,6]; // diminished
+
+    const preferFlats = [1,3,5,6,8,10].includes(keyPC); // flat-key PCs
+
+    return intervals.map(iv => {
+      const noteSemitones = rootSemitones + iv;
+      const pc = (keyPC + noteSemitones) % 12;
+      const octaveOffset = Math.floor((keyPC + noteSemitones) / 12);
+      const name = pcToNote(pc, preferFlats).replace(/♯/g,'#').replace(/♭/g,'b');
+      return `${name}${baseOctave + octaveOffset}`;
+    });
+  }
+
+  /**
+   * Play a sequence of chords as block chords.
+   * chords: array of { keyPC, degree }
+   * gapMs: milliseconds between chord onsets
+   * Returns a promise that resolves when the last chord triggers.
+   */
+  async function playProgression(chords, gapMs) {
+    if (!audioReady || !sampler) return;
+    const gap = (gapMs ?? 700) / 1000;
+    const now = Tone.now();
+
+    chords.forEach(({ keyPC, degree }, i) => {
+      const notes = diatonicTriad(keyPC, degree, 3);
+      const t = now + i * gap;
+
+      // Highlight keyboard via HarmonyState
+      const rootName = pcToNote(keyPC, [1,3,5,6,8,10].includes(keyPC));
+      // Compute root of this chord
+      const chordRootSemitones = MAJOR_SCALE[degree];
+      const chordRootPC = (keyPC + chordRootSemitones) % 12;
+      const chordRootName = pcToNote(chordRootPC, [1,3,5,6,8,10].includes(keyPC));
+      const quality = DIATONIC_QUALITY[degree];
+
+      setTimeout(() => {
+        HarmonyState.setTriad(chordRootName, quality);
+      }, i * gapMs);
+
+      // Play notes
+      notes.forEach(note => {
+        sampler.triggerAttackRelease(note, '4n', t);
+      });
+    });
+
+    return new Promise(resolve => setTimeout(resolve, chords.length * gapMs + 300));
+  }
+
+  /**
+   * CoF index (0–11, C=0 G=1 …) for a pitch class.
+   * COF_MAJOR_PC = [0,7,2,9,4,11,6,1,8,3,10,5]
+   */
+  function pcToCofIndex(pc) {
+    return COF_MAJOR_PC.indexOf(pc);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // CHORD WHEEL (main panel — always visible)
+  // ════════════════════════════════════════════════════════════════
+
+  const wheel = new ChordWheel('#tc-wheel-container', { initialKey: 0 });
+
+  function setWheelKey(keyPC) {
+    const idx = pcToCofIndex(keyPC);
+    if (idx >= 0) {
+      HarmonyState.update({ currentKey: idx });
+      wheel.setKey(idx);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // KEYBOARD VIEW
+  // ════════════════════════════════════════════════════════════════
+
+  KeyboardView.init('tc-keyboard-container', {
+    range: { low: 'C3', high: 'B4' },
+    mode: 'display',
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // WALKTHROUGH
+  // ════════════════════════════════════════════════════════════════
+
+  const KEY_C  = 0;  // C
+  const KEY_G  = 7;  // G
+  const KEY_F  = 5;  // F
+  const KEY_D  = 2;  // D
+
+  // Each step: { title, text, buttons, afterText }
+  // buttons: array of { label, fn, isSecondary }
+  // afterText shown after any playback in the step completes
+
+  const STEPS = [
+    // ── Step 1: Home base ──────────────────────────────────────────
+    {
+      title: '"Home base"',
+      text: 'Every piece of music has a home base — one chord that feels like <em>the end.</em> Musicians call this the tonal center or tonic. Let\'s hear it.',
+      buttons: [
+        {
+          label: '▶ Play I – IV – V – I in C',
+          fn: async () => {
+            setWheelKey(KEY_C);
+            await playProgression([
+              { keyPC: KEY_C, degree: 0 },
+              { keyPC: KEY_C, degree: 3 },
+              { keyPC: KEY_C, degree: 4 },
+              { keyPC: KEY_C, degree: 0 },
+            ], 700);
+          }
+        }
+      ],
+      afterText: 'That last chord feels like arriving home. That\'s <em>C major</em> — the tonal center of this progression.',
+    },
+
+    // ── Step 2: The pull ───────────────────────────────────────────
+    {
+      title: '"The pull"',
+      text: 'The tonal center creates gravity. Listen to what happens when we stop <em>before</em> getting home.',
+      buttons: [
+        {
+          label: '▶ Play I – IV – V (no resolution)',
+          fn: async () => {
+            setWheelKey(KEY_C);
+            await playProgression([
+              { keyPC: KEY_C, degree: 0 },
+              { keyPC: KEY_C, degree: 3 },
+              { keyPC: KEY_C, degree: 4 },
+            ], 700);
+          }
+        },
+        {
+          label: '✓ Resolve it',
+          isSecondary: true,
+          fn: async () => {
+            setWheelKey(KEY_C);
+            await playProgression([
+              { keyPC: KEY_C, degree: 0 },
+            ], 700);
+          }
+        }
+      ],
+      afterText: 'Feel that tension on the first play? Your ear wants one more chord. That pull toward home — that\'s what a tonal center is.',
+    },
+
+    // ── Step 3: It's the relationship ─────────────────────────────
+    {
+      title: '"It\'s the relationship, not the notes"',
+      text: 'The tonal center isn\'t about specific notes — it\'s about the <em>relationships</em> between them. The same pattern works in any key.',
+      buttons: [
+        {
+          label: '▶ G major',
+          fn: async () => {
+            setWheelKey(KEY_G);
+            await playProgression([
+              { keyPC: KEY_G, degree: 0 },
+              { keyPC: KEY_G, degree: 3 },
+              { keyPC: KEY_G, degree: 4 },
+              { keyPC: KEY_G, degree: 0 },
+            ], 700);
+          }
+        },
+        {
+          label: '▶ F major',
+          fn: async () => {
+            setWheelKey(KEY_F);
+            await playProgression([
+              { keyPC: KEY_F, degree: 0 },
+              { keyPC: KEY_F, degree: 3 },
+              { keyPC: KEY_F, degree: 4 },
+              { keyPC: KEY_F, degree: 0 },
+            ], 700);
+          }
+        },
+        {
+          label: '▶ D major',
+          fn: async () => {
+            setWheelKey(KEY_D);
+            await playProgression([
+              { keyPC: KEY_D, degree: 0 },
+              { keyPC: KEY_D, degree: 3 },
+              { keyPC: KEY_D, degree: 4 },
+              { keyPC: KEY_D, degree: 0 },
+            ], 700);
+          }
+        },
+      ],
+      afterText: 'Different notes, same feeling of home. The <em>tonal center moved</em>, but the pull stayed the same. Watch the Circle of Fifths — the diatonic arc slides to the new key.',
+    },
+
+    // ── Step 4: Your key = your chord family ──────────────────────
+    {
+      title: '"Your key = your chord family"',
+      text: 'Choosing a tonal center gives you a family of chords that belong together — the <em>diatonic chords.</em> These are the chords highlighted on the Circle of Fifths. Neighboring keys on the circle share almost all their chords. Distant keys share almost none. That\'s why modulating to a nearby key sounds smooth, and to a distant one sounds dramatic.',
+      buttons: [
+        {
+          label: '▶ Hear C major family',
+          fn: async () => {
+            setWheelKey(KEY_C);
+            await playProgression([
+              { keyPC: KEY_C, degree: 0 },
+              { keyPC: KEY_C, degree: 1 },
+              { keyPC: KEY_C, degree: 2 },
+              { keyPC: KEY_C, degree: 3 },
+              { keyPC: KEY_C, degree: 4 },
+              { keyPC: KEY_C, degree: 5 },
+              { keyPC: KEY_C, degree: 0 },
+            ], 600);
+          }
+        }
+      ],
+      afterText: null,
+    },
+  ];
+
+  let currentStep = 0;
+  let stepPlayedOnce = false;  // tracks whether afterText should show
+
+  const walkthroughBody  = document.getElementById('tc-walkthrough-body');
+  const stepIndicator    = document.getElementById('tc-step-indicator');
+
+  function renderStep(index) {
+    const step = STEPS[index];
+    stepPlayedOnce = false;
+    stepIndicator.textContent = `Step ${index + 1} of ${STEPS.length}`;
+
+    let html = `<p class="tc-step-title">${step.title}</p>`;
+    html += `<p class="tc-step-text">${step.text}</p>`;
+    html += `<div class="tc-btn-row" id="tc-step-btns"></div>`;
+    if (step.afterText) {
+      html += `<div class="tc-after-text" id="tc-after-text">${step.afterText}</div>`;
+    }
+
+    html += `<div class="tc-nav-row">
+      <button class="tc-btn tc-btn--nav" id="tc-back-btn" ${index === 0 ? 'disabled' : ''}>← Back</button>
+      <button class="tc-btn tc-btn--nav" id="tc-next-btn">${index === STEPS.length - 1 ? 'Done ✓' : 'Next →'}</button>
+    </div>`;
+
+    walkthroughBody.innerHTML = html;
+
+    // Attach play buttons
+    const btnRow = document.getElementById('tc-step-btns');
+    step.buttons.forEach(btnDef => {
+      const btn = document.createElement('button');
+      btn.textContent = btnDef.label;
+      btn.className = 'tc-btn' + (btnDef.isSecondary ? ' tc-btn--ghost' : '');
+      btn.addEventListener('click', async () => {
+        if (isPlaying) return;
+        if (!audioReady) {
+          btn.textContent = '♪ Enable sound first';
+          setTimeout(() => { btn.textContent = btnDef.label; }, 1800);
+          return;
+        }
+        isPlaying = true;
+        // disable all play buttons during playback
+        btnRow.querySelectorAll('button').forEach(b => b.disabled = true);
+        try {
+          await btnDef.fn();
+        } finally {
+          isPlaying = false;
+          btnRow.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+        // Show after-text on first play
+        if (!stepPlayedOnce && step.afterText) {
+          stepPlayedOnce = true;
+          const afterEl = document.getElementById('tc-after-text');
+          if (afterEl) afterEl.classList.add('tc-visible');
+        }
+      });
+      btnRow.appendChild(btn);
+    });
+
+    // Nav buttons
+    document.getElementById('tc-back-btn').addEventListener('click', () => {
+      if (currentStep > 0) { currentStep--; renderStep(currentStep); }
+    });
+    document.getElementById('tc-next-btn').addEventListener('click', () => {
+      if (currentStep < STEPS.length - 1) { currentStep++; renderStep(currentStep); }
+      // On last step, could scroll to exercise
+      else {
+        document.getElementById('tc-exercise').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+
+  renderStep(0);
+
+  // Initialize with C major
+  setWheelKey(KEY_C);
+  HarmonyState.setTriad('C', 'major');
+
+  // ════════════════════════════════════════════════════════════════
+  // EAR EXERCISE
+  // ════════════════════════════════════════════════════════════════
+
+  // Pool of easy major keys (PC values)
+  const EASY_KEYS = [
+    { pc: 0,  name: 'C'  },
+    { pc: 2,  name: 'D'  },
+    { pc: 5,  name: 'F'  },
+    { pc: 7,  name: 'G'  },
+    { pc: 9,  name: 'A'  },
+    { pc: 10, name: 'B♭' },
+  ];
+
+  // Progression patterns: array of scale degrees (0-indexed)
+  const PROGRESSIONS = [
+    [0, 3, 4, 0],   // I–IV–V–I
+    [0, 4, 5, 3],   // I–V–vi–IV
+    [0, 5, 3, 4],   // I–vi–IV–V
+  ];
+
+  let exState = {
+    key: null,       // { pc, name }
+    choices: [],     // 4 x { pc, name }
+    answered: false,
+    streak: 0,
+    wrongPCs: new Set(),  // PCs that have been guessed incorrectly this round
+  };
+
+  // Lazy-create the exercise chord wheel (hidden until correct guess)
+  let exWheel = null;
+
+  function getExWheel() {
+    if (!exWheel) {
+      exWheel = new ChordWheel('#tc-exercise-wheel-container', { initialKey: 0 });
+    }
+    return exWheel;
+  }
+
+  function pick4Choices(correctKey) {
+    const pool = EASY_KEYS.filter(k => k.pc !== correctKey.pc);
+    // Shuffle pool
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const choices = [correctKey, ...pool.slice(0, 3)];
+    // Shuffle choices
+    for (let i = choices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [choices[i], choices[j]] = [choices[j], choices[i]];
+    }
+    return choices;
+  }
+
+  function newExerciseRound() {
+    // Reset UI
+    exState.answered = false;
+    exState.wrongPCs = new Set();
+
+    const feedback    = document.getElementById('tc-feedback');
+    const replayBtn   = document.getElementById('tc-ex-replay');
+    const nextBtn     = document.getElementById('tc-ex-next');
+    const wheelWrap   = document.getElementById('tc-exercise-wheel-wrap');
+    const playBtn     = document.getElementById('tc-ex-play');
+    const choicesEl   = document.getElementById('tc-key-choices');
+
+    feedback.className  = 'tc-feedback';
+    feedback.textContent = '';
+    replayBtn.style.display = 'none';
+    nextBtn.style.display   = 'none';
+    wheelWrap.classList.remove('tc-visible');
+    playBtn.style.display   = '';
+    playBtn.disabled        = false;
+
+    // Pick new key and choices
+    const randomKey = EASY_KEYS[Math.floor(Math.random() * EASY_KEYS.length)];
+    exState.key     = randomKey;
+    exState.choices = pick4Choices(randomKey);
+
+    // Render key buttons (disabled until played)
+    choicesEl.innerHTML = '';
+    exState.choices.forEach(choice => {
+      const btn = document.createElement('button');
+      btn.className  = 'tc-key-choice';
+      btn.textContent = choice.name;
+      btn.disabled   = true;
+      btn.dataset.pc = choice.pc;
+      btn.addEventListener('click', () => handleGuess(choice));
+      choicesEl.appendChild(btn);
+    });
+  }
+
+  async function playExerciseProgression() {
+    if (isPlaying) return;
+    if (!audioReady) return;
+
+    isPlaying = true;
+    const playBtn   = document.getElementById('tc-ex-play');
+    const replayBtn = document.getElementById('tc-ex-replay');
+    const choicesEl = document.getElementById('tc-key-choices');
+
+    playBtn.disabled = true;
+
+    const prog = PROGRESSIONS[Math.floor(Math.random() * PROGRESSIONS.length)];
+    const chords = prog.map(degree => ({ keyPC: exState.key.pc, degree }));
+
+    // Keep keyboard neutral during exercise (clear HarmonyState)
+    HarmonyState.update({ activeTriads: [], activeNotes: [], activeInterval: null });
+
+    // Play and highlight keyboard
+    try {
+      await playProgression(chords, 700);
+    } finally {
+      isPlaying = false;
+    }
+
+    // Enable guess buttons (skip any already guessed wrong this round)
+    choicesEl.querySelectorAll('.tc-key-choice').forEach(b => {
+      if (!exState.wrongPCs.has(parseInt(b.dataset.pc, 10))) b.disabled = false;
+    });
+    replayBtn.style.display = '';
+    playBtn.style.display   = 'none';
+  }
+
+  function handleGuess(choice) {
+    if (exState.answered) return;
+    exState.answered = true;
+
+    const feedback  = document.getElementById('tc-feedback');
+    const nextBtn   = document.getElementById('tc-ex-next');
+    const replayBtn = document.getElementById('tc-ex-replay');
+    const wheelWrap = document.getElementById('tc-exercise-wheel-wrap');
+    const choicesEl = document.getElementById('tc-key-choices');
+
+    // Disable all choice buttons
+    choicesEl.querySelectorAll('.tc-key-choice').forEach(b => b.disabled = true);
+
+    if (choice.pc === exState.key.pc) {
+      // Correct
+      exState.streak++;
+      document.getElementById('tc-streak').textContent = `Streak: ${exState.streak}`;
+
+      // Highlight correct button
+      const correctBtn = choicesEl.querySelector(`[data-pc="${choice.pc}"]`);
+      if (correctBtn) correctBtn.classList.add('tc-key-choice--correct');
+
+      feedback.className   = 'tc-feedback tc-feedback--correct tc-visible';
+      feedback.textContent = `That's it! ${choice.name} major.`;
+
+      // Reveal chord wheel with diatonic arc for correct key
+      const ew = getExWheel();
+      const idx = pcToCofIndex(choice.pc);
+      if (idx >= 0) {
+        // Temporarily suppress main HarmonyState listener for wheel;
+        // we update currentKey so the exercise wheel shows the correct arc.
+        HarmonyState.update({ currentKey: idx });
+        ew.setKey(idx);
+      }
+      wheelWrap.classList.add('tc-visible');
+
+      replayBtn.style.display = 'none';
+      nextBtn.style.display   = '';
+    } else {
+      // Incorrect
+      exState.streak = 0;
+      document.getElementById('tc-streak').textContent = `Streak: ${exState.streak}`;
+
+      // Track and highlight wrong button
+      exState.wrongPCs.add(choice.pc);
+      const wrongBtn = choicesEl.querySelector(`[data-pc="${choice.pc}"]`);
+      if (wrongBtn) wrongBtn.classList.add('tc-key-choice--wrong');
+
+      feedback.className   = 'tc-feedback tc-feedback--wrong tc-visible';
+      feedback.textContent = `Not quite — listen for which note feels like home.`;
+
+      // Allow re-guess: re-enable all except the wrong one
+      choicesEl.querySelectorAll('.tc-key-choice').forEach(b => {
+        if (parseInt(b.dataset.pc, 10) !== choice.pc) b.disabled = false;
+      });
+
+      exState.answered = false;
+    }
+  }
+
+  // Wire exercise buttons
+  document.getElementById('tc-ex-play').addEventListener('click', async () => {
+    if (!audioReady) {
+      const btn = document.getElementById('tc-ex-play');
+      const orig = btn.textContent;
+      btn.textContent = '♪ Enable sound first';
+      setTimeout(() => { btn.textContent = orig; }, 1800);
+      return;
+    }
+    await playExerciseProgression();
+  });
+
+  document.getElementById('tc-ex-replay').addEventListener('click', async () => {
+    if (!audioReady || isPlaying) return;
+    // Clear highlights but keep buttons enabled
+    HarmonyState.update({ activeTriads: [], activeNotes: [], activeInterval: null });
+    await playExerciseProgression();
+  });
+
+  document.getElementById('tc-ex-next').addEventListener('click', () => {
+    newExerciseRound();
+  });
+
+  // Start first round
+  newExerciseRound();
+</script>
+{% endblock %}

@@ -233,6 +233,16 @@ def chord_wheel_test():
     return render_template("chord-wheel-test.html")
 
 
+@app.route("/theory/circle-of-fifths")
+def theory_circle_of_fifths():
+    return render_template("theory/circle-of-fifths.html")
+
+
+@app.route("/theory/tonal-centers")
+def theory_tonal_centers():
+    return render_template("theory/tonal-centers.html")
+
+
 @app.route("/intro")
 def intro_hub():
     return render_template("intro/hub.html")

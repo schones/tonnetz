@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+{% block title %}Circle of Fifths — Tonnetz{% endblock %}
+
+{% block head %}
+<!-- Tone.js — must be in <head> so window.Tone is defined before any module runs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<style>
+  /* ── Page ────────────────────────────────────────────────────── */
+  .cof-page {
+    max-width: 1280px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 3rem;
+  }
+
+  .cof-page h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+  }
+
+  .cof-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+  }
+
+  /* ── Two-column layout ────────────────────────────────────────── */
+  .cof-layout {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+  }
+
+  /* Left: wheel column */
+  .cof-wheel-col {
+    flex: 0 0 auto;
+    width: 60%;
+    min-width: 0;
+  }
+
+  /* Right: content column */
+  .cof-content-col {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  /* ── Panel shell (same as explorer.html) ──────────────────────── */
+  .cof-panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+
+  .cof-panel-header {
+    padding: 0.38rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── Wheel panel body ─────────────────────────────────────────── */
+  .cof-wheel-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  #cof-wheel-container {
+    width: 460px;
+    height: 460px;
+    overflow: visible;
+  }
+
+  /* Slightly larger labels than base */
+  #cof-wheel-container .cw-label {
+    font-size: 13px;
+  }
+  #cof-wheel-container .cw-roman {
+    font-size: 9px;
+  }
+
+  /* ── Sound button ─────────────────────────────────────────────── */
+  .cof-btn-sound {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-main);
+    white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+
+  .cof-btn-sound:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .cof-btn-sound--on {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-style: solid;
+    color: var(--accent);
+  }
+
+  /* ── Key indicator strip ──────────────────────────────────────── */
+  .cof-key-strip {
+    padding: 0.5rem 0.9rem 0.6rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border);
+    min-height: 2.2rem;
+  }
+
+  .cof-key-strip-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+  }
+
+  .cof-key-badge {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.2rem 0.8rem;
+    min-width: 80px;
+    text-align: center;
+  }
+
+  /* ── Content cards ────────────────────────────────────────────── */
+  .cof-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    padding: 1rem 1.1rem;
+  }
+
+  .cof-card h2 {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 0.55rem 0;
+    letter-spacing: 0.01em;
+  }
+
+  .cof-card p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 0 0 0.45rem 0;
+  }
+
+  .cof-card p:last-child {
+    margin-bottom: 0;
+  }
+
+  .cof-card ul {
+    margin: 0.3rem 0 0 0;
+    padding-left: 1.2rem;
+  }
+
+  .cof-card li {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 0.3rem;
+  }
+
+  .cof-card li:last-child {
+    margin-bottom: 0;
+  }
+
+  .cof-try-prompt {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+  }
+
+  .cof-try-prompt:last-child {
+    margin-bottom: 0;
+  }
+
+  .cof-try-prompt strong {
+    color: var(--text-primary);
+  }
+
+  /* ── Responsive: stack on narrow screens ──────────────────────── */
+  @media (max-width: 768px) {
+    .cof-layout {
+      flex-direction: column;
+    }
+
+    .cof-wheel-col {
+      width: 100%;
+    }
+
+    #cof-wheel-container {
+      width: 340px;
+      height: 340px;
+    }
+
+    .cof-wheel-body {
+      padding: 0.75rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cof-page">
+
+  <h1>Circle of Fifths</h1>
+  <p class="cof-subtitle">
+    Click any key to hear its scale and see its diatonic chords.
+    Outer ring = major keys · Inner ring = relative minors.
+  </p>
+
+  <div class="cof-layout">
+
+    <!-- ── Left: Chord Wheel ──────────────────────────────────────── -->
+    <div class="cof-wheel-col">
+      <div class="cof-panel">
+        <div class="cof-panel-header">
+          <span>Circle of Fifths</span>
+          <button class="cof-btn-sound" id="cof-btn-audio">▶ Enable Sound</button>
+        </div>
+        <div class="cof-wheel-body">
+          <div id="cof-wheel-container"></div>
+        </div>
+        <div class="cof-key-strip">
+          <span class="cof-key-strip-label">Selected key</span>
+          <div class="cof-key-badge" id="cof-key-badge">C major</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: Educational content ────────────────────────────── -->
+    <div class="cof-content-col">
+
+      <div class="cof-card">
+        <h2>What is the Circle of Fifths?</h2>
+        <p>
+          The circle arranges all 12 keys by how closely related they are.
+          Neighboring keys share 6 out of 7 notes — they're nearly identical.
+          Keys across the circle share almost nothing.
+        </p>
+        <p>
+          Click any key to hear its scale and see which chords belong to it.
+          The highlighted arc is your diatonic window.
+        </p>
+      </div>
+
+      <div class="cof-card">
+        <h2>The Diatonic Window</h2>
+        <p>
+          The highlighted arc shows the 7 diatonic chords of the selected key —
+          the chords that naturally belong there.
+        </p>
+        <ul>
+          <li>Move one step <strong>clockwise</strong> = sharpen one note. The arc slides over.</li>
+          <li>Move one step <strong>counter-clockwise</strong> = flatten one note.</li>
+          <li>Major chords (outer ring) and their <strong>relative minors</strong> (inner ring) always pair up at the same position.</li>
+        </ul>
+        <p>
+          You'll notice only 6 chords are highlighted on the rings. The 7th — <strong>vii°</strong> — is a diminished chord, which doesn't fit on either the major or minor ring. Look for the small dashed marker between the rings at the edge of the arc. Diminished chords are inherently unstable: vii° almost always wants to resolve back to I.
+        </p>
+      </div>
+
+      <div class="cof-card">
+        <h2>Try It</h2>
+        <div class="cof-try-prompt">
+          <strong>Close neighbors:</strong> Click C, then G, then D.
+          Notice how the arc slides one position each time —
+          you're moving through closely related keys.
+        </div>
+        <div class="cof-try-prompt">
+          <strong>Distant keys:</strong> Click C, then F♯.
+          The arcs barely overlap — these keys share almost no common chords.
+        </div>
+        <div class="cof-try-prompt">
+          <strong>Relative pairs:</strong> Click the outer C, then the inner A.
+          Same arc position, same notes — C major and A minor are relative keys.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { HarmonyState }
+    from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { noteToPC, pcToNote }
+    from '{{ url_for("static", filename="shared/transforms.js") }}';
+  import { KeyboardView }
+    from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+  import { ChordWheel, COF_MAJOR, COF_MINOR, COF_MAJOR_PC, COF_MINOR_PC }
+    from '{{ url_for("static", filename="js/chord-wheel.js") }}';
+
+  // ════════════════════════════════════════════════════════════════
+  // AUDIO
+  // ════════════════════════════════════════════════════════════════
+
+  let sampler    = null;
+  let audioReady = false;
+
+  /** Belt-and-suspenders Tone.js fallback loader (mirrors explorer.html). */
+  let _toneLoadPromise = null;
+  async function loadToneIfNeeded() {
+    if (window.Tone) return;
+    if (_toneLoadPromise) return _toneLoadPromise;
+    _toneLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+      script.onload  = resolve;
+      script.onerror = () => reject(new Error('Tone.js failed to load'));
+      document.head.appendChild(script);
+    });
+    return _toneLoadPromise;
+  }
+
+  async function ensureAudio() {
+    if (sampler) return;
+    sampler = await KeyboardView.getSampler();
+  }
+
+  /**
+   * Play a scale ascending from the given root note name.
+   * quality: 'major' | 'minor'
+   * Staggers notes 200ms apart using Tone.js scheduling.
+   */
+  async function playScale(rootName, quality) {
+    if (!audioReady) return;
+    await ensureAudio();
+    if (!sampler) return;
+
+    const rootPC = noteToPC(rootName);
+    if (isNaN(rootPC)) return;
+
+    const intervals = quality === 'major'
+      ? [0, 2, 4, 5, 7, 9, 11, 12]   // major scale
+      : [0, 2, 3, 5, 7, 8, 10, 12];  // natural minor scale
+
+    // Use flats if the key name contains a flat symbol
+    const preferFlats = rootName.includes('♭') || rootName.includes('b');
+    const startOctave = 4;
+
+    const now = Tone.now();
+
+    intervals.forEach((semitones, i) => {
+      const pc         = (rootPC + semitones) % 12;
+      const extraOct   = Math.floor((rootPC + semitones) / 12);
+      const noteName   = pcToNote(pc, preferFlats);
+      // Convert Unicode accidentals to ASCII for Tone.js
+      const ascii      = noteName.replace(/♯/g, '#').replace(/♭/g, 'b');
+      const noteWithOct = `${ascii}${startOctave + extraOct}`;
+      sampler.triggerAttackRelease(noteWithOct, '8n', now + i * 0.2);
+    });
+  }
+
+  // ── Audio enable button ───────────────────────────────────────────
+  const audioBtn = document.getElementById('cof-btn-audio');
+
+  audioBtn.addEventListener('click', async () => {
+    if (audioReady) {
+      // Second click = mute
+      audioReady = false;
+      try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      audioBtn.textContent = '▶ Enable Sound';
+      audioBtn.className = 'cof-btn-sound';
+      return;
+    }
+
+    audioBtn.disabled = true;
+    audioBtn.textContent = 'Loading piano…';
+
+    try {
+      await loadToneIfNeeded();
+      await Tone.start();    // must be inside a user gesture handler
+      await ensureAudio();
+      audioReady = true;
+      audioBtn.disabled = false;
+      audioBtn.textContent = '♪ Sound on';
+      audioBtn.className = 'cof-btn-sound cof-btn-sound--on';
+    } catch (err) {
+      audioBtn.disabled = false;
+      audioBtn.textContent = '▶ Enable Sound (retry)';
+      audioBtn.className = 'cof-btn-sound';
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // CHORD WHEEL
+  // ChordWheel auto-subscribes to HarmonyState and publishes
+  // setTriad() / update({ currentKey }) on click — no extra
+  // wiring needed to drive the visual.
+  // ════════════════════════════════════════════════════════════════
+
+  const wheel = new ChordWheel('#cof-wheel-container', { initialKey: 0 });
+
+  // ════════════════════════════════════════════════════════════════
+  // HARMONYSTATE SUBSCRIBER — key badge + scale playback
+  // ════════════════════════════════════════════════════════════════
+
+  const keyBadge = document.getElementById('cof-key-badge');
+
+  let _lastRoot    = null;
+  let _lastQuality = null;
+
+  HarmonyState.on(state => {
+    const primary = Array.isArray(state.activeTriads)
+      ? state.activeTriads.find(t => t.role === 'primary')
+      : null;
+
+    if (!primary) return;
+
+    // Update key badge
+    const qualLabel = primary.quality === 'major' ? 'major' : 'minor';
+    keyBadge.textContent = `${primary.root} ${qualLabel}`;
+
+    // Play scale only when the selection actually changes
+    if (primary.root !== _lastRoot || primary.quality !== _lastQuality) {
+      _lastRoot    = primary.root;
+      _lastQuality = primary.quality;
+      playScale(primary.root, primary.quality).catch(() => {});
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // INITIAL STATE — C major
+  // ════════════════════════════════════════════════════════════════
+
+  HarmonyState.batch(state => {
+    state.currentKey = 0;
+  });
+  HarmonyState.setTriad('C', 'major');
+</script>
+{% endblock %}
