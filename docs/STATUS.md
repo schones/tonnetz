@@ -13,9 +13,8 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 
 **Immediate next steps:**
 1. Rebuild intro module chapter 4 on Explorer components
-2. Phase A: Circle of Fifths interactive module (A1) — partially prototyped
-3. Phase A: Tonal centers, modes, chord progressions (A2–A4)
-4. Polish pass — landing page, navigation, first-visit experience
+2. Phase A:  modes, chord progressions (A3–A4)
+3. Polish pass — landing page, navigation, first-visit experience
 
 **Goal:** Shareable URL within 1–2 weeks, followed by user testing with 15–20 participants across 4 segments (curious players, producers, students/teachers, beginners).
 
@@ -59,6 +58,7 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 
 ### General stuff
 - Backend API proxy (1 session — non-negotiable before sharing) 
+- Phase A1, A2 done
 
 
 ---
