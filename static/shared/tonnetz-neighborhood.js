@@ -410,6 +410,72 @@ function triCentroid(isUp, tq, tr) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// COMPACT CLUSTER (Note Mode)
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * For Note Mode, find the most spatially compact set of nodes — one per active
+ * pitch class — so the Tonnetz shows one meaningful geometric shape instead of
+ * scattering highlights across the whole grid.
+ *
+ * Algorithm (greedy nearest-neighbour):
+ *   1. Compute the SVG centroid of all visible nodes (the "grid centre").
+ *   2. For the first active PC, pick the node closest to the grid centre.
+ *   3. For each subsequent PC, pick the node closest to the running centroid
+ *      of already-selected nodes.
+ *
+ * @param {Set<number>}                              activePCs
+ * @param {Map<string, {q:number, r:number, pc:number, note:string}>} nodes
+ * @returns {Set<string>}  Set of "q,r" node keys forming the compact cluster.
+ */
+function _findCompactCluster(activePCs, nodes) {
+  if (activePCs.size === 0) return new Set();
+
+  // Index nodes by PC
+  const byPC = new Map();
+  for (const [key, node] of nodes) {
+    if (!byPC.has(node.pc)) byPC.set(node.pc, []);
+    byPC.get(node.pc).push({ key, q: node.q, r: node.r });
+  }
+
+  // Grid centroid in SVG coords
+  let sumX = 0, sumY = 0, n = 0;
+  for (const [, node] of nodes) {
+    const p = toSVG(node.q, node.r);
+    sumX += p.x; sumY += p.y; n++;
+  }
+  const gridCX = n > 0 ? sumX / n : 0;
+  const gridCY = n > 0 ? sumY / n : 0;
+
+  const selectedKeys = new Set();
+  let selSumX = 0, selSumY = 0, selCount = 0;
+
+  for (const pc of activePCs) {
+    const candidates = byPC.get(pc);
+    if (!candidates || candidates.length === 0) continue;
+
+    const refX = selCount > 0 ? selSumX / selCount : gridCX;
+    const refY = selCount > 0 ? selSumY / selCount : gridCY;
+
+    let bestKey = null, bestX = 0, bestY = 0, bestDist = Infinity;
+    for (const c of candidates) {
+      const p = toSVG(c.q, c.r);
+      const d = Math.hypot(p.x - refX, p.y - refY);
+      if (d < bestDist) {
+        bestDist = d; bestKey = c.key; bestX = p.x; bestY = p.y;
+      }
+    }
+
+    if (bestKey !== null) {
+      selectedKeys.add(bestKey);
+      selSumX += bestX; selSumY += bestY; selCount++;
+    }
+  }
+
+  return selectedKeys;
+}
+
+// ════════════════════════════════════════════════════════════════════
 // NEIGHBORHOOD BUILDER
 // ════════════════════════════════════════════════════════════════════
 
@@ -538,9 +604,10 @@ function _computeViewBox(nodes) {
 function _renderAll(svg, neighborhood, state, opts) {
   if (!svg || !neighborhood) return;
 
-  // Preserve <defs> and <style>
-  const defs  = svg.querySelector('defs');
-  const style = svg.querySelector('style');
+  // Preserve <defs>, <style>, and external overlay groups (e.g. chord bubble)
+  const defs     = svg.querySelector('defs');
+  const style    = svg.querySelector('style');
+  const overlays = Array.from(svg.querySelectorAll('.tn-chord-bubble-layer'));
   svg.textContent = '';               // clear children
   if (style) svg.appendChild(style);
   if (defs)  svg.appendChild(defs);
@@ -567,6 +634,22 @@ function _renderAll(svg, neighborhood, state, opts) {
   if (state.activeInterval) {
     state.activeInterval.notes.forEach(n => intervalPCs.add(noteToPC(n)));
   }
+  // Note Mode: no triads, no interval — highlight individual toggled notes.
+  // (activeNotes is also populated by setTriad/addTriad/setInterval, so only
+  // use it as the primary source when those other modes are not active.)
+  const isNoteMode = (state.activeTriads || []).length === 0 && !state.activeInterval;
+  if (isNoteMode) {
+    for (const an of (state.activeNotes || [])) {
+      const pc = noteToPC(an.note);
+      if (!isNaN(pc)) activePCs.add(pc);
+    }
+  }
+
+  // In Note Mode, find the most compact cluster (one node per active PC) so the
+  // Tonnetz shows a single tight geometric shape rather than all instances.
+  const compactKeys = (isNoteMode && activePCs.size > 0)
+    ? _findCompactCluster(activePCs, nodes)
+    : null;
 
   // Role lookup: "pc_quality" → role
   const roleMap = new Map();
@@ -755,7 +838,9 @@ function _renderAll(svg, neighborhood, state, opts) {
   const gNodes = _svgEl('g', { class: 'tonnetz-nodes' });
   for (const [, node] of nodes) {
     const pos        = toSVG(node.q, node.r);
-    const isActive   = activePCs.has(node.pc);
+    const nk         = _nodeKey(node.q, node.r);
+    // In Note Mode use the compact cluster; in other modes use any matching PC.
+    const isActive   = compactKeys ? compactKeys.has(nk) : activePCs.has(node.pc);
     const isGhost    = ghostPCs.has(node.pc) && !isActive;
     const isInterval = intervalPCs.has(node.pc) && edgeMode;
     const isMovingTo = isActive && _movingToPC >= 0 && node.pc === _movingToPC;
@@ -767,7 +852,10 @@ function _renderAll(svg, neighborhood, state, opts) {
     if (isMovingTo) cls += ' tn-node--moving-tone';
 
     const r = isMovingTo ? NODE_R + 5 : NODE_R;
-    const g = _svgEl('g', { class: cls, 'data-pc': node.pc, 'data-note': node.note });
+    const attrs = { class: cls, 'data-pc': node.pc, 'data-note': node.note };
+    // Mark compact-cluster nodes so ChordBubbleRenderer can query them.
+    if (compactKeys && isActive) attrs['data-compact'] = '1';
+    const g = _svgEl('g', attrs);
     const circleEl = _svgEl('circle', { cx: pos.x, cy: pos.y, r });
 
     // Apply VisualLayer color if present (purely additive — no-op when map is empty)
@@ -925,6 +1013,11 @@ function _renderAll(svg, neighborhood, state, opts) {
 
   // ── Attach scene to SVG ───────────────────────────────────────
   svg.appendChild(gScene);
+
+  // Re-attach overlay groups (inserted after gScene so they render on top)
+  for (const overlay of overlays) {
+    svg.appendChild(overlay);
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════

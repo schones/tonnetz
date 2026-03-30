@@ -416,7 +416,7 @@ async function _loadSoundfontSampler(sfName) {
     const s = new Tone.Sampler({
       urls,
       release: 1.2,
-      onload:  () => resolve({ sampler: s, volume: vol }),
+      onload: () => resolve({ sampler: s, volume: vol }),
       onerror: reject,
     }).connect(vol);
   });
@@ -433,12 +433,12 @@ function _ensureVoice() {
   inst._promise = _loadSoundfontSampler(inst.sfName)
     .then(({ sampler, volume }) => {
       inst.sampler = sampler;
-      inst.volume  = volume;
-      inst.state   = 'loaded';
+      inst.volume = volume;
+      inst.state = 'loaded';
       return sampler;
     })
     .catch(err => {
-      inst.state   = 'error';
+      inst.state = 'error';
       inst._promise = null;   // allow retry on next setInstrument('voice') call
       throw err;
     });
@@ -492,14 +492,14 @@ function _stopNote(noteWithOctave) {
 function _destroyAllSamplers() {
   for (const inst of Object.values(_instState)) {
     if (inst.sampler) {
-      try { inst.sampler.releaseAll(); inst.sampler.dispose(); } catch (_) {}
+      try { inst.sampler.releaseAll(); inst.sampler.dispose(); } catch (_) { }
       inst.sampler = null;
     }
     if (inst.volume) {
-      try { inst.volume.dispose(); } catch (_) {}
+      try { inst.volume.dispose(); } catch (_) { }
       inst.volume = null;
     }
-    inst.state    = 'unloaded';
+    inst.state = 'unloaded';
     inst._promise = null;
   }
   _activeInst = 'piano';
@@ -555,9 +555,9 @@ const KeyboardView = {
     // Determine range
     const stState = HarmonyState.get();
     const rangeSrc = options.range || stState.keyboardRange || { low: 'C3', high: 'B5' };
-    const low  = _parseNote(rangeSrc.low);
+    const low = _parseNote(rangeSrc.low);
     const high = _parseNote(rangeSrc.high);
-    this._lowMidi  = low  ? low.midi  : 48;
+    this._lowMidi = low ? low.midi : 48;
     this._highMidi = high ? high.midi : 83;
 
     // Build keys
@@ -583,7 +583,7 @@ const KeyboardView = {
     const l = _parseNote(low);
     const h = _parseNote(high);
     if (!l || !h) return;
-    this._lowMidi  = l.midi;
+    this._lowMidi = l.midi;
     this._highMidi = h.midi;
     this._keys = _buildKeys(this._lowMidi, this._highMidi);
 
@@ -606,7 +606,7 @@ const KeyboardView = {
   render(state) {
     if (!this._wrapEl) return;
 
-    const ann  = state.annotations || {};
+    const ann = state.annotations || {};
     const mode = this._opts.mode || state.keyboardMode || 'display';
 
     // ── Update mode class ──────────────────────────────────────
@@ -624,13 +624,21 @@ const KeyboardView = {
       for (const an of (state.activeNotes || [])) {
         const pc = noteToPC(an.note);
         if (isNaN(pc)) continue;
-        // Apply to all octaves of this pitch class within range
-        for (const key of this._keys) {
-          if (key.pc === pc) {
-            const k = `${key.pc}_${key.octave}`;
-            // First source wins priority: triad > interval > scale > user
-            if (!highlights.has(k)) {
-              highlights.set(k, { source: an.source, color: an.color });
+        if (an.source === 'user') {
+          // Octave-specific: only highlight the exact key the user toggled
+          const k = `${pc}_${an.octave}`;
+          if (!highlights.has(k)) {
+            highlights.set(k, { source: an.source, color: an.color });
+          }
+        } else {
+          // All other sources (triad, interval, scale): apply to every octave in range
+          for (const key of this._keys) {
+            if (key.pc === pc) {
+              const k = `${key.pc}_${key.octave}`;
+              // First source wins priority: triad > interval > scale > user
+              if (!highlights.has(k)) {
+                highlights.set(k, { source: an.source, color: an.color });
+              }
             }
           }
         }
@@ -639,8 +647,8 @@ const KeyboardView = {
 
     // ── Common tones & moving tone ─────────────────────────────
     const commonTonePCs = new Set();
-    const movingFrom    = new Set();  // PC of ghost position
-    const movingTo      = new Set();  // PC of new position
+    const movingFrom = new Set();  // PC of ghost position
+    const movingTo = new Set();  // PC of new position
     const at = state.activeTransform;
 
     if (at) {
@@ -649,7 +657,7 @@ const KeyboardView = {
       }
       if (ann.showMovingTone && at.movingTone) {
         if (at.movingTone.from) movingFrom.add(noteToPC(at.movingTone.from));
-        if (at.movingTone.to)   movingTo.add(noteToPC(at.movingTone.to));
+        if (at.movingTone.to) movingTo.add(noteToPC(at.movingTone.to));
       }
     }
 
@@ -798,16 +806,16 @@ const KeyboardView = {
     if (inst.sfName === sfName) return;   // nothing to do
     // Dispose the current voice sampler so the next load uses the new sfName.
     if (inst.sampler) {
-      try { inst.sampler.releaseAll(); inst.sampler.dispose(); } catch (_) {}
+      try { inst.sampler.releaseAll(); inst.sampler.dispose(); } catch (_) { }
       inst.sampler = null;
     }
     if (inst.volume) {
-      try { inst.volume.dispose(); } catch (_) {}
+      try { inst.volume.dispose(); } catch (_) { }
       inst.volume = null;
     }
-    inst.state    = 'unloaded';
+    inst.state = 'unloaded';
     inst._promise = null;
-    inst.sfName   = sfName;
+    inst.sfName = sfName;
   },
 
   /**
@@ -818,13 +826,13 @@ const KeyboardView = {
     if (this._wrapEl && this._wrapEl.parentNode) {
       this._wrapEl.parentNode.removeChild(this._wrapEl);
     }
-    this._wrapEl      = null;
-    this._keyboardEl  = null;
+    this._wrapEl = null;
+    this._keyboardEl = null;
     this._infoLabelEl = null;
-    this._container   = null;
-    this._keyEls      = {};
-    this._keys        = [];
-    this._pressedKey  = null;
+    this._container = null;
+    this._keyEls = {};
+    this._keys = [];
+    this._pressedKey = null;
     _destroyAllSamplers();
   },
 
@@ -904,12 +912,16 @@ const KeyboardView = {
 
   _handleKeyDown(key, el) {
     const state = HarmonyState.get();
-    const mode  = this._opts.mode || state.keyboardMode || 'display';
+    const mode = this._opts.mode || state.keyboardMode || 'display';
     if (mode === 'display') return;
 
     this._pressedKey = key.noteWithOctave;
     el.classList.add('kv-key--pressed');
-    _playNote(key.noteWithOctave);
+
+    // Internal audio can be suppressed so the caller manages playback directly.
+    if (!this._opts.noInternalAudio) {
+      _playNote(key.noteWithOctave);
+    }
 
     if (this._opts.onNotePlay) {
       this._opts.onNotePlay(key.noteName, key.octave);
@@ -920,7 +932,9 @@ const KeyboardView = {
     if (this._pressedKey !== key.noteWithOctave) return;
     this._pressedKey = null;
     el.classList.remove('kv-key--pressed');
-    _stopNote(key.noteWithOctave);
+    if (!this._opts.noInternalAudio) {
+      _stopNote(key.noteWithOctave);
+    }
   },
 };
 

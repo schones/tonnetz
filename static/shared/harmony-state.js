@@ -25,6 +25,7 @@ import {
   TRANSFORMS,
   analyzeTransform,
   intervalBetween,
+  noteToPC,
 } from './transforms.js';
 
 // ════════════════════════════════════════════════════════════════════
@@ -235,6 +236,39 @@ const HarmonyState = {
       activeTriads: [],
       activeTransform: null,
     });
+  },
+
+  /**
+   * Toggle a single note in/out of activeNotes by pitch class AND octave.
+   * Clears activeTriads and activeTransform (note mode is exclusive with triad mode).
+   * Enharmonic-safe: C♯ and D♭ are treated as the same pitch class.
+   * Each unique (pitchClass, octave) pair is independently toggle-able,
+   * so C4 and C5 can coexist as separate entries.
+   *
+   * @param {string} noteName  – e.g. "C", "F♯"
+   * @param {number} [octave]  – specific octave; defaults to 4
+   */
+  toggleNote(noteName, octave) {
+    octave = (octave != null) ? octave : 4;
+    const targetPC = noteToPC(noteName);
+    const notes = this._state.activeNotes || [];
+    const hasNote = notes.some(n => noteToPC(n.note) === targetPC && n.octave === octave);
+
+    if (hasNote) {
+      this.update({
+        activeNotes: notes.filter(n => !(noteToPC(n.note) === targetPC && n.octave === octave)),
+        activeTriads: [],
+        activeTransform: null,
+        tonnetzCenter: this._state.tonnetzCenter,  // preserve center so Tonnetz doesn't jump
+      });
+    } else {
+      this.update({
+        activeNotes: [...notes, { note: noteName, octave, source: 'user', color: null }],
+        activeTriads: [],
+        activeTransform: null,
+        tonnetzCenter: this._state.tonnetzCenter,
+      });
+    }
   },
 
   /** Alias for reset(). */

@@ -236,6 +236,58 @@
     font-family: var(--font-main);
   }
 
+  /* ── Mode toggle buttons ─────────────────────────────────────── */
+  .exp-btn--mode {
+    min-width: 58px;
+    text-align: center;
+  }
+  .exp-btn--mode-active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    min-width: 58px;
+    text-align: center;
+  }
+  .exp-btn--mode-active:hover:not(:disabled) {
+    background: var(--accent) !important;
+    color: #fff !important;
+  }
+
+  /* ── Note mode play controls ─────────────────────────────────── */
+  .exp-note-controls {
+    display: none;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .exp-note-controls--visible {
+    display: flex;
+  }
+  .exp-btn--play {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 800;
+    min-width: 64px;
+  }
+  .exp-btn--play:hover:not(:disabled) {
+    background: var(--accent) !important;
+    color: #fff !important;
+  }
+  .exp-btn--clear {
+    color: var(--text-secondary);
+  }
+  .exp-arp-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
   /* ── Responsive ──────────────────────────────────────────────── */
   @media (max-width: 860px) {
     .exp-top {
@@ -264,7 +316,8 @@
   <h1>Tonnetz Explorer</h1>
   <p class="exp-subtitle">
     Click any chord on the Tonnetz or wheel — all panels stay in sync.
-    Use P, R, L to navigate harmonic transforms. Enable sound to hear each chord.
+    Use P, R, L to navigate harmonic transforms.
+    Switch to Note mode to build any chord one note at a time, then hit Play (or Spacebar).
   </p>
 
   <!-- Status strip -->
@@ -348,9 +401,32 @@
 
     <div class="exp-divider"></div>
 
+    <!-- Input mode toggle: Chord vs Note -->
+    <div class="exp-ctrl-group">
+      <span class="exp-ctrl-label">Keys</span>
+      <button class="exp-btn exp-btn--mode-active" id="btn-chord-mode"
+              title="Click a key to select a chord (major or minor based on key context)">Chord</button>
+      <button class="exp-btn exp-btn--mode" id="btn-note-mode"
+              title="Click keys to add/remove individual notes and build any chord">Note</button>
+    </div>
+
+    <!-- Note mode play controls (only shown in Note Mode) -->
+    <div class="exp-note-controls" id="note-mode-controls">
+      <div class="exp-divider"></div>
+      <button class="exp-btn exp-btn--play" id="btn-note-play"
+              title="Play active notes as a chord (Spacebar)">&#9654; Play</button>
+      <button class="exp-btn exp-btn--clear" id="btn-note-clear"
+              title="Clear all active notes (Escape)">Clear</button>
+      <label class="exp-arp-label" title="Play notes one at a time (low to high)">
+        <input type="checkbox" id="chk-arpeggiate"> Arp
+      </label>
+    </div>
+
+    <div class="exp-divider"></div>
+
     <!-- Sound toggle -->
     <div class="exp-ctrl-group">
-      <button class="exp-btn exp-btn--sound" id="btn-audio">▶ Enable Sound</button>
+      <button class="exp-btn exp-btn--sound" id="btn-audio">&#9654; Enable Sound</button>
     </div>
 
   </div>
@@ -370,6 +446,10 @@
     from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
   import { ChordWheel, COF_MAJOR }
     from '{{ url_for("static", filename="js/chord-wheel.js") }}';
+  import { ChordBubbleRenderer }
+    from '{{ url_for("static", filename="shared/chord-bubble-renderer.js") }}';
+  import { resolveChord }
+    from '{{ url_for("static", filename="shared/chord-resolver.js") }}';
 
   // Expose for console debugging
   window.HarmonyState        = HarmonyState;
@@ -392,8 +472,9 @@
 
   let sampler    = null;
   let audioReady = false;
-  const BPM      = 80;
-  const BEAT     = 60 / BPM;
+
+  /** How long chords ring in chord mode (seconds). Piano-like sustain. */
+  const CHORD_SUSTAIN = 2.5;
 
   /** Belt-and-suspenders Tone.js fallback loader (mirrors intro-audio.js). */
   let _toneLoadPromise = null;
@@ -438,7 +519,7 @@
     if (!voicing.length) return;
     const velocity = 0.55 + Math.random() * 0.3;
     sampler.volume.value = Math.random() * 4 - 2;
-    sampler.triggerAttackRelease(voicing, BEAT * 0.9, Tone.now(), velocity);
+    sampler.triggerAttackRelease(voicing, CHORD_SUSTAIN, Tone.now(), velocity);
   }
 
   // ── Audio enable / mute button ────────────────────────────────────
@@ -489,6 +570,16 @@
       // Clicking a PLR arrow label applies that transform
       HarmonyState.setTransform(type, from.root, from.quality);
     },
+    onNodeClick({ note }) {
+      // Only toggle notes in Note Mode — Chord Mode uses triangle/arrow clicks.
+      if (!noteInputMode) return;
+      HarmonyState.toggleNote(note);
+    },
+  });
+
+  // ── Chord Bubble (must init AFTER Tonnetz so its subscriber runs second) ─
+  const chordBubble = new ChordBubbleRenderer('exp-tonnetz-container', {
+    labelEl: 'exp-chord-badge',
   });
 
   // ── Chord Wheel ──────────────────────────────────────────────────
@@ -498,10 +589,39 @@
   const wheel = new ChordWheel('#exp-chord-wheel-container', { initialKey: 0 });
   window.wheel = wheel;
 
+  // ── Input mode: Chord vs Note ────────────────────────────────────
+  // noteInputMode = false → Chord mode (click = setTriad, existing behaviour)
+  // noteInputMode = true  → Note mode (click = toggleNote, accumulate notes)
+
+  let noteInputMode = false;
+
+  const btnChordMode = document.getElementById('btn-chord-mode');
+  const btnNoteMode  = document.getElementById('btn-note-mode');
+
+  function _setInputMode(isNoteMode) {
+    noteInputMode = isNoteMode;
+    btnChordMode.className = isNoteMode ? 'exp-btn exp-btn--mode'        : 'exp-btn exp-btn--mode-active';
+    btnNoteMode.className  = isNoteMode ? 'exp-btn exp-btn--mode-active' : 'exp-btn exp-btn--mode';
+
+    const noteControls = document.getElementById('note-mode-controls');
+    noteControls.classList.toggle('exp-note-controls--visible', isNoteMode);
+
+    if (isNoteMode) {
+      // Clear any existing chord so the Tonnetz doesn't stay locked to it.
+      // Keep tonnetzCenter so the grid doesn't jump.
+      HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
+    } else {
+      // Restore the last known chord when switching back to chord mode.
+      HarmonyState.setTriad(currentRoot, currentQuality);
+    }
+  }
+
+  btnChordMode.addEventListener('click', () => _setInputMode(false));
+  btnNoteMode.addEventListener('click',  () => _setInputMode(true));
+
   // ── Keyboard View ────────────────────────────────────────────────
-  // Subscribes to HarmonyState for highlight display ('both' mode also
-  // allows clicks).  onNotePlay publishes back to HarmonyState so clicking
-  // a key re-centers the Tonnetz and chord wheel on that chord.
+  // noInternalAudio: true — the Explorer manages all audio itself so
+  //   keyboard note-press audio doesn't fight with chord-mode playChord.
 
   // Circle-of-fifths pitch-class tables (mirrors chord-wheel.js constants).
   const _COF_MAJOR_PC = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
@@ -520,18 +640,89 @@
     return 'major';
   }
 
+  /** Sustain for a single note in Note Mode (seconds). */
+  const NOTE_SUSTAIN = 2.0;
+
   KeyboardView.init('exp-keyboard-container', {
     showLabels: true,
-    mode: 'both',          // display HarmonyState highlights AND allow key clicks
-    onNotePlay(noteName, _octave) {
-      // Normalize Unicode sharps/flats before PC lookup
-      const ascii = noteName.replace(/♯/g, '#').replace(/♭/g, 'b');
-      const pc    = noteToPC(ascii);
-      const state = HarmonyState.get();
-      const keyIdx = typeof state.currentKey === 'number' ? state.currentKey : 0;
-      const quality = _guessQuality(pc, keyIdx);
-      HarmonyState.setTriad(noteName, quality);
+    mode: 'both',            // display HarmonyState highlights AND allow key clicks
+    noInternalAudio: true,   // Explorer handles all audio; prevents double-play conflicts
+
+    onNotePlay(noteName, octave) {
+      if (noteInputMode) {
+        // ── Note Mode: toggle this exact octave (silent — use Play button for audio) ─
+        HarmonyState.toggleNote(noteName, octave);
+      } else {
+        // ── Chord Mode: build triad on this root ───────────────
+        const ascii  = noteName.replace(/♯/g, '#').replace(/♭/g, 'b');
+        const pc     = noteToPC(ascii);
+        const state  = HarmonyState.get();
+        const keyIdx = typeof state.currentKey === 'number' ? state.currentKey : 0;
+        HarmonyState.setTriad(noteName, _guessQuality(pc, keyIdx));
+        // Audio is handled by the HarmonyState subscriber → playChord().
+      }
     },
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // NOTE MODE — PLAY & CLEAR
+  // ════════════════════════════════════════════════════════════════
+
+  /** Build a voiced list of Tone.js note strings from activeNotes, ascending by pitch. */
+  function buildNoteVoicing(activeNotes) {
+    const sorted = [...activeNotes].sort((a, b) => {
+      const midiA = a.octave * 12 + noteToPC(a.note);
+      const midiB = b.octave * 12 + noteToPC(b.note);
+      return midiA - midiB;
+    });
+    return sorted.map(n => {
+      const ascii = n.note.replace(/♯/g, '#').replace(/♭/g, 'b');
+      return `${ascii}${n.octave}`;
+    });
+  }
+
+  async function playNoteChord() {
+    if (!audioReady) return;
+    try { if (sampler) sampler.releaseAll(); } catch (_) {}
+    await ensureAudio();
+    if (!sampler) return;
+    const activeNotes = HarmonyState.get().activeNotes;
+    if (!activeNotes.length) return;
+    const voicing = buildNoteVoicing(activeNotes);
+    if (!voicing.length) return;
+
+    const isArp = document.getElementById('chk-arpeggiate').checked;
+    const velocity = 0.55 + Math.random() * 0.3;
+    sampler.volume.value = Math.random() * 4 - 2;
+
+    if (isArp) {
+      const step = 0.13;  // seconds between arpeggiated notes
+      voicing.forEach((note, i) => {
+        sampler.triggerAttackRelease(note, NOTE_SUSTAIN, Tone.now() + i * step, velocity);
+      });
+    } else {
+      sampler.triggerAttackRelease(voicing, NOTE_SUSTAIN, Tone.now(), velocity);
+    }
+  }
+
+  function clearNotes() {
+    HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
+  }
+
+  document.getElementById('btn-note-play').addEventListener('click', () => playNoteChord().catch(() => {}));
+  document.getElementById('btn-note-clear').addEventListener('click', clearNotes);
+
+  // ── Keyboard shortcuts (Space = Play, Escape = Clear, note mode only) ──
+  document.addEventListener('keydown', e => {
+    if (!noteInputMode) return;
+    const tag = (e.target.tagName || '').toUpperCase();
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      playNoteChord().catch(() => {});
+    } else if (e.code === 'Escape') {
+      clearNotes();
+    }
   });
 
   // ════════════════════════════════════════════════════════════════
@@ -559,6 +750,40 @@
   });
 
   // ════════════════════════════════════════════════════════════════
+  // NOTE MODE BADGE HELPERS
+  // ════════════════════════════════════════════════════════════════
+
+  /** Format a resolved chord for the educational chord badge. */
+  function _formatChordLabel(resolved) {
+    if (!resolved || !resolved.recognized) return resolved ? resolved.name : '—';
+    const { root, quality, symbol } = resolved;
+    if (quality === 'major') return `${root} major`;
+    if (quality === 'minor') return `${root} minor`;
+    return root + symbol;  // e.g. "B°", "C+", "Csus2", "G7", "Dm7"
+  }
+
+  /**
+   * Detect the inversion of a resolved chord given the full active notes list.
+   * Returns "1st inv", "2nd inv", "3rd inv", or "" for root position / unknown.
+   */
+  function _getInversion(resolved, activeNotes) {
+    if (!resolved || !resolved.recognized || !activeNotes || activeNotes.length < 2) return '';
+    const sorted = [...activeNotes].sort((a, b) =>
+      (a.octave * 12 + noteToPC(a.note)) - (b.octave * 12 + noteToPC(b.note))
+    );
+    const bassPC = noteToPC(sorted[0].note);
+    const rootPC = noteToPC(resolved.root);
+    if (isNaN(bassPC) || isNaN(rootPC) || bassPC === rootPC) return '';
+    const bassInterval = (bassPC - rootPC + 12) % 12;
+    const intervals = resolved.pcs.map(pc => (pc - rootPC + 12) % 12).sort((a, b) => a - b);
+    const idx = intervals.indexOf(bassInterval);
+    if (idx === 1) return '1st inv';
+    if (idx === 2) return '2nd inv';
+    if (idx === 3) return '3rd inv';
+    return '';
+  }
+
+  // ════════════════════════════════════════════════════════════════
   // HARMONYSTATE SUBSCRIBER — UI sync + audio playback
   // All chord changes (Tonnetz click, wheel click, PLR, controls)
   // flow through HarmonyState and land here.
@@ -580,7 +805,8 @@
       currentRoot    = primary.root;
       currentQuality = primary.quality;
 
-      // Update chord badge
+      // Update chord badge (ChordBubble may also update it; this handles
+      // the triad-mode path where bubble may not fire a label update)
       const qualLabel = primary.quality === 'major' ? 'major' : 'minor';
       chordBadge.textContent = `${primary.root} ${qualLabel}`;
 
@@ -590,6 +816,27 @@
         _lastQuality = primary.quality;
         playChord(primary.root, primary.quality).catch(() => {});
       }
+    } else if ((state.activeNotes || []).length > 0 && (state.activeTriads || []).length === 0) {
+      // ── Note-accumulation mode (individual toggles) ────────────
+      const pcs = (state.activeNotes).map(n => noteToPC(n.note)).filter(pc => !isNaN(pc));
+      const uniquePCs = [...new Set(pcs)];
+      const resolved = uniquePCs.length >= 2 ? resolveChord(uniquePCs) : null;
+      if (uniquePCs.length === 1) {
+        const nameMap = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+        chordBadge.textContent = nameMap[uniquePCs[0]] || '—';
+      } else if (resolved && resolved.recognized) {
+        const label = _formatChordLabel(resolved);
+        const inv   = _getInversion(resolved, state.activeNotes);
+        chordBadge.textContent = inv ? `${label} (${inv})` : label;
+      } else if (resolved) {
+        // Unrecognized interval combination — show note list
+        chordBadge.textContent = resolved.name;
+      }
+      // (ChordBubbleRenderer also updates the badge with its SVG label;
+      //  this subscriber runs after it and provides the canonical text.)
+    } else {
+      // Nothing active — clear badge (e.g. after switching to Note Mode).
+      chordBadge.textContent = '—';
     }
 
     // ── Show transform label if a PLR move just happened ──────────

@@ -21,6 +21,7 @@
 
 import { noteToPC } from '../shared/transforms.js';
 import { HarmonyState } from '../shared/harmony-state.js';
+import { resolveChord } from '../shared/chord-resolver.js';
 
 // ════════════════════════════════════════════════════════════════════
 // CIRCLE OF FIFTHS DATA
@@ -538,6 +539,34 @@ class ChordWheel {
           newOuter = COF_MAJOR_PC.indexOf(pc);
         } else if (primary.quality === 'minor') {
           newInner = COF_MINOR_PC.indexOf(pc);
+        }
+      } else if ((state.activeNotes || []).length >= 2) {
+        // Note Mode: resolve the assembled notes and highlight matching chord position.
+        const pcs = state.activeNotes
+          .map(n => noteToPC(n.note))
+          .filter(pc => !isNaN(pc));
+        if (pcs.length >= 2) {
+          const resolved = resolveChord(pcs);
+          if (resolved && resolved.recognized && resolved.root) {
+            const pc = noteToPC(resolved.root);
+            // Minor-family qualities → inner ring; everything else → outer ring.
+            const minorFamily = ['minor', 'dim', 'min7', 'dim7', 'hdim7', 'minmaj7'];
+            let newKey = -1;
+            if (minorFamily.includes(resolved.quality)) {
+              newInner = COF_MINOR_PC.indexOf(pc);
+              newKey = newInner;
+            } else {
+              newOuter = COF_MAJOR_PC.indexOf(pc);
+              newKey = newOuter;
+            }
+            // Re-center the diatonic arc on the resolved chord's key context,
+            // mirroring what _onNodeClick does when a wheel node is clicked.
+            if (newKey >= 0 && newKey !== this._selectedKey) {
+              this._selectedKey = newKey;
+              changed = true;
+              HarmonyState.update({ currentKey: newKey });
+            }
+          }
         }
       }
 
