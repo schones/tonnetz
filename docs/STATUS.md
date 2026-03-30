@@ -1,6 +1,6 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-03-26
+**Last updated:** 2026-03-29
 **Branch:** `dev`
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v3)
@@ -12,9 +12,14 @@
 MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Walks, Harmony Trainer, Skratch Studio). Starting Phase A (missing foundational concepts) while finishing the last MVP items (backend proxy, intro chapter 4 rebuild, polish).
 
 **Immediate next steps:**
-1. Rebuild intro module chapter 4 on Explorer components
-2. Phase A:  modes, chord progressions (A3–A4)
-3. Polish pass — landing page, navigation, first-visit experience
+
+1. Voicing Explorer polish — glow worm visual tweaks, test edge cases
+2. Fretboard panel (fretboard-view.js) — composable Explorer panel for guitarists (pre-MVP)
+3. Rebuild intro module chapter 4 on Explorer components
+4. Phase A3–A4: modes, chord progressions
+5. Polish pass — landing page, navigation, first-visit experience
+
+
 
 **Goal:** Shareable URL within 1–2 weeks, followed by user testing with 15–20 participants across 4 segments (curious players, producers, students/teachers, beginners).
 
@@ -29,6 +34,19 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 - Chord wheel: dual-ring circle of fifths with diatonic arc highlighting
 - Audio playback via music-engine.js / Tone.js / Salamander sampler
 - Canonical orientation locked: horizontal=P5, up-right=M3, down-right=m3, major=△, minor=▽
+
+### Voicing Explorer (Phase A5 — in progress)
+
+- Note Mode: toggle individual notes on/off across all three panels
+- Octave-specific note selection on keyboard (voicing control)
+- Compact cluster highlighting on Tonnetz (one node per pitch class, tightest grouping)
+- Glow worm path visualization: luminous trail connecting chord tones low-to-high on Tonnetz
+-  ChordResolver: identifies chord names from arbitrary note sets, interval-content fallback for non-standard voicings
+- Chord wheel sync: highlights recognized chord and re-centers diatonic arc on assembled chord's key
+- Play button + spacebar shortcut for hearing assembled voicings
+- All three panels synchronized bidirectionally via HarmonyState in both Chord Mode and Note Mode
+
+
 
 ### Shared Components
 - `transforms.js` — PLR math, pitch utilities, interval utilities
