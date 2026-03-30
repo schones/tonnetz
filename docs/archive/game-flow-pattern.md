@@ -217,7 +217,7 @@ const flow = GameFlow.init({
 });
 ```
 
-This module is **scheduled for Phase B start** — both Chord Walks and Harmony Trainer now implement the full Learn/Practice/Test + Explore pattern, providing enough implementations to extract confidently before building any new Phase B games.
+This module is **future work** — the Relative Key Trainer implements the pattern directly first. Once a second game adopts it, extract the shared parts.
 
 ---
 
@@ -391,7 +391,7 @@ real_world_examples: {
 
 5. **Where does "Explore mode" (from the original spec) fit?** The original spec had a sandbox toggle within the game. This could be a fourth tab alongside Learn/Practice/Test, or it could be folded into Practice (since Practice is already semi-exploratory). Leaning toward: make it accessible from Practice as a "Free explore" toggle that removes the question prompts and lets the player just click around the Tonnetz and keyboard.
 
-6. **Shared module timing.** ~~Build the pattern directly in the Relative Key Trainer first. When the second game adopts it, extract `game-flow.js`.~~ **Update (2026-03-30):** Both Chord Walks and Harmony Trainer now implement Learn/Practice/Test + Explore mode. Extract `game-flow.js` at the start of Phase B, before building any new games.
+6. **Shared module timing.** Build the pattern directly in the Relative Key Trainer first. When the second game (probably Harmony Trainer) adopts it, extract `game-flow.js`. Don't abstract prematurely.
 
 7. **Real world examples authoring.** With 34 topics × 2-4 lenses × 2-3 examples, that's potentially 200+ entries. LLM-assisted drafting with human curation is likely necessary. The musician and theorist lenses need accuracy — wrong harmonic analysis is worse than no example at all. **Action needed:** Author examples for 3-5 core topics by hand first to establish the voice, then consider batch generation.
 

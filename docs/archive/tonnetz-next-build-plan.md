@@ -1,8 +1,8 @@
 # Tonnetz Platform — Post-MVP Build Plan (v3)
 
-**Date:** 2026-03-30  
+**Date:** 2026-03-26  
 **Status:** Active roadmap  
-**Context:** MVP baseline nearly complete (intro module chapters 1–3, Explorer, Chord Walks, Harmony Trainer, Skratch Studio). Voicing Explorer MVP shipped (Note Mode, glow worm visualization, ChordResolver). Phase A in progress: A1 (Circle of Fifths) and A2 (Tonal Centers) complete. This document scopes the full post-MVP roadmap.
+**Context:** Phase 5 (Intro Module) nearing completion. MVP scope (intro, Chord Walks, Harmony Trainer, Skratch Studio, Explorer, backend proxy, polish) is the baseline. This document scopes what comes next.
 
 ---
 
@@ -24,37 +24,30 @@
 
 ## Proposed Phases
 
-### Phase A: Missing Concepts + Voicing Explorer MVP
+### Phase A: Intro Module Completion + Missing Concepts
 
-**Goal:** Fill the conceptual gaps so the intro module and Theory Hub cover the essential vocabulary a learner needs before games make sense. Build the Voicing Explorer as a layer within the existing Explorer.  
+**Goal:** Fill the conceptual gaps so the intro module and Theory Hub cover the essential vocabulary a learner needs before games make sense.  
 **Depends on:** Phase 5 (intro module) being done.  
-**Sessions:** 4–6 (A1, A2 complete; A3–A5 remaining)
+**Sessions:** 4–6
 
-**A1. Circle of Fifths interactive module** ✅  
-Standalone educational page at `/theory/circle-of-fifths` wrapping the existing ChordWheel component with scale playback and educational content panels. Includes vii° diminished chord marker with explanatory text.
+**A1. Circle of Fifths interactive module**  
+Already specced and partially prototyped (see circle-of-fifths.js work from Phase 1A). SVG with 12 keys in fifths order, inner ring for relative minors. Click a key → highlight diatonic chords, show relative minor, play scale. Wire to tooltip engine. Lives in Theory Hub as a featured visualization and is linkable from intro module.
 
-**A2. Tonal centers & keys** ✅  
-Interactive lesson at `/theory/tonal-centers` with 4-step guided walkthrough (including unresolved V chord moment) and ear training exercise where users identify the tonic from 4 candidate keys.
+**A2. Tonal centers & keys**  
+Short interactive lesson: "A key is a home base." Play a progression, identify the tonic. Show how all other notes/chords relate to it. Connect to circle of fifths: keys that are neighbors share almost all their notes.
 
 **A3. Modes overview**  
 Not a deep dive — just enough to say "the major scale has 7 starting points, each with a different flavor." Interactive: pick a mode, hear it, see it on the keyboard, see the brightness ordering (Lydian → Locrian). Can live as a tab within the Scale Explorer or as a standalone Theory Hub entry.
 
 **A4. Chord progressions & common patterns**  
-Interactive chord progression player: select a key, see/hear I-IV-V-I, I-V-vi-IV, ii-V-I, etc. Roman numeral overlay on Tonnetz showing chord function. "Songs that use this" references from the Song Examples Database (67 entries shipped in `song-examples.js`). **Multiple simultaneous glow worm paths** on the Tonnetz showing voice leading between chords in a progression — notes that stay vs. notes that move. This is a high-priority visualization feature that connects directly to the Voicing Explorer's glow worm rendering.
-
-**A5. Voicing Explorer MVP** ✅ (core shipped, polish in progress)  
-Chord shape visualization and interactive voicing tool built as a layer within the existing Explorer. Users build chords via any input surface (keyboard, Tonnetz grid, chord wheel), see them as glow worm paths on the Tonnetz, hear them. Includes: ChordResolver (name resolution with interval-content fallback for non-standard voicings), Note Mode with octave-specific keyboard selection, compact cluster Tonnetz highlighting, chord wheel diatonic arc re-centering. See `voicing-explorer-spec.md` for full details. Future features (MIDI integration, melody harmonization/sequence mode, voice leading visualization, shape library, drag-to-transpose, interval projection) deferred to Phase F.
-
-**Pre-MVP: Fretboard panel** (`fretboard-view.js`)  
-Guitar fretboard as a composable Explorer panel, mirroring keyboard features. The fretboard is 2D like the Tonnetz (semitones along strings × fourths across strings), so chord shapes map more naturally than on a keyboard. Multiple positions per note needs consideration (highlight all practical voicings vs. every position). Standard tuning default, alternate tunings later. Priority: pre-MVP — large amateur guitarist audience underserved by existing theory tools. Subscribes to HarmonyState like all other panels; no panel assumes others exist.
+Interactive chord progression player: select a key, see/hear I-IV-V-I, I-V-vi-IV, ii-V-I, etc. Roman numeral overlay on Tonnetz showing chord function. "Songs that use this" references from the Song Examples Database (see cross-cutting section below).
 
 ---
 
 ### Phase B: New Games — Expanding the Game Library
 
 **Goal:** More lightweight, fun games that teach fundamentals and give the curriculum something to link to. Prioritize games that are quick to build because they reuse existing components.  
-**Sessions:** 6–10  
-**First task:** Extract `game-flow.js` shared module from Chord Walks and Harmony Trainer (both already implement Learn/Practice/Test + Explore mode). This extraction happens before building any new games to avoid duplicating the pattern a third time.
+**Sessions:** 6–10
 
 **B1. Scale Builder** ⭐ (high priority)  
 Core mechanic: Given a root note, build a major or minor scale by selecting the correct notes on a keyboard or Tonnetz view. Progression: major scales → natural minor → harmonic minor → melodic minor → modes. Bonus round: build a melody using only the scale you just constructed, played over the root chord. Reuses: KeyboardView, TonnetzNeighborhood, Tone.js, HarmonyState.
@@ -180,18 +173,15 @@ The Competency Graph concept (Phase 9 from original plan): shared micro-skill tr
 **Sessions:** 8+ (these are big)
 
 **F1. Puzzle Paths game**  
-Neo-Riemannian pathfinding: navigate from start chord to target chord using P/L/R transforms. Progression Library: blues turnaround, doo-wop, Axis of Awesome, Andalusian cadence, Creep, jazz ii-V-I, Pachelbel's Canon. Uses Song Examples DB for real-song context on each progression. Requires Competency Graph (E5) for adaptive difficulty. *Note: basic Puzzle Paths (pathfinding + progression tracing, types 1 and 2 in the spec) could ship with Phase B or C without waiting for Phase E. Only ear-based puzzles require the competency graph dependency.*
+Neo-Riemannian pathfinding: navigate from start chord to target chord using P/L/R transforms. Progression Library: blues turnaround, doo-wop, Axis of Awesome, Andalusian cadence, Creep, jazz ii-V-I, Pachelbel's Canon. Uses Song Examples DB for real-song context on each progression. Requires Competency Graph (E5) for adaptive difficulty.
 
 **F2. Fog of War / spatial progress map**  
-The Tonnetz grid as a progress visualization: explored regions are revealed, unexplored areas are dimmed. Ties into curriculum completion and game performance.
+The Tonnetz grid as a progress visualization: explored regions are revealed, unexplored areas are dimmed. Ties into curriculum completion and game performance. This is the aspirational "you can see your musical knowledge growing" feature.
 
-**F3. MIDI input integration + Voicing Explorer Live Mode**  
-NoteInputProvider abstraction: games accept input from keyboard clicks, voice (pitch detection), or MIDI. Enables assessment with real instruments — play a scale on your MIDI keyboard, the game evaluates it. Launchkey 49 as primary test device. Also enables Voicing Explorer Live Mode: real-time projection of played notes along Tonnetz axes, MIDI mapping config UI with Launchkey 49 preset. See `voicing-explorer-spec.md` Future Scope.
+**F3. MIDI input integration**  
+NoteInputProvider abstraction: games accept input from keyboard clicks, voice (pitch detection), or MIDI. Enables assessment with real instruments — play a scale on your MIDI keyboard, the game evaluates it. Launchkey 49 as primary test device.
 
-**F4. Voicing Explorer — Advanced Features**  
-Post-MIDI additions: Sequence Mode (record/playback melodies with interval projections applied), voice leading visualization (show which notes move between chord shapes, with optional neo-Riemannian P/L/R labels), shape library (save/recall voicings, requires auth), advanced projection UI (multiple simultaneous projections, inversion awareness). See `voicing-explorer-spec.md`.
-
-**F5. Collaborative / social features**  
+**F4. Collaborative / social features**  
 Share your Skratch Studio creations. Leaderboards for games (optional, not the primary motivation). "Challenge a friend" on specific exercises.
 
 ---
@@ -200,9 +190,9 @@ Share your Skratch Studio creations. Leaderboards for games (optional, not the p
 
 The Song Examples Database is a curated collection of real-song references that illustrate theory concepts. It evolves across three versions as the platform matures.
 
-### v1: Static Asset ✅ (shipped)
+### v1: Static Asset (ships during Phase A/B)
 
-A single `song-examples.js` file in the repo containing 67 entries. No auth dependency. Surfaced by concept + age bracket + user's onboarding preset.
+A single `song-examples.json` file in the repo containing ~50+ entries. No auth dependency. Surfaced by concept + age bracket + user's onboarding preset.
 
 **Schema per entry:**
 ```json
@@ -267,18 +257,14 @@ AI feedback references the song database in personalized recommendations. See Ph
 ## Dependency Graph
 
 ```
-Phase A (Missing Concepts + Voicing Explorer MVP)
-  │  A1–A2 ✅ complete
-  │  A5 Voicing Explorer MVP ✅ (core shipped, polish in progress)
-  │  A3–A4 remaining concepts
-  │  Fretboard panel (pre-MVP, can run in parallel)
+Phase A (Missing Concepts)
   │
   │  ← can run in parallel ─────────────────────┐
   ↓                                              │
 Phase B (New Games)                              │
-  │  First: extract game-flow.js shared module   │
   │                                              │
-  │  Song Examples DB v1 ✅ complete ────────────┘
+  │  Song Examples DB v1 ────────────────────────┘
+  │  (static JSON, ships alongside A/B content)
   │
   ↓
 Phase B.5 (Auth & Persistence)
@@ -302,10 +288,6 @@ Phase E (AI Feedback) ←── needs auth + backend proxy + mature games
   │
   ↓
 Phase F (Advanced) ←── needs E for adaptive features
-  │  ├── F1: Puzzle Paths (basic pathfinding could ship earlier — see note)
-  │  ├── F3: MIDI integration + Voicing Explorer Live Mode
-  │  ├── F4: Voicing Explorer advanced (sequence mode, voice leading, shape library)
-  │  └── F5: Social features
 ```
 
 Phases A and B can run in parallel. C depends on both + B.5. D and E can partially overlap. F is the long tail.
@@ -328,7 +310,7 @@ These are ideas that didn't make the Phase B cut but are worth revisiting:
 
 ## Open Design Questions
 
-1. **Learn → scaffold → quiz framework:** ~~Should this be extracted as a shared component before building more games?~~ **Resolved:** Extract `game-flow.js` at the start of Phase B. Chord Walks and Harmony Trainer both implement Learn/Practice/Test + Explore mode — that's enough implementations to extract confidently.
+1. **Learn → scaffold → quiz framework:** Should this be extracted as a shared component before building more games, or should we let the pattern emerge from 2–3 more implementations first? (Current take: build Scale Builder and one more game using the pattern manually, then extract.)
 
 2. **Tonnetz as navigation:** How literal should this be? Full spatial map with fog of war, or a simpler node graph that uses Tonnetz aesthetics? The full spatial version is more distinctive but harder to build and potentially confusing for beginners.
 
@@ -344,24 +326,24 @@ These are ideas that didn't make the Phase B cut but are worth revisiting:
 
 | Phase | Sessions | Cumulative | Notes |
 |-------|----------|------------|-------|
-| A: Missing Concepts | ~~4–6~~ 2–3 remaining | 2–3 | A1, A2, A5 core complete. A3 modes + A4 progressions remain |
-| Fretboard panel | 1–2 | 3–5 | Pre-MVP, composable Explorer panel |
-| B: New Games | 6–10 | 9–15 | Scale Builder is highest priority. Extract game-flow.js first |
-| Song DB v1 | — | — | ✅ Complete (67 entries shipped in song-examples.js) |
-| B.5: Auth & Persistence | 2–3 | 11–18 | Focused infrastructure sprint |
-| C: Curriculum | 4–6 | 15–24 | Includes Song DB v2 preference UI |
-| D: Differentiated UX | 3–5 | 18–29 | Mostly configuration + polish |
-| E: AI Feedback | 5–8 | 23–37 | Includes Song DB v3 |
-| F: Advanced | 8+ | 31–45+ | Long tail, each feature is big |
+| A: Missing Concepts | 4–6 | 4–6 | Circle of fifths partially done |
+| B: New Games | 6–10 | 10–16 | Scale Builder is highest priority |
+| Song DB v1 | 1–2 | 11–18 | Mostly content curation |
+| B.5: Auth & Persistence | 2–3 | 13–21 | Focused infrastructure sprint |
+| C: Curriculum | 4–6 | 17–27 | Includes Song DB v2 preference UI |
+| D: Differentiated UX | 3–5 | 20–32 | Mostly configuration + polish |
+| E: AI Feedback | 5–8 | 25–40 | Includes Song DB v3 |
+| F: Advanced | 8+ | 33–48+ | Long tail, each feature is big |
 
 **At 3–4 sessions/week: ~2–3 months through Phase D, ~3–4 months through Phase E.**
 
 ---
 
-## Immediate Next Steps
+## Immediate Next Steps (This Week)
 
-1. **Multiple simultaneous glow worm paths** — Visualize chord progressions/transitions with two+ paths on the Tonnetz at once (e.g., I→IV). Shows voice leading: notes that stay put vs. notes that move. Highest priority next build.
-2. **Fretboard panel** (`fretboard-view.js`) — Composable Explorer panel for guitarists. Subscribes to HarmonyState, mirrors keyboard features on a fretboard grid.
-3. **Rebuild intro module chapter 4** on Explorer components (chapters 1–3 complete, 4+ paused).
-4. **Phase A3–A4:** Modes overview, chord progressions with Song Examples DB integration.
-5. **Polish pass** — Landing page, navigation, first-visit experience → shareable URL.
+1. Finish Phase 5 (intro module) — the current sprint.
+2. Ship MVP (backend proxy, polish pass, deploy).
+3. Review this document and prioritize: which Phase A/B items to tackle first?
+4. Design session for Scale Builder (highest-value new game).
+5. Design session for Circle of Fifths integration with intro module.
+6. Begin curating Song Examples DB v1 content (can happen in parallel with everything).

@@ -186,7 +186,7 @@ Every piece of content belongs to exactly one primary type. These types reflect 
 1. **Circle of Fifths Explorer** — key relationships, signatures, relative keys
 2. **Tonnetz Grid** — note relationships, chord transforms, neo-Riemannian operations
 3. **Scale Explorer** — visual/audible scale construction, mode comparison
-4. **Voicing Explorer** — chord shapes on the Tonnetz, interval projection, drag-to-transpose, glow worm path visualization. Subsumes the originally planned "Chord Voicing Visualizer." See `voicing-explorer-spec.md` for full details.
+4. **Chord Voicing Visualizer** — how chords are built and inverted
 
 ---
 

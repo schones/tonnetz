@@ -1,11 +1,9 @@
 # Tonnetz Neighborhood + Keyboard: Linked Component Architecture
 
-**Version:** 0.1 (Initial design)  
-**Date:** 2026-03-14  
-**Purpose:** Define the architecture for a linked Tonnetz neighborhood view and piano keyboard component, initially built for the Relative Major/Minor game but designed for extraction and reuse across the platform.  
-**Context:** This doc sits alongside `tonnetz-content-architecture.md` and `tonnetz-next-build-plan.md`. It defines a new reusable component layer that will be consumed by games and visualizations.
-
-> **⚠️ Partially superseded (2026-03-30):** Architecture sections (§1–8) remain the reference for HarmonyState API, animation queue, and component patterns. Implementation sequence (§10) is superseded by `tonnetz-next-build-plan.md` v3 and `game-flow-pattern.md`. Orientation in §3.1 has been corrected below to match the canonical orientation defined in `tonnetz-explorer-spec.md`. The Explorer now has three panels (Tonnetz, Chord Wheel, Keyboard), not four — the Note Wheel was consolidated into the Chord Wheel.
+**Version:** 0.1 (Initial design)
+**Date:** 2026-03-14
+**Purpose:** Define the architecture for a linked Tonnetz neighborhood view and piano keyboard component, initially built for the Relative Major/Minor game but designed for extraction and reuse across the platform.
+**Context:** This doc sits alongside `tonnetz-content-architecture.md` and `tonnetz-build-plan.md`. It defines a new reusable component layer that will be consumed by games and visualizations.
 
 ---
 
@@ -147,9 +145,9 @@ A focused, zoomable subgraph of the full Tonnetz grid. Shows a center triad and 
 ### 3.1 Layout Geometry
 
 The Tonnetz is a triangular lattice where:
-- **Horizontal axis** = perfect fifths (e.g., C → G → D) *(corrected 2026-03-30)*
-- **Diagonal up-right** = major thirds (e.g., C → E → G♯) *(corrected 2026-03-30)*
-- **Diagonal down-right** = minor thirds (e.g., C → E♭ → G♭) *(corrected 2026-03-30)*
+- **Horizontal axis** = major thirds (e.g., C → E → G♯)
+- **Diagonal up-right** = minor thirds (e.g., C → E♭ → G♭)
+- **Diagonal down-right** = perfect fifths (e.g., C → G → D)
 
 Each **triangle** (3 adjacent nodes) forms a triad:
 - Upward-pointing triangle = major triad
@@ -227,10 +225,10 @@ When `HarmonyState.activeInterval` is set (and `activeTriads` is empty or irrele
 
 - **Two nodes** are highlighted for the interval's two pitch classes
 - **The connecting edge** is highlighted with a color and optional label (e.g., "M3", "P5")
-- **The edge direction** encodes the interval type — horizontal = perfect 5th, diagonal up-right = major 3rd, diagonal down-right = minor 3rd. Compound intervals (e.g., minor 6th = inverted major 3rd) follow the same axis but traverse multiple edges
+- **The edge direction** encodes the interval type — horizontal = major 3rd, diagonal up-right = minor 3rd, diagonal down-right = perfect 5th. Compound intervals (e.g., minor 6th = inverted major 3rd) follow the same axis but traverse multiple edges
 - **No triangles are filled.** The Tonnetz shows the *linear* relationship, not the triadic one
 
-This is where the Tonnetz adds something the keyboard can't: a player sees that every perfect 5th is a horizontal move, every major 3rd is the same diagonal. The spatial pattern is the lesson — intervals aren't just numbers, they're directions on a map.
+This is where the Tonnetz adds something the keyboard can't: a player sees that every major 3rd is a horizontal move, every perfect 5th is the same diagonal. The spatial pattern is the lesson — intervals aren't just numbers, they're directions on a map.
 
 The renderer determines mode automatically: if `activeInterval` is set and `activeTriads` is empty, render edges. If `activeTriads` is set, render triangles. If both are set (possible in a future "interval within a chord" context), render both.
 

@@ -2,7 +2,7 @@
 
 **Version:** 0.1
 **Date:** 2026-03-18
-**Phase:** B.5 (Post-MVP Build Plan v3)
+**Phase:** 3 (Build Plan)
 **Status:** DRAFT — review before implementation
 
 ---

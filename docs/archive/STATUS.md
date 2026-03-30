@@ -1,6 +1,6 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-03-30
+**Last updated:** 2026-03-29
 **Branch:** `dev`
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v3)
@@ -75,8 +75,8 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 - Phase 1 schema migration complete (content_type, difficulty, related_games, visualizations, creative_prompts)
 
 ### General stuff
-- Backend API proxy ✅ complete (Anthropic key server-side in app.py, client calls /api/chat only, .env gitignored)
-- Phase A1 (Circle of Fifths) ✅, A2 (Tonal Centers) ✅
+- Backend API proxy (1 session — non-negotiable before sharing) 
+- Phase A1, A2 done
 
 
 ---
@@ -85,14 +85,13 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 
 See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 
-- **Phase A (remaining):** A3 modes overview, A4 chord progressions with Song Examples DB integration + multiple glow worm paths for voice leading visualization. A1 circle of fifths, A2 tonal centers, and A5 Voicing Explorer core are complete.
-- **Pre-MVP:** Fretboard panel (`fretboard-view.js`) — composable Explorer panel for guitarists
-- **Phase B:** Extract `game-flow.js` first, then Scale Builder, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation
+- **Phase A:** Circle of fifths module, tonal centers/keys, modes overview, chord progressions with Song Examples DB integration
+- **Phase B:** Scale Builder, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation
 - **Phase B.5:** Auth & Persistence — Supabase auth, profile migration, resolve Practice vs Test schema (B8), song preferences table
 - **Phase C:** Curriculum paths, path runner UI, Tonnetz curriculum map, onboarding routing, Song Examples DB v2 (preference feedback UI)
 - **Phase D:** Differentiated experiences by user level (beginner/student/advanced modes, achievements)
 - **Phase E:** AI-powered feedback (session analysis, cross-game competency graph, Song Examples DB v3)
-- **Phase F:** Puzzle Paths (basic could ship earlier), MIDI input + Voicing Explorer Live Mode, Voicing Explorer advanced (sequence mode, voice leading, shape library), fog of war, social features
+- **Phase F:** Puzzle Paths, MIDI input, fog of war, social features
 
 ---
 
@@ -113,7 +112,6 @@ See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 |---|---|
 | `docs/tonnetz-next-build-plan.md` | **Active roadmap** — Phases A–F + B.5, Song Examples DB, dependency graph |
 | `docs/tonnetz-explorer-spec.md` | Explorer design, panel specs, canonical orientation |
-| `docs/voicing-explorer-spec.md` | Voicing Explorer — chord shapes, glow worm paths, projections, MIDI (future) |
 | `docs/tonnetz-content-architecture.md` | Content model, topic schema, lens system, starters, challenges |
 | `docs/game-flow-pattern.md` | Learn → Practice → Test pattern |
 | `docs/auth-architecture.md` | Supabase auth, profile migration, security checklist |
