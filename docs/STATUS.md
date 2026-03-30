@@ -13,12 +13,12 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 
 **Immediate next steps:**
 
-1. Voicing Explorer polish — glow worm visual tweaks, test edge cases
-2. Fretboard panel (fretboard-view.js) — composable Explorer panel for guitarists (pre-MVP)
-3. Rebuild intro module chapter 4 on Explorer components
-4. Phase A3–A4: modes, chord progressions
-5. Polish pass — landing page, navigation, first-visit experience
 
+
+1. Guitar instrument option (in progress)
+2. Fretboard panel polish — click-to-select notes, visual tuning
+3. Intro module chapter 4 rebuild on Explorer components
+4. Polish pass — landing page, navigation, first-visit experience
 
 
 **Goal:** Shareable URL within 1–2 weeks, followed by user testing with 15–20 participants across 4 segments (curious players, producers, students/teachers, beginners).
@@ -47,6 +47,20 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 - All three panels synchronized bidirectionally via HarmonyState in both Chord Mode and Note Mode
 
 
+### Chord Progression Engine
+- Multi-path glow worm visualization (animated playthrough with fading trails)
+- Fixed Tonnetz center during progression playback
+- Common-tone highlighting between chord transitions
+- Transport: startPlayback, stopPlayback, stepProgression, resetPlayback
+- Progression state management in HarmonyState
+
+### Fretboard Panel
+- Composable Explorer panel at static/shared/fretboard-view.js
+- Multi-position highlighting with practical voicing clusters
+- Keyboard/Fretboard/Both toggle on Explorer
+- Test page at /test/fretboard
+
+
 
 ### Shared Components
 - `transforms.js` — PLR math, pitch utilities, interval utilities
@@ -68,6 +82,8 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 - Harmony Trainer: tips pill, Tonnetz pop-out, education wiring
 - Skratch Studio: Blockly + audio + music creation blocks
 - Visual layer system (visual-config.js, visual-layer.js, visual-toggle.js)
+- Theory pages wired into site nav and Theory Hub
+
 
 ### Education Infrastructure
 - Onboarding & profile system (localStorage)
@@ -76,8 +92,7 @@ MVP baseline is nearly complete (intro module chapters 1–3, Explorer, Chord Wa
 
 ### General stuff
 - Backend API proxy ✅ complete (Anthropic key server-side in app.py, client calls /api/chat only, .env gitignored)
-- Phase A1 (Circle of Fifths) ✅, A2 (Tonal Centers) ✅
-
+- Phase A complete: A1 (Circle of Fifths) ✅, A2 (Tonal Centers) ✅, A3 (Modes) ✅, A4 (Chord Progressions) ✅
 
 ---
 

@@ -17,7 +17,9 @@ Reverse chronological. Quick capture after each session: what happened, what was
 - Decided: Song Examples DB integration with dual tabs — "By Pattern" + "By Song"
 - Decided: common-tone flash during chord transitions (white/gold pulse, ~500ms)
 - Workflow: Sonnet as default Claude Code model, Opus for multi-file architectural prompts
-- Next: test progression engine, Session 2 (page UI), A3 modes, fretboard panel
+- Tested progression engine, Session 2 (page UI), A3 modes, fretboard panel
+- Theory pages are wired into dropdown nav
+
 
 ## 2026-03-29 (Saturday)
 
