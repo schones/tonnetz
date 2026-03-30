@@ -879,6 +879,12 @@ function _renderAll(svg, neighborhood, state, opts) {
     }
     gNodes.appendChild(g);
   }
+  // Chord bubble overlays sit between the base grid and the node layer so
+  // that node circles + labels always render on top of the glow worm blur.
+  for (const overlay of overlays) {
+    gScene.appendChild(overlay);
+  }
+
   gScene.appendChild(gNodes);
 
   // ═══════════════════════════════════════════════════════════════
@@ -1013,11 +1019,6 @@ function _renderAll(svg, neighborhood, state, opts) {
 
   // ── Attach scene to SVG ───────────────────────────────────────
   svg.appendChild(gScene);
-
-  // Re-attach overlay groups (inserted after gScene so they render on top)
-  for (const overlay of overlays) {
-    svg.appendChild(overlay);
-  }
 }
 
 // ════════════════════════════════════════════════════════════════════

@@ -223,6 +223,11 @@ def test_shared():
     return render_template("test-shared.html")
 
 
+@app.route("/test/fretboard")
+def test_fretboard():
+    return render_template("test-fretboard.html")
+
+
 @app.route("/explorer")
 def explorer():
     return render_template("explorer.html")
@@ -241,6 +246,16 @@ def theory_circle_of_fifths():
 @app.route("/theory/tonal-centers")
 def theory_tonal_centers():
     return render_template("theory/tonal-centers.html")
+
+
+@app.route("/theory/chord-progressions")
+def theory_chord_progressions():
+    return render_template("theory/chord-progressions.html")
+
+
+@app.route("/theory/modes")
+def theory_modes():
+    return render_template("theory/modes.html")
 
 
 @app.route("/intro")

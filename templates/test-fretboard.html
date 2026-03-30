@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Fretboard Test{% endblock %}
+
+{% block head %}
+<style>
+  .fb-test-page {
+    max-width: 1100px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 3rem;
+  }
+  .fb-test-page h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+  }
+  .fb-test-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+  }
+
+  /* Fretboard container */
+  .fb-test-panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .fb-test-panel-header {
+    padding: 0.38rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+  }
+  .fb-test-panel-body {
+    padding: 0.75rem;
+  }
+  #fb-test-container {
+    width: 100%;
+    min-height: 200px;
+  }
+
+  /* Status badge */
+  .fb-test-status {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+    flex-wrap: wrap;
+  }
+  .fb-test-badge {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.28rem 0.9rem;
+    min-width: 110px;
+    text-align: center;
+  }
+  .fb-test-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Controls */
+  .fb-test-controls {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    padding: 0.7rem 1.1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: center;
+  }
+  .fb-test-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    font-family: var(--font-main);
+  }
+  .fb-test-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .fb-test-btn--active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .fb-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .fb-ctrl-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fb-test-page">
+
+  <h1>Fretboard Panel Test</h1>
+  <p class="fb-test-subtitle">
+    Standalone test for the FretboardView component. Click any fret position to select a note.
+    Try the preset chords below to see multi-position highlighting with practical voicing emphasis.
+  </p>
+
+  <!-- Status -->
+  <div class="fb-test-status">
+    <span class="fb-test-label">Active</span>
+    <div class="fb-test-badge" id="fb-badge">--</div>
+  </div>
+
+  <!-- Fretboard panel -->
+  <div class="fb-test-panel">
+    <div class="fb-test-panel-header">Fretboard</div>
+    <div class="fb-test-panel-body">
+      <div id="fb-test-container"></div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="fb-test-controls">
+    <span class="fb-ctrl-label">Chords</span>
+    <button class="fb-test-btn" id="btn-c-maj">C major</button>
+    <button class="fb-test-btn" id="btn-a-min">A minor</button>
+    <button class="fb-test-btn" id="btn-g-maj">G major</button>
+    <button class="fb-test-btn" id="btn-d-min">D minor</button>
+    <button class="fb-test-btn" id="btn-e-maj">E major</button>
+
+    <div class="fb-divider"></div>
+
+    <span class="fb-ctrl-label">Mode</span>
+    <button class="fb-test-btn fb-test-btn--active" id="btn-chord-mode">Chord</button>
+    <button class="fb-test-btn" id="btn-note-mode">Note</button>
+
+    <div class="fb-divider"></div>
+
+    <button class="fb-test-btn" id="btn-clear">Clear</button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { HarmonyState }
+    from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { FretboardView }
+    from '{{ url_for("static", filename="shared/fretboard-view.js") }}';
+  import { resolveChord }
+    from '{{ url_for("static", filename="shared/chord-resolver.js") }}';
+  import { noteToPC }
+    from '{{ url_for("static", filename="shared/transforms.js") }}';
+
+  // Expose for console debugging
+  window.HarmonyState = HarmonyState;
+  window.FretboardView = FretboardView;
+
+  // ── Init fretboard ──────────────────────────────────────────
+  const fb = new FretboardView('fb-test-container');
+
+  // ── Badge ───────────────────────────────────────────────────
+  const badge = document.getElementById('fb-badge');
+
+  HarmonyState.on(state => {
+    const primary = (state.activeTriads || []).find(t => t.role === 'primary');
+    if (primary) {
+      badge.textContent = `${primary.root} ${primary.quality}`;
+      return;
+    }
+    const notes = state.activeNotes || [];
+    if (notes.length === 0) {
+      badge.textContent = '--';
+      return;
+    }
+    const pcs = [...new Set(notes.map(n => noteToPC(n.note)).filter(pc => !isNaN(pc)))];
+    if (pcs.length >= 2) {
+      const resolved = resolveChord(pcs);
+      badge.textContent = resolved ? resolved.name : pcs.map(pc => ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][pc]).join(' ');
+    } else {
+      badge.textContent = notes.map(n => n.note).join(' ');
+    }
+  });
+
+  // ── Chord buttons ───────────────────────────────────────────
+  const chords = {
+    'btn-c-maj': ['C', 'major'],
+    'btn-a-min': ['A', 'minor'],
+    'btn-g-maj': ['G', 'major'],
+    'btn-d-min': ['D', 'minor'],
+    'btn-e-maj': ['E', 'major'],
+  };
+
+  for (const [id, [root, quality]] of Object.entries(chords)) {
+    document.getElementById(id).addEventListener('click', () => {
+      HarmonyState.setTriad(root, quality);
+    });
+  }
+
+  // ── Mode toggle ─────────────────────────────────────────────
+  let noteMode = false;
+  const btnChord = document.getElementById('btn-chord-mode');
+  const btnNote = document.getElementById('btn-note-mode');
+
+  btnChord.addEventListener('click', () => {
+    noteMode = false;
+    btnChord.classList.add('fb-test-btn--active');
+    btnNote.classList.remove('fb-test-btn--active');
+  });
+  btnNote.addEventListener('click', () => {
+    noteMode = true;
+    btnNote.classList.add('fb-test-btn--active');
+    btnChord.classList.remove('fb-test-btn--active');
+    HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
+  });
+
+  // ── Clear ───────────────────────────────────────────────────
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
+  });
+
+  // ── Initial state ───────────────────────────────────────────
+  HarmonyState.setTriad('C', 'major');
+</script>
+{% endblock %}

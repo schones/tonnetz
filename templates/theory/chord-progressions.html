@@ -1,0 +1,1255 @@
+{% extends "base.html" %}
+{% block title %}Chord Progressions — Tonnetz{% endblock %}
+
+{% block head %}
+<!-- Tone.js — must be in <head> so window.Tone is defined before any module runs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<style>
+  /* ── Page ────────────────────────────────────────────────────── */
+  .cp-page {
+    max-width: 1280px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 3rem;
+  }
+
+  .cp-page h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+  }
+
+  .cp-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+  }
+
+  /* ── Key selector row ────────────────────────────────────────── */
+  .cp-key-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .cp-key-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .cp-select {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-main);
+  }
+
+  .cp-btn-sound {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-main);
+    white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    margin-left: auto;
+  }
+
+  .cp-btn-sound:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .cp-btn-sound--on {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-style: solid;
+    color: var(--accent);
+  }
+
+  /* ── Two-column layout ───────────────────────────────────────── */
+  .cp-layout {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+  }
+
+  .cp-picker-col {
+    flex: 0 0 340px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .cp-explorer-col {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  /* ── Panel shell ─────────────────────────────────────────────── */
+  .cp-panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+
+  .cp-panel-header {
+    padding: 0.38rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── Tabs ─────────────────────────────────────────────────────── */
+  .cp-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cp-tab {
+    flex: 1;
+    padding: 0.45rem 0.5rem;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: color 0.12s, border-color 0.12s;
+  }
+
+  .cp-tab:hover {
+    color: var(--accent);
+  }
+
+  .cp-tab--active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── Progression list ────────────────────────────────────────── */
+  .cp-prog-list {
+    max-height: 520px;
+    overflow-y: auto;
+  }
+
+  .cp-prog-item {
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+
+  .cp-prog-item:last-child {
+    border-bottom: none;
+  }
+
+  .cp-prog-item:hover {
+    background: var(--accent-soft);
+  }
+
+  .cp-prog-item--active {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+  }
+
+  .cp-prog-roman {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 0.15rem;
+  }
+
+  .cp-prog-chords {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 0.1rem;
+  }
+
+  .cp-prog-desc {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+  }
+
+  /* ── Song list ───────────────────────────────────────────────── */
+  .cp-song-item {
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+
+  .cp-song-item:last-child {
+    border-bottom: none;
+  }
+
+  .cp-song-item:hover {
+    background: var(--accent-soft);
+  }
+
+  .cp-song-item--active {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+  }
+
+  .cp-song-name {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 0.1rem;
+  }
+
+  .cp-song-artist {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.1rem;
+  }
+
+  .cp-song-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .cp-song-pattern {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .cp-song-genre {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  /* ── Explorer panels ─────────────────────────────────────────── */
+  .cp-top-row {
+    display: flex;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .cp-panel--tonnetz {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .cp-panel--tonnetz .cp-panel-body {
+    height: 400px;
+    padding: 0;
+    position: relative;
+  }
+
+  #cp-tonnetz-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .cp-panel--wheel {
+    flex: 0 0 auto;
+    width: 320px;
+  }
+
+  .cp-panel--wheel .cp-panel-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    height: 400px;
+    box-sizing: border-box;
+  }
+
+  #cp-wheel-container {
+    width: 280px;
+    height: 280px;
+    overflow: visible;
+  }
+
+  #cp-wheel-container .cw-label {
+    font-size: 11px;
+  }
+
+  #cp-wheel-container .cw-roman {
+    font-size: 8px;
+  }
+
+  /* ── Keyboard panel ──────────────────────────────────────────── */
+  .cp-panel--keyboard .cp-panel-body {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 0.75rem;
+    overflow-x: auto;
+  }
+
+  #cp-keyboard-container {
+    --keyboard-white-key-w: 32px;
+    --keyboard-white-key-h: 110px;
+    --keyboard-black-key-w: 20px;
+    --keyboard-black-key-h: 72px;
+  }
+
+  /* ── Transport controls ──────────────────────────────────────── */
+  .cp-transport {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+  }
+
+  .cp-transport-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: background 0.12s, border-color 0.12s;
+  }
+
+  .cp-transport-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .cp-transport-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .cp-transport-btn--play {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 800;
+    min-width: 64px;
+  }
+
+  .cp-transport-btn--play:hover:not(:disabled) {
+    background: var(--accent) !important;
+    color: #fff !important;
+  }
+
+  .cp-tempo-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
+  }
+
+  .cp-tempo-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .cp-tempo-slider {
+    width: 80px;
+  }
+
+  .cp-position {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0 0.5rem;
+    white-space: nowrap;
+  }
+
+  /* ── Educational content ─────────────────────────────────────── */
+  .cp-edu {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    padding: 1rem 1.1rem;
+  }
+
+  .cp-edu h2 {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 0.55rem 0;
+  }
+
+  .cp-edu p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 0 0 0.45rem 0;
+  }
+
+  .cp-edu p:last-child {
+    margin-bottom: 0;
+  }
+
+  .cp-analysis-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .cp-analysis-table th {
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-secondary);
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .cp-analysis-table td {
+    padding: 0.3rem 0.5rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cp-analysis-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .cp-analysis-table .cp-fn-tonic { color: #2563eb; font-weight: 700; }
+  .cp-analysis-table .cp-fn-subdominant { color: #d97706; font-weight: 700; }
+  .cp-analysis-table .cp-fn-dominant { color: #16a34a; font-weight: 700; }
+  .cp-analysis-table .cp-fn-other { color: var(--text-secondary); font-weight: 700; }
+
+  .cp-song-refs {
+    margin: 0.5rem 0;
+  }
+
+  .cp-song-ref {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding: 0.2rem 0;
+  }
+
+  .cp-song-ref strong {
+    color: var(--text-primary);
+  }
+
+  .cp-voice-leading {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem;
+    margin-top: 0.5rem;
+  }
+
+  .cp-voice-leading em {
+    color: var(--text-primary);
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  /* ── Empty state ─────────────────────────────────────────────── */
+  .cp-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-style: italic;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  /* ── Responsive ──────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .cp-layout {
+      flex-direction: column;
+    }
+
+    .cp-picker-col {
+      flex: none;
+      width: 100%;
+    }
+
+    .cp-prog-list {
+      max-height: 300px;
+    }
+
+    .cp-top-row {
+      flex-direction: column;
+    }
+
+    .cp-panel--wheel {
+      width: 100%;
+    }
+
+    #cp-wheel-container {
+      width: 240px;
+      height: 240px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cp-page">
+
+  <h1>Chord Progressions</h1>
+  <p class="cp-subtitle">
+    Chord progressions are the backbone of songs. See how chords move through
+    a key — and why some progressions show up in hundreds of songs.
+  </p>
+
+  <!-- ── Key selector + sound toggle ───────────────────────────── -->
+  <div class="cp-key-row">
+    <span class="cp-key-label">Key</span>
+    <select class="cp-select" id="cp-key-select">
+      <option value="C" selected>C major</option>
+      <option value="G">G major</option>
+      <option value="D">D major</option>
+      <option value="A">A major</option>
+      <option value="E">E major</option>
+      <option value="B">B major</option>
+      <option value="F">F major</option>
+      <option value="Bb">B&#9837; major</option>
+      <option value="Eb">E&#9837; major</option>
+      <option value="Ab">A&#9837; major</option>
+    </select>
+    <button class="cp-btn-sound" id="cp-btn-audio">&#9654; Enable Sound</button>
+  </div>
+
+  <div class="cp-layout">
+
+    <!-- ── Left: Progression picker ────────────────────────────── -->
+    <div class="cp-picker-col">
+      <div class="cp-panel">
+        <div class="cp-tabs">
+          <button class="cp-tab cp-tab--active" data-tab="pattern">By Pattern</button>
+          <button class="cp-tab" data-tab="song">By Song</button>
+        </div>
+
+        <!-- Tab 1: By Pattern -->
+        <div class="cp-prog-list" id="cp-pattern-list">
+          <!-- populated by JS -->
+        </div>
+
+        <!-- Tab 2: By Song -->
+        <div class="cp-prog-list" id="cp-song-list" style="display:none;">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: Explorer panels + transport + education ──────── -->
+    <div class="cp-explorer-col">
+
+      <!-- Tonnetz + Chord Wheel -->
+      <div class="cp-top-row">
+        <div class="cp-panel cp-panel--tonnetz">
+          <div class="cp-panel-header">
+            <span>Tonnetz Neighborhood</span>
+          </div>
+          <div class="cp-panel-body">
+            <div id="cp-tonnetz-container"></div>
+          </div>
+        </div>
+
+        <div class="cp-panel cp-panel--wheel">
+          <div class="cp-panel-header">
+            <span>Chord Wheel</span>
+          </div>
+          <div class="cp-panel-body">
+            <div id="cp-wheel-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keyboard -->
+      <div class="cp-panel cp-panel--keyboard">
+        <div class="cp-panel-header">
+          <span>Keyboard</span>
+          <span class="cp-position" id="cp-position"></span>
+        </div>
+        <div class="cp-panel-body">
+          <div id="cp-keyboard-container"></div>
+        </div>
+      </div>
+
+      <!-- Transport -->
+      <div class="cp-transport" id="cp-transport">
+        <button class="cp-transport-btn" id="cp-btn-prev" disabled>&laquo; Prev</button>
+        <button class="cp-transport-btn cp-transport-btn--play" id="cp-btn-play" disabled>&#9654; Play</button>
+        <button class="cp-transport-btn" id="cp-btn-next" disabled>Next &raquo;</button>
+        <button class="cp-transport-btn" id="cp-btn-reset" disabled>&#8634; Reset</button>
+        <div class="cp-tempo-group">
+          <span class="cp-tempo-label" id="cp-tempo-label">100 BPM</span>
+          <input type="range" class="cp-tempo-slider" id="cp-tempo-slider"
+                 min="60" max="160" value="100" step="5">
+        </div>
+      </div>
+
+      <!-- Educational content -->
+      <div class="cp-edu" id="cp-edu">
+        <div id="cp-edu-content">
+          <p style="color:var(--text-muted);font-style:italic;">
+            Select a progression above to see its analysis.
+          </p>
+        </div>
+      </div>
+
+    </div><!-- /.cp-explorer-col -->
+  </div><!-- /.cp-layout -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { HarmonyState }
+    from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { noteToPC, pcToNote, triadNotes }
+    from '{{ url_for("static", filename="shared/transforms.js") }}';
+  import { TonnetzNeighborhood }
+    from '{{ url_for("static", filename="shared/tonnetz-neighborhood.js") }}';
+  import { KeyboardView }
+    from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+  import { ChordWheel }
+    from '{{ url_for("static", filename="js/chord-wheel.js") }}';
+  import { ChordBubbleRenderer }
+    from '{{ url_for("static", filename="shared/chord-bubble-renderer.js") }}';
+  import SONG_EXAMPLES
+    from '{{ url_for("static", filename="shared/song-examples.js") }}';
+
+  // ════════════════════════════════════════════════════════════════
+  // ROMAN NUMERAL RESOLUTION
+  // ════════════════════════════════════════════════════════════════
+
+  const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]; // semitone offsets from root
+  const MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10]; // natural minor semitone offsets
+
+  // Each entry: { degree (0-6), quality, minor: true if uses minor scale }
+  const NUMERAL_MAP = {
+    'I':    { degree: 0, quality: 'major' },
+    'II':   { degree: 1, quality: 'major' },
+    'III':  { degree: 2, quality: 'major' },
+    'IV':   { degree: 3, quality: 'major' },
+    'V':    { degree: 4, quality: 'major' },
+    'VI':   { degree: 5, quality: 'major' },
+    'VII':  { degree: 6, quality: 'major' },
+    'i':    { degree: 0, quality: 'minor' },
+    'ii':   { degree: 1, quality: 'minor' },
+    'iii':  { degree: 2, quality: 'minor' },
+    'iv':   { degree: 3, quality: 'minor' },
+    'v':    { degree: 4, quality: 'minor' },
+    'vi':   { degree: 5, quality: 'minor' },
+    'vii':  { degree: 6, quality: 'minor' },
+    'vii°': { degree: 6, quality: 'diminished' },
+  };
+
+  const FUNCTIONS = {
+    0: 'Tonic',
+    1: 'Supertonic',
+    2: 'Mediant',
+    3: 'Subdominant',
+    4: 'Dominant',
+    5: 'Submediant',
+    6: 'Leading tone',
+  };
+
+  const FUNCTION_CLASS = {
+    0: 'cp-fn-tonic',
+    1: 'cp-fn-subdominant',
+    2: 'cp-fn-other',
+    3: 'cp-fn-subdominant',
+    4: 'cp-fn-dominant',
+    5: 'cp-fn-other',
+    6: 'cp-fn-dominant',
+  };
+
+  /**
+   * Resolve a Roman numeral to a chord object in the given key.
+   * @param {string} numeral - e.g. 'IV', 'vi', 'vii°'
+   * @param {string} keyRoot - e.g. 'C', 'G', 'Bb'
+   * @param {boolean} minorContext - true if the progression is in a minor key
+   * @returns {{ root, quality, notes, romanNumeral, degree, fn, fnClass }}
+   */
+  function resolveNumeral(numeral, keyRoot, minorContext) {
+    const entry = NUMERAL_MAP[numeral];
+    if (!entry) return null;
+
+    const keyPC = noteToPC(keyRoot);
+    const useFlats = keyRoot.includes('b') || keyRoot.includes('♭') || minorContext;
+    const scale = minorContext ? MINOR_SCALE : MAJOR_SCALE;
+    const rootPC = (keyPC + scale[entry.degree]) % 12;
+    const root = pcToNote(rootPC, useFlats);
+    const notes = triadNotes(root, entry.quality);
+
+    return {
+      root,
+      quality: entry.quality,
+      notes,
+      romanNumeral: numeral,
+      degree: entry.degree,
+      fn: FUNCTIONS[entry.degree],
+      fnClass: FUNCTION_CLASS[entry.degree],
+    };
+  }
+
+  /**
+   * Resolve an array of Roman numerals in a key.
+   * Auto-detects minor context if the first numeral is lowercase.
+   */
+  function resolveProgression(numerals, keyRoot) {
+    const minorContext = numerals.length > 0 && numerals[0] === numerals[0].toLowerCase() && numerals[0] !== numerals[0].toUpperCase();
+    return numerals.map(n => resolveNumeral(n, keyRoot, minorContext)).filter(Boolean);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // PROGRESSION DATA
+  // ════════════════════════════════════════════════════════════════
+
+  const PROGRESSIONS = [
+    {
+      id: 'I-IV-V-I',
+      numerals: ['I', 'IV', 'V', 'I'],
+      label: 'Classic resolution',
+      description: 'The foundational cadence of Western music. The IV creates gentle tension, V demands resolution, and I delivers it.',
+    },
+    {
+      id: 'I-V-vi-IV',
+      numerals: ['I', 'V', 'vi', 'IV'],
+      label: 'Pop/rock anthem',
+      description: 'The most common progression in pop music. It balances major brightness (I, IV, V) with one minor chord (vi) for emotional depth.',
+    },
+    {
+      id: 'I-vi-IV-V',
+      numerals: ['I', 'vi', 'IV', 'V'],
+      label: '50s doo-wop',
+      description: 'The classic sound of 1950s doo-wop. Moving from I to vi immediately adds a bittersweet quality before the IV-V turnaround.',
+    },
+    {
+      id: 'ii-V-I',
+      numerals: ['ii', 'V', 'I'],
+      label: 'Jazz cadence',
+      description: 'The backbone of jazz harmony. The ii provides a smooth approach to V, which resolves to I. Jazz musicians chain these in different keys.',
+    },
+    {
+      id: 'I-IV-vi-V',
+      numerals: ['I', 'IV', 'vi', 'V'],
+      label: 'Pop ballad',
+      description: 'A gentler reordering of the pop anthem chords. The IV-vi motion creates a sighing, reflective quality.',
+    },
+    {
+      id: 'I-III-IV-iv',
+      numerals: ['I', 'III', 'IV', 'iv'],
+      label: 'Creep progression',
+      description: 'The III chord is borrowed from outside the key, creating a dramatic lift. The iv (minor) at the end adds melancholy by borrowing from the parallel minor.',
+    },
+    {
+      id: 'i-VII-VI-v',
+      numerals: ['i', 'VII', 'VI', 'v'],
+      label: 'Andalusian cadence',
+      description: 'A descending minor progression with roots in flamenco. The bass walks steadily downward, creating an inevitable, dramatic pull.',
+    },
+    {
+      id: 'I-V-vi-iii-IV-I-IV-V',
+      numerals: ['I', 'V', 'vi', 'iii', 'IV', 'I', 'IV', 'V'],
+      label: "Pachelbel's Canon",
+      description: 'An 8-chord descending-thirds pattern used by Pachelbel in 1680 and borrowed by countless pop songs since. The bass walks steadily down the scale.',
+    },
+  ];
+
+  // ════════════════════════════════════════════════════════════════
+  // SONG EXAMPLES MATCHING
+  // ════════════════════════════════════════════════════════════════
+
+  const PROGRESSION_SONGS = SONG_EXAMPLES.filter(ex =>
+    (ex.concept_ids || []).some(id =>
+      id === 'diatonic_chords' || id === 'chord_function'
+    ) && (ex.concept_specifics || []).length > 0
+  );
+
+  // Map concept_specifics patterns to our progression IDs
+  const SPECIFIC_TO_PROG = {
+    'I_V_vi_IV': 'I-V-vi-IV',
+    'I_vi_IV_V': 'I-vi-IV-V',
+    'doo_wop': 'I-vi-IV-V',
+    'ii_V_I': 'ii-V-I',
+    'I_III_IV_iv': 'I-III-IV-iv',
+    'chromatic_mediant': 'I-III-IV-iv',
+    'i_VII_VI_V': 'i-VII-VI-v',
+    'andalusian': 'i-VII-VI-v',
+    'I_V_vi_iii_IV_I_IV_V': 'I-V-vi-iii-IV-I-IV-V',
+    'descending_bass': 'I-V-vi-iii-IV-I-IV-V',
+    'I_IV_V': 'I-IV-V-I',
+    'twelve_bar_blues': 'I-IV-V-I',
+  };
+
+  function songsForProgression(progId) {
+    return PROGRESSION_SONGS.filter(ex =>
+      (ex.concept_specifics || []).some(spec => SPECIFIC_TO_PROG[spec] === progId)
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // AUDIO
+  // ════════════════════════════════════════════════════════════════
+
+  let sampler    = null;
+  let audioReady = false;
+
+  let _toneLoadPromise = null;
+  async function loadToneIfNeeded() {
+    if (window.Tone) return;
+    if (_toneLoadPromise) return _toneLoadPromise;
+    _toneLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+      script.onload  = resolve;
+      script.onerror = () => reject(new Error('Tone.js failed to load'));
+      document.head.appendChild(script);
+    });
+    return _toneLoadPromise;
+  }
+
+  async function ensureAudio() {
+    if (sampler) return;
+    sampler = await KeyboardView.getSampler();
+  }
+
+  const CHORD_SUSTAIN = 1.5;
+
+  async function playChord(root, quality) {
+    if (!audioReady) return;
+    try { if (sampler) sampler.releaseAll(); } catch (_) {}
+    await ensureAudio();
+    if (!sampler) return;
+
+    const notes = triadNotes(root, quality);
+    if (!notes) return;
+
+    const now = Tone.now();
+    for (const note of notes) {
+      const ascii = note.replace(/♯/g, '#').replace(/♭/g, 'b');
+      sampler.triggerAttackRelease(`${ascii}4`, CHORD_SUSTAIN, now);
+    }
+  }
+
+  // Audio enable button
+  const audioBtn = document.getElementById('cp-btn-audio');
+
+  audioBtn.addEventListener('click', async () => {
+    if (audioReady) {
+      audioReady = false;
+      try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      audioBtn.textContent = '▶ Enable Sound';
+      audioBtn.className = 'cp-btn-sound';
+      return;
+    }
+
+    audioBtn.disabled = true;
+    audioBtn.textContent = 'Loading piano…';
+
+    try {
+      await loadToneIfNeeded();
+      await Tone.start();
+      await ensureAudio();
+      audioReady = true;
+      audioBtn.disabled = false;
+      audioBtn.textContent = '♪ Sound on';
+      audioBtn.className = 'cp-btn-sound cp-btn-sound--on';
+    } catch (err) {
+      audioBtn.disabled = false;
+      audioBtn.textContent = '▶ Enable Sound (retry)';
+      audioBtn.className = 'cp-btn-sound';
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // SHARED COMPONENTS
+  // ════════════════════════════════════════════════════════════════
+
+  TonnetzNeighborhood.init('cp-tonnetz-container', {
+    interactive: false,
+  });
+
+  const chordBubble = new ChordBubbleRenderer('cp-tonnetz-container');
+
+  const wheel = new ChordWheel('#cp-wheel-container', { initialKey: 0 });
+
+  KeyboardView.init('cp-keyboard-container', {
+    showLabels: true,
+    mode: 'display',
+    noInternalAudio: true,
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // STATE
+  // ════════════════════════════════════════════════════════════════
+
+  let currentKey = 'C';
+  let activeProgression = null;  // PROGRESSIONS entry
+  let activeSong = null;
+
+  // ════════════════════════════════════════════════════════════════
+  // TAB SWITCHING
+  // ════════════════════════════════════════════════════════════════
+
+  const tabs = document.querySelectorAll('.cp-tab');
+  const patternList = document.getElementById('cp-pattern-list');
+  const songList = document.getElementById('cp-song-list');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('cp-tab--active'));
+      tab.classList.add('cp-tab--active');
+
+      const which = tab.dataset.tab;
+      patternList.style.display = which === 'pattern' ? '' : 'none';
+      songList.style.display = which === 'song' ? '' : 'none';
+    });
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // PATTERN LIST
+  // ════════════════════════════════════════════════════════════════
+
+  function renderPatternList() {
+    patternList.innerHTML = '';
+    for (const prog of PROGRESSIONS) {
+      const chords = resolveProgression(prog.numerals, currentKey);
+      const chordNames = chords.map(c => `${c.root} ${c.quality === 'minor' ? 'm' : c.quality === 'diminished' ? 'dim' : ''}`).join(' – ');
+
+      const item = document.createElement('div');
+      item.className = 'cp-prog-item' + (activeProgression === prog ? ' cp-prog-item--active' : '');
+      item.innerHTML = `
+        <div class="cp-prog-roman">${prog.numerals.join(' – ')}</div>
+        <div class="cp-prog-chords">${chordNames}</div>
+        <div class="cp-prog-desc">${prog.label}</div>
+      `;
+      item.addEventListener('click', () => loadProgression(prog));
+      patternList.appendChild(item);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // SONG LIST
+  // ════════════════════════════════════════════════════════════════
+
+  function renderSongList() {
+    songList.innerHTML = '';
+
+    // Group by genre
+    const grouped = new Map();
+    for (const ex of PROGRESSION_SONGS) {
+      const genre = (ex.genre_tags || [])[0] || 'other';
+      if (!grouped.has(genre)) grouped.set(genre, []);
+      grouped.get(genre).push(ex);
+    }
+
+    for (const [genre, songs] of grouped) {
+      for (const ex of songs) {
+        const pattern = (ex.concept_specifics || []).join(', ').replace(/_/g, ' ');
+        const item = document.createElement('div');
+        item.className = 'cp-song-item' + (activeSong === ex ? ' cp-song-item--active' : '');
+        item.innerHTML = `
+          <div class="cp-song-name">${ex.song}</div>
+          <div class="cp-song-artist">${ex.artist}${ex.year ? ' (' + ex.year + ')' : ''}</div>
+          <div class="cp-song-meta">
+            <span class="cp-song-pattern">${pattern}</span>
+            <span class="cp-song-genre">${genre.replace(/_/g, ' ')}</span>
+          </div>
+        `;
+        item.addEventListener('click', () => loadSongProgression(ex));
+        songList.appendChild(item);
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // LOAD PROGRESSION
+  // ════════════════════════════════════════════════════════════════
+
+  function loadProgression(prog) {
+    HarmonyState.clearProgression();
+    activeProgression = prog;
+    activeSong = null;
+
+    const chords = resolveProgression(prog.numerals, currentKey);
+    HarmonyState.setProgression(chords, currentKey);
+    HarmonyState.setProgressionIndex(0);
+
+    renderPatternList();
+    renderSongList();
+    updateTransportState();
+    renderEducation(prog, chords);
+  }
+
+  function loadSongProgression(ex) {
+    // Find matching progression
+    const matchedId = (ex.concept_specifics || [])
+      .map(spec => SPECIFIC_TO_PROG[spec])
+      .find(Boolean);
+
+    const prog = PROGRESSIONS.find(p => p.id === matchedId);
+    if (!prog) return;
+
+    activeSong = ex;
+    activeProgression = prog;
+
+    HarmonyState.clearProgression();
+    const chords = resolveProgression(prog.numerals, currentKey);
+    HarmonyState.setProgression(chords, currentKey);
+    HarmonyState.setProgressionIndex(0);
+
+    renderPatternList();
+    renderSongList();
+    updateTransportState();
+    renderEducation(prog, chords, ex);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // KEY CHANGE
+  // ════════════════════════════════════════════════════════════════
+
+  const keySelect = document.getElementById('cp-key-select');
+  keySelect.addEventListener('change', () => {
+    currentKey = keySelect.value;
+
+    // Update chord wheel key
+    const keyPCs = { C:0, G:7, D:2, A:9, E:4, B:11, F:5, Bb:10, Eb:3, Ab:8 };
+    const keyIdx = Object.keys(keyPCs).indexOf(currentKey);
+    HarmonyState.update({ currentKey: keyIdx >= 0 ? keyIdx : 0 });
+
+    // Re-render lists with new key
+    renderPatternList();
+
+    // Reload active progression in new key
+    if (activeProgression) {
+      HarmonyState.clearProgression();
+      const chords = resolveProgression(activeProgression.numerals, currentKey);
+      HarmonyState.setProgression(chords, currentKey);
+      HarmonyState.setProgressionIndex(0);
+      updateTransportState();
+      renderEducation(activeProgression, chords, activeSong);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // TRANSPORT CONTROLS
+  // ════════════════════════════════════════════════════════════════
+
+  const btnPlay  = document.getElementById('cp-btn-play');
+  const btnPrev  = document.getElementById('cp-btn-prev');
+  const btnNext  = document.getElementById('cp-btn-next');
+  const btnReset = document.getElementById('cp-btn-reset');
+  const tempoSlider = document.getElementById('cp-tempo-slider');
+  const tempoLabel  = document.getElementById('cp-tempo-label');
+  const positionEl  = document.getElementById('cp-position');
+
+  btnPlay.addEventListener('click', () => {
+    const prog = HarmonyState.get().progressionState;
+    if (prog.isPlaying) {
+      HarmonyState.stopPlayback();
+    } else {
+      HarmonyState.startPlayback();
+    }
+  });
+
+  btnPrev.addEventListener('click', () => HarmonyState.stepProgression(-1));
+  btnNext.addEventListener('click', () => HarmonyState.stepProgression(1));
+  btnReset.addEventListener('click', () => HarmonyState.resetPlayback());
+
+  tempoSlider.addEventListener('input', () => {
+    const tempo = parseInt(tempoSlider.value, 10);
+    tempoLabel.textContent = `${tempo} BPM`;
+    const prog = HarmonyState.get().progressionState;
+    const wasPlaying = prog.isPlaying;
+    if (wasPlaying) HarmonyState.stopPlayback();
+    HarmonyState.batch(state => {
+      state.progressionState.tempo = tempo;
+    });
+    if (wasPlaying) HarmonyState.startPlayback();
+  });
+
+  function updateTransportState() {
+    const prog = HarmonyState.get().progressionState;
+    const hasChords = prog.chords.length > 0;
+
+    btnPlay.disabled  = !hasChords;
+    btnPrev.disabled  = !hasChords;
+    btnNext.disabled  = !hasChords;
+    btnReset.disabled = !hasChords;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // HARMONYSTATE SUBSCRIBER — audio + position display
+  // ════════════════════════════════════════════════════════════════
+
+  let _lastRoot    = null;
+  let _lastQuality = null;
+
+  HarmonyState.on(state => {
+    const prog = state.progressionState;
+
+    // Update play button text
+    btnPlay.textContent = prog.isPlaying ? '⏸ Pause' : '▶ Play';
+
+    // Transport button states
+    const hasChords = prog.chords.length > 0;
+    btnPlay.disabled  = !hasChords;
+    btnPrev.disabled  = !hasChords || prog.currentIndex <= 0;
+    btnNext.disabled  = !hasChords || prog.currentIndex >= prog.chords.length - 1;
+    btnReset.disabled = !hasChords;
+
+    // Position indicator
+    if (hasChords && prog.currentIndex >= 0) {
+      const chord = prog.chords[prog.currentIndex];
+      const qualStr = chord.quality === 'minor' ? 'm' : chord.quality === 'diminished' ? 'dim' : '';
+      positionEl.textContent = `Chord ${prog.currentIndex + 1} of ${prog.chords.length}: ${chord.root}${qualStr} (${chord.romanNumeral})`;
+    } else {
+      positionEl.textContent = '';
+    }
+
+    // Audio playback on chord change
+    const primary = (state.activeTriads || []).find(t => t.role === 'primary');
+    if (primary && (primary.root !== _lastRoot || primary.quality !== _lastQuality)) {
+      _lastRoot    = primary.root;
+      _lastQuality = primary.quality;
+      playChord(primary.root, primary.quality).catch(() => {});
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // EDUCATIONAL CONTENT
+  // ════════════════════════════════════════════════════════════════
+
+  const eduContent = document.getElementById('cp-edu-content');
+
+  function renderEducation(prog, chords, songExample) {
+    let html = '';
+
+    // ── Roman numeral analysis table
+    html += '<h2>Analysis</h2>';
+    html += '<table class="cp-analysis-table"><thead><tr><th>#</th><th>Numeral</th><th>Chord</th><th>Function</th></tr></thead><tbody>';
+    chords.forEach((c, i) => {
+      const qualStr = c.quality === 'minor' ? 'm' : c.quality === 'diminished' ? 'dim' : '';
+      html += `<tr>
+        <td>${i + 1}</td>
+        <td><strong>${c.romanNumeral}</strong></td>
+        <td>${c.root}${qualStr}</td>
+        <td class="${c.fnClass}">${c.fn}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+
+    // ── Why it works
+    html += `<p>${prog.description}</p>`;
+
+    // ── Voice leading notes
+    html += '<h2>Voice Leading</h2>';
+    const vlNotes = [];
+    for (let i = 1; i < chords.length; i++) {
+      const prevNotes = chords[i - 1].notes || [];
+      const currNotes = chords[i].notes || [];
+      const prevPCs = new Set(prevNotes.map(n => noteToPC(n)));
+      const common = currNotes.filter(n => prevPCs.has(noteToPC(n)));
+
+      if (common.length > 0) {
+        vlNotes.push(`<em>${common.join(', ')}</em> ${common.length === 1 ? 'is a' : 'are'} common tone${common.length > 1 ? 's' : ''} between <em>${chords[i-1].root}${chords[i-1].quality === 'minor' ? 'm' : ''}</em> and <em>${chords[i].root}${chords[i].quality === 'minor' ? 'm' : ''}</em>`);
+      } else {
+        vlNotes.push(`No common tones between <em>${chords[i-1].root}${chords[i-1].quality === 'minor' ? 'm' : ''}</em> and <em>${chords[i].root}${chords[i].quality === 'minor' ? 'm' : ''}</em> — all voices move`);
+      }
+    }
+    if (vlNotes.length > 0) {
+      html += '<div class="cp-voice-leading">' + vlNotes.join('<br>') + '</div>';
+    }
+
+    // ── Songs that use this
+    const matchingSongs = songsForProgression(prog.id);
+    if (matchingSongs.length > 0) {
+      html += '<h2>Songs That Use This</h2>';
+      html += '<div class="cp-song-refs">';
+      for (const s of matchingSongs) {
+        html += `<div class="cp-song-ref"><strong>${s.song}</strong> — ${s.artist}${s.year ? ' (' + s.year + ')' : ''}</div>`;
+      }
+      html += '</div>';
+    }
+
+    // ── If a specific song was selected, show its insight
+    if (songExample) {
+      html += '<h2>About This Song</h2>';
+      const insight = songExample.insight?.musician || songExample.insight?.playful || '';
+      if (insight) {
+        html += `<p>${insight}</p>`;
+      }
+    }
+
+    eduContent.innerHTML = html;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // CLEANUP on navigate away
+  // ════════════════════════════════════════════════════════════════
+
+  window.addEventListener('beforeunload', () => {
+    HarmonyState.clearProgression();
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // INIT
+  // ════════════════════════════════════════════════════════════════
+
+  HarmonyState.batch(state => {
+    state.currentKey = 0;
+  });
+  HarmonyState.setTriad('C', 'major');
+
+  renderPatternList();
+  renderSongList();
+</script>
+{% endblock %}

@@ -480,6 +480,8 @@
                     <div class="inst-group" role="group" aria-labelledby="inst-group-label">
                         <button class="inst-btn inst-btn--active" data-inst="piano"
                                 id="setup-inst-piano" aria-pressed="true">Piano</button>
+                        <button class="inst-btn" data-inst="guitar"
+                                id="setup-inst-guitar" aria-pressed="false">Guitar</button>
                         <button class="inst-btn" data-inst="voice"
                                 id="setup-inst-voice" aria-pressed="false">Voice</button>
                     </div>
@@ -559,6 +561,8 @@
                     <div class="inst-group" role="group" aria-label="Prompt sound">
                         <button class="inst-btn inst-btn--active" data-inst="piano"
                                 id="game-inst-piano" aria-pressed="true">Piano</button>
+                        <button class="inst-btn" data-inst="guitar"
+                                id="game-inst-guitar" aria-pressed="false">Guitar</button>
                         <button class="inst-btn" data-inst="voice"
                                 id="game-inst-voice" aria-pressed="false">Voice</button>
                     </div>
@@ -1231,7 +1235,7 @@
 
       /**
        * Update every [data-inst] button and show/hide the voice-type sub-rows.
-       * @param {'piano'|'voice'} activeInst
+       * @param {'piano'|'guitar'|'voice'} activeInst
        * @param {'loading'|'loaded'|'error'} loadState
        */
       function _syncInstButtons(activeInst, loadState) {
@@ -1243,6 +1247,18 @@
           btn.classList.toggle('inst-btn--active', on);
           btn.setAttribute('aria-pressed', String(on));
           btn.disabled = loading;
+        });
+
+        document.querySelectorAll('[data-inst="guitar"]').forEach(btn => {
+          const guitarLoading = activeInst === 'guitar' && loading;
+          const guitarError   = activeInst === 'guitar' && error;
+          const on = activeInst === 'guitar' && !error;
+          btn.classList.toggle('inst-btn--active',  on);
+          btn.classList.toggle('inst-btn--loading',  guitarLoading);
+          btn.classList.toggle('inst-btn--error',    guitarError);
+          btn.setAttribute('aria-pressed', String(on));
+          btn.disabled = loading;
+          btn.textContent = guitarLoading ? 'Guitar\u2026' : 'Guitar';
         });
 
         document.querySelectorAll('[data-inst="voice"]').forEach(btn => {
@@ -1320,7 +1336,7 @@
           console.warn('[harmony] Instrument switch failed, falling back to piano:', err);
           try { await KeyboardView.setInstrument('piano'); } catch (_) {}
           localStorage.setItem(INST_PREF_KEY, 'piano');
-          _syncInstButtons('voice', 'error');
+          _syncInstButtons(name, 'error');
           setTimeout(() => _syncInstButtons('piano', 'loaded'), 2500);
         }
       }
@@ -1372,7 +1388,9 @@
           window.__harmonyAudio.sampler = proxy;
           const savedInst      = localStorage.getItem(INST_PREF_KEY)       || 'piano';
           const savedVoiceType = localStorage.getItem(VOICE_TYPE_PREF_KEY) || 'choir_aahs';
-          if (savedInst === 'voice') {
+          if (savedInst === 'guitar') {
+            _switchInstrument('guitar');
+          } else if (savedInst === 'voice') {
             // Restore voice type silently before triggering the load, so
             // _ensureVoice() fetches the correct soundfont on first call.
             KeyboardView.setVoiceType(savedVoiceType);

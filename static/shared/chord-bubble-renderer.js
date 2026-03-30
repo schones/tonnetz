@@ -28,14 +28,14 @@
  */
 
 import { HarmonyState } from './harmony-state.js';
-import { noteToPC }     from './transforms.js';
+import { noteToPC } from './transforms.js';
 import { resolveChord } from './chord-resolver.js';
 
 // ════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ════════════════════════════════════════════════════════════════════
 
-const SVG_NS    = 'http://www.w3.org/2000/svg';
+const SVG_NS = 'http://www.w3.org/2000/svg';
 const FILTER_ID = 'tn-glow-filter';
 
 /**
@@ -44,27 +44,41 @@ const FILTER_ID = 'tn-glow-filter';
  */
 const ADJACENCY_PX = 115;
 
-const WORM_STROKE_W = 7;   // glow path stroke-width (px)
-const GLOW_NODE_R   = 24;  // glowing halo circle radius (px)
+const WORM_STROKE_W = 4;   // glow path stroke-width (px)
+const GLOW_NODE_R = 24;  // glowing halo circle radius (px)
 
 /** Quality → path / node color. Matches tonnetz-neighborhood.js quality CSS vars. */
 const QUALITY_COLORS = {
-  major:   '#2563eb',
-  minor:   '#e64a19',
-  dim:     '#7c3aed',
-  aug:     '#d97706',
-  dom7:    '#2563eb',
-  maj7:    '#2563eb',
-  min7:    '#e64a19',
-  dim7:    '#7c3aed',
-  hdim7:   '#7c3aed',
+  major: '#2563eb',
+  minor: '#e64a19',
+  dim: '#7c3aed',
+  aug: '#d97706',
+  dom7: '#2563eb',
+  maj7: '#2563eb',
+  min7: '#e64a19',
+  dim7: '#7c3aed',
+  hdim7: '#7c3aed',
   minmaj7: '#e64a19',
   augmaj7: '#d97706',
-  aug7:    '#d97706',
-  sus2:    '#0891b2',
-  sus4:    '#0891b2',
+  aug7: '#d97706',
+  sus2: '#0891b2',
+  sus4: '#0891b2',
 };
 const DEFAULT_COLOR = '#6c63ff';
+
+/** Fixed palette for progression trail chords (visually distinct, accessible). */
+const PROGRESSION_PALETTE = [
+  '#2563eb',  // blue
+  '#16a34a',  // green
+  '#d97706',  // amber
+  '#9333ea',  // purple
+  '#e64a19',  // deep orange
+  '#0891b2',  // cyan
+];
+
+const TRAIL_OPACITY = 0.35;
+const COMMON_TONE_COLOR = '#fbbf24'; // gold for common-tone pulse
+const COMMON_TONE_R = 18;
 
 // ════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -112,15 +126,15 @@ function _ensureFilter(svg) {
   }
 
   const f = _el('filter', {
-    id:     FILTER_ID,
-    x:      '-60%',
-    y:      '-60%',
-    width:  '220%',
-    height: '220%',
+    id: FILTER_ID,
+    x: '-40%',
+    y: '-40%',
+    width: '180%',
+    height: '180%',
     'color-interpolation-filters': 'sRGB',
   });
 
-  const blur = _el('feGaussianBlur', { stdDeviation: '4', result: 'blur' });
+  const blur = _el('feGaussianBlur', { stdDeviation: '3', result: 'blur' });
   const merge = _el('feMerge');
   merge.appendChild(_el('feMergeNode', { in: 'blur' }));
   merge.appendChild(_el('feMergeNode', { in: 'SourceGraphic' }));
@@ -235,12 +249,12 @@ function _gridPath(from, to, gridNodes) {
     return [from, to];
   }
 
-  const queue   = [[from]];
+  const queue = [[from]];
   const visited = new Set([_key(from)]);
 
   while (queue.length) {
     const path = queue.shift();
-    const cur  = path[path.length - 1];
+    const cur = path[path.length - 1];
 
     for (const node of gridNodes) {
       const nk = _key(node);
@@ -286,7 +300,7 @@ class ChordBubbleRenderer {
    *   ID of an existing element to write the resolved chord name into.
    */
   constructor(container, options = {}) {
-    this._opts  = options;
+    this._opts = options;
     this._unsub = null;
     this._group = null;   // <g class="tn-chord-bubble-layer">
 
@@ -316,7 +330,7 @@ class ChordBubbleRenderer {
   _getSVG() {
     if (!this._container) return null;
     return this._container.querySelector('svg.tonnetz-svg')
-        || this._container.querySelector('svg');
+      || this._container.querySelector('svg');
   }
 
   _initGroup() {
@@ -331,21 +345,28 @@ class ChordBubbleRenderer {
     if (!this._group) { this._initGroup(); if (!this._group) return; }
 
     const svg = this._getSVG();
-    if (svg && this._group.parentNode !== svg) svg.appendChild(this._group);
+    // Only re-attach if completely detached; _renderAll positions the group
+    // inside gScene (between the grid and node layer) to fix z-order.
+    if (svg && !this._group.parentNode) svg.appendChild(this._group);
 
     // Clear previous render
     this._group.textContent = '';
     if (!svg) return;
 
-    // ── Determine active notes sorted by pitch ───────────────────
-    //
-    // Priority:
-    //   1. If primaryTriad exists, use its notes (avoids ghost notes in
-    //      transform mode). All triad notes get octave 4 for sorting.
-    //   2. Otherwise, use activeNotes (which carry real octave data for
-    //      note-toggle mode — gives true low→high ordering).
-    //
-    const triads  = state.activeTriads || [];
+    // ── Progression mode: multi-path rendering ───────────────────
+    const prog = state.progressionState;
+    if (prog && prog.chords.length > 0 && prog.currentIndex >= 0) {
+      this._renderProgression(svg, state);
+      return;
+    }
+
+    // ── Standard single-chord rendering ──────────────────────────
+    this._renderSingle(svg, state);
+  }
+
+  /** Render a single chord glow worm (original behavior). */
+  _renderSingle(svg, state) {
+    const triads = state.activeTriads || [];
     const primary = triads.find(t => t.role === 'primary');
 
     const rawNotes = primary?.notes
@@ -354,7 +375,7 @@ class ChordBubbleRenderer {
 
     const sortedNotes = rawNotes
       .map(an => {
-        const pc    = noteToPC(an.note);
+        const pc = noteToPC(an.note);
         const pitch = (an.octave != null ? an.octave : 4) * 12 + pc;
         return { ...an, pc, pitch };
       })
@@ -363,32 +384,21 @@ class ChordBubbleRenderer {
 
     if (sortedNotes.length < 2) return;
 
-    // ── Resolve chord quality → color ────────────────────────────
-    const pcs     = [...new Set(sortedNotes.map(n => n.pc))];
+    const pcs = [...new Set(sortedNotes.map(n => n.pc))];
     const resolved = resolveChord(pcs);
-    const color    = (resolved && QUALITY_COLORS[resolved.quality]) || DEFAULT_COLOR;
+    const color = (resolved && QUALITY_COLORS[resolved.quality]) || DEFAULT_COLOR;
 
-    // ── Ensure glow filter is defined ───────────────────────────
     _ensureFilter(svg);
 
-    // ── Get one ordered SVG position per unique pitch class ──────
     const positions = _orderedPositions(svg, sortedNotes);
     if (positions.length < 2) return;
 
-    // ── Build worm waypoints via BFS grid-path routing ───────────
     const gridNodes = _allGridNodes(svg);
     const waypoints = _wormWaypoints(positions, gridNodes);
 
-    // ── Render glow worm ─────────────────────────────────────────
-    //
-    // Two-layer approach:
-    //   glowGroup  — filtered (blur+sharp merge) for the luminous halo
-    //   sharpGroup — unfiltered sharp overdraw for crisp edges
-    //
-    const glowGroup  = _el('g', { filter: `url(#${FILTER_ID})`, opacity: '0.85' });
+    const glowGroup = _el('g', { filter: `url(#${FILTER_ID})`, opacity: '0.85' });
     const sharpGroup = _el('g');
 
-    // ── Path segments ────────────────────────────────────────────
     if (waypoints.length >= 2) {
       const d = waypoints
         .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
@@ -396,83 +406,291 @@ class ChordBubbleRenderer {
 
       const pathAttrs = {
         d,
-        stroke:             color,
-        'stroke-width':     WORM_STROKE_W,
-        'stroke-linecap':   'round',
-        'stroke-linejoin':  'round',
-        fill:               'none',
+        stroke: color,
+        'stroke-width': WORM_STROKE_W,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        fill: 'none',
       };
 
-      // Blurred glow layer (wider, more transparent)
       glowGroup.appendChild(_el('path', { ...pathAttrs, 'stroke-width': WORM_STROKE_W + 4, opacity: '0.6', class: 'tn-worm-glow' }));
-      // Sharp foreground
       sharpGroup.appendChild(_el('path', { ...pathAttrs, opacity: '0.9', class: 'tn-worm-path' }));
     }
 
-    // ── Node halos at each chord tone ────────────────────────────
     for (const pos of positions) {
       const cx = pos.x.toFixed(1);
       const cy = pos.y.toFixed(1);
 
-      // Soft glow halo (in filtered group)
       glowGroup.appendChild(_el('circle', {
         cx, cy, r: GLOW_NODE_R,
-        fill:         color,
-        'fill-opacity': '0.5',
-        class:        'tn-worm-node-glow',
+        fill: color, 'fill-opacity': '0.5',
+        class: 'tn-worm-node-glow',
       }));
 
-      // Crisp bright ring (in sharp group — shows above node fill, below label)
       sharpGroup.appendChild(_el('circle', {
         cx, cy, r: GLOW_NODE_R - 2,
-        fill:           'none',
-        stroke:         color,
-        'stroke-width': '3',
-        opacity:        '0.9',
-        class:          'tn-worm-node-ring',
+        fill: 'none', stroke: color, 'stroke-width': '3', opacity: '0.9',
+        class: 'tn-worm-node-ring',
       }));
     }
 
     this._group.appendChild(glowGroup);
     this._group.appendChild(sharpGroup);
 
-    // ── Chord name label ─────────────────────────────────────────
     if (resolved) {
       const maxY = Math.max(...positions.map(p => p.y));
-      const cx   = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+      const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
       this._drawLabel(cx, maxY + 34, resolved.name, color);
       this._updateExternalLabel(resolved.name);
     }
   }
 
   /**
+   * Render multiple glow worm paths for a chord progression.
+   * Trail chords are faded; active chord is full brightness;
+   * common tones between consecutive chords get a gold pulse.
+   */
+  _renderProgression(svg, state) {
+    const prog = state.progressionState;
+    const idx = prog.currentIndex;
+
+    _ensureFilter(svg);
+    const gridNodes = _allGridNodes(svg);
+
+    // ── Render trail chords (indices < currentIndex) ──────────────
+    for (let i = 0; i < idx; i++) {
+      const chord = prog.chords[i];
+      const trailColor = PROGRESSION_PALETTE[i % PROGRESSION_PALETTE.length];
+      this._renderTrailChord(svg, chord, trailColor, gridNodes);
+    }
+
+    // ── Render active chord (currentIndex) with full glow ────────
+    const activeChord = prog.chords[idx];
+    const activePcs = (activeChord.notes || []).map(n => noteToPC(n)).filter(pc => !isNaN(pc));
+    const resolved = resolveChord([...new Set(activePcs)]);
+    const activeColor = (resolved && QUALITY_COLORS[resolved.quality]) || DEFAULT_COLOR;
+    this._renderActiveChord(svg, activeChord, activeColor, gridNodes);
+
+    // ── Common-tone pulse (between previous and current chord) ───
+    // Only pulse on an actual step event; clear the flag so resizes
+    // or other re-renders don't re-trigger the animation.
+    if (state._progressionEvent) {
+      const commonTones = state._progressionCommonTones || [];
+      if (commonTones.length > 0) {
+        this._renderCommonTonePulse(svg, commonTones);
+      }
+      // Consume the event flag (silent update so we don't re-trigger)
+      HarmonyState.updateSilent({ _progressionEvent: false });
+    }
+
+    // ── Chord name label for active chord ────────────────────────
+    if (resolved) {
+      const label = activeChord.romanNumeral
+        ? `${resolved.name} (${activeChord.romanNumeral})`
+        : resolved.name;
+      this._updateExternalLabel(label);
+    }
+  }
+
+  /** Render a trail chord: same glow worm visual as active, just dimmed. */
+  _renderTrailChord(svg, chord, color, gridNodes) {
+    const sortedNotes = (chord.notes || [])
+      .map(note => {
+        const pc = noteToPC(note);
+        return { note, octave: 4, pc, pitch: 4 * 12 + pc };
+      })
+      .filter(n => !isNaN(n.pc) && n.pc >= 0)
+      .sort((a, b) => a.pitch - b.pitch);
+
+    if (sortedNotes.length < 2) return;
+
+    const positions = _orderedPositions(svg, sortedNotes);
+    if (positions.length < 2) return;
+
+    const waypoints = _wormWaypoints(positions, gridNodes);
+
+    // Wrapper group: only opacity differs from active worm
+    const wrapper = _el('g', { opacity: String(TRAIL_OPACITY), class: 'tn-prog-trail' });
+    const glowGroup = _el('g', { filter: `url(#${FILTER_ID})` });
+    const sharpGroup = _el('g');
+
+    if (waypoints.length >= 2) {
+      const d = waypoints
+        .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+        .join(' ');
+
+      const pathAttrs = {
+        d,
+        stroke: color,
+        'stroke-width': WORM_STROKE_W,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        fill: 'none',
+      };
+
+      glowGroup.appendChild(_el('path', { ...pathAttrs, 'stroke-width': WORM_STROKE_W + 4, opacity: '0.6', class: 'tn-worm-glow' }));
+      sharpGroup.appendChild(_el('path', { ...pathAttrs, opacity: '0.9', class: 'tn-trail-path' }));
+    }
+
+    for (const pos of positions) {
+      const cx = pos.x.toFixed(1);
+      const cy = pos.y.toFixed(1);
+
+      glowGroup.appendChild(_el('circle', {
+        cx, cy, r: GLOW_NODE_R,
+        fill: color, 'fill-opacity': '0.5',
+        class: 'tn-worm-node-glow',
+      }));
+
+      sharpGroup.appendChild(_el('circle', {
+        cx, cy, r: GLOW_NODE_R - 2,
+        fill: 'none', stroke: color, 'stroke-width': '3', opacity: '0.9',
+        class: 'tn-trail-node',
+      }));
+    }
+
+    wrapper.appendChild(glowGroup);
+    wrapper.appendChild(sharpGroup);
+    this._group.appendChild(wrapper);
+  }
+
+  /** Render the active chord with full glow (same as single-chord mode). */
+  _renderActiveChord(svg, chord, color, gridNodes) {
+    const sortedNotes = (chord.notes || [])
+      .map(note => {
+        const pc = noteToPC(note);
+        return { note, octave: 4, pc, pitch: 4 * 12 + pc };
+      })
+      .filter(n => !isNaN(n.pc) && n.pc >= 0)
+      .sort((a, b) => a.pitch - b.pitch);
+
+    if (sortedNotes.length < 2) return;
+
+    const positions = _orderedPositions(svg, sortedNotes);
+    if (positions.length < 2) return;
+
+    const waypoints = _wormWaypoints(positions, gridNodes);
+
+    const glowGroup = _el('g', { filter: `url(#${FILTER_ID})`, opacity: '0.85' });
+    const sharpGroup = _el('g');
+
+    if (waypoints.length >= 2) {
+      const d = waypoints
+        .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+        .join(' ');
+
+      const pathAttrs = {
+        d,
+        stroke: color,
+        'stroke-width': WORM_STROKE_W,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        fill: 'none',
+      };
+
+      glowGroup.appendChild(_el('path', { ...pathAttrs, 'stroke-width': WORM_STROKE_W + 4, opacity: '0.6', class: 'tn-worm-glow' }));
+      sharpGroup.appendChild(_el('path', { ...pathAttrs, opacity: '0.9', class: 'tn-worm-path' }));
+    }
+
+    for (const pos of positions) {
+      const cx = pos.x.toFixed(1);
+      const cy = pos.y.toFixed(1);
+
+      glowGroup.appendChild(_el('circle', {
+        cx, cy, r: GLOW_NODE_R,
+        fill: color, 'fill-opacity': '0.5',
+        class: 'tn-worm-node-glow',
+      }));
+
+      sharpGroup.appendChild(_el('circle', {
+        cx, cy, r: GLOW_NODE_R - 2,
+        fill: 'none', stroke: color, 'stroke-width': '3', opacity: '0.9',
+        class: 'tn-worm-node-ring',
+      }));
+    }
+
+    this._group.appendChild(glowGroup);
+    this._group.appendChild(sharpGroup);
+
+    // Label below the active chord
+    const pcs = [...new Set(sortedNotes.map(n => n.pc))];
+    const resolved = resolveChord(pcs);
+    if (resolved && positions.length) {
+      const maxY = Math.max(...positions.map(p => p.y));
+      const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+      const label = chord.romanNumeral
+        ? `${resolved.name} (${chord.romanNumeral})`
+        : resolved.name;
+      this._drawLabel(cx, maxY + 34, label, color);
+    }
+  }
+
+  /**
+   * Briefly highlight common-tone nodes with a gold pulse.
+   * Uses CSS animation for a ~500ms fade-out.
+   */
+  _renderCommonTonePulse(svg, commonToneNames) {
+    const commonPCs = new Set(commonToneNames.map(n => noteToPC(n)));
+    const g = _el('g', { class: 'tn-common-tone-pulse' });
+
+    for (const el of svg.querySelectorAll('.tn-node')) {
+      const pc = parseInt(el.getAttribute('data-pc'), 10);
+      if (isNaN(pc) || !commonPCs.has(pc)) continue;
+      const pos = _pos(el);
+      if (!pos) continue;
+
+      const circle = _el('circle', {
+        cx: pos.x.toFixed(1),
+        cy: pos.y.toFixed(1),
+        r: COMMON_TONE_R,
+        fill: COMMON_TONE_COLOR,
+        'fill-opacity': '0.8',
+        class: 'tn-common-tone-dot',
+      });
+
+      // Animate opacity fade
+      const anim = document.createElementNS(SVG_NS, 'animate');
+      anim.setAttribute('attributeName', 'fill-opacity');
+      anim.setAttribute('from', '0.8');
+      anim.setAttribute('to', '0');
+      anim.setAttribute('dur', '0.5s');
+      anim.setAttribute('fill', 'freeze');
+      circle.appendChild(anim);
+
+      g.appendChild(circle);
+    }
+
+    this._group.appendChild(g);
+  }
+
+  /**
    * Draw a compact chord-name badge just below the lowest chord tone node.
    */
   _drawLabel(cx, ly, text, color) {
-    const PAD  = 6;
+    const PAD = 6;
     const estW = text.length * 8 + PAD * 2;
     const estH = 20;
 
     const bg = _el('rect', {
-      x:      cx - estW / 2,
-      y:      ly - estH / 2,
-      width:  estW,
+      x: cx - estW / 2,
+      y: ly - estH / 2,
+      width: estW,
       height: estH,
-      rx:     '5',
-      fill:   color,
+      rx: '5',
+      fill: color,
       'fill-opacity': '0.85',
     });
 
     const lbl = _el('text', {
-      x:                   cx,
-      y:                   ly,
-      'text-anchor':       'middle',
+      x: cx,
+      y: ly,
+      'text-anchor': 'middle',
       'dominant-baseline': 'central',
-      'font-size':         '12',
-      'font-weight':       '700',
-      'font-family':       'system-ui, -apple-system, sans-serif',
-      fill:                '#fff',
-      class:               'tn-chord-bubble-label',
+      'font-size': '12',
+      'font-weight': '700',
+      'font-family': 'system-ui, -apple-system, sans-serif',
+      fill: '#fff',
+      class: 'tn-chord-bubble-label',
     });
     lbl.textContent = text;
 

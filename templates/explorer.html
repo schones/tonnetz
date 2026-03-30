@@ -148,6 +148,22 @@
     overflow-x: auto;
   }
 
+  /* ── Fretboard panel ─────────────────────────────────────────── */
+  .exp-panel--fretboard {
+    margin-bottom: 0.75rem;
+  }
+  .exp-panel--fretboard .exp-panel-body {
+    padding: 0.5rem 0.75rem;
+    overflow-x: auto;
+  }
+  #exp-fretboard-container {
+    width: 100%;
+    min-height: 180px;
+  }
+  .exp-panel--hidden {
+    display: none;
+  }
+
   /* ── Controls bar ────────────────────────────────────────────── */
   .exp-controls {
     border: 1px solid var(--border);
@@ -354,6 +370,14 @@
     </div>
   </div>
 
+  <!-- Fretboard (full width, toggleable) -->
+  <div class="exp-panel exp-panel--fretboard exp-panel--hidden" id="exp-fretboard-panel">
+    <div class="exp-panel-header">Fretboard</div>
+    <div class="exp-panel-body">
+      <div id="exp-fretboard-container"></div>
+    </div>
+  </div>
+
   <!-- Controls bar -->
   <div class="exp-controls">
 
@@ -410,6 +434,19 @@
               title="Click keys to add/remove individual notes and build any chord">Note</button>
     </div>
 
+    <div class="exp-divider"></div>
+
+    <!-- Instrument panel toggle: Keyboard / Fretboard / Both -->
+    <div class="exp-ctrl-group">
+      <span class="exp-ctrl-label">View</span>
+      <button class="exp-btn exp-btn--mode-active" id="btn-view-keyboard"
+              title="Show piano keyboard">Keyboard</button>
+      <button class="exp-btn exp-btn--mode" id="btn-view-fretboard"
+              title="Show guitar fretboard">Fretboard</button>
+      <button class="exp-btn exp-btn--mode" id="btn-view-both"
+              title="Show keyboard and fretboard stacked">Both</button>
+    </div>
+
     <!-- Note mode play controls (only shown in Note Mode) -->
     <div class="exp-note-controls" id="note-mode-controls">
       <div class="exp-divider"></div>
@@ -420,6 +457,16 @@
       <label class="exp-arp-label" title="Play notes one at a time (low to high)">
         <input type="checkbox" id="chk-arpeggiate"> Arp
       </label>
+    </div>
+
+    <div class="exp-divider"></div>
+
+    <!-- Instrument selector -->
+    <div class="exp-ctrl-group" id="inst-picker" hidden>
+      <span class="exp-ctrl-label">Sound</span>
+      <button class="exp-btn exp-btn--mode-active" id="btn-inst-piano"  data-inst="piano">Piano</button>
+      <button class="exp-btn exp-btn--mode"         id="btn-inst-guitar" data-inst="guitar">Guitar</button>
+      <button class="exp-btn exp-btn--mode"         id="btn-inst-voice"  data-inst="voice">Voice</button>
     </div>
 
     <div class="exp-divider"></div>
@@ -450,6 +497,8 @@
     from '{{ url_for("static", filename="shared/chord-bubble-renderer.js") }}';
   import { resolveChord }
     from '{{ url_for("static", filename="shared/chord-resolver.js") }}';
+  import { FretboardView }
+    from '{{ url_for("static", filename="shared/fretboard-view.js") }}';
 
   // Expose for console debugging
   window.HarmonyState        = HarmonyState;
@@ -522,6 +571,51 @@
     sampler.triggerAttackRelease(voicing, CHORD_SUSTAIN, Tone.now(), velocity);
   }
 
+  // ── Instrument picker ──────────────────────────────────────────────
+  const instPicker    = document.getElementById('inst-picker');
+  const instBtns      = instPicker.querySelectorAll('[data-inst]');
+  const INST_PREF_KEY = 'tonnetz_explorer_instrument';
+
+  function _syncInstButtons(activeInst, loadState) {
+    instBtns.forEach(btn => {
+      const isThis    = btn.dataset.inst === activeInst;
+      const isLoading = isThis && loadState === 'loading';
+      const isError   = isThis && loadState === 'error';
+      btn.classList.toggle('exp-btn--mode-active', isThis && loadState !== 'error');
+      btn.classList.remove('exp-btn--mode');
+      if (!isThis || isError) btn.classList.add('exp-btn--mode');
+      btn.disabled = loadState === 'loading';
+      if (isLoading) {
+        btn.textContent = btn.dataset.inst.charAt(0).toUpperCase() + btn.dataset.inst.slice(1) + '\u2026';
+      } else {
+        btn.textContent = btn.dataset.inst.charAt(0).toUpperCase() + btn.dataset.inst.slice(1);
+      }
+    });
+  }
+
+  async function _switchInstrument(name) {
+    _syncInstButtons(name, 'loading');
+    try {
+      await KeyboardView.setInstrument(name);
+      sampler = KeyboardView.getSampler ? await KeyboardView.getSampler() : sampler;
+      localStorage.setItem(INST_PREF_KEY, name);
+      _syncInstButtons(name, 'loaded');
+    } catch (err) {
+      console.warn('[explorer] Instrument switch failed, falling back to piano:', err);
+      try { await KeyboardView.setInstrument('piano'); } catch (_) {}
+      localStorage.setItem(INST_PREF_KEY, 'piano');
+      _syncInstButtons(name, 'error');
+      setTimeout(() => _syncInstButtons('piano', 'loaded'), 2500);
+    }
+  }
+
+  instBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!audioReady) return;   // picker only active after sound is enabled
+      _switchInstrument(btn.dataset.inst);
+    });
+  });
+
   // ── Audio enable / mute button ────────────────────────────────────
   const audioBtn = document.getElementById('btn-audio');
 
@@ -532,6 +626,7 @@
       try { if (sampler) sampler.releaseAll(); } catch (_) {}
       audioBtn.textContent = '▶ Enable Sound';
       audioBtn.className = 'exp-btn exp-btn--sound';
+      instPicker.hidden = true;
       return;
     }
 
@@ -546,6 +641,14 @@
       audioBtn.disabled = false;
       audioBtn.textContent = '♪ Sound on';
       audioBtn.className = 'exp-btn exp-btn--sound-on';
+      instPicker.hidden = false;
+      // Restore saved instrument preference
+      const savedInst = localStorage.getItem(INST_PREF_KEY) || 'piano';
+      if (savedInst !== 'piano') {
+        _switchInstrument(savedInst);
+      } else {
+        _syncInstButtons('piano', 'loaded');
+      }
       // Play the currently selected chord right away
       playChord(currentRoot, currentQuality).catch(() => {});
     } catch (err) {
@@ -663,6 +766,57 @@
       }
     },
   });
+
+  // ── Fretboard View (composable panel — lazy init) ──────────────
+  let fretboard = null;
+
+  const kbPanel = document.querySelector('.exp-panel--keyboard');
+  const fbPanel = document.getElementById('exp-fretboard-panel');
+  const btnViewKb   = document.getElementById('btn-view-keyboard');
+  const btnViewFb   = document.getElementById('btn-view-fretboard');
+  const btnViewBoth = document.getElementById('btn-view-both');
+
+  function _ensureFretboard() {
+    if (!fretboard) {
+      fretboard = new FretboardView('exp-fretboard-container', { interactive: true });
+    }
+  }
+
+  function _destroyFretboard() {
+    if (fretboard) {
+      fretboard.destroy();
+      fretboard = null;
+    }
+  }
+
+  function _setView(mode) {
+    // Reset button styles
+    btnViewKb.className   = 'exp-btn exp-btn--mode';
+    btnViewFb.className   = 'exp-btn exp-btn--mode';
+    btnViewBoth.className = 'exp-btn exp-btn--mode';
+
+    if (mode === 'keyboard') {
+      btnViewKb.className = 'exp-btn exp-btn--mode-active';
+      kbPanel.classList.remove('exp-panel--hidden');
+      fbPanel.classList.add('exp-panel--hidden');
+      _destroyFretboard();
+    } else if (mode === 'fretboard') {
+      btnViewFb.className = 'exp-btn exp-btn--mode-active';
+      kbPanel.classList.add('exp-panel--hidden');
+      fbPanel.classList.remove('exp-panel--hidden');
+      _ensureFretboard();
+    } else {
+      // both
+      btnViewBoth.className = 'exp-btn exp-btn--mode-active';
+      kbPanel.classList.remove('exp-panel--hidden');
+      fbPanel.classList.remove('exp-panel--hidden');
+      _ensureFretboard();
+    }
+  }
+
+  btnViewKb.addEventListener('click',   () => _setView('keyboard'));
+  btnViewFb.addEventListener('click',   () => _setView('fretboard'));
+  btnViewBoth.addEventListener('click', () => _setView('both'));
 
   // ════════════════════════════════════════════════════════════════
   // NOTE MODE — PLAY & CLEAR
@@ -866,5 +1020,22 @@
     state.currentKey   = 0;
   });
   HarmonyState.setTriad('C', 'major');
+
+  // ════════════════════════════════════════════════════════════════
+  // PROGRESSION TEST HARNESS (console-callable)
+  // ════════════════════════════════════════════════════════════════
+
+  /** Load I–V–vi–IV in C and set to first chord. */
+  window.testProgression = function() {
+    const chords = [
+      { root: 'C', quality: 'major', notes: ['C', 'E', 'G'],  romanNumeral: 'I' },
+      { root: 'G', quality: 'major', notes: ['G', 'B', 'D'],  romanNumeral: 'V' },
+      { root: 'A', quality: 'minor', notes: ['A', 'C', 'E'],  romanNumeral: 'vi' },
+      { root: 'F', quality: 'major', notes: ['F', 'A', 'C'],  romanNumeral: 'IV' },
+    ];
+    HarmonyState.setProgression(chords, 'C');
+    HarmonyState.setProgressionIndex(0);
+    console.log('Progression loaded: I–V–vi–IV in C. Use HarmonyState.stepProgression(1) to advance.');
+  };
 </script>
 {% endblock %}

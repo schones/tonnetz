@@ -290,8 +290,29 @@ const KV_CSS = /* css */ `
   to   { box-shadow: 0 0 18px #E8913A; }
 }
 
+/* ── Progression common-tone pulse (gold flash, 500ms fade) ── */
+
+.kv-key--prog-common-tone.kv-key--white {
+  animation: kv-prog-pulse 0.5s ease-out forwards;
+}
+.kv-key--prog-common-tone.kv-key--black {
+  animation: kv-prog-pulse-black 0.5s ease-out forwards;
+}
+
+@keyframes kv-prog-pulse {
+  0%   { background: #fbbf24; box-shadow: 0 0 14px #fbbf24; }
+  100% { background: var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7));
+         box-shadow: inset 0 0 0 2px var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7)); }
+}
+@keyframes kv-prog-pulse-black {
+  0%   { background: #fbbf24; box-shadow: 0 0 14px #fbbf24; }
+  100% { background: var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7));
+         box-shadow: inset 0 0 0 2px var(--keyboard-highlight-primary, var(--color-primary, #6c5ce7)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kv-key--moving { animation: none; }
+  .kv-key--prog-common-tone { animation: none; }
 }
 `;
 
@@ -333,8 +354,9 @@ const VOICE_TYPES = {
  *   _promise: in-flight load promise (prevents duplicate fetches)
  */
 const _instState = {
-  piano: { sampler: null, volume: null, state: 'unloaded', _promise: null },
-  voice: { sampler: null, volume: null, state: 'unloaded', _promise: null, sfName: 'choir_aahs' },
+  piano:  { sampler: null, volume: null, state: 'unloaded', _promise: null },
+  guitar: { sampler: null, volume: null, state: 'unloaded', _promise: null },
+  voice:  { sampler: null, volume: null, state: 'unloaded', _promise: null, sfName: 'choir_aahs' },
 };
 
 let _activeInst = 'piano';
@@ -440,6 +462,31 @@ function _ensureVoice() {
     .catch(err => {
       inst.state = 'error';
       inst._promise = null;   // allow retry on next setInstrument('voice') call
+      throw err;
+    });
+  return inst._promise;
+}
+
+// ── Guitar (MusyngKite acoustic_guitar_steel soundfont) ───────────
+
+function _ensureGuitar() {
+  const inst = _instState.guitar;
+  if (inst._promise) return inst._promise;
+  if (typeof Tone === 'undefined') {
+    inst.state = 'error';
+    return Promise.reject(new Error('Tone.js not loaded'));
+  }
+  inst.state = 'loading';
+  inst._promise = _loadSoundfontSampler('acoustic_guitar_steel')
+    .then(({ sampler, volume }) => {
+      inst.sampler = sampler;
+      inst.volume = volume;
+      inst.state = 'loaded';
+      return sampler;
+    })
+    .catch(err => {
+      inst.state = 'error';
+      inst._promise = null;   // allow retry on next setInstrument('guitar') call
       throw err;
     });
   return inst._promise;
@@ -661,6 +708,15 @@ const KeyboardView = {
       }
     }
 
+    // ── Progression common tones ──────────────────────────────
+    const progCommonPCs = new Set();
+    if (state._progressionEvent && state._progressionCommonTones) {
+      state._progressionCommonTones.forEach(n => {
+        const pc = noteToPC(n);
+        if (!isNaN(pc)) progCommonPCs.add(pc);
+      });
+    }
+
     // ── Apply classes to keys ──────────────────────────────────
     const showNames = this._opts.showLabels != null
       ? this._opts.showLabels
@@ -674,6 +730,7 @@ const KeyboardView = {
       el.classList.remove(
         'kv-key--triad', 'kv-key--interval', 'kv-key--scale', 'kv-key--user',
         'kv-key--ghost', 'kv-key--moving', 'kv-key--common-tone',
+        'kv-key--prog-common-tone',
       );
 
       // Source highlight
@@ -691,9 +748,13 @@ const KeyboardView = {
       if (movingTo.has(key.pc)) {
         el.classList.add('kv-key--moving');
       }
-      // Common-tone dot
+      // Common-tone dot (transform mode)
       if (commonTonePCs.has(key.pc) && (hl || movingTo.has(key.pc))) {
         el.classList.add('kv-key--common-tone');
+      }
+      // Progression common-tone pulse (gold flash on shared keys)
+      if (progCommonPCs.has(key.pc) && hl) {
+        el.classList.add('kv-key--prog-common-tone');
       }
 
       // Note label
@@ -738,7 +799,7 @@ const KeyboardView = {
 
   /**
    * Switch the active instrument. Lazily loads the soundfont on first use.
-   * @param {'piano'|'voice'} name
+   * @param {'piano'|'guitar'|'voice'} name
    * @returns {Promise<void>} Resolves when the instrument is ready to play.
    */
   async setInstrument(name) {
@@ -746,19 +807,21 @@ const KeyboardView = {
     _activeInst = name;
     if (name === 'piano') {
       await _ensurePiano();
+    } else if (name === 'guitar') {
+      await _ensureGuitar();
     } else if (name === 'voice') {
       await _ensureVoice();
     }
   },
 
-  /** Return the name of the currently active instrument ('piano' or 'voice'). */
+  /** Return the name of the currently active instrument ('piano', 'guitar', or 'voice'). */
   getInstrument() {
     return _activeInst;
   },
 
   /**
    * Return the loading state for a named instrument.
-   * @param {'piano'|'voice'} name
+   * @param {'piano'|'guitar'|'voice'} name
    * @returns {'unloaded'|'loading'|'loaded'|'error'}
    */
   getInstrumentLoadingState(name) {
@@ -767,7 +830,7 @@ const KeyboardView = {
 
   /**
    * Return true if the named instrument is fully loaded and ready to play.
-   * @param {'piano'|'voice'} name
+   * @param {'piano'|'guitar'|'voice'} name
    * @returns {boolean}
    */
   isInstrumentLoaded(name) {

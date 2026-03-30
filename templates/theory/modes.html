@@ -1,0 +1,999 @@
+{% extends "base.html" %}
+{% block title %}Modes — Tonnetz{% endblock %}
+
+{% block head %}
+<!-- Tone.js — must be in <head> so window.Tone is defined before any module runs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<style>
+  /* ── Page ────────────────────────────────────────────────────── */
+  .mo-page {
+    max-width: 1280px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 3rem;
+  }
+
+  .mo-page h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+  }
+
+  .mo-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+    line-height: 1.55;
+  }
+
+  /* ── Controls row ───────────────────────────────────────────── */
+  .mo-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .mo-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .mo-select {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-main);
+  }
+
+  .mo-btn-sound {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-main);
+    white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    margin-left: auto;
+  }
+
+  .mo-btn-sound:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .mo-btn-sound--on {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-style: solid;
+    color: var(--accent);
+  }
+
+  /* ── Two-column layout ──────────────────────────────────────── */
+  .mo-layout {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+  }
+
+  .mo-main-col {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .mo-side-col {
+    flex: 0 0 340px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  /* ── Panel shell ────────────────────────────────────────────── */
+  .mo-panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+
+  .mo-panel-header {
+    padding: 0.38rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── Mode selector buttons ──────────────────────────────────── */
+  .mo-mode-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .mo-mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.9rem;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: background 0.12s;
+    text-align: left;
+    width: 100%;
+  }
+
+  .mo-mode-btn:last-child {
+    border-bottom: none;
+  }
+
+  .mo-mode-btn:hover {
+    background: var(--accent-soft);
+  }
+
+  .mo-mode-btn--active {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+  }
+
+  .mo-mode-degree {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 28px;
+  }
+
+  .mo-mode-name {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+
+  .mo-mode-flavor {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* ── Keyboard panel ─────────────────────────────────────────── */
+  .mo-keyboard-body {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 0.75rem;
+    overflow-x: auto;
+  }
+
+  #mo-keyboard-container {
+    --keyboard-white-key-w: 36px;
+    --keyboard-white-key-h: 130px;
+    --keyboard-black-key-w: 22px;
+    --keyboard-black-key-h: 86px;
+  }
+
+  /* Root note emphasis — override the triad highlight with a distinct ring */
+  .mo-root-key.kv-key--white {
+    box-shadow: inset 0 0 0 3px var(--accent, #6c5ce7), 0 0 8px var(--accent, #6c5ce7) !important;
+  }
+  .mo-root-key.kv-key--black {
+    box-shadow: inset 0 0 0 3px var(--accent, #6c5ce7), 0 0 8px var(--accent, #6c5ce7) !important;
+  }
+
+  /* Characteristic note highlight */
+  .mo-char-key.kv-key--white {
+    background: #E8913A !important;
+    box-shadow: inset 0 0 0 2px #E8913A, 0 0 6px #E8913A !important;
+  }
+  .mo-char-key.kv-key--black {
+    background: #E8913A !important;
+    box-shadow: inset 0 0 0 2px #E8913A, 0 0 6px #E8913A !important;
+  }
+
+  /* ── Play controls ──────────────────────────────────────────── */
+  .mo-transport {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+  }
+
+  .mo-transport-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: background 0.12s, border-color 0.12s;
+  }
+
+  .mo-transport-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .mo-transport-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .mo-transport-btn--play {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 800;
+  }
+
+  .mo-transport-btn--play:hover:not(:disabled) {
+    background: var(--accent) !important;
+    color: #fff !important;
+  }
+
+  /* ── Brightness spectrum ────────────────────────────────────── */
+  .mo-spectrum {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .mo-spectrum-bar {
+    position: relative;
+    height: 28px;
+    border-radius: 14px;
+    background: linear-gradient(to right, #fbbf24, #f59e0b, #d97706, #92400e, #78350f, #451a03, #1c1917);
+    margin-bottom: 0.3rem;
+  }
+
+  .mo-spectrum-marker {
+    position: absolute;
+    top: -4px;
+    width: 20px;
+    height: 36px;
+    border: 3px solid #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+    transform: translateX(-50%);
+    transition: left 0.3s ease;
+    pointer-events: none;
+  }
+
+  .mo-spectrum-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Content cards ──────────────────────────────────────────── */
+  .mo-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    padding: 1rem 1.1rem;
+  }
+
+  .mo-card h2 {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 0.55rem 0;
+  }
+
+  .mo-card p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 0 0 0.45rem 0;
+  }
+
+  .mo-card p:last-child {
+    margin-bottom: 0;
+  }
+
+  .mo-detail-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .mo-detail-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    min-width: 100px;
+    flex-shrink: 0;
+  }
+
+  .mo-detail-value {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .mo-char-note {
+    color: #E8913A;
+    font-weight: 800;
+  }
+
+  .mo-compared-note {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* ── Song references ────────────────────────────────────────── */
+  .mo-song-ref {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+  }
+
+  .mo-song-ref:last-child {
+    margin-bottom: 0;
+  }
+
+  .mo-song-ref strong {
+    color: var(--text-primary);
+  }
+
+  .mo-no-songs {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* ── Responsive ─────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .mo-layout {
+      flex-direction: column;
+    }
+
+    .mo-side-col {
+      flex: 1 1 auto;
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mo-page">
+
+  <h1>Modes — Seven Flavors of One Scale</h1>
+  <p class="mo-subtitle">
+    Every major scale contains seven modes. Same notes, different starting point,
+    completely different mood. Lydian sounds dreamy. Dorian sounds bluesy.
+    Phrygian sounds dark. Let's hear the difference.
+  </p>
+
+  <!-- ── Controls row ─────────────────────────────────────────── -->
+  <div class="mo-controls">
+    <span class="mo-label">Root</span>
+    <select class="mo-select" id="mo-root-select">
+      <option value="0" selected>C</option>
+      <option value="2">D</option>
+      <option value="4">E</option>
+      <option value="5">F</option>
+      <option value="7">G</option>
+      <option value="9">A</option>
+      <option value="11">B</option>
+      <option value="1">C♯ / D♭</option>
+      <option value="3">D♯ / E♭</option>
+      <option value="6">F♯ / G♭</option>
+      <option value="8">G♯ / A♭</option>
+      <option value="10">A♯ / B♭</option>
+    </select>
+    <button class="mo-btn-sound" id="mo-btn-audio">▶ Enable Sound</button>
+  </div>
+
+  <div class="mo-layout">
+
+    <!-- ── Left: mode selector + keyboard ─────────────────────── -->
+    <div class="mo-main-col">
+
+      <!-- Keyboard -->
+      <div class="mo-panel">
+        <div class="mo-panel-header">
+          <span>Keyboard</span>
+          <span id="mo-scale-label">C Ionian</span>
+        </div>
+        <div class="mo-keyboard-body">
+          <div id="mo-keyboard-container"></div>
+        </div>
+      </div>
+
+      <!-- Transport -->
+      <div class="mo-transport">
+        <button class="mo-transport-btn mo-transport-btn--play" id="mo-btn-play-scale" disabled>
+          ▶ Play Scale
+        </button>
+        <button class="mo-transport-btn" id="mo-btn-play-compare" disabled>
+          ⇆ Play Comparison
+        </button>
+      </div>
+
+      <!-- Brightness spectrum -->
+      <div class="mo-panel">
+        <div class="mo-panel-header">Brightness Spectrum</div>
+        <div class="mo-spectrum">
+          <div class="mo-spectrum-bar">
+            <div class="mo-spectrum-marker" id="mo-spectrum-marker"></div>
+          </div>
+          <div class="mo-spectrum-labels">
+            <span>Brightest (Lydian)</span>
+            <span>Darkest (Locrian)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Educational detail card -->
+      <div class="mo-card" id="mo-detail-card">
+        <h2 id="mo-detail-title">Ionian — The Major Scale</h2>
+        <div class="mo-detail-row">
+          <span class="mo-detail-label">Scale degrees</span>
+          <span class="mo-detail-value" id="mo-detail-degrees">1 2 3 4 5 6 7</span>
+        </div>
+        <div class="mo-detail-row">
+          <span class="mo-detail-label">Char. note</span>
+          <span class="mo-detail-value" id="mo-detail-char">None — this is the reference scale</span>
+        </div>
+        <div class="mo-detail-row">
+          <span class="mo-detail-label">vs. Major</span>
+          <span class="mo-detail-value" id="mo-detail-compared">This is the major scale</span>
+        </div>
+        <p id="mo-detail-desc" style="margin-top: 0.6rem;">
+          The familiar major scale — happy, bright, and resolved. All other modes are compared to this one.
+        </p>
+      </div>
+
+      <!-- Song references -->
+      <div class="mo-card">
+        <h2>Hear It in a Song</h2>
+        <div id="mo-song-refs">
+          <p class="mo-no-songs">Select a mode to see song references.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Right: mode selector ───────────────────────────────── -->
+    <div class="mo-side-col">
+      <div class="mo-panel">
+        <div class="mo-panel-header">Modes (bright → dark)</div>
+        <div class="mo-mode-grid" id="mo-mode-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div class="mo-card">
+        <h2>What Are Modes?</h2>
+        <p>
+          Take the 7 notes of a major scale. Now start on a different note
+          but keep using only those same 7 notes. That's a mode.
+        </p>
+        <p>
+          Each starting point gives a different pattern of whole and half steps,
+          which creates a completely different mood — even though you're using
+          the exact same notes.
+        </p>
+        <p>
+          Modes aren't exotic or advanced — they're just the major scale
+          viewed from 7 different angles. The brightness spectrum above shows
+          how they range from Lydian (brightest) to Locrian (darkest).
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { noteToPC, pcToNote }
+    from '{{ url_for("static", filename="shared/transforms.js") }}';
+  import { HarmonyState }
+    from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { KeyboardView }
+    from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+
+  // ════════════════════════════════════════════════════════════════
+  // MODE DEFINITIONS (brightness order: brightest → darkest)
+  // ════════════════════════════════════════════════════════════════
+
+  const MODES = [
+    {
+      name: 'Lydian',
+      degree: 'IV',
+      flavor: 'Dreamy, floating',
+      // Intervals from root: W-W-W-H-W-W-H
+      intervals: [0, 2, 4, 6, 7, 9, 11],
+      scaleDegrees: '1  2  3  ♯4  5  6  7',
+      charNote: '♯4',
+      charInterval: 6,  // semitones from root to char note
+      description: 'The brightest mode — that raised 4th eliminates all pull toward resolution, creating a floating, dreamy quality. Think film scores and wonder.',
+      vsMajor: '♯4 (raised 4th)',
+      conceptSpecific: 'lydian',
+      parentDegree: 3, // 0-indexed: Lydian starts on degree IV (index 3) of parent major scale
+    },
+    {
+      name: 'Ionian',
+      altName: 'Major',
+      degree: 'I',
+      flavor: 'Happy, resolved',
+      intervals: [0, 2, 4, 5, 7, 9, 11],
+      scaleDegrees: '1  2  3  4  5  6  7',
+      charNote: null,
+      charInterval: null,
+      description: 'The familiar major scale — happy, bright, and resolved. All other modes are compared to this one.',
+      vsMajor: null,
+      conceptSpecific: 'ionian',
+      parentDegree: 0,
+    },
+    {
+      name: 'Mixolydian',
+      degree: 'V',
+      flavor: 'Bluesy major, relaxed',
+      intervals: [0, 2, 4, 5, 7, 9, 10],
+      scaleDegrees: '1  2  3  4  5  6  ♭7',
+      charNote: '♭7',
+      charInterval: 10,
+      description: 'A major scale with a lowered 7th — it can\'t resolve cleanly, which gives it a laid-back, bluesy feel. The backbone of rock, blues, and funk.',
+      vsMajor: '♭7 (lowered 7th)',
+      conceptSpecific: 'mixolydian',
+      parentDegree: 4,
+    },
+    {
+      name: 'Dorian',
+      degree: 'ii',
+      flavor: 'Minor but warm, jazzy',
+      intervals: [0, 2, 3, 5, 7, 9, 10],
+      scaleDegrees: '1  2  ♭3  4  5  6  ♭7',
+      charNote: '♮6',
+      charInterval: 9,
+      description: 'A minor mode with a bright spot — the natural 6th degree gives it warmth that natural minor lacks. The go-to minor mode for jazz and soul.',
+      vsMajor: '♭3, ♭7 (minor 3rd and lowered 7th)',
+      conceptSpecific: 'dorian',
+      parentDegree: 1,
+    },
+    {
+      name: 'Aeolian',
+      altName: 'Natural Minor',
+      degree: 'vi',
+      flavor: 'Sad, classic minor',
+      intervals: [0, 2, 3, 5, 7, 8, 10],
+      scaleDegrees: '1  2  ♭3  4  5  ♭6  ♭7',
+      charNote: '♭6',
+      charInterval: 8,
+      description: 'The natural minor scale — sad, serious, and introspective. The default "minor sound" in most people\'s ears.',
+      vsMajor: '♭3, ♭6, ♭7 (minor 3rd, lowered 6th and 7th)',
+      conceptSpecific: 'aeolian',
+      parentDegree: 5,
+    },
+    {
+      name: 'Phrygian',
+      degree: 'iii',
+      flavor: 'Dark, Spanish, exotic',
+      intervals: [0, 1, 3, 5, 7, 8, 10],
+      scaleDegrees: '1  ♭2  ♭3  4  5  ♭6  ♭7',
+      charNote: '♭2',
+      charInterval: 1,
+      description: 'That half-step from root to 2nd degree creates an unmistakable dark, exotic flavor — flamenco, metal, and Middle Eastern music all lean on Phrygian.',
+      vsMajor: '♭2, ♭3, ♭6, ♭7',
+      conceptSpecific: 'phrygian',
+      parentDegree: 2,
+    },
+    {
+      name: 'Locrian',
+      degree: 'vii°',
+      flavor: 'Unstable, dissonant, rare',
+      intervals: [0, 1, 3, 5, 6, 8, 10],
+      scaleDegrees: '1  ♭2  ♭3  4  ♭5  ♭6  ♭7',
+      charNote: '♭5',
+      charInterval: 6,
+      description: 'The darkest mode — even the 5th is lowered, so there\'s no stable resting point. Rarely used as a key center, but powerful for tension and dissonance.',
+      vsMajor: '♭2, ♭3, ♭5, ♭6, ♭7',
+      conceptSpecific: 'locrian',
+      parentDegree: 6,
+    },
+  ];
+
+  // Brightness positions (0–6 mapped to percentage)
+  const BRIGHTNESS_POSITIONS = [4, 17.5, 31, 50, 64, 78, 96];
+
+  // ════════════════════════════════════════════════════════════════
+  // STATE
+  // ════════════════════════════════════════════════════════════════
+
+  let currentRootPC = 0;   // pitch class of selected root
+  let currentModeIdx = 1;  // default: Ionian (index 1)
+  let audioReady = false;
+  let sampler = null;
+  let isPlaying = false;
+
+  // ════════════════════════════════════════════════════════════════
+  // AUDIO
+  // ════════════════════════════════════════════════════════════════
+
+  let _toneLoadPromise = null;
+  async function loadToneIfNeeded() {
+    if (window.Tone) return;
+    if (_toneLoadPromise) return _toneLoadPromise;
+    _toneLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+      script.onload  = resolve;
+      script.onerror = () => reject(new Error('Tone.js failed to load'));
+      document.head.appendChild(script);
+    });
+    return _toneLoadPromise;
+  }
+
+  async function ensureAudio() {
+    if (sampler) return;
+    sampler = await KeyboardView.getSampler();
+  }
+
+  const NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+  const NOTE_NAMES_FLAT = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+
+  function noteName(pc, preferFlats) {
+    pc = ((pc % 12) + 12) % 12;
+    return preferFlats ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES[pc];
+  }
+
+  function toAscii(name) {
+    return name.replace(/♯/g, '#').replace(/♭/g, 'b');
+  }
+
+  /** Determine whether to use flats for a given root PC */
+  function useFlats(rootPC) {
+    // Flat keys: F(5), Bb(10), Eb(3), Ab(8), Db(1), Gb(6)
+    return [1, 3, 5, 6, 8, 10].includes(rootPC);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // SONG EXAMPLES (loaded lazily)
+  // ════════════════════════════════════════════════════════════════
+
+  let songExamples = null;
+
+  async function loadSongExamples() {
+    if (songExamples !== null) return songExamples;
+    try {
+      const mod = await import('{{ url_for("static", filename="shared/song-examples.js") }}');
+      songExamples = mod.default || mod.SONG_EXAMPLES || [];
+    } catch {
+      songExamples = [];
+    }
+    return songExamples;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // DOM REFS
+  // ════════════════════════════════════════════════════════════════
+
+  const rootSelect     = document.getElementById('mo-root-select');
+  const audioBtn       = document.getElementById('mo-btn-audio');
+  const modeGrid       = document.getElementById('mo-mode-grid');
+  const scaleLabel     = document.getElementById('mo-scale-label');
+  const btnPlayScale   = document.getElementById('mo-btn-play-scale');
+  const btnPlayCompare = document.getElementById('mo-btn-play-compare');
+  const spectrumMarker = document.getElementById('mo-spectrum-marker');
+  const detailTitle    = document.getElementById('mo-detail-title');
+  const detailDegrees  = document.getElementById('mo-detail-degrees');
+  const detailChar     = document.getElementById('mo-detail-char');
+  const detailCompared = document.getElementById('mo-detail-compared');
+  const detailDesc     = document.getElementById('mo-detail-desc');
+  const songRefsEl     = document.getElementById('mo-song-refs');
+
+  // ════════════════════════════════════════════════════════════════
+  // BUILD MODE SELECTOR
+  // ════════════════════════════════════════════════════════════════
+
+  function buildModeButtons() {
+    modeGrid.innerHTML = '';
+    MODES.forEach((mode, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'mo-mode-btn' + (idx === currentModeIdx ? ' mo-mode-btn--active' : '');
+      btn.innerHTML = `
+        <span class="mo-mode-degree">${mode.degree}</span>
+        <span class="mo-mode-name">${mode.name}${mode.altName ? ' / ' + mode.altName : ''}</span>
+        <span class="mo-mode-flavor">${mode.flavor}</span>
+      `;
+      btn.addEventListener('click', () => selectMode(idx));
+      modeGrid.appendChild(btn);
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // COMPUTE MODE NOTES
+  // ════════════════════════════════════════════════════════════════
+
+  function getModeNotes(rootPC, modeIdx) {
+    const mode = MODES[modeIdx];
+    return mode.intervals.map(i => ((rootPC + i) % 12 + 12) % 12);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // UPDATE UI
+  // ════════════════════════════════════════════════════════════════
+
+  function update() {
+    const mode = MODES[currentModeIdx];
+    const flats = useFlats(currentRootPC);
+    const rootName = noteName(currentRootPC, flats);
+    const modeNotes = getModeNotes(currentRootPC, currentModeIdx);
+
+    // Scale label
+    const displayName = mode.altName ? `${mode.name} / ${mode.altName}` : mode.name;
+    scaleLabel.textContent = `${rootName} ${displayName}`;
+
+    // Mode buttons
+    const btns = modeGrid.querySelectorAll('.mo-mode-btn');
+    btns.forEach((btn, idx) => {
+      btn.classList.toggle('mo-mode-btn--active', idx === currentModeIdx);
+    });
+
+    // Spectrum marker
+    spectrumMarker.style.left = BRIGHTNESS_POSITIONS[currentModeIdx] + '%';
+
+    // Detail card
+    detailTitle.textContent = `${mode.name}${mode.altName ? ' / ' + mode.altName : ''} — ${mode.flavor}`;
+    detailDegrees.textContent = mode.scaleDegrees;
+
+    if (mode.charNote) {
+      const charPC = ((currentRootPC + mode.charInterval) % 12 + 12) % 12;
+      const charName = noteName(charPC, flats);
+      detailChar.innerHTML = `<span class="mo-char-note">${charName}</span> (${mode.charNote}) — the note that defines this mode's flavor`;
+    } else {
+      detailChar.textContent = 'None — this is the reference scale';
+    }
+
+    if (mode.vsMajor) {
+      detailCompared.innerHTML = `<span class="mo-compared-note">${mode.vsMajor}</span>`;
+    } else {
+      detailCompared.textContent = 'This is the major scale';
+    }
+
+    detailDesc.textContent = mode.description;
+
+    // Highlight keyboard via HarmonyState activeNotes
+    const activeNotes = modeNotes.map(pc => ({
+      note: noteName(pc, flats),
+      source: 'triad',
+      color: null,
+    }));
+
+    HarmonyState.batch(state => {
+      state.activeNotes = activeNotes;
+    });
+
+    // After HarmonyState renders, add root and characteristic note emphasis
+    requestAnimationFrame(() => {
+      // Remove previous emphasis
+      document.querySelectorAll('.mo-root-key, .mo-char-key').forEach(el => {
+        el.classList.remove('mo-root-key', 'mo-char-key');
+      });
+
+      // Mark root keys
+      const allKeys = document.querySelectorAll('#mo-keyboard-container .kv-key');
+      allKeys.forEach(el => {
+        const pc = parseInt(el.dataset.pc, 10);
+        if (pc === currentRootPC) {
+          el.classList.add('mo-root-key');
+        }
+        if (mode.charInterval !== null) {
+          const charPC = ((currentRootPC + mode.charInterval) % 12 + 12) % 12;
+          if (pc === charPC) {
+            el.classList.add('mo-char-key');
+          }
+        }
+      });
+    });
+
+    // Song references
+    updateSongRefs(mode.conceptSpecific);
+  }
+
+  async function updateSongRefs(conceptSpecific) {
+    const examples = await loadSongExamples();
+    const matching = examples.filter(ex =>
+      ex.concept_ids.includes('modes') &&
+      ex.concept_specifics.includes(conceptSpecific)
+    );
+
+    if (matching.length === 0) {
+      songRefsEl.innerHTML = '<p class="mo-no-songs">No song references available for this mode yet.</p>';
+      return;
+    }
+
+    songRefsEl.innerHTML = matching.map(ex => `
+      <div class="mo-song-ref">
+        <strong>${ex.song}</strong> — ${ex.artist}
+        (${ex.year})<br>
+        ${ex.insight.musician}
+      </div>
+    `).join('');
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // PLAYBACK
+  // ════════════════════════════════════════════════════════════════
+
+  async function playModeScale(rootPC, modeIdx, callback) {
+    if (!audioReady) return;
+    await ensureAudio();
+    if (!sampler) return;
+
+    const mode = MODES[modeIdx];
+    const flats = useFlats(rootPC);
+    const startOctave = 4;
+
+    // Build ascending + descending notes
+    const ascending = mode.intervals.map(i => rootPC + i);
+    ascending.push(12); // octave
+    const descending = [...ascending].reverse().slice(1); // skip duplicate top
+    const allIntervals = [...ascending, ...descending];
+
+    const now = Tone.now();
+    const noteTime = 0.22;
+
+    allIntervals.forEach((semitones, i) => {
+      const pc = ((rootPC + semitones) % 12 + 12) % 12;
+      const extraOct = Math.floor((rootPC + semitones) / 12);
+      const name = noteName(pc, flats);
+      const ascii = toAscii(name);
+      const noteWithOct = `${ascii}${startOctave + extraOct}`;
+      sampler.triggerAttackRelease(noteWithOct, '8n', now + i * noteTime);
+    });
+
+    const totalDuration = allIntervals.length * noteTime * 1000 + 200;
+    if (callback) {
+      setTimeout(callback, totalDuration);
+    }
+    return totalDuration;
+  }
+
+  btnPlayScale.addEventListener('click', async () => {
+    if (isPlaying) return;
+    isPlaying = true;
+    btnPlayScale.disabled = true;
+    btnPlayCompare.disabled = true;
+    btnPlayScale.textContent = '♪ Playing…';
+
+    await playModeScale(currentRootPC, currentModeIdx, () => {
+      isPlaying = false;
+      btnPlayScale.disabled = false;
+      btnPlayCompare.disabled = false;
+      btnPlayScale.textContent = '▶ Play Scale';
+    });
+  });
+
+  btnPlayCompare.addEventListener('click', async () => {
+    if (isPlaying) return;
+    isPlaying = true;
+    btnPlayScale.disabled = true;
+    btnPlayCompare.disabled = true;
+    btnPlayCompare.textContent = '♪ Ionian first…';
+
+    // Play Ionian (index 1) first
+    const ionianDuration = await playModeScale(currentRootPC, 1, null);
+
+    // Then play the selected mode after a brief gap
+    setTimeout(async () => {
+      btnPlayCompare.textContent = `♪ Now ${MODES[currentModeIdx].name}…`;
+      await playModeScale(currentRootPC, currentModeIdx, () => {
+        isPlaying = false;
+        btnPlayScale.disabled = false;
+        btnPlayCompare.disabled = false;
+        btnPlayCompare.textContent = '⇆ Play Comparison';
+      });
+    }, ionianDuration + 400);
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // AUDIO ENABLE
+  // ════════════════════════════════════════════════════════════════
+
+  audioBtn.addEventListener('click', async () => {
+    if (audioReady) {
+      audioReady = false;
+      try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      audioBtn.textContent = '▶ Enable Sound';
+      audioBtn.className = 'mo-btn-sound';
+      btnPlayScale.disabled = true;
+      btnPlayCompare.disabled = true;
+      return;
+    }
+
+    audioBtn.disabled = true;
+    audioBtn.textContent = 'Loading piano…';
+
+    try {
+      await loadToneIfNeeded();
+      await Tone.start();
+      await ensureAudio();
+      audioReady = true;
+      audioBtn.disabled = false;
+      audioBtn.textContent = '♪ Sound on';
+      audioBtn.className = 'mo-btn-sound mo-btn-sound--on';
+      btnPlayScale.disabled = false;
+      btnPlayCompare.disabled = false;
+    } catch (err) {
+      audioBtn.disabled = false;
+      audioBtn.textContent = '▶ Enable Sound (retry)';
+      audioBtn.className = 'mo-btn-sound';
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // EVENT HANDLERS
+  // ════════════════════════════════════════════════════════════════
+
+  function selectMode(idx) {
+    currentModeIdx = idx;
+    update();
+  }
+
+  rootSelect.addEventListener('change', () => {
+    currentRootPC = parseInt(rootSelect.value, 10);
+    update();
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  // INIT
+  // ════════════════════════════════════════════════════════════════
+
+  KeyboardView.init('mo-keyboard-container', {
+    range: { low: 'C3', high: 'B5' },
+    mode: 'both',
+    showLabels: true,
+  });
+
+  buildModeButtons();
+  update();
+</script>
+{% endblock %}

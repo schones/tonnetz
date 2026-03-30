@@ -53,6 +53,13 @@ function _defaultState() {
       showNoteNames: true,
     },
     animationQueue: [],
+    progressionState: {
+      chords: [],         // Array of { root, quality, notes, romanNumeral }
+      currentIndex: -1,   // Which chord is active (-1 = none)
+      key: null,          // Key context (e.g. 'C')
+      isPlaying: false,   // Transport state
+      tempo: 100,         // BPM for auto-advance
+    },
   };
 }
 
@@ -121,6 +128,11 @@ const HarmonyState = {
 
   /** Restore to default empty state and notify. */
   reset() {
+    // Stop any active playback before resetting
+    if (this._playbackTimer) {
+      clearInterval(this._playbackTimer);
+      this._playbackTimer = null;
+    }
     this._state = _defaultState();
     this._notify();
   },
@@ -250,6 +262,10 @@ const HarmonyState = {
    */
   toggleNote(noteName, octave) {
     octave = (octave != null) ? octave : 4;
+    // Note mode is mutually exclusive with progression mode
+    if (this._state.progressionState.chords.length > 0) {
+      this.clearProgression();
+    }
     const targetPC = noteToPC(noteName);
     const notes = this._state.activeNotes || [];
     const hasNote = notes.some(n => noteToPC(n.note) === targetPC && n.octave === octave);
@@ -274,6 +290,167 @@ const HarmonyState = {
   /** Alias for reset(). */
   clearAll() {
     this.reset();
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // PROGRESSION METHODS
+  // ════════════════════════════════════════════════════════════════
+
+  /**
+   * Load a chord progression. Clears Note Mode state.
+   * @param {Array<{root, quality, notes, romanNumeral}>} chords
+   * @param {string} key — key context (e.g. 'C')
+   */
+  setProgression(chords, key) {
+    this.batch(state => {
+      // Save pre-progression depth so we can restore it on clear
+      state._preProgressionDepth = state.tonnetzDepth;
+      state.progressionState = {
+        chords: chords || [],
+        currentIndex: -1,
+        key: key || null,
+        isPlaying: false,
+        tempo: state.progressionState.tempo || 100,
+      };
+      // Lock the Tonnetz center on the key's tonic chord for the duration
+      // of the progression — stepping between chords should NOT re-center.
+      const tonic = key || (chords && chords.length ? chords[0].root : null);
+      if (tonic) {
+        state.tonnetzCenter = { root: tonic, quality: 'major' };
+      }
+      // Increase depth so all diatonic chords are visible simultaneously
+      state.tonnetzDepth = 3;
+      // Clear note-mode state (progression and note mode are mutually exclusive)
+      state.activeTriads = [];
+      state.activeNotes = [];
+      state.activeTransform = null;
+      state.activeInterval = null;
+    });
+  },
+
+  /**
+   * Jump to a specific chord index in the progression.
+   * Updates activeTriads/activeNotes so all existing subscribers
+   * (keyboard, chord wheel, audio) react normally.
+   * tonnetzCenter is NOT updated — the grid stays locked on the key tonic.
+   * @param {number} index
+   */
+  setProgressionIndex(index) {
+    const prog = this._state.progressionState;
+    if (!prog.chords.length) return;
+    const i = Math.max(0, Math.min(index, prog.chords.length - 1));
+    const chord = prog.chords[i];
+
+    // Compute common tones with previous chord for transition highlight
+    const prevChord = i > 0 ? prog.chords[i - 1] : null;
+    let commonTones = [];
+    if (prevChord) {
+      const prevPCs = new Set((prevChord.notes || []).map(n => noteToPC(n)));
+      commonTones = (chord.notes || []).filter(n => prevPCs.has(noteToPC(n)));
+    }
+
+    const notes = triadNotes(chord.root, chord.quality);
+    const activeNotes = _notesFromTriad(notes, 'primary');
+
+    this.batch(state => {
+      state.progressionState.currentIndex = i;
+      state.activeTriads = [{ root: chord.root, quality: chord.quality, notes, role: 'primary', color: null }];
+      state.activeNotes = activeNotes;
+      state.activeTransform = null;
+      state.activeInterval = null;
+      // Do NOT update tonnetzCenter — the grid stays locked on the key tonic
+      // so the glow worm moves across a stable grid.
+      // Stash common tones for the renderer to pick up
+      state._progressionCommonTones = commonTones;
+      state._progressionEvent = true;
+    });
+  },
+
+  /**
+   * Step forward or backward through the progression.
+   * @param {number} direction — +1 or -1
+   */
+  stepProgression(direction) {
+    const prog = this._state.progressionState;
+    if (!prog.chords.length) return;
+    const next = prog.currentIndex + (direction || 1);
+    if (next < 0 || next >= prog.chords.length) return;
+    this.setProgressionIndex(next);
+  },
+
+  /** Clear progression and return to normal Explorer mode. */
+  clearProgression() {
+    this.stopPlayback();
+    this.batch(state => {
+      // Restore pre-progression depth
+      if (state._preProgressionDepth != null) {
+        state.tonnetzDepth = state._preProgressionDepth;
+        delete state._preProgressionDepth;
+      }
+      state.progressionState = {
+        chords: [],
+        currentIndex: -1,
+        key: null,
+        isPlaying: false,
+        tempo: 100,
+      };
+      state._progressionCommonTones = [];
+      state._progressionEvent = false;
+      state.activeTriads = [];
+      state.activeNotes = [];
+      state.activeTransform = null;
+      state.tonnetzCenter = null;
+    });
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // TRANSPORT (auto-play)
+  // ════════════════════════════════════════════════════════════════
+
+  _playbackTimer: null,
+
+  /** Begin auto-advancing through the progression at the set tempo. */
+  startPlayback() {
+    const prog = this._state.progressionState;
+    if (!prog.chords.length) return;
+    if (prog.isPlaying) return;
+
+    // Start from 0 if not yet started
+    if (prog.currentIndex < 0) this.setProgressionIndex(0);
+
+    prog.isPlaying = true;
+    this._notify();
+
+    const msPerBeat = 60000 / (prog.tempo || 100);
+    this._playbackTimer = setInterval(() => {
+      const p = this._state.progressionState;
+      const next = p.currentIndex + 1;
+      if (next >= p.chords.length) {
+        this.stopPlayback();
+        return;
+      }
+      this.setProgressionIndex(next);
+    }, msPerBeat);
+  },
+
+  /** Pause playback at current position. */
+  stopPlayback() {
+    if (this._playbackTimer) {
+      clearInterval(this._playbackTimer);
+      this._playbackTimer = null;
+    }
+    if (this._state.progressionState.isPlaying) {
+      this._state.progressionState.isPlaying = false;
+      this._notify();
+    }
+  },
+
+  /** Reset playback to the beginning. */
+  resetPlayback() {
+    this.stopPlayback();
+    if (this._state.progressionState.chords.length) {
+      this.setProgressionIndex(0);
+    }
   },
 };
 
