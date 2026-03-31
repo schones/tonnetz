@@ -14,6 +14,8 @@ import {
   markChapterComplete,
 } from '/static/shared/user-profile.js';
 
+import { mountNextSteps, revealNextSteps } from '/static/intro/intro-next-steps.js';
+
 // ── Chapter module map ─────────────────────────────────────────────────────
 
 const CHAPTER_MODULES = {
@@ -116,6 +118,13 @@ export const IntroCore = {
 
     // ── Progress bar (initial state) ───────────────────────────────────
     IntroCore._updateProgressBar(chapterNum, sections);
+
+    // ── What's Next card ───────────────────────────────────────────────
+    mountNextSteps(chapterNum);
+    const existingProgress = getIntroProgress();
+    if (existingProgress?.chapters?.[chapterNum]?.completed) {
+      revealNextSteps();
+    }
   },
 
   // ── Progress API ─────────────────────────────────────────────────────────
@@ -143,6 +152,7 @@ export const IntroCore = {
       const allViewed = sections.every(s => viewed.includes(s.id));
       if (allViewed) {
         markChapterComplete(chapterNum);
+        revealNextSteps();
       }
     }
 

@@ -10,6 +10,17 @@
 
 import { getProfile, initProfile } from './user-profile.js';
 
+// ── Routing map (index page only) ────────────────────────────────────────
+
+const PRESET_ROUTES = {
+  beginner:       '/intro',
+  dabbler:        '/intro/2',
+  producer:       '/intro/3',
+  curious_player: '/intro/4',
+  deep_diver:     '/explorer',
+  math_explorer:  '/explorer',
+};
+
 // ── Preset display data ──────────────────────────────────────────────────
 
 const PRESET_CARDS = [
@@ -322,6 +333,10 @@ export function showOnboardingIfNeeded() {
       const profile = initProfile(preset);
       _dismiss(overlay);
       resolve(profile);
+      // Only redirect when shown on the index page
+      if (window.location.pathname === '/') {
+        window.location.href = PRESET_ROUTES[preset] ?? '/intro';
+      }
     });
 
     document.body.appendChild(overlay);
