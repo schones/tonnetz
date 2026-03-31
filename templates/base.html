@@ -145,8 +145,10 @@
         height="44" style="display:block;">
     </a>
     <div style="display:flex; align-items:center; gap:0.25rem; flex-wrap:wrap;">
+      <!-- Theory dropdown -->
       <div class="nav-dropdown">
-        <span style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+        <span data-nav-dropdown="/theory"
+              style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
                      background:var(--bg-card); color:var(--text-primary);
                      font-size:0.82rem; font-weight:700; font-family:var(--font-main);
                      cursor:default; display:inline-flex; align-items:center; gap:5px;
@@ -161,7 +163,9 @@
           <a href="/theory/chord-progressions" class="nav-dropdown__item">Chord Progressions</a>
         </div>
       </div>
-      <a href="/explorer" style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+      <!-- Explorer -->
+      <a href="/explorer" data-nav-link
+         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
                 background:var(--bg-card); color:var(--text-primary); text-decoration:none;
                 font-size:0.82rem; font-weight:700; font-family:var(--font-main);
                 transition:border-color 0.12s, background 0.12s;"
@@ -169,23 +173,39 @@
         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
         Explorer
       </a>
-      <a href="/games/relative-key-trainer" style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+      <!-- Practice Games dropdown -->
+      <div class="nav-dropdown">
+        <span data-nav-dropdown="/harmony,/chord-identification,/melody,/rhythm,/strumming,/games"
+              style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+                     background:var(--bg-card); color:var(--text-primary);
+                     font-size:0.82rem; font-weight:700; font-family:var(--font-main);
+                     cursor:default; display:inline-flex; align-items:center; gap:5px;
+                     white-space:nowrap;">
+          Practice Games <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
+        </span>
+        <div class="nav-dropdown__menu">
+          <div class="nav-dropdown__label">Practice Games</div>
+          <a href="/games/relative-key-trainer" class="nav-dropdown__item">Chord Walks</a>
+          <a href="/harmony" class="nav-dropdown__item">Harmony Trainer</a>
+          <a href="/chord-identification" class="nav-dropdown__item">Chord Spotter</a>
+          <a href="/melody" class="nav-dropdown__item">Melody Match</a>
+          <a href="/rhythm" class="nav-dropdown__item">Rhythm Lab</a>
+          <a href="/strumming" class="nav-dropdown__item">Strum Patterns</a>
+        </div>
+      </div>
+      <!-- Skratch Studio -->
+      <a href="/skratch" data-nav-link
+         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
                 background:var(--bg-card); color:var(--text-primary); text-decoration:none;
                 font-size:0.82rem; font-weight:700; font-family:var(--font-main);
                 transition:border-color 0.12s, background 0.12s;"
         onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
-        Chord Walks
+        Skratch Studio
       </a>
-      <a href="/harmony" style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
-                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                transition:border-color 0.12s, background 0.12s;"
-        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
-        Harmony Trainer
-      </a>
-      <a href="/intro" style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+      <!-- Start Here -->
+      <a href="/intro" data-nav-link
+         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
                 background:var(--bg-card); color:var(--text-primary); text-decoration:none;
                 font-size:0.82rem; font-weight:700; font-family:var(--font-main);
                 transition:border-color 0.12s, background 0.12s;"
@@ -231,6 +251,34 @@
         if (!btn) return;
         btn.textContent = theme === 'dark' ? '☀️' : '🌙';
       }
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var path = window.location.pathname;
+      // Highlight direct nav links whose href matches current path
+      document.querySelectorAll('a[data-nav-link]').forEach(function (el) {
+        var href = el.getAttribute('href');
+        if (!href) return;
+        var active = path === href || (href !== '/' && path.startsWith(href + '/'));
+        if (active) {
+          el.style.borderColor = 'var(--accent)';
+          el.style.background = 'var(--accent-soft)';
+          el.onmouseout = null;
+        }
+      });
+      // Highlight dropdown triggers when current path falls under their routes
+      document.querySelectorAll('span[data-nav-dropdown]').forEach(function (el) {
+        var prefixes = el.getAttribute('data-nav-dropdown').split(',');
+        var active = prefixes.some(function (p) {
+          return path === p || path.startsWith(p + '/');
+        });
+        if (active) {
+          el.style.borderColor = 'var(--accent)';
+          el.style.background = 'var(--accent-soft)';
+        }
+      });
     })();
   </script>
 </body>

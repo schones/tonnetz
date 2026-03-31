@@ -574,7 +574,72 @@
 {% block scripts %}
 <script type="module">
     import { showOnboardingIfNeeded } from '/static/shared/onboarding.js';
+    import { getProfile, getIntroProgress } from '/static/shared/user-profile.js';
+
     showOnboardingIfNeeded();
+
+    const CHAPTER_TITLES = {
+        1: 'Sound & Notes',
+        2: 'Scales & Keys',
+        3: 'Chords & Harmony',
+        4: 'Meet the Tonnetz',
+        5: 'Transforms',
+    };
+
+    const profile = getProfile();
+    if (profile) {
+        const progress = getIntroProgress();
+        const chapters = progress?.chapters ?? {};
+
+        // First chapter not yet marked complete = resume target
+        let resumeChapter = null;
+        for (let n = 1; n <= 5; n++) {
+            if (!chapters[n]?.completed) { resumeChapter = n; break; }
+        }
+
+        const hasStarted = progress.lastChapter !== null;
+        const allComplete = resumeChapter === null;
+
+        const card = document.querySelector('.start-here-card');
+        if (card && (hasStarted || allComplete)) {
+            const eyebrow = card.querySelector('.start-here-card__eyebrow');
+            const title   = card.querySelector('.start-here-card__title');
+            const tagline = card.querySelector('.start-here-card__tagline');
+            const cta     = card.querySelector('.start-here-card__cta');
+
+            const secondaryLinkStyle =
+                'display:block; margin-top:0.5rem; font-size:0.8rem; font-weight:700;' +
+                ' color:var(--text-secondary); cursor:pointer; text-decoration:underline;';
+
+            function makeSecondaryLink(text, href) {
+                const el = document.createElement('span');
+                el.style.cssText = secondaryLinkStyle;
+                el.textContent = text;
+                el.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    window.location.href = href;
+                });
+                return el;
+            }
+
+            if (allComplete) {
+                card.href = '/explorer';
+                eyebrow.textContent = 'Course complete';
+                title.textContent   = 'Explore Everything';
+                tagline.textContent = "You've finished the intro — dive into the tools";
+                cta.textContent     = 'Open Explorer →';
+                cta.after(makeSecondaryLink('Review chapters', '/intro'));
+            } else {
+                card.href = '/intro/' + resumeChapter;
+                eyebrow.textContent = 'Welcome back';
+                title.textContent   = `Continue: Chapter ${resumeChapter} — ${CHAPTER_TITLES[resumeChapter]}`;
+                tagline.textContent = 'Pick up where you left off';
+                cta.textContent     = 'Continue →';
+                cta.after(makeSecondaryLink('View all chapters', '/intro'));
+            }
+        }
+    }
 </script>
 {% endblock %}
 
