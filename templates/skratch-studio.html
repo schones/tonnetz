@@ -16,6 +16,57 @@
   <script src="https://unpkg.com/@blockly/field-colour"></script>
   <!-- Tone.js for audio synthesis -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <style>
+    /* ── Welcome banner ── */
+    .intro-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      background: #181825;
+      border: 1px solid #3a3a50;
+      border-radius: 0.75rem;
+      padding: 0.7rem 1rem;
+      margin: 0.5rem 1rem;
+      max-height: 120px;
+      overflow: hidden;
+      animation: bannerSlideIn 0.35s ease;
+      transition: max-height 0.3s ease, opacity 0.25s ease,
+                  padding 0.3s ease, margin 0.3s ease;
+    }
+    @keyframes bannerSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .intro-banner--gone {
+      max-height: 0;
+      opacity: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      margin-top: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+    .intro-banner__icon { flex-shrink: 0; font-size: 1rem; line-height: 1.5; }
+    .intro-banner__text {
+      flex: 1;
+      font-size: 0.82rem;
+      color: #9399b2;
+      line-height: 1.5;
+    }
+    .intro-banner__dismiss {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #9399b2;
+      font-size: 1.2rem;
+      line-height: 1;
+      padding: 0 0.1rem;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+    }
+    .intro-banner__dismiss:hover { opacity: 1; }
+  </style>
 </head>
 
 <body style="background: #11111b; color: #cdd6f4; overflow: hidden;">
@@ -30,6 +81,13 @@
         title="Open help guide in a new tab">&#10067; Help</a>
     </nav>
   </header>
+
+  <!-- First-visit welcome banner -->
+  <div id="skratch-welcome-banner" class="intro-banner" role="note" aria-label="Welcome tip">
+    <span class="intro-banner__icon" aria-hidden="true">&#128161;</span>
+    <span class="intro-banner__text">Build music by snapping blocks together. Drag a Play Note block from the toolbox, wrap it in a Repeat loop, and hit the green play button. Stack blocks to layer sounds.</span>
+    <button class="intro-banner__dismiss" id="skratch-banner-dismiss" aria-label="Dismiss welcome message">&#215;</button>
+  </div>
 
   <main class="studio-layout">
     <!-- Left: Blockly Workspace -->
@@ -195,6 +253,21 @@
     </div>
   </dialog>
 
+  <script type="module">
+    import { getFeatureFlag, setFeatureFlag } from '/static/shared/user-profile.js';
+    const banner = document.getElementById('skratch-welcome-banner');
+    if (banner) {
+      if (getFeatureFlag('skratch_intro_seen')) {
+        banner.remove();
+      } else {
+        document.getElementById('skratch-banner-dismiss').addEventListener('click', () => {
+          setFeatureFlag('skratch_intro_seen', true);
+          banner.classList.add('intro-banner--gone');
+          banner.addEventListener('transitionend', () => banner.remove(), { once: true });
+        });
+      }
+    }
+  </script>
   <script type="module">
     import { init } from '/static/skratch-studio/studio.js';
     init();

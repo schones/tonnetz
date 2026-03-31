@@ -323,6 +323,55 @@
       height: 380px;
     }
   }
+
+  /* ── Welcome banner ──────────────────────────────────────────── */
+  .intro-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.7rem 1rem;
+    margin-bottom: 1rem;
+    max-height: 120px;
+    overflow: hidden;
+    animation: bannerSlideIn 0.35s ease;
+    transition: max-height 0.3s ease, opacity 0.25s ease,
+                padding 0.3s ease, margin 0.3s ease;
+  }
+  @keyframes bannerSlideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .intro-banner--gone {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+    pointer-events: none;
+  }
+  .intro-banner__icon { flex-shrink: 0; font-size: 1rem; line-height: 1.5; }
+  .intro-banner__text {
+    flex: 1;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .intro-banner__dismiss {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 0 0.1rem;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  .intro-banner__dismiss:hover { opacity: 1; }
 </style>
 {% endblock %}
 
@@ -335,6 +384,13 @@
     Use P, R, L to navigate harmonic transforms.
     Switch to Note mode to build any chord one note at a time, then hit Play (or Spacebar).
   </p>
+
+  <!-- First-visit welcome banner -->
+  <div id="explorer-welcome-banner" class="intro-banner" role="note" aria-label="Welcome tip">
+    <span class="intro-banner__icon" aria-hidden="true">&#128161;</span>
+    <span class="intro-banner__text">Three views of the same harmony. Click a chord on the wheel, a triangle on the grid, or keys on the keyboard — everything stays in sync. Try Note Mode (top toggle) to build your own voicings note by note.</span>
+    <button class="intro-banner__dismiss" id="explorer-banner-dismiss" aria-label="Dismiss welcome message">&#215;</button>
+  </div>
 
   <!-- Status strip -->
   <div class="exp-status">
@@ -499,6 +555,24 @@
     from '{{ url_for("static", filename="shared/chord-resolver.js") }}';
   import { FretboardView }
     from '{{ url_for("static", filename="shared/fretboard-view.js") }}';
+  import { getFeatureFlag, setFeatureFlag }
+    from '{{ url_for("static", filename="shared/user-profile.js") }}';
+
+  // ── Welcome banner ───────────────────────────────────────────────────────
+  {
+    const banner = document.getElementById('explorer-welcome-banner');
+    if (banner) {
+      if (getFeatureFlag('explorer_intro_seen')) {
+        banner.remove();
+      } else {
+        document.getElementById('explorer-banner-dismiss').addEventListener('click', () => {
+          setFeatureFlag('explorer_intro_seen', true);
+          banner.classList.add('intro-banner--gone');
+          banner.addEventListener('transitionend', () => banner.remove(), { once: true });
+        });
+      }
+    }
+  }
 
   // Expose for console debugging
   window.HarmonyState        = HarmonyState;

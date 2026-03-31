@@ -276,6 +276,42 @@ export function importProfile(jsonString) {
   }
 }
 
+// ── Feature flags ────────────────────────────────────────────────────────
+
+/**
+ * Get a named feature flag. Reads from profile.feature_flags when a profile
+ * exists; falls back to a standalone localStorage key so it works for users
+ * who skipped onboarding.
+ * @param {string} key  e.g. 'explorer_intro_seen'
+ * @returns {*} The stored value, or undefined if never set.
+ */
+export function getFeatureFlag(key) {
+  const profile = _load();
+  if (profile) {
+    return profile.feature_flags?.[key];
+  }
+  const raw = localStorage.getItem('tonnetz_flag_' + key);
+  if (raw === null) return undefined;
+  try { return JSON.parse(raw); } catch { return raw; }
+}
+
+/**
+ * Set a named feature flag. Persists to profile.feature_flags when a profile
+ * exists, and always writes a standalone localStorage key as a fallback so
+ * dismissal survives even without a profile.
+ * @param {string} key
+ * @param {*} value
+ */
+export function setFeatureFlag(key, value) {
+  const profile = _load();
+  if (profile) {
+    if (!profile.feature_flags) profile.feature_flags = {};
+    profile.feature_flags[key] = value;
+    _save(profile);
+  }
+  localStorage.setItem('tonnetz_flag_' + key, JSON.stringify(value));
+}
+
 // ── Test harness ──────────────────────────────────────────────────────────
 
 if (window.TONNETZ_TEST) {
