@@ -4,7 +4,24 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
-## 2026-03-30 afternoon (in progress)
+## 2026-03-31 morning
+
+- Chapter 4 rebuild on Explorer components: Claude Code (Opus) built initial version, but Tonnetz container ID mismatch + Tone.js not loaded caused errors. Opus session hit 0% context — killed and restarted with focused fix prompt on Sonnet.
+- Designed and queued full MVP polish sprint (4 prompts total):
+  - Post-onboarding routing: preset → destination mapping (beginner→/intro, dabbler→/intro/2, producer→/intro/3, curious_player→/intro/4, deep_diver→/explorer, math_explorer→/explorer)
+  - End-of-chapter "What's Next" cards: contextual game/theory links for all 5 chapters, shared component
+  - First-visit dismissible banners for Explorer and Skratch Studio (tracked in localStorage profile)
+  - Nav cleanup: Games dropdown (all 6 games), Skratch Studio link, active state highlighting
+  - Returning user index state: "Continue Chapter N" / "Course complete" replaces "Start Here" card
+- All 4 prompts executed (Sonnet). Banners confirmed working. Other items need verification next session.
+- Decided: Supabase deferred to post-MVP. localStorage sufficient for initial user testing round.
+- Decided: Mobile/responsive deferred to post-MVP.
+- Decided: Use Sonnet for Claude Code builds, Opus for planning/design/review.
+- Phase A confirmed fully complete (A1–A5 all done as of yesterday, STATUS.md was stale).
+- Updated STATUS.md and SESSION_LOG.md.
+- Next: verify all polish changes, fretboard polish, end-to-end new-user walkthrough, deploy.
+
+## 2026-03-30 afternoon
 
 - Full docs update: applied 15-issue cross-reference audit from Friday to all md files
 - Created voicing-explorer-spec.md v0.3 (was missing from repo)
