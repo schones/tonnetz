@@ -203,9 +203,10 @@ def relative_key_trainer():
 def scale_builder():
     return render_template("scale-builder.html")
 
+
 @app.route("/games/swing-trainer")
 def swing_trainer():
-    return render_template("games/swing-trainer.html")
+    return send_from_directory("static/games", "swing-trainer.html")    
 
 @app.route("/skratch")
 def skratch():
