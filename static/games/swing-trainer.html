@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swing Trainer — Tonnetz</title>
+  <link rel="stylesheet" href="../shared/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--space-xl) var(--space-md);
+      min-height: 100vh;
+    }
+
+    /* ── Header row ── */
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 620px;
+      margin-bottom: var(--space-lg);
+    }
+    .header-row h1 {
+      font-size: var(--font-size-xl);
+      color: var(--color-primary);
+      margin: 0;
+    }
+
+    /* ── Mode toggle ── */
+    .mode-toggle {
+      display: flex;
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .mode-btn {
+      padding: 5px 14px;
+      border: none;
+      background: transparent;
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      color: var(--color-text-light);
+      transition: all var(--transition-fast);
+    }
+    .mode-btn--active {
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+    }
+    .mode-toggle--locked {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* ── Game area ── */
+    .game-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 620px;
+      gap: var(--space-lg);
+    }
+
+    #waveform {
+      display: block;
+      width: 100%;
+      height: 80px;
+      border-radius: var(--radius-md);
+      background: var(--color-bg-card);
+    }
+
+    #knob {
+      display: block;
+      touch-action: none;
+      cursor: default;
+      transition: opacity var(--transition-fast);
+    }
+
+    #feel-label {
+      min-height: 1.2em;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: var(--font-weight-bold);
+    }
+
+    #action-btn {
+      min-width: 180px;
+    }
+    #action-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* ── Score area ── */
+    #score-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      min-height: 5.5em;
+    }
+    #score-label {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-extra-bold);
+    }
+    .sl-locked  { color: var(--color-success); }
+    .sl-close   { color: var(--color-accent-dark); }
+    .sl-pocket  { color: var(--color-accent-dark); }
+    .sl-miss    { color: var(--color-text-muted); }
+
+    #score-delta {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-light);
+    }
+    #score-feels {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+    }
+    #score-streak {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-accent-dark);
+      min-height: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-row">
+    <h1>Swing Trainer</h1>
+    <div class="mode-toggle" id="mode-toggle">
+      <button class="mode-btn mode-btn--active" data-mode="practice">Practice</button>
+      <button class="mode-btn" data-mode="test">Test</button>
+    </div>
+  </div>
+
+  <div class="game-area">
+    <canvas id="waveform"></canvas>
+
+    <svg id="knob" viewBox="0 0 120 120" width="120" height="120">
+      <circle cx="60" cy="60" r="46" fill="var(--color-bg)" stroke="var(--color-border)" stroke-width="1.5"/>
+      <path d="M 24.6 95.4 A 50 50 0 1 1 95.4 95.4"
+            fill="none" stroke="var(--color-border)" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="24.6"  cy="95.4" r="4" fill="#BA7517"/>
+      <circle cx="97.5"  cy="26.9" r="4" fill="#BA7517"/>
+      <circle cx="95.4"  cy="95.4" r="4" fill="#BA7517"/>
+      <line id="knob-tick" x1="60" y1="60" x2="60" y2="16"
+            stroke="#378ADD" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+
+    <div id="feel-label">&nbsp;</div>
+
+    <button id="action-btn" class="btn btn--primary btn--large">Listen</button>
+
+    <div id="score-area">
+      <div id="score-label"></div>
+      <div id="score-delta"></div>
+      <div id="score-feels"></div>
+      <div id="score-streak"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    /* ══════════════════════════════════════════
+       Constants
+       ══════════════════════════════════════════ */
+    const BPM       = 80;
+    const BEAT_DUR  = 60 / BPM;
+    const TARGETS   = [0.52, 0.57, 0.62, 0.67, 0.71, 0.75];
+    const GHOST_VOL = 0.3;
+
+    const ostinato = [
+      { down: ['Eb3', 'Bb3'], up: ['Eb3', 'Bb3'] },   // beat 1
+      { down: ['Eb3', 'Bb3'], up: ['Eb3', 'Bb3'] },   // beat 2
+      { down: ['Ab2', 'Eb3'], up: ['Ab2', 'Eb3'] },   // beat 3
+      { down: ['Bb2', 'F3'],  up: ['Bb2', 'F3']  },   // beat 4
+    ];
+
+    /* ══════════════════════════════════════════
+       Synths
+       ══════════════════════════════════════════ */
+    const synthOpts = {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.005, decay: 0.28, sustain: 0, release: 0.45 },
+    };
+    const synth      = new Tone.PolySynth(Tone.Synth, synthOpts).toDestination();
+    const synthGhost = new Tone.PolySynth(Tone.Synth, synthOpts).toDestination();
+
+    /* ══════════════════════════════════════════
+       State
+       ══════════════════════════════════════════ */
+    let mode       = 'practice';
+    let modeLocked = false;
+    let state      = 0;           // 0 ready · 1 listen · 2 match · 3 reveal
+    let targetRatio  = 0;
+    let lastTarget   = -1;
+    let userRatio    = 0.50;
+    let currentSwing = 0.50;      // ref read each beat
+    let beatCount    = 0;
+    let streak       = 0;
+    let animId       = null;
+
+    /* ══════════════════════════════════════════
+       DOM
+       ══════════════════════════════════════════ */
+    const modeToggle    = document.getElementById('mode-toggle');
+    const modeBtns      = modeToggle.querySelectorAll('.mode-btn');
+    const waveCanvas    = document.getElementById('waveform');
+    const knobSvg       = document.getElementById('knob');
+    const knobTick      = document.getElementById('knob-tick');
+    const feelEl        = document.getElementById('feel-label');
+    const actionBtn     = document.getElementById('action-btn');
+    const scoreLabelEl  = document.getElementById('score-label');
+    const scoreDeltaEl  = document.getElementById('score-delta');
+    const scoreFeelsEl  = document.getElementById('score-feels');
+    const scoreStreakEl = document.getElementById('score-streak');
+
+    /* ══════════════════════════════════════════
+       Helpers
+       ══════════════════════════════════════════ */
+    function feelLabel(r) {
+      if (r < 0.52) return 'Straight';
+      if (r < 0.57) return 'Lite swing';
+      if (r < 0.63) return 'Medium swing';
+      if (r < 0.69) return 'Triplet swing';
+      if (r < 0.73) return 'Hard bop';
+      return 'Shuffle';
+    }
+
+    /* ══════════════════════════════════════════
+       Canvas helpers
+       ══════════════════════════════════════════ */
+    function sizeCanvas(c) {
+      const dpr  = window.devicePixelRatio || 1;
+      const rect = c.getBoundingClientRect();
+      c.width  = Math.round(rect.width  * dpr);
+      c.height = Math.round(rect.height * dpr);
+    }
+
+    function ctxOf(c) {
+      const dpr = window.devicePixelRatio || 1;
+      const w   = c.width / dpr;
+      const h   = c.height / dpr;
+      const ctx = c.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      return { ctx, w, h };
+    }
+
+    /* ══════════════════════════════════════════
+       Waveform
+       ══════════════════════════════════════════ */
+    function drawGaussian(ctx, w, h, ratio, color, alpha) {
+      const mid   = h / 2;
+      const beatW = w / 8;
+      const sigma = beatW * 0.06;
+      const amp   = mid * 0.85;
+      const den   = 2 * sigma * sigma;
+
+      const pulses = [];
+      for (let b = 0; b < 8; b++) {
+        pulses.push({ x: b * beatW,                 v: 0.75 });
+        pulses.push({ x: b * beatW + ratio * beatW, v: 0.38 });
+      }
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let px = 0; px < w; px++) {
+        let sum = 0;
+        for (const p of pulses) {
+          const d = px - p.x;
+          sum += p.v * Math.exp(-(d * d) / den);
+        }
+        const y = mid - sum * amp;
+        px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawScanLine(ctx, w, h) {
+      const beats    = Tone.Transport.seconds * (BPM / 60);
+      const fraction = (beats % 4) / 4;
+      const x        = fraction * w;
+      ctx.save();
+      ctx.strokeStyle = '#a29bfe';
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth   = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function renderWaveform() {
+      const { ctx, w, h } = ctxOf(waveCanvas);
+      if (state === 1) {
+        drawScanLine(ctx, w, h);
+      } else if (state === 2 && mode === 'practice') {
+        drawGaussian(ctx, w, h, targetRatio, '#b2bec3', 0.35);
+      } else if (state === 3) {
+        drawGaussian(ctx, w, h, targetRatio, '#b2bec3', 0.35);
+        drawGaussian(ctx, w, h, userRatio, '#378ADD', 1.0);
+      }
+    }
+
+    function animLoop() {
+      renderWaveform();
+      if (state === 1) animId = requestAnimationFrame(animLoop);
+    }
+    function stopAnim() {
+      if (animId) { cancelAnimationFrame(animId); animId = null; }
+    }
+
+    /* ══════════════════════════════════════════
+       SVG knob
+       ══════════════════════════════════════════ */
+    function ratioToAngleDeg(r) {
+      // 0.50 → 225°, 0.75 → 495° (= 135°) — degrees from top, clockwise
+      return 225 + ((r - 0.50) / 0.25) * 270;
+    }
+
+    function updateTick() {
+      const deg  = ratioToAngleDeg(userRatio);
+      const rad  = deg * Math.PI / 180;
+      const sinA = Math.sin(rad), cosA = Math.cos(rad);
+      knobTick.setAttribute('x1', 60 + 12 * sinA);
+      knobTick.setAttribute('y1', 60 - 12 * cosA);
+      knobTick.setAttribute('x2', 60 + 44 * sinA);
+      knobTick.setAttribute('y2', 60 - 44 * cosA);
+    }
+
+    function setKnobInteractive(on) {
+      knobSvg.style.opacity       = on ? '1' : '0.4';
+      knobSvg.style.pointerEvents = on ? 'auto' : 'none';
+      knobSvg.style.cursor        = on ? 'grab' : 'default';
+    }
+
+    /* ── Knob drag ── */
+    let dragging = false, dragY0 = 0, dragR0 = 0;
+
+    function onDown(y) {
+      if (state !== 2) return;
+      dragging = true;
+      dragY0 = y;
+      dragR0 = userRatio;
+      knobSvg.style.cursor = 'grabbing';
+    }
+    function onMove(y) {
+      if (!dragging) return;
+      const dy = dragY0 - y;                                       // up → increase
+      userRatio    = Math.max(0.50, Math.min(0.75, dragR0 + (dy / 180) * 0.25));
+      currentSwing = userRatio;
+      updateTick();
+    }
+    function onUp() {
+      if (!dragging) return;
+      dragging = false;
+      knobSvg.style.cursor = state === 2 ? 'grab' : 'default';
+    }
+
+    knobSvg.addEventListener('mousedown', e => { e.preventDefault(); onDown(e.clientY); });
+    window.addEventListener('mousemove', e => onMove(e.clientY));
+    window.addEventListener('mouseup', onUp);
+    knobSvg.addEventListener('touchstart', e => { e.preventDefault(); onDown(e.touches[0].clientY); }, { passive: false });
+    window.addEventListener('touchmove', e => { if (dragging) { e.preventDefault(); onMove(e.touches[0].clientY); } }, { passive: false });
+    window.addEventListener('touchend', onUp);
+
+    /* ══════════════════════════════════════════
+       Audio engine
+       ══════════════════════════════════════════ */
+    function beatCallback(time) {
+      if (state !== 1 && state !== 2) return;
+
+      if (state === 1 && beatCount >= 16) {
+        setTimeout(() => { if (state === 1) go(2); }, 50);
+        return;
+      }
+
+      const idx  = beatCount % 4;
+      const beat = ostinato[idx];
+
+      if (state === 1) {
+        synth.triggerAttackRelease(beat.down, '8n', time, 0.75);
+        synth.triggerAttackRelease(beat.up,   '8n', time + currentSwing * BEAT_DUR, 0.38);
+      } else {
+        /* User groove */
+        synth.triggerAttackRelease(beat.down, '8n', time, 0.75);
+        synth.triggerAttackRelease(beat.up,   '8n', time + currentSwing * BEAT_DUR, 0.38);
+        /* Ghost groove (Practice only) */
+        if (mode === 'practice') {
+          synthGhost.triggerAttackRelease(beat.down, '8n', time, 0.75 * GHOST_VOL);
+          synthGhost.triggerAttackRelease(beat.up,   '8n', time + targetRatio * BEAT_DUR, 0.38 * GHOST_VOL);
+        }
+      }
+
+      beatCount++;
+    }
+
+    function stopGroove() {
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+      beatCount = 0;
+    }
+
+    function playGroove() {
+      stopGroove();
+      Tone.Transport.bpm.value = BPM;
+      Tone.Transport.scheduleRepeat(beatCallback, '4n');
+      Tone.Transport.start();
+    }
+
+    /* ══════════════════════════════════════════
+       Target selection (no consecutive repeats)
+       ══════════════════════════════════════════ */
+    function pickTarget() {
+      let t;
+      do { t = TARGETS[Math.floor(Math.random() * TARGETS.length)]; }
+      while (t === lastTarget);
+      lastTarget = t;
+      return t;
+    }
+
+    function pickRandomStart() {
+      return Math.round((0.52 + Math.random() * 0.23) * 100) / 100;   // 0.52 – 0.75
+    }
+
+    /* ══════════════════════════════════════════
+       Scoring
+       ══════════════════════════════════════════ */
+    function scoreResult(delta) {
+      const t = mode === 'practice' ? [0.02, 0.06, 0.12] : [0.02, 0.04, 0.08];
+      if (delta <= t[0]) return { label: 'Locked in',      cls: 'sl-locked' };
+      if (delta <= t[1]) return { label: 'Close',          cls: 'sl-close'  };
+      if (delta <= t[2]) return { label: 'In the pocket',  cls: 'sl-pocket' };
+      return               { label: 'Keep listening', cls: 'sl-miss'   };
+    }
+
+    /* ══════════════════════════════════════════
+       State machine
+       ══════════════════════════════════════════ */
+    function go(newState) {
+      stopAnim();
+      stopGroove();
+      state = newState;
+
+      switch (newState) {
+
+        /* ── State 1 · Listen ── */
+        case 1: {
+          if (!modeLocked) {
+            modeLocked = true;
+            modeToggle.classList.add('mode-toggle--locked');
+          }
+
+          targetRatio  = pickTarget();
+          currentSwing = targetRatio;
+          userRatio    = mode === 'practice' ? 0.50 : pickRandomStart();
+
+          feelEl.innerHTML       = '&nbsp;';
+          scoreLabelEl.textContent = '';
+          scoreLabelEl.className   = '';
+          scoreDeltaEl.textContent = '';
+          scoreFeelsEl.textContent = '';
+
+          actionBtn.disabled    = true;
+          actionBtn.textContent = '\u2026';
+          setKnobInteractive(false);
+          updateTick();
+
+          playGroove();
+          animLoop();
+          break;
+        }
+
+        /* ── State 2 · Match ── */
+        case 2: {
+          currentSwing = userRatio;
+
+          actionBtn.disabled    = false;
+          actionBtn.textContent = 'Lock in';
+          setKnobInteractive(true);
+          updateTick();
+
+          playGroove();
+          renderWaveform();
+          break;
+        }
+
+        /* ── State 3 · Reveal ── */
+        case 3: {
+          setKnobInteractive(false);
+          renderWaveform();
+
+          const delta  = Math.abs(userRatio - targetRatio);
+          const result = scoreResult(delta);
+          const pts    = Math.round(delta * 100);
+
+          scoreLabelEl.textContent = result.label;
+          scoreLabelEl.className   = result.cls;
+          scoreDeltaEl.textContent = pts === 0
+            ? 'Dead on'
+            : pts + ' point' + (pts !== 1 ? 's' : '') + ' off';
+          scoreFeelsEl.textContent =
+            'Target: ' + feelLabel(targetRatio) + '  \u00b7  You: ' + feelLabel(userRatio);
+          feelEl.textContent = feelLabel(userRatio);
+
+          if (result.label === 'Locked in') {
+            streak++;
+          } else if (result.label !== 'Close') {
+            streak = 0;
+          }
+          scoreStreakEl.textContent = streak >= 2 ? '\uD83D\uDD25 ' + streak + ' in a row' : '';
+
+          actionBtn.textContent = 'Next round';
+          actionBtn.disabled    = false;
+          break;
+        }
+      }
+    }
+
+    /* ══════════════════════════════════════════
+       Mode toggle
+       ══════════════════════════════════════════ */
+    modeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (modeLocked) return;
+        mode = btn.dataset.mode;
+        modeBtns.forEach(b => b.classList.toggle('mode-btn--active', b === btn));
+      });
+    });
+
+    /* ══════════════════════════════════════════
+       Action button
+       ══════════════════════════════════════════ */
+    actionBtn.addEventListener('click', async () => {
+      if (state === 0 || state === 3) {
+        await Tone.start();
+        go(1);
+      } else if (state === 2) {
+        go(3);
+      }
+    });
+
+    /* ══════════════════════════════════════════
+       Resize
+       ══════════════════════════════════════════ */
+    window.addEventListener('resize', () => { sizeCanvas(waveCanvas); renderWaveform(); });
+
+    /* ══════════════════════════════════════════
+       Init
+       ══════════════════════════════════════════ */
+    Tone.Transport.bpm.value = BPM;
+    sizeCanvas(waveCanvas);
+    renderWaveform();
+    updateTick();
+    setKnobInteractive(false);
+  </script>
+</body>
+</html>

@@ -304,8 +304,16 @@
         --card-accent: #4ade80;
     }
 
+    .game-card[data-game="swing"] {
+        --card-accent: #fb923c;
+    }
+
     .game-card[data-game="relative"] {
         --card-accent: #2dd4bf;
+    }
+
+    .game-card[data-game="scales"] {
+        --card-accent: #10b981;
     }
 
     .game-card {
@@ -907,6 +915,20 @@
                 <p class="game-card__desc">Play along to strumming patterns with a scrolling timeline.</p>
             </a>
 
+            <a href="/games/swing-trainer" class="game-card" data-game="swing">
+                <div class="game-card__icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 8 16" />
+                        <circle cx="12" cy="4" r="1.5" fill="#fb923c" stroke="none" />
+                    </svg>
+                </div>
+                <span class="game-card__tag">Rhythm</span>
+                <h3 class="game-card__title">Swing Trainer</h3>
+                <p class="game-card__desc">Dial in the feel — train your ear to hear and match jazz swing ratios.</p>
+            </a>
+
             <a href="/games/relative-key-trainer" class="game-card" data-game="relative">
                 <div class="game-card__icon" aria-hidden="true">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"
@@ -921,6 +943,18 @@
                 <h3 class="game-card__title">Chord Walks</h3>
                 <p class="game-card__desc">Explore how chords connect through transforms on the Tonnetz — from relative
                     keys to PLR chains.</p>
+            </a>
+
+            <a href="/games/scale-builder" class="game-card" data-game="scales">
+                <div class="game-card__icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 21h4V11h4v10h4V7h4v14h2" />
+                    </svg>
+                </div>
+                <span class="game-card__tag">Scales</span>
+                <h3 class="game-card__title">Scale Builder</h3>
+                <p class="game-card__desc">Build major and minor scales note by note — see them on the grid, hear them come alive.</p>
             </a>
         </div>
     </section>

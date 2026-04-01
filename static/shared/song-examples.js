@@ -6,7 +6,7 @@
  *
  * Consumed by: Theory Hub, games (Interval Spotter, Chord Progression Builder,
  *              etc.), intro module, tips pill, AI feedback (Phase E)
- * Version: v1 (static asset, no preference system)
+ * Version: v1.1 (static asset, no preference system)
  *
  * Schema notes:
  * - concept_ids: references to theory-content.js topic IDs
@@ -15,7 +15,7 @@
  * - insight: per-lens explanation (playful/musician/theorist)
  * - min_age: youngest audience this example works for
  * - era_tags: audience familiarity buckets
- * - demo: optional Tone.js playback data
+ * - demo: optional Tone.js playback data — includes swing_ratio (0.50–0.75) for swing_trainer entries
  * - preference_tags: for future preference matching (v2)
  */
 
@@ -1493,6 +1493,161 @@ const SONG_EXAMPLES = [
     era_tags: ["genz", "alpha"],
     demo: null,
     preference_tags: ["disney", "encanto", "kids", "powerful", "hip_hop", "fun"]
+  },
+
+  // ═══════════════════════════════════════════
+  // RHYTHM — SWING FEEL
+  // ═══════════════════════════════════════════
+
+  {
+    id: "bossa_nova_straight",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["swing_feel", "straight_eighths", "bossa_nova"],
+    game_ids: ["rhythm_tapper", "swing_trainer"],
+    song: "Bossa nova clave pattern",
+    artist: "Traditional",
+    year: 1958,
+    genre_tags: ["bossa_nova", "brazilian", "jazz"],
+    insight: {
+      playful: "Bossa nova has a smooth, relaxed groove — the eighth notes are perfectly even, not swung at all. It's like the chill, straight-ahead cousin of jazz swing!",
+      musician: "Bossa nova uses straight eighths (swing ratio 0.50) over a syncopated clave pattern. The groove's magic comes from layering syncopation on top of even subdivisions — the opposite approach to swing jazz, which bakes the unevenness into the subdivision itself.",
+      theorist: "The bossa nova feel demonstrates that rhythmic complexity doesn't require unequal subdivision. The 3-2 or 2-3 clave syncopation against straight eighth-note subdivision creates a polyrhythmic tension that is fundamentally different from swing's micro-timing approach."
+    },
+    min_age: 10,
+    era_tags: ["classic", "boomer"],
+    demo: {
+      notes: ["C4", "E4", "G4", "E4", "C4", "E4", "G4", "E4"],
+      rhythm: "eighth-eighth-eighth-eighth-eighth-eighth-eighth-eighth",
+      tempo: 140,
+      swing_ratio: 0.50,
+      loop: true
+    },
+    preference_tags: ["bossa_nova", "brazilian", "jazz", "relaxed", "chill"]
+  },
+  {
+    id: "lite_swing_scarborough",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["swing_feel", "lite_swing"],
+    game_ids: ["rhythm_tapper", "swing_trainer"],
+    song: "Scarborough Fair",
+    artist: "Traditional (Simon & Garfunkel version famous)",
+    year: 1966,
+    genre_tags: ["folk", "traditional"],
+    insight: {
+      playful: "Scarborough Fair has a gentle, lilting feel — the beats aren't perfectly even, but they're not super swingy either. It's like a slight lean, a tiny bit of bounce.",
+      musician: "Scarborough Fair's 3/4 waltz feel has a very subtle swing to the subdivisions — around 0.54. You wouldn't call it 'swung,' but the eighth notes aren't metronomically straight either. This lilt is characteristic of folk music's organic, human timing.",
+      theorist: "A swing ratio near 0.54 represents the threshold of perceptible swing — listeners may feel a 'naturalness' without consciously identifying swing. This micro-timing deviation from mechanical subdivision is a hallmark of performed (vs. sequenced) music."
+    },
+    min_age: 8,
+    era_tags: ["classic", "boomer"],
+    demo: {
+      notes: ["E4", "E4", "F#4", "G4", "F#4", "E4", "D4", "E4"],
+      rhythm: "eighth-eighth-eighth-eighth-eighth-eighth-eighth-eighth",
+      tempo: 108,
+      swing_ratio: 0.54,
+      loop: true
+    },
+    preference_tags: ["folk", "gentle", "traditional", "classic"]
+  },
+  {
+    id: "medium_swing_st_louis",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["swing_feel", "medium_swing"],
+    game_ids: ["rhythm_tapper", "swing_trainer"],
+    song: "St. Louis Blues",
+    artist: "W.C. Handy",
+    year: 1914,
+    genre_tags: ["blues", "jazz", "early_jazz"],
+    insight: {
+      playful: "St. Louis Blues has that classic swinging feel — the notes bounce along like you're walking with a little skip in your step. Not too laid back, not too wild!",
+      musician: "St. Louis Blues sits in the medium-swing sweet spot around 0.60 — the eighth notes clearly lean long-short, but it's a comfortable, walking-tempo swing. This is the feel most people picture when they hear 'jazz swing.' It's the baseline that harder and lighter swings are measured against.",
+      theorist: "A swing ratio of ~0.60 (approximately 3:2 long-short) is often cited as the 'default' jazz swing. At this ratio, the subdivision is unambiguously unequal but doesn't approach the 2:1 triplet feel — it occupies a perceptual middle ground between straight and triplet subdivision."
+    },
+    min_age: 10,
+    era_tags: ["classic", "boomer"],
+    demo: {
+      notes: ["C4", "E4", "G4", "A4", "G4", "E4", "C4", "D4"],
+      rhythm: "eighth-eighth-eighth-eighth-eighth-eighth-eighth-eighth",
+      tempo: 120,
+      swing_ratio: 0.60,
+      loop: true
+    },
+    preference_tags: ["blues", "jazz", "classic", "swing", "walking"]
+  },
+  {
+    id: "triplet_swing_guaraldi",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["swing_feel", "triplet_swing"],
+    game_ids: ["rhythm_tapper", "swing_trainer"],
+    song: "Linus and Lucy",
+    artist: "Vince Guaraldi Trio",
+    year: 1964,
+    genre_tags: ["jazz", "film", "tv", "piano"],
+    insight: {
+      playful: "The Charlie Brown piano song has that bouncy, happy feel — like the kids are dancing! The notes go LONG-short, LONG-short, almost like a skip. That's triplet swing!",
+      musician: "Guaraldi's 'Linus and Lucy' is a textbook triplet swing feel (~0.67 ratio, a 2:1 long-short). The left hand lays down the swing pattern while the right hand melody dances over it. This is the feel where eighth notes sound like the first and third notes of a triplet, with the middle note silent.",
+      theorist: "At a swing ratio of ~0.67 (2:1, equivalent to triplet eighth-note subdivision), the beat divides into three equal parts with the second onset on the third triplet partial. This is the mathematical basis of 'true triplet swing' and represents the upper boundary of standard jazz swing feel."
+    },
+    min_age: 6,
+    era_tags: ["classic", "boomer", "universal"],
+    demo: {
+      notes: ["Ab3", "C4", "Eb4", "Ab4", "Eb4", "C4", "Ab3", "C4"],
+      rhythm: "eighth-eighth-eighth-eighth-eighth-eighth-eighth-eighth",
+      tempo: 152,
+      swing_ratio: 0.67,
+      loop: true
+    },
+    preference_tags: ["jazz", "piano", "peanuts", "charlie_brown", "happy", "kids"]
+  },
+  {
+    id: "hard_bop_minnie",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["swing_feel", "hard_swing"],
+    game_ids: ["rhythm_tapper", "swing_trainer"],
+    song: "Minnie the Moocher",
+    artist: "Cab Calloway",
+    year: 1931,
+    genre_tags: ["jazz", "swing_era", "big_band"],
+    insight: {
+      playful: "Minnie the Moocher ('hi-de-hi-de-hi-de-ho!') has a heavy, exaggerated swing — the long notes are REALLY long and the short ones are REALLY short. It's like the beat is doing a big theatrical strut!",
+      musician: "Cab Calloway's 'Minnie the Moocher' pushes swing past triplet feel into hard-swing territory (~0.72). The eighth notes are so uneven they almost become dotted-eighth-sixteenth pairs. This exaggerated swing was typical of the early swing era and adds a theatrical, strutting quality that matched Calloway's showmanship.",
+      theorist: "A swing ratio of ~0.72 approaches the 3:1 (dotted-eighth-to-sixteenth) subdivision. Beyond the triplet 2:1 threshold, the feel shifts from 'swung' to 'dotted' — the perceptual boundary where listeners begin to hear two distinct duration categories rather than a continuous swing continuum."
+    },
+    min_age: 8,
+    era_tags: ["classic", "vintage"],
+    demo: {
+      notes: ["G3", "B3", "D4", "G4", "D4", "B3", "G3", "A3"],
+      rhythm: "eighth-eighth-eighth-eighth-eighth-eighth-eighth-eighth",
+      tempo: 132,
+      swing_ratio: 0.72,
+      loop: true
+    },
+    preference_tags: ["jazz", "swing_era", "big_band", "vintage", "theatrical"]
+  },
+  {
+    id: "shuffle_blues_rising_sun",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["swing_feel", "shuffle", "heavy_swing"],
+    game_ids: ["rhythm_tapper", "swing_trainer"],
+    song: "The House of the Rising Sun",
+    artist: "The Animals",
+    year: 1964,
+    genre_tags: ["rock", "blues_rock", "folk_rock"],
+    insight: {
+      playful: "The House of the Rising Sun has that rolling, heavy feel — each beat is split into a big chunk and a tiny chunk, like a wheel with a flat spot. That's a shuffle!",
+      musician: "The Animals' 'House of the Rising Sun' uses a 6/8 arpeggiated pattern that embodies the shuffle feel — a swing ratio pushed to ~0.75, where the long-short pairs practically become dotted-eighth-sixteenth. The rolling arpeggios on the organ create a hypnotic, almost mechanical shuffle that's heavier than jazz swing but lighter than a straight dotted-note pattern.",
+      theorist: "At 0.75 swing ratio (3:1, or dotted-eighth-to-sixteenth), the subdivision has crossed from 'swing' into 'shuffle' territory. The compound meter feel (6/8 reinterpreted as swung 3/4) blurs the boundary between simple and compound time — the listener can parse the same pattern as either framework."
+    },
+    min_age: 10,
+    era_tags: ["classic", "boomer", "genx"],
+    demo: {
+      notes: ["A3", "C4", "E4", "A4", "E4", "C4"],
+      rhythm: "eighth-eighth-eighth-eighth-eighth-eighth",
+      tempo: 80,
+      swing_ratio: 0.75,
+      loop: true
+    },
+    preference_tags: ["rock", "blues", "folk_rock", "classic_rock", "haunting"]
   }
 ];
 

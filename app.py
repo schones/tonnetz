@@ -198,6 +198,15 @@ def strumming():
 def relative_key_trainer():
     return render_template("relative-key-trainer.html")
 
+
+@app.route("/games/scale-builder")
+def scale_builder():
+    return render_template("scale-builder.html")
+
+@app.route("/games/swing-trainer")
+def swing_trainer():
+    return render_template("games/swing-trainer.html")
+
 @app.route("/skratch")
 def skratch():
     return render_template("skratch-studio.html")

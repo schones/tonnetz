@@ -199,10 +199,10 @@ const HarmonyState = {
     const analysis = analyzeTransform(fromRoot, fromQuality, to.root, to.quality);
 
     const fromNotes = triadNotes(fromRoot, fromQuality);
-    const toNotes   = triadNotes(to.root, to.quality);
+    const toNotes = triadNotes(to.root, to.quality);
 
     const fromTriad = { root: fromRoot, quality: fromQuality, notes: fromNotes, role: "ghost", color: null };
-    const toTriad   = { root: to.root,  quality: to.quality,  notes: toNotes,  role: "primary", color: null };
+    const toTriad = { root: to.root, quality: to.quality, notes: toNotes, role: "primary", color: null };
 
     const activeNotes = [
       ..._notesFromTriad(fromNotes, "ghost"),
@@ -215,7 +215,7 @@ const HarmonyState = {
       activeTransform: {
         type,
         from: { root: fromRoot, quality: fromQuality },
-        to:   { root: to.root,  quality: to.quality },
+        to: { root: to.root, quality: to.quality },
         label: transform.humanLabel.intermediate,
         commonTones: analysis.commonTones,
         movingTone: analysis.movingTone,
@@ -302,6 +302,7 @@ const HarmonyState = {
    * @param {string} key — key context (e.g. 'C')
    */
   setProgression(chords, key) {
+    this.stopPlayback()
     this.batch(state => {
       // Save pre-progression depth so we can restore it on clear
       state._preProgressionDepth = state.tonnetzDepth;

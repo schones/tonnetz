@@ -28,7 +28,7 @@ const NEXT_STEPS = {
   2: {
     links: [
       { category: 'Continue', label: 'Chapter 3: Chords & Harmony',     desc: 'Stack notes into chords and learn how they move together.',    url: '/intro/3'                  },
-      { category: 'Try',      label: 'Chord Spotter',                   desc: 'Identify chord qualities by ear.',                            url: '/chord-identification'     },
+      { category: 'Try',      label: 'Scale Builder',                    desc: 'Build major and minor scales on the keyboard.',               url: '/games/scale-builder'      },
       { category: 'Explore',  label: 'Circle of Fifths',                desc: 'See how all 12 keys connect.',                               url: '/theory/circle-of-fifths'  },
     ],
   },

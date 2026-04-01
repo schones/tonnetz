@@ -4,6 +4,27 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-01 late night
+
+- Built Swing Trainer game (`static/games/swing-trainer.html`) — Tonnetz's first dedicated rhythm ear-training game
+- Core engine: Tone.js swing sequencer, Ab major ostinato, swing ratio stored in ref variable (real-time knob → audio with no transport restart)
+- Waveform visualization: Gaussian pulse train showing swing ratio geometrically — upbeat pulse migrates right as ratio increases
+- Knob control: SVG rotary dial, 270° travel, vertical drag, three unlabeled detent markers at 50%/67%/75%
+- Four-phase game loop: Listen (target groove plays 4 measures) → Match (straight 4/4 starts, knob live) → Lock In → Reveal (waveform overlay + score)
+- Practice mode: ghost groove continues under match phase, waveform visible, generous scoring
+- Test mode: groove stops after listen, no waveform during match, tight scoring
+- Progressive scoring: Locked in / Close / In the pocket / Keep listening — thresholds differ by mode
+- Session streak counter (consecutive "Locked in" results), resets on anything below Close
+- Added to Tonnetz: Flask route, nav entry, card #8 in Practice Games grid with RHYTHM tag
+- Updated song-examples.js to v1.1: added RHYTHM — SWING FEEL section with 6 new entries (bossa_nova_straight, lite_swing_scarborough, medium_swing_st_louis, triplet_swing_guaraldi, hard_bop_minnie, shuffle_blues_rising_sun), added swing_ratio field to demo schema
+- Decided: Practice/Test mode toggle locked per session, not per round
+- Decided: straight 4/4 starts immediately at 50% in match phase (Practice) or random position (Test)
+- Decided: BPM fixed at 80 for now, BPM control to be added next session
+- Decided: games page section restructure (Harmony/Rhythm/Explorer) deferred — Swing Trainer added as flat card with RHYTHM tag for now
+- Decided: Swing Trainer is standalone for now, not wired to HarmonyState
+- Known issues: dial slightly finicky past midpoint (deferred), swing_ratio field in song-examples not yet consumed by game
+- Reminders set: (1) add BPM control to swing trainer, (2) consume swing_ratio in game from song-examples, (3) security review + backend proxy check before production push
+
 ## 2026-03-31 morning
 
 - Chapter 4 rebuild on Explorer components: Claude Code (Opus) built initial version, but Tonnetz container ID mismatch + Tone.js not loaded caused errors. Opus session hit 0% context — killed and restarted with focused fix prompt on Sonnet.
@@ -36,7 +57,6 @@ Reverse chronological. Quick capture after each session: what happened, what was
 - Workflow: Sonnet as default Claude Code model, Opus for multi-file architectural prompts
 - Tested progression engine, Session 2 (page UI), A3 modes, fretboard panel
 - Theory pages are wired into dropdown nav
-
 
 ## 2026-03-29 (Saturday)
 

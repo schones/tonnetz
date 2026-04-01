@@ -1,6 +1,6 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-03-31
+**Last updated:** 2026-04-01
 **Branch:** `dev`
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v3)
@@ -9,7 +9,7 @@
 
 ## Current Focus
 
-Phase A complete. MVP polish sprint in progress — targeting shareable URL this week for user testing with 15–20 participants across 4 segments (curious players, producers, students/teachers, beginners).
+Phase A complete. MVP polish sprint in progress — targeting shareable URL for user testing.
 
 **Immediate next steps:**
 
@@ -17,7 +17,8 @@ Phase A complete. MVP polish sprint in progress — targeting shareable URL this
 2. Verify post-onboarding routing, end-of-chapter next-steps cards, first-visit banners, nav cleanup, returning user index state
 3. Fretboard panel polish — click-to-select notes, visual tuning
 4. End-to-end walkthrough as new user → fix anything broken
-5. Deploy to main → share URL
+5. Add BPM control to Swing Trainer
+6. Security review + backend proxy check → deploy to main → share URL
 
 ---
 
@@ -32,7 +33,6 @@ Phase A complete. MVP polish sprint in progress — targeting shareable URL this
 - Canonical orientation locked: horizontal=P5, up-right=M3, down-right=m3, major=△, minor=▽
 
 ### Voicing Explorer (Phase A5 — core complete)
-
 - Note Mode: toggle individual notes on/off across all three panels
 - Octave-specific note selection on keyboard (voicing control)
 - Compact cluster highlighting on Tonnetz (one node per pitch class, tightest grouping)
@@ -62,28 +62,33 @@ Phase A complete. MVP polish sprint in progress — targeting shareable URL this
 - `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring
 - `keyboard-view.js` — highlight layer, click interaction
 - `chord-wheel.js` — dual-ring circle of fifths
-- `song-examples.js` — 67 curated real-song theory references (Song Examples DB v1)
+- `song-examples.js` — 73 curated real-song theory references (Song Examples DB v1.1 — added 6 swing feel entries with swing_ratio field)
 
 ### Intro Module
 - Chapter 1: Sound & Notes (4 sections)
 - Chapter 2: Intervals & Scales (3 sections)
 - Chapter 3: Chords & Progressions (4 sections)
-- Chapter 4: Meet the Tonnetz — rebuilt on shared Explorer components (TonnetzNeighborhood, KeyboardView, ChordWheel via HarmonyState). Progressive panel reveal: Tonnetz only → + keyboard → + chord wheel.
+- Chapter 4: Meet the Tonnetz — rebuilt on shared Explorer components
 - Chapter 5: Transforms (3 sections)
 - Scrollytelling engine, dynamic Tone.js loader, intro-audio.js utilities
 - End-of-chapter "What's Next" cards with contextual game/theory links (all 5 chapters)
 
 ### Onboarding & Navigation
-- Onboarding preset cards (6 presets: beginner, dabbler, producer, curious_player, deep_diver, math_explorer)
-- Post-onboarding routing: beginner→/intro, dabbler→/intro/2, producer→/intro/3, curious_player→/intro/4, deep_diver→/explorer, math_explorer→/explorer
-- Returning user index page state: "Continue Chapter N" or "Course complete" based on intro progress
-- Nav restructured: Theory dropdown, Explorer, Games dropdown (all 6 games), Skratch Studio, Start Here
+- Onboarding preset cards (6 presets)
+- Post-onboarding routing to appropriate entry point
+- Returning user index page state
+- Nav restructured: Theory dropdown, Explorer, Games dropdown (all 7 games), Skratch Studio, Start Here
 - Active state highlighting on current page nav link
 - First-visit dismissible banners on Explorer and Skratch Studio
 
 ### Games & Tools
-- Chord Walks: 4 tiers, Learn/Practice/Test, Explore mode
 - Harmony Trainer: tips pill, Tonnetz pop-out, education wiring
+- Chord Walks: 4 tiers, Learn/Practice/Test, Explore mode
+- Rhythm Lab: EKG-style metronome
+- Strum Patterns: scrolling timeline
+- Chord Spotter: chord quality identification
+- Scale Builder: note-by-note scale construction
+- **Swing Trainer** ✅ new: ear-training game for jazz swing feel — rotary knob, Gaussian waveform visualization, Practice/Test modes, 4-phase game loop, progressive scoring, session streak counter. At `/games/swing-trainer`. Standalone (not wired to HarmonyState). BPM fixed at 80 for now.
 - Skratch Studio: Blockly + audio + music creation blocks
 - Visual layer system (visual-config.js, visual-layer.js, visual-toggle.js)
 - Theory pages wired into site nav and Theory Hub
@@ -91,11 +96,11 @@ Phase A complete. MVP polish sprint in progress — targeting shareable URL this
 ### Education Infrastructure
 - Onboarding & profile system (localStorage)
 - Theory Hub page (34 topics, content type taxonomy)
-- Phase 1 schema migration complete (content_type, difficulty, related_games, visualizations, creative_prompts)
+- Phase 1 schema migration complete
 
 ### General
 - Backend API proxy ✅ complete (Anthropic key server-side in app.py, client calls /api/chat only, .env gitignored)
-- Phase A complete: A1 (Circle of Fifths) ✅, A2 (Tonal Centers) ✅, A3 (Modes) ✅, A4 (Chord Progressions) ✅, A5 (Voicing Explorer core) ✅
+- Phase A complete: A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅
 
 ---
 
@@ -106,14 +111,18 @@ See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 - **Phase B:** Extract `game-flow.js` first, then Scale Builder, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation
 - **Phase B.5:** Auth & Persistence — Supabase auth, profile migration, resolve Practice vs Test schema (B8), song preferences table
 - **Phase C:** Curriculum paths, path runner UI, Tonnetz curriculum map, Song Examples DB v2 (preference feedback UI)
-- **Phase D:** Differentiated experiences by user level (beginner/student/advanced modes, achievements)
+- **Phase D:** Differentiated experiences by user level
 - **Phase E:** AI-powered feedback (session analysis, cross-game competency graph, Song Examples DB v3)
-- **Phase F:** Puzzle Paths (basic could ship earlier), MIDI input + Voicing Explorer Live Mode, Voicing Explorer advanced (sequence mode, voice leading, shape library, ProjectionEngine, ShapeDragger), fog of war, social features
+- **Phase F:** Puzzle Paths, MIDI input, Voicing Explorer advanced, fog of war, social features
 
 ---
 
 ## Known Issues
 
+- Swing Trainer: dial slightly finicky past midpoint (deferred)
+- Swing Trainer: song-examples.js swing_ratio field not yet consumed by game
+- Swing Trainer: not connected to HarmonyState (intentional for now)
+- Games page: Rhythm section grouping (Harmony/Rhythm/Explorer) designed but not yet implemented — Swing Trainer added as flat card with RHYTHM tag
 - Sustain pedal bug: Organ/Synth in Skratch Studio — `triggerAttackRelease` bypasses sustain state
 - Mobile viewport jitter: tooltip uses `100vh` instead of `dvh`
 - Focus trapping / aria-modal missing on tooltips
