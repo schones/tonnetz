@@ -9,16 +9,18 @@
 
 ## Current Focus
 
-Phase A complete. MVP polish sprint in progress — targeting shareable URL for user testing.
+Phase A complete. MVP polish sprint + showcase page in progress — targeting shareable URL for user testing.
 
 **Immediate next steps:**
 
-1. Verify Chapter 4 Tonnetz fix + test full chapter flow
-2. Verify post-onboarding routing, end-of-chapter next-steps cards, first-visit banners, nav cleanup, returning user index state
-3. Fretboard panel polish — click-to-select notes, visual tuning
-4. End-to-end walkthrough as new user → fix anything broken
-5. Add BPM control to Swing Trainer
-6. Security review + backend proxy check → deploy to main → share URL
+1. Capture remaining showcase screenshots (Explorer with A minor, etc.) and run Claude Code build prompt
+2. Full component walkthrough — evaluate every feature, identify gaps for showcase/tutorial
+3. Verify Chapter 4 Tonnetz fix + test full chapter flow
+4. Verify post-onboarding routing, end-of-chapter next-steps cards, first-visit banners, nav cleanup, returning user index state
+5. Fretboard panel polish — click-to-select notes, visual tuning
+6. End-to-end walkthrough as new user → fix anything broken
+7. Add BPM control to Swing Trainer
+8. Security review + backend proxy check → deploy to main → share URL
 
 ---
 
@@ -80,6 +82,14 @@ Phase A complete. MVP polish sprint in progress — targeting shareable URL for 
 - Nav restructured: Theory dropdown, Explorer, Games dropdown (all 7 games), Skratch Studio, Start Here
 - Active state highlighting on current page nav link
 - First-visit dismissible banners on Explorer and Skratch Studio
+
+### Showcase Page (in progress)
+- Feature tour page at `/showcase` — designed in Google Stitch, Claude Code build prompt ready
+- Page structure: Hero → Explorer (annotated screenshot + before/after) → Games → Skratch Studio → Real Songs → Footer CTA
+- Design reference: Stitch export in `stitch-export/` (code.html, DESIGN.md, screen.png)
+- Real screenshots with annotation overlays (not AI-generated mockups)
+- Real song examples pulled from song-examples.js database
+- Awaiting: screenshot captures, Claude Code build, iteration
 
 ### Games & Tools
 - Harmony Trainer: tips pill, Tonnetz pop-out, education wiring
@@ -148,6 +158,8 @@ See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 | `docs/tonnetz-keyboard-component.md` | HarmonyState API, animation queue, component reuse |
 | `docs/KNOWN-ISSUES.md` | Tracked bugs and fixes |
 | `docs/claude-code-preferences.md` | Claude Code workflow conventions |
+| `stitch-export/` | Showcase page design reference (Stitch HTML, DESIGN.md, screen.png) |
+| `claude-code-prompt-showcase.md` | Claude Code build prompt for /showcase page |
 | `docs/archive/tonnetz-build-plan.md` | Original 10-phase plan (superseded) |
 | `docs/archive/tonnetz-mvp-tracker.md` | Original MVP tracker (superseded) |
 

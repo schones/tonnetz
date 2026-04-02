@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tonnetz Showcase | Explore the Magic of Music Theory</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface": "#111125",
+                        "surface-tint": "#c4c0ff",
+                        "surface-container": "#1e1e32",
+                        "on-tertiary-fixed": "#3b0900",
+                        "tertiary": "#ffb5a0",
+                        "inverse-surface": "#e2e0fc",
+                        "on-secondary-container": "#cdd7ff",
+                        "surface-container-lowest": "#0c0c1f",
+                        "surface-container-high": "#28283d",
+                        "primary-container": "#8781ff",
+                        "surface-bright": "#37374d",
+                        "inverse-on-surface": "#2f2e43",
+                        "primary": "#c4c0ff",
+                        "on-tertiary": "#601500",
+                        "on-primary-container": "#1b0091",
+                        "surface-variant": "#333348",
+                        "on-secondary-fixed": "#00174b",
+                        "on-secondary": "#002a78",
+                        "tertiary-fixed-dim": "#ffb5a0",
+                        "on-primary": "#2000a4",
+                        "on-surface-variant": "#c7c4d8",
+                        "background": "#111125",
+                        "on-secondary-fixed-variant": "#003ea8",
+                        "tertiary-container": "#fc5929",
+                        "secondary-fixed": "#dbe1ff",
+                        "secondary": "#b4c5ff",
+                        "inverse-primary": "#4f44e2",
+                        "primary-fixed": "#e3dfff",
+                        "outline-variant": "#464555",
+                        "surface-dim": "#111125",
+                        "tertiary-fixed": "#ffdbd1",
+                        "surface-container-highest": "#333348",
+                        "primary-fixed-dim": "#c4c0ff",
+                        "on-error-container": "#ffdad6",
+                        "outline": "#918fa1",
+                        "on-primary-fixed-variant": "#3622ca",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#100069",
+                        "on-background": "#e2e0fc",
+                        "secondary-container": "#0053db",
+                        "on-surface": "#e2e0fc",
+                        "on-tertiary-container": "#541100",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#872100",
+                        "surface-container-low": "#1a1a2e",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "error": "#ffb4ab"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Manrope"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glow-border {
+            position: relative;
+        }
+        .glow-border::before {
+            content: "";
+            position: absolute;
+            inset: -1px;
+            background: linear-gradient(135deg, rgba(196, 192, 255, 0.2), rgba(180, 197, 255, 0.2));
+            border-radius: inherit;
+            z-index: -1;
+        }
+        .glow-border:hover::before {
+            background: linear-gradient(135deg, rgba(196, 192, 255, 0.4), rgba(180, 197, 255, 0.4));
+        }
+        .text-glow {
+            text-shadow: 0 0 20px rgba(196, 192, 255, 0.3);
+        }
+        .connector-line {
+            position: absolute;
+            background: rgba(196, 192, 255, 0.3);
+            height: 1px;
+            transform-origin: left center;
+            z-index: 10;
+        }
+        .annotation-dot {
+            width: 8px;
+            height: 8px;
+            background: #c4c0ff;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 10px #c4c0ff;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/30 selection:text-primary">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#111125]/80 backdrop-blur-xl flex justify-between items-center px-8 h-20 mx-auto shadow-[0_0_50px_-12px_rgba(108,99,255,0.1)]">
+<div class="text-2xl font-bold tracking-tighter text-indigo-100 font-headline">Tonnetz</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-indigo-100/60 hover:text-indigo-100 transition-colors font-label text-sm font-medium" href="#">Theory</a>
+<a class="text-indigo-300 border-b-2 border-indigo-500 pb-1 font-label text-sm font-medium" href="#">Explorer</a>
+<a class="text-indigo-100/60 hover:text-indigo-100 transition-colors font-label text-sm font-medium" href="#">Practice Games</a>
+<a class="text-indigo-100/60 hover:text-indigo-100 transition-colors font-label text-sm font-medium" href="#">Skratch Studio</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-indigo-100/60 hover:text-indigo-100 transition-all font-label text-sm font-medium px-4 py-2 rounded-full hover:bg-white/5">Login</button>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-label text-sm font-bold px-6 py-2.5 rounded-full hover:scale-95 transition-transform">Start Here</button>
+</div>
+</nav>
+<main class="pt-20">
+<!-- Hero Section -->
+<section class="min-h-[716px] flex flex-col items-center justify-center px-6 text-center overflow-hidden relative">
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(196,192,255,0.05),transparent)] pointer-events-none"></div>
+<h1 class="font-headline text-5xl md:text-7xl font-extrabold tracking-tight mb-6 text-glow">
+                See what's inside
+            </h1>
+<p class="text-on-surface-variant text-xl md:text-2xl max-w-2xl mx-auto font-medium mb-12">
+                Explore the magic of music theory through a luminous map of the stars.
+            </p>
+<div class="animate-bounce">
+<span class="material-symbols-outlined text-primary text-4xl">keyboard_double_arrow_down</span>
+</div>
+</section>
+<!-- The Explorer Section -->
+<section class="py-24 px-6 md:px-12 bg-surface-container-low">
+<div class="max-w-7xl mx-auto">
+<div class="text-center mb-16">
+<h2 class="font-headline text-4xl md:text-5xl font-bold mb-4">The Explorer</h2>
+<p class="text-on-surface-variant max-w-xl mx-auto">Your command center for harmonic discovery. Every view stays in sync, always.</p>
+</div>
+<!-- Main Interface with Annotations -->
+<div class="relative bg-surface-container-highest p-1 md:p-4 rounded-2xl glow-border mb-32 overflow-hidden md:overflow-visible">
+<div class="relative">
+<img alt="Tonnetz Explorer Interface" class="rounded-xl w-full border border-white/5 shadow-2xl" src="https://lh3.googleusercontent.com/aida/ADBb0uhuJtacfQ6DdsjaQoeTO-R4EwVp2JQqJzyazKEPMdFG2a1yqkv7g72J_P4KOoQIdbTSMqPMfwCzf5M6UhbGzHcNHXLQbkW9FOWk5ForC-s7SoHaZsgu7nVnu2dPYOmwu5d5agqZVWUDVdYEkHN_nX-hsfslvz1xQkJMo27d1-Eh6QP1we90XHOuwUY_TKzUaVkmlYOTFwXNhXudE05YO5VB6RfQ4U14-bsu4ZNZMB6C1cLjlzL3iwZWekOmL3VAaWqDeH1peuVDIIE"/>
+<!-- Annotations -->
+<!-- Tonnetz Neighborhood -->
+<div class="absolute top-[45%] left-[40%] hidden md:block">
+<div class="annotation-dot"></div>
+<div class="connector-line w-32 -rotate-[150deg] -translate-x-full -translate-y-full"></div>
+<div class="absolute -left-36 -top-12 bg-surface-container/90 backdrop-blur-md p-3 rounded-lg border border-primary/20 shadow-xl w-48">
+<p class="font-label text-[10px] font-bold text-primary uppercase tracking-wider mb-1">Geometric View</p>
+<p class="text-xs text-on-surface">Harmonic Relationships</p>
+</div>
+</div>
+<!-- Chord Wheel -->
+<div class="absolute top-[45%] right-[32%] hidden md:block">
+<div class="annotation-dot"></div>
+<div class="connector-line w-32 rotate-[30deg] translate-x-2"></div>
+<div class="absolute left-36 top-8 bg-surface-container/90 backdrop-blur-md p-3 rounded-lg border border-tertiary/20 shadow-xl w-48">
+<p class="font-label text-[10px] font-bold text-tertiary uppercase tracking-wider mb-1">Functional View</p>
+<p class="text-xs text-on-surface">Diatonic Context</p>
+</div>
+</div>
+<!-- Keyboard -->
+<div class="absolute bottom-[28%] left-[45%] hidden md:block">
+<div class="annotation-dot"></div>
+<div class="connector-line w-24 rotate-[110deg] translate-y-2"></div>
+<div class="absolute -left-12 top-28 bg-surface-container/90 backdrop-blur-md p-3 rounded-lg border border-secondary/20 shadow-xl w-48">
+<p class="font-label text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">Familiar View</p>
+<p class="text-xs text-on-surface">Piano Layout</p>
+</div>
+</div>
+<!-- Fretboard -->
+<div class="absolute bottom-[10%] right-[35%] hidden md:block">
+<div class="annotation-dot"></div>
+<div class="connector-line w-40 rotate-[15deg] translate-x-2"></div>
+<div class="absolute left-44 -top-4 bg-surface-container/90 backdrop-blur-md p-3 rounded-lg border border-primary-container/20 shadow-xl w-48">
+<p class="font-label text-[10px] font-bold text-primary-container uppercase tracking-wider mb-1">Guitarist View</p>
+<p class="text-xs text-on-surface">String Positions</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Comparison Subsection: One Click, Infinite Sync -->
+<div class="max-w-5xl mx-auto">
+<div class="text-center mb-12">
+<h3 class="font-headline text-3xl font-bold mb-4">One Click, Infinite Sync</h3>
+<p class="text-on-surface-variant max-w-2xl mx-auto text-lg">
+                Clicking any note or chord updates every panel instantly. See how complex theory translates across every instrument you play.
+            </p>
+</div>
+<div class="grid md:grid-cols-2 gap-8 items-center bg-surface-container rounded-3xl p-8 md:p-12 relative">
+<div class="space-y-4">
+<div class="bg-surface-container-highest rounded-2xl p-4 border border-white/5 overflow-hidden group">
+<p class="font-label text-[10px] uppercase tracking-widest text-primary mb-3 font-bold">State A: C Major</p>
+<div class="relative overflow-hidden rounded-lg aspect-[16/10] bg-surface-container-low flex items-center justify-center">
+<!-- Cropped view simulation of C major -->
+<img alt="C Major State" class="w-full h-full object-cover opacity-60 grayscale-[0.2] transition-transform duration-700 group-hover:scale-105" data-alt="Abstract minimalist illustration of a C Major chord structure using geometric shapes in deep indigo and amber" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6P4-CYLIMOkMJnssXfJKZ5iLfB5G4YLmce_fn_nHHfOtSCxd0oGPc5MFGzTInxqKTScpXhSQRG_iV-b5IGCk_3Nmr9RqGcvtKZHgOyk8xQxJhxy9LimtiM2GxLzv10AmCJJG4gS1ve5wD0UnS6PONjK56YsKp4YCu1VA0FxUZX_qLDr_XOtMPQQDqrMaOSIAdBjmFwMWtKCtq1OOMjure86s0mtmG1boFqsMp1hhMFuCCKtaWA6p9qfpkkwWWExeewaEhgHdXiwgq"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="bg-primary/20 backdrop-blur-sm px-4 py-2 rounded-full border border-primary/40 text-primary font-bold text-sm">C Major Chord</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-on-surface-variant">A single blue triangle appears on the Tonnetz, perfectly reflected on the keyboard and fretboard.</p>
+</div>
+<div class="hidden md:flex justify-center">
+<span class="material-symbols-outlined text-4xl text-primary/40">arrow_forward</span>
+</div>
+<div class="space-y-4">
+<div class="bg-surface-container-highest rounded-2xl p-4 border border-white/5 overflow-hidden group">
+<p class="font-label text-[10px] uppercase tracking-widest text-secondary mb-3 font-bold">State B: A Minor</p>
+<div class="relative overflow-hidden rounded-lg aspect-[16/10] bg-surface-container-low flex items-center justify-center">
+<!-- Cropped view simulation of A minor -->
+<img alt="A Minor State" class="w-full h-full object-cover opacity-60 grayscale-[0.2] transition-transform duration-700 group-hover:scale-105" data-alt="Abstract minimalist illustration of an A Minor chord structure using geometric shapes in deep purple and amber" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIDsvYkO4Aa33g-JKHe9bjnri-V_Z7DdpFmvJSyLLMRb6mHEIVHH45FmwbRUibfcPtMx3mxiHYNhqwNz1ib9ckESg2OSV8qn-IQJG7LyQa13XMfFLo86_2lJpebth6X3q0E4iuec5_KFCzqgHQ_Iv1idHjBn-4NMXg9nCSKuxJoeOWCRGwvYZHB4HHbusn9XF_Klkqrhv48TZIZcZYFC_lYfntff2OmVECmOf2TkckaqenYlS3JoxV4XNRlASYrUSqEB_lS4_mcMYZ"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="bg-secondary/20 backdrop-blur-sm px-4 py-2 rounded-full border border-secondary/40 text-secondary font-bold text-sm">A Minor Chord</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-on-surface-variant">The triangle shifts by exactly one note. The 'Relative Minor' relationship is made visually obvious.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Games Section -->
+<section class="py-24 px-6 md:px-12 bg-surface">
+<div class="max-w-7xl mx-auto">
+<div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+<div class="max-w-2xl">
+<h2 class="font-headline text-4xl md:text-5xl font-bold mb-4">Mastery through Play</h2>
+<p class="text-on-surface-variant">Our pedagogical path moves you from raw concepts to intuitive muscle memory.</p>
+</div>
+<div class="flex items-center gap-4 bg-surface-container-low px-6 py-3 rounded-full border border-white/5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-xs font-label uppercase tracking-tighter">Intro</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">arrow_forward</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs font-label uppercase tracking-tighter">Practice</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">arrow_forward</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-xs font-label uppercase tracking-tighter">Test</span>
+</div>
+</div>
+</div>
+<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Game Cards -->
+<div class="bg-surface-container-low p-8 rounded-3xl glow-border hover:-translate-y-2 transition-all duration-300">
+<div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary">blur_on</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-2">Scale Builder</h3>
+<p class="text-on-surface-variant text-sm mb-6">Construct the foundations of melody using geometric patterns.</p>
+<div class="pt-4 border-t border-white/5 flex items-center justify-between">
+<span class="text-[10px] font-label font-bold text-primary uppercase tracking-widest">Stage 1</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">keyboard</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-8 rounded-3xl glow-border hover:-translate-y-2 transition-all duration-300">
+<div class="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-secondary">alt_route</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-2">Chord Walks</h3>
+<p class="text-on-surface-variant text-sm mb-6">Navigate the Tonnetz grid to find the shortest path between chords.</p>
+<div class="pt-4 border-t border-white/5 flex items-center justify-between">
+<span class="text-[10px] font-label font-bold text-secondary uppercase tracking-widest">Stage 2</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">grid_view</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-8 rounded-3xl glow-border hover:-translate-y-2 transition-all duration-300">
+<div class="w-12 h-12 rounded-2xl bg-tertiary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-tertiary">psychology</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-2">Harmony Trainer</h3>
+<p class="text-on-surface-variant text-sm mb-6">Develop your ear by matching sounds to their visual resonance.</p>
+<div class="pt-4 border-t border-white/5 flex items-center justify-between">
+<span class="text-[10px] font-label font-bold text-tertiary uppercase tracking-widest">Stage 3</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">hearing</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-8 rounded-3xl glow-border hover:-translate-y-2 transition-all duration-300">
+<div class="w-12 h-12 rounded-2xl bg-primary-container/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary-container">rebase_edit</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-2">Rhythm Lab</h3>
+<p class="text-on-surface-variant text-sm mb-6">Sync your harmonic changes to complex polyrhythmic structures.</p>
+<div class="pt-4 border-t border-white/5 flex items-center justify-between">
+<span class="text-[10px] font-label font-bold text-primary-container uppercase tracking-widest">Stage 4</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">pentagon</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Skratch Studio Section -->
+<section class="py-24 px-6 md:px-12 bg-surface-container-low overflow-hidden">
+<div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+<div class="lg:w-1/2">
+<h2 class="font-headline text-4xl md:text-5xl font-bold mb-6">Skratch Studio</h2>
+<p class="text-on-surface-variant text-xl mb-8 leading-relaxed">
+                        No code required, just play. Compose entire tracks using our block-based interface. Drag, drop, and loop your way to professional compositions.
+                    </p>
+<ul class="space-y-4">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">check_circle</span>
+<span class="font-medium">Block Toolbox: Logic and Loops</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">check_circle</span>
+<span class="font-medium">Infinite Composition Canvas</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">check_circle</span>
+<span class="font-medium">Built-in MIDI Keyboard &amp; Loop Pedal</span>
+</li>
+</ul>
+</div>
+<div class="lg:w-1/2 relative">
+<div class="bg-surface-container-highest rounded-2xl p-4 glow-border shadow-2xl scale-110 lg:translate-x-12">
+<img alt="Skratch Studio Interface" class="rounded-xl w-full" data-alt="Modular music production interface with colorful connecting blocks on a dark navy canvas representing a visual programming environment for sound" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiEZWNHsyf-U_BBst-r5pu-YRQ4jVvOAlz8zx5iuiVL7X7Zb6Lm9zUzq5VK5IBZyq6u-j_0_BEiRotDpcnqGfJkqdgjFfU79OKp8YnV4nhh5y_nEaTBV955AjqN7ditSgkXl3be-MgRGLdso1u8zqX6RHMS0ura6UOJOgwd04nknOwhtxZmZfd7mKDHw_l8KZ2OOqWsXUXnOiUlOdNB9swJ1tOEjJV4gEDIsYBknpaN8Ao64GNShpi6uVpvmlhpW89cX7M_MT36LyE"/>
+<div class="absolute top-10 left-10 p-2 bg-primary/20 backdrop-blur rounded text-[10px] uppercase font-bold tracking-widest border border-primary/30">Block Toolbox</div>
+<div class="absolute bottom-20 right-20 p-2 bg-tertiary/20 backdrop-blur rounded text-[10px] uppercase font-bold tracking-widest border border-tertiary/30">Canvas</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Real Songs You Know Section -->
+<section class="py-24 px-6 md:px-12">
+<div class="max-w-7xl mx-auto text-center mb-16">
+<h2 class="font-headline text-4xl md:text-5xl font-bold mb-4">Real Songs You Know</h2>
+<p class="text-on-surface-variant max-w-2xl mx-auto">This isn't abstract theory — it's the music you already listen to. See the geometry of your favorite hits.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+<div class="bg-surface-container p-6 rounded-3xl glow-border">
+<div class="aspect-square bg-surface-container-highest rounded-2xl mb-6 relative overflow-hidden flex items-center justify-center">
+<img alt="Progression Path" class="absolute inset-0 opacity-40" data-alt="Abstract glowing path of light weaving through a dark starry geometric grid with soft purple and blue hues" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmRePUymLyz8K4gjMP89q1ANe90Df0aZghzRoHQOtND30IwlMCOFZh5HPVKojzEIOBqAvWQAdhGTidVZIJcwih7nbqp0UeDIWRHRruJocatYtDfaWBuAXwQ_RssZUdglEYt17lGPieC-XlCIDvO4anoKaohJhnBaqcb2YIsP9fJurpkaywAREi4UUi5foGPE2Sk13qtIXWRIMlgHtVFpVvMV9_Mqi9DcG9cxDK3om1KJS5rvdtpeZvGLaz6mVyKkuTzqCOKqngx5Jd"/>
+<p class="relative font-headline font-black text-2xl text-primary tracking-widest">I - IV - V - I</p>
+</div>
+<h3 class="font-headline font-bold text-xl mb-1">Common Pop Anthem</h3>
+<p class="text-on-surface-variant text-sm">Classic rock and pop structure visualized as a triangular loop on the grid.</p>
+</div>
+<div class="bg-surface-container p-6 rounded-3xl glow-border">
+<div class="aspect-square bg-surface-container-highest rounded-2xl mb-6 relative overflow-hidden flex items-center justify-center">
+<img alt="Jazz Progression" class="absolute inset-0 opacity-40" data-alt="Complex spiral light pattern on a dark hexagonal geometric grid with warm amber and orange tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUeyqS2r9DV_9gf8g8UnRD0qs1dJnlhODB-YYhsg1drVBekTUrneRcCvbOGrBu9eYiWPcx9yMtTYxWdkmLfBKW0Ku5h__S2yXCUXPnHJTVBUK4Bsrjbd02ZFEGZeNNpFL4I5iiMFpdf2FpJeQmj6ZpDkIgMFakHMwz6t1wPrbDVIJmwPbZXPR5sYjsoO8e5dL3L5dsZj1zbwaxPMYwGgUKy4ZfDMbCHPwvIWrkJJ8S4YQN9htB6iUwbVqY01Hj5IBW81f4kUst4w2G"/>
+<p class="relative font-headline font-black text-2xl text-tertiary tracking-widest">ii - V - I</p>
+</div>
+<h3 class="font-headline font-bold text-xl mb-1">Standard Jazz Turn</h3>
+<p class="text-on-surface-variant text-sm">A sophisticated leap through the functional wheel, creating a rich spiral path.</p>
+</div>
+<div class="bg-surface-container p-6 rounded-3xl glow-border">
+<div class="aspect-square bg-surface-container-highest rounded-2xl mb-6 relative overflow-hidden flex items-center justify-center">
+<img alt="Minor Progression" class="absolute inset-0 opacity-40" data-alt="Sharp zigzag neon lines on a dark structured grid with vivid indigo and cyan lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHmrgNMcNAmKr0U5lEovSpNWay40aTTdQPGMBmQ8XmzXrQVw-ry5eBXKPBfoSFKJaXei1sxZwAz8ywz7yV-f3kfIN83aefOA6y9d9fYBHft0bE9DWnUdLtz-DrkVmyU1u38MaW8e7To4InrP8eOYo3Djo29V19CXb-Xs2BAok-32cMscZDN1xxxs0wqIXENIa_eUBGLhkbCrOrLoSi2AlbI1bC1--bp21TKrniO6pZK5XoTX4nwDnIEuwj_5CgZwJrVA9gJ0VFcGzU"/>
+<p class="relative font-headline font-black text-2xl text-secondary tracking-widest">vi - IV - I - V</p>
+</div>
+<h3 class="font-headline font-bold text-xl mb-1">Moody Modern Ballad</h3>
+<p class="text-on-surface-variant text-sm">Emotional and drifting, this path highlights the beauty of relative minors.</p>
+</div>
+</div>
+</section>
+<!-- Footer CTA -->
+<section class="py-32 px-6 text-center">
+<div class="max-w-4xl mx-auto bg-gradient-to-br from-surface-container to-surface-container-low p-16 rounded-[3rem] glow-border">
+<h2 class="font-headline text-5xl md:text-6xl font-extrabold mb-8">Ready to explore?</h2>
+<p class="text-on-surface-variant text-xl mb-12">Join thousands of musicians who are seeing music clearly for the first time.</p>
+<div class="flex flex-col sm:flex-row gap-4 justify-center">
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-headline font-bold px-10 py-5 rounded-full text-lg shadow-2xl hover:scale-105 transition-transform">
+                        Open Explorer
+                    </button>
+<button class="bg-surface-container-highest text-on-surface font-headline font-bold px-10 py-5 rounded-full text-lg border border-primary/20 hover:bg-surface-bright transition-colors">
+                        Start the Course
+                    </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-[#111125] w-full py-16 border-t border-indigo-900/20">
+<div class="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+<div>
+<div class="text-xl font-bold text-indigo-200 font-headline mb-4">Tonnetz</div>
+<p class="text-indigo-100/40 font-body text-sm">© 2024 Tonnetz. Master the celestial score.</p>
+</div>
+<div class="flex flex-wrap gap-x-8 gap-y-4 md:justify-end">
+<a class="text-indigo-100/40 hover:text-amber-400 transition-colors font-label text-sm font-semibold uppercase tracking-widest" href="#">Privacy Policy</a>
+<a class="text-indigo-100/40 hover:text-amber-400 transition-colors font-label text-sm font-semibold uppercase tracking-widest" href="#">Terms of Service</a>
+<a class="text-indigo-100/40 hover:text-amber-400 transition-colors font-label text-sm font-semibold uppercase tracking-widest" href="#">Discord Community</a>
+<a class="text-indigo-100/40 hover:text-amber-400 transition-colors font-label text-sm font-semibold uppercase tracking-widest" href="#">Contact Support</a>
+</div>
+</div>
+</footer>
+</body></html>

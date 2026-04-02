@@ -4,6 +4,24 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-01 evening — Showcase Page
+
+- Designed and planned `/showcase` feature tour page — standalone scrolling page to make the product's features immediately obvious to visitors (especially teachers)
+- Explored Google Stitch (Google Labs AI design tool, March 2026 update) as a design workflow tool
+- Used Stitch in Thinking mode (Gemini 3.1 Pro) to generate a full-page design comp from a detailed prompt + 6 app screenshots
+- Stitch output: section layouts, annotation styles for Explorer panels, game cards grid, glassmorphism labels, scroll pacing — exported as HTML/CSS + DESIGN.md + screen.png
+- Decided: showcase uses real screenshots with annotation overlays, not AI-generated mockups or stylized illustrations
+- Decided: page lives at `/showcase` within the app (not a separate site)
+- Decided: Stitch export used as visual reference/design spec — Claude Code builds the actual Jinja2 template to fit Flask/Jinja2 stack
+- Stitch design system ("Harmonic Resonance"): deep indigo background (#111125), lavender/purple interactive elements, amber/orange highlights, glassmorphism panels, Plus Jakarta Sans/Manrope/Inter typography, "no-line" sectioning philosophy, glow borders
+- Page structure finalized: Hero → Explorer (annotated 4-panel screenshot + C major→A minor before/after) → Games "Mastery through Play" (Intro→Practice→Test pill + 4 game cards) → Skratch Studio (split layout with real screenshot) → Real Songs You Know (3 progression cards from song-examples.js) → Footer CTA
+- Created Claude Code build prompt (`claude-code-prompt-showcase.md`) with full technical spec
+- Decided: no explicit "for teachers" pitch section — if the showcase is done right, teachers will naturally want to use it
+- Decided: "Real Songs" section pulls from the 67-entry song-examples.js database
+- Decided: annotations hide on mobile, game cards responsive (4→2→1 col)
+- Stitch export saved to `stitch-export/` in repo (code.html, DESIGN.md, screen.png)
+- Next: full component walkthrough tomorrow, capture remaining screenshots (Explorer with A minor selected), run Claude Code build prompt, iterate on result
+
 ## 2026-04-01 late night
 
 - Built Swing Trainer game (`static/games/swing-trainer.html`) — Tonnetz's first dedicated rhythm ear-training game
