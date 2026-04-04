@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}See What's Inside — Tonnetz{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/showcase.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="showcase">
+
+  <!-- ── Hero ── -->
+  <section class="sc-hero">
+    <div>
+      <h1 class="sc-hero__title">See what's inside</h1>
+      <p class="sc-hero__sub">
+        Explore music theory through connected, visual instruments &mdash; every view stays in sync.
+      </p>
+      <div class="sc-hero__scroll" aria-hidden="true">
+        <span>&darr;</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── The Explorer ── -->
+  <section class="sc-section sc-section--alt">
+    <div class="sc-container sc-container--wide">
+      <div class="sc-section__header">
+        <h2>The Explorer</h2>
+        <p>Your command center for harmonic discovery. Four views, always in sync.</p>
+      </div>
+
+      <!-- Annotated screenshot -->
+      <div class="sc-explorer">
+        <div class="sc-explorer__frame">
+          <img src="{{ url_for('static', filename='images/showcase/explorer-full.png') }}"
+               alt="The Tonnetz Explorer showing four synchronized panels: Tonnetz Neighborhood, Chord Wheel, Keyboard, and Fretboard"
+               class="sc-explorer__img"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="sc-explorer__placeholder" style="display:none;">
+            Explorer screenshot &mdash; 4 synchronized panels
+          </div>
+
+          <!-- Annotations (desktop only, hidden <900px) -->
+          <div class="sc-annotation sc-annotation--tl">
+            <span class="sc-annotation__dot"></span>
+            <span class="sc-annotation__line"></span>
+            <div class="sc-annotation__label">
+              <span class="sc-annotation__tag">Geometric View</span>
+              <span class="sc-annotation__desc">Tonnetz Neighborhood</span>
+            </div>
+          </div>
+
+          <div class="sc-annotation sc-annotation--tr">
+            <span class="sc-annotation__dot"></span>
+            <span class="sc-annotation__line"></span>
+            <div class="sc-annotation__label">
+              <span class="sc-annotation__tag">Functional View</span>
+              <span class="sc-annotation__desc">Chord Wheel</span>
+            </div>
+          </div>
+
+          <div class="sc-annotation sc-annotation--bl">
+            <span class="sc-annotation__dot"></span>
+            <span class="sc-annotation__line"></span>
+            <div class="sc-annotation__label">
+              <span class="sc-annotation__tag">Familiar View</span>
+              <span class="sc-annotation__desc">Keyboard</span>
+            </div>
+          </div>
+
+          <div class="sc-annotation sc-annotation--br">
+            <span class="sc-annotation__dot"></span>
+            <span class="sc-annotation__line"></span>
+            <div class="sc-annotation__label">
+              <span class="sc-annotation__tag">Guitarist View</span>
+              <span class="sc-annotation__desc">Fretboard</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile feature grid (replaces annotations) -->
+        <div class="sc-explorer__features">
+          <div class="sc-explorer__feature">
+            <span class="sc-explorer__feature-tag">Geometric View</span>
+            <span class="sc-explorer__feature-name">Tonnetz Neighborhood</span>
+          </div>
+          <div class="sc-explorer__feature">
+            <span class="sc-explorer__feature-tag" style="color:var(--text-accent-warm)">Functional View</span>
+            <span class="sc-explorer__feature-name">Chord Wheel</span>
+          </div>
+          <div class="sc-explorer__feature">
+            <span class="sc-explorer__feature-tag" style="color:var(--text-info)">Familiar View</span>
+            <span class="sc-explorer__feature-name">Keyboard</span>
+          </div>
+          <div class="sc-explorer__feature">
+            <span class="sc-explorer__feature-tag" style="color:var(--text-success)">Guitarist View</span>
+            <span class="sc-explorer__feature-name">Fretboard</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- One Click, Infinite Sync -->
+      <div class="sc-sync">
+        <div class="sc-sync__header">
+          <h3>One Click, Infinite Sync</h3>
+          <p>
+            Click any note or chord in one panel and every other panel updates instantly.
+            Here, a single click transforms C major to A minor &mdash; the Relative Minor shift
+            moves the triangle by exactly one note.
+          </p>
+        </div>
+
+        <div class="sc-sync__compare">
+          <div class="sc-sync__state">
+            <span class="sc-sync__state-label">State A: C Major</span>
+            <img src="{{ url_for('static', filename='images/showcase/explorer-c-major.png') }}"
+                 alt="Explorer showing C major chord highlighted across all four panels"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="sc-sync__state-placeholder" style="display:none;">C Major</div>
+          </div>
+
+          <span class="sc-sync__arrow">&rarr;</span>
+
+          <div class="sc-sync__state">
+            <span class="sc-sync__state-label sc-sync__state-label--b">State B: A Minor</span>
+            <img src="{{ url_for('static', filename='images/showcase/explorer-a-minor.png') }}"
+                 alt="Explorer showing A minor chord — the triangle shifted by one note"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="sc-sync__state-placeholder" style="display:none;">A Minor</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Games: Mastery through Play ── -->
+  <section class="sc-section">
+    <div class="sc-container">
+      <div class="sc-section__header">
+        <h2>Mastery through Play</h2>
+        <p>Move from raw concepts to intuitive muscle memory.</p>
+
+        <div style="margin-top:1.25rem;">
+          <div class="sc-progression-pill">
+            <span class="sc-progression-pill__step">
+              <span class="sc-progression-pill__dot sc-progression-pill__dot--learn"></span>
+              <span class="sc-progression-pill__text">Learn</span>
+            </span>
+            <span class="sc-progression-pill__arrow">&rarr;</span>
+            <span class="sc-progression-pill__step">
+              <span class="sc-progression-pill__dot sc-progression-pill__dot--practice"></span>
+              <span class="sc-progression-pill__text">Practice</span>
+            </span>
+            <span class="sc-progression-pill__arrow">&rarr;</span>
+            <span class="sc-progression-pill__step">
+              <span class="sc-progression-pill__dot sc-progression-pill__dot--test"></span>
+              <span class="sc-progression-pill__text">Test</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sc-games-grid">
+        <a href="/games/scale-builder" class="sc-game-card">
+          <div class="sc-game-card__icon sc-game-card__icon--1">&#9839;</div>
+          <div class="sc-game-card__title">Scale Builder</div>
+          <div class="sc-game-card__desc">Build scales note by note on the Tonnetz grid and see the geometric patterns emerge.</div>
+          <div class="sc-game-card__footer sc-game-card__footer--1">Stage 1 &middot; Learn</div>
+        </a>
+
+        <a href="/games/relative-key-trainer" class="sc-game-card">
+          <div class="sc-game-card__icon sc-game-card__icon--2">&#x21E2;</div>
+          <div class="sc-game-card__title">Chord Walks</div>
+          <div class="sc-game-card__desc">Navigate the grid to find the shortest path between chords using harmonic transforms.</div>
+          <div class="sc-game-card__footer sc-game-card__footer--2">Stage 2 &middot; Practice</div>
+        </a>
+
+        <a href="/harmony" class="sc-game-card">
+          <div class="sc-game-card__icon sc-game-card__icon--3">&#9835;</div>
+          <div class="sc-game-card__title">Harmony Trainer</div>
+          <div class="sc-game-card__desc">Develop your ear by matching sounds to their visual shapes on the chord wheel.</div>
+          <div class="sc-game-card__footer sc-game-card__footer--3">Stage 3 &middot; Practice</div>
+        </a>
+
+        <a href="/rhythm" class="sc-game-card">
+          <div class="sc-game-card__icon sc-game-card__icon--4">&#9830;</div>
+          <div class="sc-game-card__title">Rhythm Lab</div>
+          <div class="sc-game-card__desc">Lock your harmonic changes to a groove and build rhythmic confidence.</div>
+          <div class="sc-game-card__footer sc-game-card__footer--4">Stage 4 &middot; Test</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Skratch Studio ── -->
+  <section class="sc-section sc-section--alt">
+    <div class="sc-container">
+      <div class="sc-skratch">
+        <div>
+          <h2 class="sc-skratch__title">Skratch Studio</h2>
+          <p class="sc-skratch__desc">
+            Compose music using a block-based visual programming interface.
+            No code required &mdash; just drag, drop, and loop your way to a finished track.
+          </p>
+          <div class="sc-skratch__features">
+            <div class="sc-skratch__feature">
+              <span class="sc-skratch__check">&#10003;</span>
+              Block Toolbox: Logic &amp; Loops
+            </div>
+            <div class="sc-skratch__feature">
+              <span class="sc-skratch__check">&#10003;</span>
+              Infinite Composition Canvas
+            </div>
+            <div class="sc-skratch__feature">
+              <span class="sc-skratch__check">&#10003;</span>
+              Built-in MIDI Keyboard &amp; Loop Pedal
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-skratch__screenshot">
+          <img src="{{ url_for('static', filename='images/showcase/skratch-studio.png') }}"
+               alt="Skratch Studio interface showing the block toolbox, composition canvas, and built-in keyboard"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="sc-skratch__screenshot-placeholder" style="display:none;">
+            Skratch Studio screenshot
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Real Songs You Know ── -->
+  <section class="sc-section">
+    <div class="sc-container">
+      <div class="sc-section__header">
+        <h2>Real Songs You Know</h2>
+        <p>This isn't abstract theory &mdash; it's the music you already listen to.</p>
+      </div>
+
+      <div class="sc-songs-grid">
+        <!-- Card 1: I - V - vi - IV  (from song-examples.js: axis_of_awesome_I_V_vi_IV) -->
+        <div class="sc-song-card">
+          <div class="sc-song-card__progression">I &ndash; V &ndash; vi &ndash; IV</div>
+          <div class="sc-song-card__song">Let It Be</div>
+          <div class="sc-song-card__artist">The Beatles &middot; Bob Marley &middot; U2 &amp; dozens more</div>
+          <div class="sc-song-card__desc">
+            The most common chord pattern in pop music. Four chords, hundreds of hits &mdash; the Axis of Awesome proved it.
+          </div>
+        </div>
+
+        <!-- Card 2: I - IV - V  (from song-examples.js: twelve_bar_blues) -->
+        <div class="sc-song-card">
+          <div class="sc-song-card__progression">I &ndash; IV &ndash; V</div>
+          <div class="sc-song-card__song">Johnny B. Goode</div>
+          <div class="sc-song-card__artist">Chuck Berry &middot; Elvis &middot; Bill Haley &amp; more</div>
+          <div class="sc-song-card__desc">
+            The 12-bar blues &mdash; three chords that launched rock and roll. Learn this and you can sit in on any jam session.
+          </div>
+        </div>
+
+        <!-- Card 3: I - III - IV - iv  (from song-examples.js: creep_chromatic_mediant) -->
+        <div class="sc-song-card">
+          <div class="sc-song-card__progression">I &ndash; III &ndash; IV &ndash; iv</div>
+          <div class="sc-song-card__song">Creep</div>
+          <div class="sc-song-card__artist">Radiohead</div>
+          <div class="sc-song-card__desc">
+            Two chords that don't belong in the key create all the emotional intensity. See the chromatic mediant on the Tonnetz.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer CTA ── -->
+  <section class="sc-cta">
+    <div class="sc-cta__box">
+      <h2 class="sc-cta__title">Ready to explore?</h2>
+      <div class="sc-cta__buttons">
+        <a href="/explorer" class="btn btn--primary btn--large">Open Explorer</a>
+        <a href="/intro/1" class="btn btn--secondary btn--large">Start the Course</a>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

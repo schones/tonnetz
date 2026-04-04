@@ -238,6 +238,11 @@ def test_fretboard():
     return render_template("test-fretboard.html")
 
 
+@app.route("/showcase")
+def showcase():
+    return render_template("showcase.html")
+
+
 @app.route("/explorer")
 def explorer():
     return render_template("explorer.html")

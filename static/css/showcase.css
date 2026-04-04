@@ -1,0 +1,635 @@
+/* ============================================================
+   Showcase Page — static/css/showcase.css
+   ============================================================ */
+
+/* ── Showcase custom properties ── */
+.showcase {
+  --sc-glass-bg: rgba(240, 238, 255, 0.82);
+  --sc-glass-border: rgba(108, 99, 255, 0.15);
+  --sc-glow: rgba(108, 99, 255, 0.25);
+  --sc-glow-strong: rgba(108, 99, 255, 0.45);
+  --sc-dot-color: var(--accent);
+  --sc-line-color: rgba(108, 99, 255, 0.3);
+  --sc-section-alt: var(--bg-secondary);
+  --sc-card-bg: var(--bg-card);
+  --sc-muted: var(--text-secondary);
+  --sc-progression: var(--accent);
+}
+
+[data-theme="dark"] .showcase {
+  --sc-glass-bg: rgba(22, 33, 62, 0.82);
+  --sc-glass-border: rgba(124, 117, 255, 0.2);
+  --sc-glow: rgba(124, 117, 255, 0.25);
+  --sc-glow-strong: rgba(124, 117, 255, 0.45);
+  --sc-line-color: rgba(124, 117, 255, 0.3);
+  --sc-progression: #c4c0ff;
+}
+
+/* ── Base section ── */
+.sc-section {
+  padding: 5rem 1.5rem;
+}
+
+.sc-section--alt {
+  background: var(--sc-section-alt);
+}
+
+.sc-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.sc-container--wide {
+  max-width: 1200px;
+}
+
+.sc-section__header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.sc-section__header h2 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.sc-section__header p {
+  color: var(--sc-muted);
+  font-size: 1.1rem;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+/* ── Hero ── */
+.sc-hero {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 1.5rem 2rem;
+  position: relative;
+}
+
+.sc-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 60%, var(--sc-glow), transparent 70%);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.sc-hero__title {
+  font-size: 3.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.sc-hero__sub {
+  font-size: 1.2rem;
+  color: var(--sc-muted);
+  max-width: 520px;
+  margin: 0 auto 2.5rem;
+  line-height: 1.6;
+  position: relative;
+}
+
+.sc-hero__scroll {
+  position: relative;
+  animation: sc-bounce 2s ease-in-out infinite;
+}
+
+.sc-hero__scroll span {
+  display: inline-block;
+  font-size: 1.5rem;
+  color: var(--accent);
+  opacity: 0.6;
+}
+
+@keyframes sc-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+/* ── Explorer screenshot frame ── */
+.sc-explorer {
+  position: relative;
+  margin-bottom: 4rem;
+}
+
+.sc-explorer__frame {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 8px 40px var(--sc-glow);
+  border: 1px solid var(--sc-glass-border);
+}
+
+.sc-explorer__img {
+  width: 100%;
+  display: block;
+  border-radius: var(--radius-xl);
+}
+
+.sc-explorer__placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--sc-card-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sc-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Annotations (desktop only) ── */
+.sc-annotation {
+  position: absolute;
+  z-index: 10;
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .sc-annotation { display: block; }
+}
+
+.sc-annotation__dot {
+  width: 10px;
+  height: 10px;
+  background: var(--sc-dot-color);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--sc-glow-strong), 0 0 4px var(--sc-dot-color);
+  position: absolute;
+}
+
+.sc-annotation__line {
+  position: absolute;
+  height: 1px;
+  background: var(--sc-line-color);
+  transform-origin: left center;
+}
+
+.sc-annotation__label {
+  position: absolute;
+  background: var(--sc-glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--sc-glass-border);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  white-space: nowrap;
+}
+
+.sc-annotation__tag {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 0.15rem;
+}
+
+.sc-annotation__desc {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* Annotation positions (tuned for a 4-panel Explorer layout) */
+.sc-annotation--tl { top: 20%; left: 22%; }
+.sc-annotation--tl .sc-annotation__dot { top: 0; left: 0; }
+.sc-annotation--tl .sc-annotation__line { top: 4px; right: 100%; width: 60px; margin-right: 6px; }
+.sc-annotation--tl .sc-annotation__label { bottom: -8px; right: calc(100% + 72px); }
+
+.sc-annotation--tr { top: 20%; right: 22%; }
+.sc-annotation--tr .sc-annotation__dot { top: 0; right: 0; }
+.sc-annotation--tr .sc-annotation__line { top: 4px; left: 100%; width: 60px; margin-left: 6px; }
+.sc-annotation--tr .sc-annotation__label { bottom: -8px; left: calc(100% + 72px); }
+
+.sc-annotation--bl { bottom: 32%; left: 30%; }
+.sc-annotation--bl .sc-annotation__dot { top: 0; left: 0; }
+.sc-annotation--bl .sc-annotation__line { top: 4px; right: 100%; width: 50px; margin-right: 6px; }
+.sc-annotation--bl .sc-annotation__label { bottom: -8px; right: calc(100% + 62px); }
+
+.sc-annotation--br { bottom: 15%; right: 25%; }
+.sc-annotation--br .sc-annotation__dot { top: 0; right: 0; }
+.sc-annotation--br .sc-annotation__line { top: 4px; left: 100%; width: 50px; margin-left: 6px; }
+.sc-annotation--br .sc-annotation__label { bottom: -8px; left: calc(100% + 62px); }
+
+/* Annotation color accents per panel */
+.sc-annotation--tr .sc-annotation__tag { color: var(--text-accent-warm); }
+.sc-annotation--tr .sc-annotation__label { border-color: rgba(230, 74, 25, 0.15); }
+.sc-annotation--bl .sc-annotation__tag { color: var(--text-info); }
+.sc-annotation--bl .sc-annotation__label { border-color: rgba(2, 132, 199, 0.15); }
+.sc-annotation--br .sc-annotation__tag { color: var(--text-success); }
+.sc-annotation--br .sc-annotation__label { border-color: rgba(22, 163, 74, 0.15); }
+
+/* Mobile feature grid (replaces annotations) */
+.sc-explorer__features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 900px) {
+  .sc-explorer__features { display: none; }
+}
+
+.sc-explorer__feature {
+  background: var(--sc-card-bg);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+}
+
+.sc-explorer__feature-tag {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 0.15rem;
+}
+
+.sc-explorer__feature-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ── One Click, Infinite Sync ── */
+.sc-sync {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.sc-sync__header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.sc-sync__header h3 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.sc-sync__header p {
+  color: var(--sc-muted);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.sc-sync__compare {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1.5rem;
+  align-items: center;
+  background: var(--sc-card-bg);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+}
+
+.sc-sync__state {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.sc-sync__state-label {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  padding: 0.75rem 1rem 0.5rem;
+}
+
+.sc-sync__state-label--b {
+  color: var(--text-info);
+}
+
+.sc-sync__state img {
+  width: 100%;
+  display: block;
+}
+
+.sc-sync__state-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sc-muted);
+  font-size: 0.8rem;
+}
+
+.sc-sync__arrow {
+  font-size: 1.75rem;
+  color: var(--accent);
+  opacity: 0.5;
+}
+
+/* ── Games section ── */
+.sc-progression-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--sc-card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 0.5rem 1.25rem;
+  margin-bottom: 2.5rem;
+}
+
+.sc-progression-pill__step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sc-progression-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.sc-progression-pill__dot--learn { background: var(--accent); }
+.sc-progression-pill__dot--practice { background: var(--text-info); }
+.sc-progression-pill__dot--test { background: var(--text-accent-warm); }
+
+.sc-progression-pill__text {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sc-progression-pill__arrow {
+  font-size: 0.75rem;
+  color: var(--sc-muted);
+  opacity: 0.5;
+}
+
+.sc-games-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.sc-game-card {
+  background: var(--sc-card-bg);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.sc-game-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 32px var(--sc-glow);
+  text-decoration: none;
+}
+
+.sc-game-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 1.25rem;
+}
+
+.sc-game-card__icon--1 { background: rgba(108, 99, 255, 0.1); color: var(--accent); }
+.sc-game-card__icon--2 { background: rgba(2, 132, 199, 0.1); color: var(--text-info); }
+.sc-game-card__icon--3 { background: rgba(230, 74, 25, 0.1); color: var(--text-accent-warm); }
+.sc-game-card__icon--4 { background: rgba(22, 163, 74, 0.1); color: var(--text-success); }
+
+.sc-game-card__title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+
+.sc-game-card__desc {
+  font-size: 0.85rem;
+  color: var(--sc-muted);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.sc-game-card__footer {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.sc-game-card__footer--1 { color: var(--accent); }
+.sc-game-card__footer--2 { color: var(--text-info); }
+.sc-game-card__footer--3 { color: var(--text-accent-warm); }
+.sc-game-card__footer--4 { color: var(--text-success); }
+
+/* ── Skratch Studio ── */
+.sc-skratch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+.sc-skratch__title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.sc-skratch__desc {
+  color: var(--sc-muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+  margin-bottom: 1.5rem;
+}
+
+.sc-skratch__features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sc-skratch__feature {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.sc-skratch__check {
+  color: var(--accent);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.sc-skratch__screenshot {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 8px 40px var(--sc-glow);
+  border: 1px solid var(--sc-glass-border);
+}
+
+.sc-skratch__screenshot img {
+  width: 100%;
+  display: block;
+}
+
+.sc-skratch__screenshot-placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--sc-card-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sc-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Real Songs ── */
+.sc-songs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.sc-song-card {
+  background: var(--sc-card-bg);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.sc-song-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 28px var(--sc-glow);
+}
+
+.sc-song-card__progression {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--sc-progression);
+  letter-spacing: 0.04em;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sc-song-card__song {
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 0.15rem;
+}
+
+.sc-song-card__artist {
+  font-size: 0.8rem;
+  color: var(--sc-muted);
+  margin-bottom: 0.75rem;
+}
+
+.sc-song-card__desc {
+  font-size: 0.85rem;
+  color: var(--sc-muted);
+  line-height: 1.5;
+}
+
+/* ── Footer CTA ── */
+.sc-cta {
+  padding: 5rem 1.5rem;
+  text-align: center;
+}
+
+.sc-cta__box {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--sc-card-bg);
+  border-radius: 2rem;
+  padding: 4rem 2.5rem;
+  border: 1px solid var(--sc-glass-border);
+  box-shadow: 0 8px 40px var(--sc-glow);
+}
+
+.sc-cta__title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+}
+
+.sc-cta__buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.sc-cta__buttons .btn {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  border-radius: var(--radius-full);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .sc-games-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .sc-hero__title { font-size: 2.25rem; }
+  .sc-hero__sub { font-size: 1rem; }
+
+  .sc-section { padding: 3rem 1rem; }
+  .sc-section__header h2 { font-size: 1.75rem; }
+
+  .sc-sync__compare {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .sc-sync__arrow { transform: rotate(90deg); justify-self: center; }
+
+  .sc-games-grid { grid-template-columns: 1fr; }
+
+  .sc-skratch {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .sc-songs-grid { grid-template-columns: 1fr; }
+
+  .sc-cta__box { padding: 2.5rem 1.5rem; }
+  .sc-cta__title { font-size: 1.75rem; }
+}
+
+@media (max-width: 480px) {
+  .sc-hero { min-height: 50vh; }
+  .sc-explorer__features { grid-template-columns: 1fr; }
+}
