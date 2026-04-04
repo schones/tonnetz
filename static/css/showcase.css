@@ -382,8 +382,10 @@
 
 .sc-games-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
 }
 
 .sc-game-card {
@@ -449,10 +451,15 @@
 
 /* ── Skratch Studio ── */
 .sc-skratch {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.sc-skratch__text {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .sc-skratch__title {
@@ -470,8 +477,10 @@
 
 .sc-skratch__features {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
 }
 
 .sc-skratch__feature {
@@ -597,11 +606,6 @@
 }
 
 /* ── Responsive ── */
-@media (max-width: 1024px) {
-  .sc-games-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
 
 @media (max-width: 768px) {
   .sc-hero__title { font-size: 2.25rem; }
@@ -617,11 +621,6 @@
   .sc-sync__arrow { transform: rotate(90deg); justify-self: center; }
 
   .sc-games-grid { grid-template-columns: 1fr; }
-
-  .sc-skratch {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
 
   .sc-songs-grid { grid-template-columns: 1fr; }
 

@@ -652,6 +652,16 @@
 {% endblock %}
 
 {% block content %}
+<script>
+// First-visit redirect to showcase
+(function() {
+  const hasVisited = localStorage.getItem('tonnetz_has_visited');
+  if (!hasVisited) {
+    localStorage.setItem('tonnetz_has_visited', 'true');
+    window.location.href = '/showcase';
+  }
+})();
+</script>
 <main>
     <!-- ===== Hero ===== -->
     <section class="hero">
