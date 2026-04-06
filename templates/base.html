@@ -145,25 +145,7 @@
         height="44" style="display:block;">
     </a>
     <div style="display:flex; align-items:center; gap:0.25rem; flex-wrap:wrap;">
-      <!-- Theory dropdown -->
-      <div class="nav-dropdown">
-        <span data-nav-dropdown="/theory"
-              style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                     background:var(--bg-card); color:var(--text-primary);
-                     font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                     cursor:default; display:inline-flex; align-items:center; gap:5px;
-                     white-space:nowrap;">
-          Theory <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
-        </span>
-        <div class="nav-dropdown__menu">
-          <div class="nav-dropdown__label">Interactive Lessons</div>
-          <a href="/theory/circle-of-fifths" class="nav-dropdown__item">Circle of Fifths</a>
-          <a href="/theory/tonal-centers" class="nav-dropdown__item">Tonal Centers</a>
-          <a href="/theory/modes" class="nav-dropdown__item">Modes</a>
-          <a href="/theory/chord-progressions" class="nav-dropdown__item">Chord Progressions</a>
-        </div>
-      </div>
-      <!-- Explorer -->
+      <!-- Explorer (hero position) -->
       <a href="/explorer" data-nav-link
          style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
                 background:var(--bg-card); color:var(--text-primary); text-decoration:none;
@@ -173,39 +155,58 @@
         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
         Explorer
       </a>
-      <!-- Practice Games dropdown -->
+      <!-- Ear Training dropdown -->
       <div class="nav-dropdown">
-        <span data-nav-dropdown="/harmony,/chord-identification,/melody,/rhythm,/strumming,/games"
+        <span data-nav-dropdown="/harmony,/chord-identification,/melody,/games/swing-trainer"
               style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
                      background:var(--bg-card); color:var(--text-primary);
                      font-size:0.82rem; font-weight:700; font-family:var(--font-main);
                      cursor:default; display:inline-flex; align-items:center; gap:5px;
                      white-space:nowrap;">
-          Practice Games <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
+          Ear Training <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
         </span>
         <div class="nav-dropdown__menu">
-          <div class="nav-dropdown__label">Practice Games</div>
-          <a href="/games/relative-key-trainer" class="nav-dropdown__item">Chord Walks</a>
-          <a href="/games/scale-builder" class="nav-dropdown__item">Scale Builder</a>
           <a href="/harmony" class="nav-dropdown__item">Harmony Trainer</a>
           <a href="/chord-identification" class="nav-dropdown__item">Chord Spotter</a>
           <a href="/melody" class="nav-dropdown__item">Melody Match</a>
-          <a href="/rhythm" class="nav-dropdown__item">Rhythm Lab</a>
-          <a href="/strumming" class="nav-dropdown__item">Strum Patterns</a>
           <a href="/games/swing-trainer" class="nav-dropdown__item">Swing Trainer</a>
         </div>
       </div>
-      <!-- Skratch Studio -->
-      <a href="/skratch" data-nav-link
-         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
-                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                transition:border-color 0.12s, background 0.12s;"
-        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
-        Skratch Studio
-      </a>
-      <!-- Start Here -->
+      <!-- Rhythm & Play dropdown -->
+      <div class="nav-dropdown">
+        <span data-nav-dropdown="/rhythm,/strumming,/skratch"
+              style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+                     background:var(--bg-card); color:var(--text-primary);
+                     font-size:0.82rem; font-weight:700; font-family:var(--font-main);
+                     cursor:default; display:inline-flex; align-items:center; gap:5px;
+                     white-space:nowrap;">
+          Rhythm &amp; Play <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
+        </span>
+        <div class="nav-dropdown__menu">
+          <a href="/rhythm" class="nav-dropdown__item">Rhythm Lab</a>
+          <a href="/strumming" class="nav-dropdown__item">Strum Patterns</a>
+          <a href="/skratch" class="nav-dropdown__item">Skratch Studio</a>
+        </div>
+      </div>
+      <!-- Patterns dropdown -->
+      <div class="nav-dropdown">
+        <span data-nav-dropdown="/games/scale-builder,/games/relative-key-trainer,/theory/circle-of-fifths,/theory/modes,/theory/chord-progressions"
+              style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
+                     background:var(--bg-card); color:var(--text-primary);
+                     font-size:0.82rem; font-weight:700; font-family:var(--font-main);
+                     cursor:default; display:inline-flex; align-items:center; gap:5px;
+                     white-space:nowrap;">
+          Patterns <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
+        </span>
+        <div class="nav-dropdown__menu">
+          <a href="/games/scale-builder" class="nav-dropdown__item">Scale Builder</a>
+          <a href="/games/relative-key-trainer" class="nav-dropdown__item">Chord Walks</a>
+          <a href="/theory/circle-of-fifths" class="nav-dropdown__item">Circle of Fifths</a>
+          <a href="/theory/modes" class="nav-dropdown__item">Modes</a>
+          <a href="/theory/chord-progressions" class="nav-dropdown__item">Chord Progressions</a>
+        </div>
+      </div>
+      <!-- Fundamentals -->
       <a href="/intro" data-nav-link
          style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
                 background:var(--bg-card); color:var(--text-primary); text-decoration:none;
@@ -213,17 +214,7 @@
                 transition:border-color 0.12s, background 0.12s;"
         onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
-        Start Here
-      </a>
-      <!-- Tour -->
-      <a href="/showcase" data-nav-link
-         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
-                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                transition:border-color 0.12s, background 0.12s;"
-        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
-        Tour
+        Fundamentals
       </a>
     </div>
     <button id="theme-toggle" aria-label="Toggle dark mode" style="background:none;border:none;cursor:pointer;
