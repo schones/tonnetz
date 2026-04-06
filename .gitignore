@@ -2,3 +2,4 @@
 .Rhistory
 .env
 __pycache__/
+venv/

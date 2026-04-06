@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Tonnetz — Music Theory Games{% endblock %}
+{% block title %}Tonnetz — Explore Harmony{% endblock %}
 
 {% block head %}
 <style>
@@ -7,7 +7,7 @@
     .hero {
         position: relative;
         overflow: hidden;
-        padding: 72px 40px 64px;
+        padding: 72px 40px 48px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -21,6 +21,7 @@
         left: 50%;
         transform: translate(-50%, -50%);
         pointer-events: none;
+        opacity: 0.35;
     }
 
     .lattice-grid line {
@@ -42,21 +43,9 @@
         stroke-linecap: round;
     }
 
-    .node-amber {
-        fill: #f59e0b;
-    }
-
-    .node-sky {
-        fill: #38bdf8;
-    }
-
-    .node-green {
-        fill: #4ade80;
-    }
-
-    .hero-lattice {
-        opacity: 0.35;
-    }
+    .node-amber { fill: #f59e0b; }
+    .node-sky   { fill: #38bdf8; }
+    .node-green { fill: #4ade80; }
 
     .hero-lattice .triad-fill,
     .hero-lattice .triad-edge,
@@ -76,8 +65,8 @@
     }
 
     .wordmark,
-    .hero-sub,
-    .hero-tagline {
+    .hero-tagline,
+    .hero-subtitle {
         position: relative;
         z-index: 2;
     }
@@ -91,178 +80,240 @@
         line-height: 1;
     }
 
-    .hero-sub {
-        font-family: var(--font-main);
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        color: var(--accent);
-        margin-top: 10px;
-    }
-
     .hero-tagline {
-        font-size: 16px;
-        color: var(--text-secondary);
+        font-family: var(--font-main);
+        font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+        font-weight: 800;
+        color: var(--accent);
         margin-top: 16px;
+        letter-spacing: -0.01em;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin-top: 14px;
         font-weight: 600;
-        max-width: 420px;
+        max-width: 520px;
+        line-height: 1.55;
     }
 
-    [data-theme="dark"] .hero-lattice {
-        opacity: 0.40;
+    [data-theme="dark"] .hero-lattice { opacity: 0.40; }
+    [data-theme="dark"] .lattice-grid line { stroke: #7c75ff; }
+    [data-theme="dark"] .lattice-nodes circle { fill: #7c75ff; }
+    [data-theme="dark"] .triad-fill { fill: rgba(124, 117, 255, 0.25); }
+    [data-theme="dark"] .triad-edge { stroke: #7c75ff; }
+    [data-theme="dark"] .triad-node { filter: drop-shadow(0 0 6px currentColor); }
+
+    /* ── Song Prompts Carousel ── */
+    .prompts-section {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 0;
     }
 
-    [data-theme="dark"] .lattice-grid line {
-        stroke: #7c75ff;
+    .prompts-carousel {
+        position: relative;
+        min-height: 130px;
     }
 
-    [data-theme="dark"] .lattice-nodes circle {
-        fill: #7c75ff;
+    .prompt-card {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 8px;
     }
 
-    [data-theme="dark"] .triad-fill {
-        fill: rgba(124, 117, 255, 0.25);
+    .prompt-card.active {
+        opacity: 1;
+        visibility: visible;
     }
 
-    [data-theme="dark"] .triad-edge {
-        stroke: #7c75ff;
+    .prompt-card__question {
+        font-family: var(--font-main);
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1.3;
     }
 
-    [data-theme="dark"] .triad-node {
-        filter: drop-shadow(0 0 6px currentColor);
+    .prompt-card__answer {
+        font-size: 0.92rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        max-width: 480px;
+        font-weight: 600;
     }
 
-    /* ── Start Here ── */
-    .start-here-section {
-        max-width: 1100px;
+    .prompt-card__cta {
+        font-family: var(--font-main);
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--accent);
+        text-decoration: none;
+        margin-top: 2px;
+    }
+
+    .prompt-card__cta:hover {
+        text-decoration: underline;
+    }
+
+    .prompts-dots {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 18px;
+    }
+
+    .prompts-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: none;
+        background: var(--border);
+        cursor: pointer;
+        padding: 0;
+        transition: background 0.25s, transform 0.25s;
+    }
+
+    .prompts-dot.active {
+        background: var(--accent);
+        transform: scale(1.3);
+    }
+
+    /* ── Explorer Preview ── */
+    .explorer-section {
+        max-width: 900px;
         margin: 0 auto;
         padding: 2.5rem 1.5rem 0;
     }
 
-    .start-here-card {
+    .explorer-preview {
         display: block;
-        position: relative;
-        overflow: hidden;
-        border-radius: 18px;
-        border: 1.5px solid transparent;
-        background:
-            linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
-            linear-gradient(135deg, #f59e0b 0%, #a78bfa 50%, #38bdf8 100%) border-box;
         text-decoration: none;
         color: inherit;
-        transition: transform 0.2s, box-shadow 0.2s;
+        border-radius: 18px;
+        border: 1.5px solid var(--border);
+        background: var(--bg-card);
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
     }
 
-    .start-here-card:hover {
+    .explorer-preview:hover {
         transform: translateY(-3px);
         box-shadow: 0 16px 40px rgba(108, 99, 255, 0.15);
+        border-color: var(--accent);
         text-decoration: none;
     }
 
-    [data-theme="dark"] .start-here-card:hover {
+    [data-theme="dark"] .explorer-preview:hover {
         box-shadow: 0 16px 40px rgba(108, 99, 255, 0.3);
     }
 
-    .start-here-card__glow {
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(ellipse 70% 60% at 20% 50%,
-            rgba(108, 99, 255, 0.06) 0%, transparent 70%);
-        pointer-events: none;
-    }
-
-    .start-here-card__inner {
-        position: relative;
-        z-index: 1;
+    .explorer-preview__header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 2rem;
-        padding: 2rem 2.5rem;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
     }
 
-    .start-here-card__left {
-        flex: 1;
-        min-width: 0;
+    .explorer-preview__label {
+        font-family: var(--font-main);
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--accent);
     }
 
-    .start-here-card__eyebrow {
+    .explorer-preview__chord {
+        font-family: var(--font-main);
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    .explorer-preview__cta {
+        font-family: var(--font-main);
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--accent);
+    }
+
+    .explorer-preview__panels {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0;
+    }
+
+    .explorer-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem 1rem;
+        border-right: 1px solid var(--border);
+    }
+
+    .explorer-panel:last-child {
+        border-right: none;
+    }
+
+    .explorer-panel__title {
         font-family: var(--font-main);
         font-size: 0.65rem;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: var(--accent);
-        margin-bottom: 0.3rem;
-    }
-
-    .start-here-card__title {
-        font-family: var(--font-main);
-        font-size: clamp(1.5rem, 3vw, 2rem);
-        font-weight: 900;
-        color: var(--text-primary);
-        margin: 0 0 0.4rem;
-        line-height: 1.1;
-    }
-
-    .start-here-card__tagline {
-        font-size: 0.95rem;
+        letter-spacing: 0.12em;
         color: var(--text-secondary);
-        line-height: 1.5;
-        margin-bottom: 1rem;
-        max-width: 380px;
-        font-weight: 600;
+        margin-bottom: 0.75rem;
     }
 
-    .start-here-card__cta {
-        font-family: var(--font-main);
-        font-size: 0.9rem;
-        font-weight: 800;
-        color: var(--accent);
+    .explorer-panel svg {
+        display: block;
     }
 
-    .start-here-card__chapters {
-        display: flex;
-        flex-direction: column;
-        gap: 0.4rem;
-        flex-shrink: 0;
-    }
+    /* Tonnetz mini-grid colors */
+    .tn-line { stroke: var(--border); stroke-width: 1; }
+    .tn-node { fill: var(--text-secondary); opacity: 0.4; }
+    .tn-node-label { font-size: 9px; font-weight: 800; fill: var(--text-secondary); text-anchor: middle; dominant-baseline: central; font-family: var(--font-main); }
+    .tn-active { fill: var(--accent); opacity: 1; }
+    .tn-active-label { fill: #fff; }
+    .tn-tri-fill { fill: var(--accent); opacity: 0.12; }
+    .tn-tri-edge { stroke: var(--accent); stroke-width: 2; fill: none; stroke-linecap: round; }
 
-    .start-here-chapter-pill {
-        font-family: var(--font-main);
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: 0.3rem 0.85rem;
-        border-radius: 20px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border);
-        color: var(--text-secondary);
-        white-space: nowrap;
-        text-align: center;
-    }
+    [data-theme="dark"] .tn-tri-fill { opacity: 0.2; }
 
-    @media (max-width: 600px) {
-        .start-here-card__inner {
-            flex-direction: column;
-            align-items: flex-start;
-            padding: 1.5rem;
-            gap: 1rem;
-        }
-        .start-here-card__chapters {
-            flex-direction: row;
-            flex-wrap: wrap;
-        }
-    }
+    /* Chord wheel colors */
+    .cw-ring { fill: none; stroke: var(--border); stroke-width: 1; }
+    .cw-dot { fill: var(--text-secondary); opacity: 0.35; }
+    .cw-dot-active { fill: var(--accent); opacity: 1; }
+    .cw-label { font-size: 8px; font-weight: 800; fill: var(--text-secondary); text-anchor: middle; dominant-baseline: central; font-family: var(--font-main); }
+    .cw-label-active { fill: var(--accent); }
+    .cw-arc { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0.35; }
 
-    /* ── Games Section ── */
-    .games-section {
+    /* Keyboard colors */
+    .kb-white { fill: #f8f7f4; stroke: var(--border); stroke-width: 0.75; }
+    .kb-black { fill: #1a1a2e; }
+    .kb-active { fill: var(--accent); }
+    [data-theme="dark"] .kb-white { fill: #2a2847; stroke: #3a3860; }
+    [data-theme="dark"] .kb-black { fill: #0f0e1a; }
+
+    /* ── Category Grid ── */
+    .categories-section {
         max-width: 1100px;
         margin: 0 auto;
-        padding: 3rem 1.5rem 2rem;
+        padding: 3rem 1.5rem 1rem;
     }
 
-    .games-section__heading {
+    .categories-heading {
         font-family: var(--font-main);
         font-size: 1.75rem;
         font-weight: 800;
@@ -270,113 +321,58 @@
         margin-bottom: 0.35rem;
     }
 
-    .games-section__sub {
+    .categories-sub {
         font-size: 1rem;
         color: var(--text-secondary);
         margin-bottom: 2rem;
         font-weight: 600;
     }
 
-    .games-grid {
+    .categories-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        grid-template-columns: 1fr 1fr;
         gap: 1.25rem;
     }
 
-    /* ── Card accent colors via data-game ── */
-    .game-card[data-game="harmony"] {
-        --card-accent: #f59e0b;
-    }
-
-    .game-card[data-game="melody"] {
-        --card-accent: #38bdf8;
-    }
-
-    .game-card[data-game="chords"] {
-        --card-accent: #a78bfa;
-    }
-
-    .game-card[data-game="rhythm"] {
-        --card-accent: #f87171;
-    }
-
-    .game-card[data-game="strumming"] {
-        --card-accent: #4ade80;
-    }
-
-    .game-card[data-game="swing"] {
-        --card-accent: #fb923c;
-    }
-
-    .game-card[data-game="relative"] {
-        --card-accent: #2dd4bf;
-    }
-
-    .game-card[data-game="scales"] {
-        --card-accent: #10b981;
-    }
-
-    .game-card {
+    .category-card {
         position: relative;
         overflow: hidden;
-        display: block;
-        background: var(--bg-card);
-        border: 1px solid var(--border);
         border-radius: 14px;
-        padding: 1.5rem 1.5rem 1.25rem;
-        text-decoration: none;
-        color: inherit;
-        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        padding: 1.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
 
-    .game-card::before {
+    .category-card::before {
         content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
+        top: 0; left: 0; right: 0;
         height: 4px;
-        background: var(--card-accent);
+        background: var(--cat-accent);
     }
 
-    .game-card:hover {
-        transform: translateY(-4px);
+    .category-card:hover {
+        transform: translateY(-3px);
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
-        border-color: var(--card-accent);
-        text-decoration: none;
     }
 
-    [data-theme="dark"] .game-card:hover {
+    [data-theme="dark"] .category-card:hover {
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
     }
 
-    .game-card__icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        background: color-mix(in srgb, var(--card-accent) 14%, transparent);
+    .category-card__icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--cat-accent) 14%, transparent);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.4rem;
-        margin-bottom: 0.85rem;
+        margin-bottom: 0.75rem;
     }
 
-    .game-card__tag {
-        display: inline-block;
-        font-family: var(--font-main);
-        font-size: 0.65rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        padding: 2px 8px;
-        border-radius: 4px;
-        background: color-mix(in srgb, var(--card-accent) 14%, transparent);
-        color: var(--card-accent);
-        margin-bottom: 0.5rem;
-    }
-
-    .game-card__title {
+    .category-card__name {
         font-family: var(--font-main);
         font-size: 1.15rem;
         font-weight: 800;
@@ -384,196 +380,90 @@
         margin-bottom: 0.3rem;
     }
 
-    .game-card__desc {
-        font-size: 0.9rem;
+    .category-card__desc {
+        font-size: 0.88rem;
         color: var(--text-secondary);
-        line-height: 1.45;
+        line-height: 1.5;
+        margin-bottom: 1rem;
     }
 
-    /* ── Skratch Studio Feature ── */
-    .studio-feature {
+    .category-card__pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .cat-pill {
+        display: inline-block;
+        font-family: var(--font-main);
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.25rem 0.7rem;
+        border-radius: 20px;
+        background: color-mix(in srgb, var(--cat-accent) 12%, transparent);
+        color: var(--cat-accent);
+        text-decoration: none;
+        transition: background 0.15s, transform 0.15s;
+        white-space: nowrap;
+    }
+
+    .cat-pill:hover {
+        background: color-mix(in srgb, var(--cat-accent) 24%, transparent);
+        transform: translateY(-1px);
+        text-decoration: none;
+    }
+
+    /* ── Fundamentals ── */
+    .fundamentals-section {
         max-width: 1100px;
         margin: 0 auto;
-        padding: 1rem 1.5rem 3.5rem;
+        padding: 2rem 1.5rem 3.5rem;
+        text-align: center;
     }
 
-    .studio-banner {
-        position: relative;
-        overflow: hidden;
-        border-radius: 16px;
-        background: linear-gradient(135deg, #7c3aed 0%, #6366f1 40%, #3b82f6 100%);
-        padding: 3rem;
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 2rem;
-        align-items: center;
-        color: #fff;
-    }
-
-    .studio-banner::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image:
-            linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-        background-size: 28px 28px;
-        pointer-events: none;
-    }
-
-    .studio-banner::after {
-        content: '';
-        position: absolute;
-        top: -60px;
-        right: -60px;
-        width: 220px;
-        height: 220px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.07);
-        pointer-events: none;
-    }
-
-    .studio-content {
-        position: relative;
-        z-index: 1;
-    }
-
-    .studio-label {
-        font-family: var(--font-main);
-        font-size: 0.7rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.15em;
-        opacity: 0.7;
-        margin-bottom: 0.4rem;
-    }
-
-    .studio-title {
-        font-family: var(--font-main);
-        font-size: 1.75rem;
-        font-weight: 800;
-        margin-bottom: 0.65rem;
-        line-height: 1.2;
-    }
-
-    .studio-desc {
+    .fundamentals-line {
         font-size: 0.95rem;
-        line-height: 1.55;
-        opacity: 0.85;
-        max-width: 420px;
-        margin-bottom: 1.5rem;
+        color: var(--text-secondary);
+        font-weight: 600;
+        line-height: 1.5;
     }
 
-    .studio-cta {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: #fff;
-        color: #7c3aed;
-        font-family: var(--font-main);
+    .fundamentals-line a {
+        color: var(--accent);
         font-weight: 800;
-        font-size: 1rem;
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        border: none;
-        cursor: pointer;
-        text-decoration: none;
-        transition: transform 0.15s, box-shadow 0.15s;
-    }
-
-    .studio-cta:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
         text-decoration: none;
     }
 
-    .studio-cta svg {
-        width: 18px;
-        height: 18px;
-        fill: #7c3aed;
-    }
-
-    /* ── Decorative blocks ── */
-    .studio-blocks {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        grid-template-columns: repeat(3, 48px);
-        gap: 10px;
-        transform: rotate(-6deg);
-        justify-self: center;
-    }
-
-    .studio-blocks__block {
-        width: 48px;
-        height: 48px;
-        border-radius: 10px;
-        opacity: 0.8;
-    }
-
-    .studio-blocks__block:nth-child(1) {
-        background: #f59e0b;
-    }
-
-    .studio-blocks__block:nth-child(2) {
-        background: #38bdf8;
-    }
-
-    .studio-blocks__block:nth-child(3) {
-        background: #a78bfa;
-    }
-
-    .studio-blocks__block:nth-child(4) {
-        background: #f87171;
-    }
-
-    .studio-blocks__block:nth-child(5) {
-        background: #fff;
-        opacity: 0.25;
-    }
-
-    .studio-blocks__block:nth-child(6) {
-        background: #4ade80;
-    }
-
-    .studio-blocks__block:nth-child(7) {
-        background: #2dd4bf;
-    }
-
-    .studio-blocks__block:nth-child(8) {
-        background: #a78bfa;
-        opacity: 0.4;
-    }
-
-    .studio-blocks__block:nth-child(9) {
-        background: #f59e0b;
-        opacity: 0.5;
+    .fundamentals-line a:hover {
+        text-decoration: underline;
     }
 
     /* ── Responsive ── */
     @media (max-width: 700px) {
-        .games-grid {
+        .hero {
+            padding: 56px 24px 40px;
+        }
+
+        .explorer-preview__panels {
             grid-template-columns: 1fr;
         }
 
-        .studio-banner {
+        .explorer-panel {
+            border-right: none;
+            border-bottom: 1px solid var(--border);
+            padding: 1.25rem 1rem;
+        }
+
+        .explorer-panel:last-child {
+            border-bottom: none;
+        }
+
+        .categories-grid {
             grid-template-columns: 1fr;
-            text-align: center;
-            padding: 2rem 1.5rem;
         }
 
-        .studio-desc {
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .studio-cta {
-            justify-content: center;
-        }
-
-        .studio-blocks {
-            justify-self: center;
-            margin-top: 0.5rem;
+        .prompt-card__question {
+            font-size: 1.05rem;
         }
     }
 </style>
@@ -582,86 +472,49 @@
 {% block scripts %}
 <script type="module">
     import { showOnboardingIfNeeded } from '/static/shared/onboarding.js';
-    import { getProfile, getIntroProgress } from '/static/shared/user-profile.js';
-
     showOnboardingIfNeeded();
 
-    const CHAPTER_TITLES = {
-        1: 'Sound & Notes',
-        2: 'Scales & Keys',
-        3: 'Chords & Harmony',
-        4: 'Meet the Tonnetz',
-        5: 'Transforms',
-    };
+    // ── Song Prompts Carousel ──
+    const cards = document.querySelectorAll('.prompt-card');
+    const dots = document.querySelectorAll('.prompts-dot');
+    let current = 0;
+    let timer = null;
 
-    const profile = getProfile();
-    if (profile) {
-        const progress = getIntroProgress();
-        const chapters = progress?.chapters ?? {};
-
-        // First chapter not yet marked complete = resume target
-        let resumeChapter = null;
-        for (let n = 1; n <= 5; n++) {
-            if (!chapters[n]?.completed) { resumeChapter = n; break; }
-        }
-
-        const hasStarted = progress.lastChapter !== null;
-        const allComplete = resumeChapter === null;
-
-        const card = document.querySelector('.start-here-card');
-        if (card && (hasStarted || allComplete)) {
-            const eyebrow = card.querySelector('.start-here-card__eyebrow');
-            const title   = card.querySelector('.start-here-card__title');
-            const tagline = card.querySelector('.start-here-card__tagline');
-            const cta     = card.querySelector('.start-here-card__cta');
-
-            const secondaryLinkStyle =
-                'display:block; margin-top:0.5rem; font-size:0.8rem; font-weight:700;' +
-                ' color:var(--text-secondary); cursor:pointer; text-decoration:underline;';
-
-            function makeSecondaryLink(text, href) {
-                const el = document.createElement('span');
-                el.style.cssText = secondaryLinkStyle;
-                el.textContent = text;
-                el.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    window.location.href = href;
-                });
-                return el;
-            }
-
-            if (allComplete) {
-                card.href = '/explorer';
-                eyebrow.textContent = 'Course complete';
-                title.textContent   = 'Explore Everything';
-                tagline.textContent = "You've finished the intro — dive into the tools";
-                cta.textContent     = 'Open Explorer →';
-                cta.after(makeSecondaryLink('Review chapters', '/intro'));
-            } else {
-                card.href = '/intro/' + resumeChapter;
-                eyebrow.textContent = 'Welcome back';
-                title.textContent   = `Continue: Chapter ${resumeChapter} — ${CHAPTER_TITLES[resumeChapter]}`;
-                tagline.textContent = 'Pick up where you left off';
-                cta.textContent     = 'Continue →';
-                cta.after(makeSecondaryLink('View all chapters', '/intro'));
-            }
-        }
+    function showCard(index) {
+        cards.forEach((c, i) => c.classList.toggle('active', i === index));
+        dots.forEach((d, i) => d.classList.toggle('active', i === index));
+        current = index;
     }
+
+    function advance() {
+        showCard((current + 1) % cards.length);
+    }
+
+    function startTimer() {
+        stopTimer();
+        timer = setInterval(advance, 6000);
+    }
+
+    function stopTimer() {
+        if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    dots.forEach((dot, i) => {
+        dot.addEventListener('click', () => { showCard(i); startTimer(); });
+    });
+
+    const carousel = document.querySelector('.prompts-carousel');
+    if (carousel) {
+        carousel.addEventListener('mouseenter', stopTimer);
+        carousel.addEventListener('mouseleave', startTimer);
+    }
+
+    showCard(0);
+    startTimer();
 </script>
 {% endblock %}
 
 {% block content %}
-<script>
-// First-visit redirect to showcase
-(function() {
-  const hasVisited = localStorage.getItem('tonnetz_has_visited');
-  if (!hasVisited) {
-    localStorage.setItem('tonnetz_has_visited', 'true');
-    window.location.href = '/showcase';
-  }
-})();
-</script>
 <main>
     <!-- ===== Hero ===== -->
     <section class="hero">
@@ -732,273 +585,302 @@
             </svg>
         </div>
         <div class="wordmark">tonnetz</div>
-        <div class="hero-sub">Music Theory Games</div>
-        <div class="hero-tagline">Train your ear. Explore harmony. Learn through play.</div>
+        <div class="hero-tagline">Harmony has a shape. Explore it.</div>
+        <p class="hero-subtitle">
+            Great musicians navigate harmony by instinct. The Tonnetz is the map of that territory —
+            a spatial way to see how chords, keys, and scales connect. Build the intuition faster.
+        </p>
     </section>
 
-    <!-- ===== Start Here ===== -->
-    <section class="start-here-section">
-      <a href="/intro" class="start-here-card">
-        <div class="start-here-card__glow" aria-hidden="true"></div>
-        <div class="start-here-card__inner">
-          <div class="start-here-card__left">
-            <div class="start-here-card__eyebrow">New here?</div>
-            <h2 class="start-here-card__title">Start Here</h2>
-            <p class="start-here-card__tagline">
-              An interactive guide from sound to the Tonnetz — 5 chapters, no prior theory needed.
-            </p>
-            <span class="start-here-card__cta">Begin the course →</span>
-          </div>
-          <div class="start-here-card__chapters" aria-hidden="true">
-            <span class="start-here-chapter-pill" style="--delay:0s">Sound</span>
-            <span class="start-here-chapter-pill" style="--delay:0.05s">Scales</span>
-            <span class="start-here-chapter-pill" style="--delay:0.1s">Chords</span>
-            <span class="start-here-chapter-pill" style="--delay:0.15s">Tonnetz</span>
-            <span class="start-here-chapter-pill" style="--delay:0.2s">Transforms</span>
-          </div>
+    <!-- ===== Rotating Song Prompts ===== -->
+    <section class="prompts-section">
+        <div class="prompts-carousel">
+            <div class="prompt-card active">
+                <div class="prompt-card__question">"Why does Am feel so close to C major?"</div>
+                <div class="prompt-card__answer">They share two notes — only one changes. The Beatles exploit this in Eleanor Rigby with a single-note shift that transforms the whole mood.</div>
+                <a href="/explorer" class="prompt-card__cta">See it on the Tonnetz →</a>
+            </div>
+            <div class="prompt-card">
+                <div class="prompt-card__question">"What makes the Creep progression hit so hard?"</div>
+                <div class="prompt-card__answer">Radiohead leaps from G to B — roots a major third apart. The distance creates that gut-punch feeling.</div>
+                <a href="/explorer" class="prompt-card__cta">Explore the L transform →</a>
+            </div>
+            <div class="prompt-card">
+                <div class="prompt-card__question">"How does a ii–V–I actually move?"</div>
+                <div class="prompt-card__answer">The strongest pull in jazz. Autumn Leaves and Fly Me to the Moon both ride this path — each chord resolves into the next like gravity.</div>
+                <a href="/explorer" class="prompt-card__cta">Trace the path →</a>
+            </div>
+            <div class="prompt-card">
+                <div class="prompt-card__question">"Why does Mixolydian sound bluesy?"</div>
+                <div class="prompt-card__answer">One flatted note changes everything. Norwegian Wood and Get Lucky both live in Mixolydian — major key feel with a bluesy edge.</div>
+                <a href="/theory/modes" class="prompt-card__cta">Explore modes →</a>
+            </div>
+            <div class="prompt-card">
+                <div class="prompt-card__question">"How does Stairway to Heaven shift mood?"</div>
+                <div class="prompt-card__answer">Led Zeppelin toggles between major and minor with a single note — the P transform. Bright to dark and back, in one move.</div>
+                <a href="/explorer" class="prompt-card__cta">See the P transform →</a>
+            </div>
+            <div class="prompt-card">
+                <div class="prompt-card__question">"What's a deceptive cadence?"</div>
+                <div class="prompt-card__answer">Your ear expects resolution but gets a surprise. In My Life does this — V goes to vi instead of I. Surprise without chaos.</div>
+                <a href="/theory/chord-progressions" class="prompt-card__cta">Hear the resolution →</a>
+            </div>
+            <div class="prompt-card">
+                <div class="prompt-card__question">"Why do I–IV–V songs all feel related?"</div>
+                <div class="prompt-card__answer">They're neighbors on the circle of fifths. Johnny B. Goode and every twelve-bar blues share this same three-chord backbone.</div>
+                <a href="/theory/circle-of-fifths" class="prompt-card__cta">See them connected →</a>
+            </div>
+            <div class="prompt-card">
+                <div class="prompt-card__question">"How does Yesterday's bass line create emotion?"</div>
+                <div class="prompt-card__answer">McCartney's descending chromatic line pulls you down note by note — voice leading that makes the harmony ache.</div>
+                <a href="/explorer" class="prompt-card__cta">Trace the voice leading →</a>
+            </div>
         </div>
-      </a>
+        <div class="prompts-dots">
+            <button class="prompts-dot active" aria-label="Prompt 1"></button>
+            <button class="prompts-dot" aria-label="Prompt 2"></button>
+            <button class="prompts-dot" aria-label="Prompt 3"></button>
+            <button class="prompts-dot" aria-label="Prompt 4"></button>
+            <button class="prompts-dot" aria-label="Prompt 5"></button>
+            <button class="prompts-dot" aria-label="Prompt 6"></button>
+            <button class="prompts-dot" aria-label="Prompt 7"></button>
+            <button class="prompts-dot" aria-label="Prompt 8"></button>
+        </div>
     </section>
 
-    <!-- ===== Tonnetz Explorer ===== -->
-    <section class="games-section">
-        <h2 class="games-section__heading">Explore</h2>
-        <p class="games-section__sub">A synchronized playground — click any panel to update all the others.</p>
-        <div class="games-grid">
-            <a href="/explorer" class="game-card" data-game="explorer" style="border-color: var(--accent); background: var(--accent-soft);">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
+    <!-- ===== Explorer Preview ===== -->
+    <section class="explorer-section">
+        <a href="/explorer" class="explorer-preview">
+            <div class="explorer-preview__header">
+                <span class="explorer-preview__label">Tonnetz Explorer</span>
+                <span class="explorer-preview__chord">C major</span>
+                <span class="explorer-preview__cta">Open Explorer →</span>
+            </div>
+            <div class="explorer-preview__panels">
+                <!-- Tonnetz Grid -->
+                <div class="explorer-panel">
+                    <div class="explorer-panel__title">Tonnetz Grid</div>
+                    <svg width="200" height="120" viewBox="0 0 200 120" aria-hidden="true">
+                        <!-- Grid lines -->
+                        <line class="tn-line" x1="0" y1="55" x2="200" y2="55" />
+                        <line class="tn-line" x1="0" y1="95" x2="200" y2="95" />
+                        <line class="tn-line" x1="0" y1="15" x2="200" y2="15" />
+                        <!-- Diagonals -->
+                        <line class="tn-line" x1="10" y1="15" x2="50" y2="95" />
+                        <line class="tn-line" x1="50" y1="15" x2="90" y2="95" />
+                        <line class="tn-line" x1="90" y1="15" x2="130" y2="95" />
+                        <line class="tn-line" x1="130" y1="15" x2="170" y2="95" />
+                        <line class="tn-line" x1="170" y1="15" x2="200" y2="75" />
+                        <line class="tn-line" x1="50" y1="15" x2="10" y2="95" />
+                        <line class="tn-line" x1="90" y1="15" x2="50" y2="95" />
+                        <line class="tn-line" x1="130" y1="15" x2="90" y2="95" />
+                        <line class="tn-line" x1="170" y1="15" x2="130" y2="95" />
+                        <line class="tn-line" x1="200" y1="35" x2="170" y2="95" />
+                        <!-- C major triangle fill -->
+                        <polygon class="tn-tri-fill" points="30,55 70,55 50,15" />
+                        <polyline class="tn-tri-edge" points="30,55 70,55 50,15 30,55" />
+                        <!-- Inactive nodes -->
+                        <circle class="tn-node" cx="10" cy="15" r="5" />
+                        <circle class="tn-node" cx="90" cy="15" r="5" />
+                        <circle class="tn-node" cx="130" cy="15" r="5" />
+                        <circle class="tn-node" cx="170" cy="15" r="5" />
+                        <circle class="tn-node" cx="110" cy="55" r="5" />
+                        <circle class="tn-node" cx="150" cy="55" r="5" />
+                        <circle class="tn-node" cx="190" cy="55" r="5" />
+                        <circle class="tn-node" cx="10" cy="95" r="5" />
+                        <circle class="tn-node" cx="50" cy="95" r="5" />
+                        <circle class="tn-node" cx="90" cy="95" r="5" />
+                        <circle class="tn-node" cx="130" cy="95" r="5" />
+                        <circle class="tn-node" cx="170" cy="95" r="5" />
+                        <!-- Row 2 offset nodes -->
+                        <circle class="tn-node" cx="30" cy="55" r="5" />
+                        <circle class="tn-node" cx="70" cy="55" r="5" />
+                        <!-- Active nodes (C, E, G) -->
+                        <circle class="tn-active" cx="50" cy="15" r="8" />
+                        <text class="tn-node-label tn-active-label" x="50" y="15">E</text>
+                        <circle class="tn-active" cx="30" cy="55" r="8" />
+                        <text class="tn-node-label tn-active-label" x="30" y="55">C</text>
+                        <circle class="tn-active" cx="70" cy="55" r="8" />
+                        <text class="tn-node-label tn-active-label" x="70" y="55">G</text>
+                        <!-- Inactive labels -->
+                        <text class="tn-node-label" x="10" y="15">A</text>
+                        <text class="tn-node-label" x="90" y="15">B</text>
+                        <text class="tn-node-label" x="130" y="15">F♯</text>
+                        <text class="tn-node-label" x="170" y="15">C♯</text>
+                        <text class="tn-node-label" x="110" y="55">D</text>
+                        <text class="tn-node-label" x="150" y="55">A</text>
+                        <text class="tn-node-label" x="190" y="55">E</text>
+                        <text class="tn-node-label" x="10" y="95">A♭</text>
+                        <text class="tn-node-label" x="50" y="95">E♭</text>
+                        <text class="tn-node-label" x="90" y="95">B♭</text>
+                        <text class="tn-node-label" x="130" y="95">F</text>
+                        <text class="tn-node-label" x="170" y="95">C</text>
+                    </svg>
+                </div>
+
+                <!-- Chord Wheel -->
+                <div class="explorer-panel">
+                    <div class="explorer-panel__title">Chord Wheel</div>
+                    <svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
+                        <circle class="cw-ring" cx="60" cy="60" r="45" />
+                        <circle class="cw-ring" cx="60" cy="60" r="30" />
+                        <!-- Diatonic arc (F–C–G–D) -->
+                        <path class="cw-arc" d="M 37.5 21 A 45 45 0 0 1 99 37.5" />
+                        <!-- Note dots outer ring (major) -->
+                        <circle class="cw-dot-active" cx="60" cy="15" r="5" />
+                        <circle class="cw-dot" cx="82.5" cy="21" r="3.5" />
+                        <circle class="cw-dot" cx="99" cy="37.5" r="3.5" />
+                        <circle class="cw-dot" cx="105" cy="60" r="3.5" />
+                        <circle class="cw-dot" cx="99" cy="82.5" r="3.5" />
+                        <circle class="cw-dot" cx="82.5" cy="99" r="3.5" />
+                        <circle class="cw-dot" cx="60" cy="105" r="3.5" />
+                        <circle class="cw-dot" cx="37.5" cy="99" r="3.5" />
+                        <circle class="cw-dot" cx="21" cy="82.5" r="3.5" />
+                        <circle class="cw-dot" cx="15" cy="60" r="3.5" />
+                        <circle class="cw-dot" cx="21" cy="37.5" r="3.5" />
+                        <circle class="cw-dot" cx="37.5" cy="21" r="3.5" />
+                        <!-- Labels -->
+                        <text class="cw-label cw-label-active" x="60" y="8" style="font-size:10px">C</text>
+                        <text class="cw-label" x="88" y="17">G</text>
+                        <text class="cw-label" x="106" y="39">D</text>
+                        <text class="cw-label" x="113" y="62">A</text>
+                        <text class="cw-label" x="106" y="86">E</text>
+                        <text class="cw-label" x="88" y="107">B</text>
+                        <text class="cw-label" x="60" y="115">F♯</text>
+                        <text class="cw-label" x="32" y="107">D♭</text>
+                        <text class="cw-label" x="12" y="86">A♭</text>
+                        <text class="cw-label" x="6" y="62">E♭</text>
+                        <text class="cw-label" x="12" y="39">B♭</text>
+                        <text class="cw-label" x="32" y="17">F</text>
+                        <!-- Inner ring dots (minor) -->
+                        <circle class="cw-dot" cx="60" cy="30" r="2.5" />
+                        <circle class="cw-dot" cx="75" cy="33" r="2.5" />
+                        <circle class="cw-dot" cx="86" cy="45" r="2.5" />
+                        <circle class="cw-dot" cx="90" cy="60" r="2.5" />
+                        <circle class="cw-dot" cx="86" cy="75" r="2.5" />
+                        <circle class="cw-dot" cx="75" cy="86" r="2.5" />
+                        <circle class="cw-dot" cx="60" cy="90" r="2.5" />
+                        <circle class="cw-dot" cx="45" cy="86" r="2.5" />
+                        <circle class="cw-dot" cx="34" cy="75" r="2.5" />
+                        <circle class="cw-dot" cx="30" cy="60" r="2.5" />
+                        <circle class="cw-dot" cx="34" cy="45" r="2.5" />
+                        <circle class="cw-dot" cx="45" cy="33" r="2.5" />
+                    </svg>
+                </div>
+
+                <!-- Keyboard -->
+                <div class="explorer-panel">
+                    <div class="explorer-panel__title">Keyboard</div>
+                    <svg width="168" height="70" viewBox="0 0 168 70" aria-hidden="true">
+                        <!-- White keys -->
+                        <rect class="kb-white kb-active" x="0"   y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white" x="24"  y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white kb-active" x="48"  y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white" x="72"  y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white kb-active" x="96"  y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white" x="120" y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white" x="144" y="0" width="23" height="68" rx="2" />
+                        <!-- Black keys -->
+                        <rect class="kb-black" x="16"  y="0" width="14" height="42" rx="2" />
+                        <rect class="kb-black" x="42"  y="0" width="14" height="42" rx="2" />
+                        <rect class="kb-black" x="88"  y="0" width="14" height="42" rx="2" />
+                        <rect class="kb-black" x="114" y="0" width="14" height="42" rx="2" />
+                        <rect class="kb-black" x="140" y="0" width="14" height="42" rx="2" />
+                        <!-- Key labels -->
+                        <text class="tn-node-label tn-active-label" x="11" y="60" style="font-size:8px">C</text>
+                        <text class="tn-node-label tn-active-label" x="59" y="60" style="font-size:8px">E</text>
+                        <text class="tn-node-label tn-active-label" x="107" y="60" style="font-size:8px">G</text>
+                    </svg>
+                </div>
+            </div>
+        </a>
+    </section>
+
+    <!-- ===== Category Grid ===== -->
+    <section class="categories-section">
+        <h2 class="categories-heading">Become a better musician</h2>
+        <p class="categories-sub">Sharpen your ear, deepen your understanding, build your rhythm — all in one place.</p>
+
+        <div class="categories-grid">
+            <!-- Visualize -->
+            <div class="category-card" style="--cat-accent: #10b981;">
+                <div class="category-card__icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                     </svg>
                 </div>
-                <span class="game-card__tag">Tonnetz · Keyboard · Chord Wheel</span>
-                <h3 class="game-card__title">Tonnetz Explorer</h3>
-                <p class="game-card__desc">Three synchronized views — Tonnetz, chord wheel, and keyboard — linked by harmonic transforms. Click anywhere, hear everything.</p>
-            </a>
-        </div>
-    </section>
+                <h3 class="category-card__name">Visualize</h3>
+                <p class="category-card__desc">See how chords, keys, and scales relate in space. Compare voicings, trace progressions, build intuition.</p>
+                <div class="category-card__pills">
+                    <a href="/explorer" class="cat-pill">Tonnetz Explorer</a>
+                    <a href="/explorer" class="cat-pill">Voicing Explorer</a>
+                </div>
+            </div>
 
-    <!-- ===== Theory Lessons ===== -->
-    <section class="games-section">
-        <h2 class="games-section__heading">Theory Lessons</h2>
-        <p class="games-section__sub">Interactive deep-dives — click through at your own pace.</p>
-
-        <div class="games-grid">
-            <a href="/theory/circle-of-fifths" class="game-card" data-game="relative"
-               style="--card-accent: #a78bfa;">
-                <div class="game-card__icon" aria-hidden="true" style="--card-accent: #a78bfa;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 8v4l3 3"/>
-                        <path d="M8.5 7.5A5 5 0 0 1 17 12"/>
+            <!-- Ear Training -->
+            <div class="category-card" style="--cat-accent: #f87171;">
+                <div class="category-card__icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
                     </svg>
                 </div>
-                <span class="game-card__tag" style="--card-accent: #a78bfa;">A1 · Interactive</span>
-                <h3 class="game-card__title">Circle of Fifths</h3>
-                <p class="game-card__desc">Navigate the web of key relationships and see how all 12 keys connect.</p>
-            </a>
-
-            <a href="/theory/tonal-centers" class="game-card"
-               style="--card-accent: #38bdf8;">
-                <div class="game-card__icon" aria-hidden="true" style="--card-accent: #38bdf8;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
-                    </svg>
+                <h3 class="category-card__name">Ear Training</h3>
+                <p class="category-card__desc">Recognize intervals, identify chord qualities, match melodies, internalize swing feel.</p>
+                <div class="category-card__pills">
+                    <a href="/harmony" class="cat-pill">Harmony Trainer</a>
+                    <a href="/chord-identification" class="cat-pill">Chord Spotter</a>
+                    <a href="/melody" class="cat-pill">Melody Match</a>
+                    <a href="/games/swing-trainer" class="cat-pill">Swing Trainer</a>
                 </div>
-                <span class="game-card__tag" style="--card-accent: #38bdf8;">A2 · Interactive</span>
-                <h3 class="game-card__title">Tonal Centers & Keys</h3>
-                <p class="game-card__desc">Major and minor keys, key signatures, and how tonality works in music.</p>
-            </a>
+            </div>
 
-            <a href="/theory/modes" class="game-card"
-               style="--card-accent: #f59e0b;">
-                <div class="game-card__icon" aria-hidden="true" style="--card-accent: #f59e0b;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 18V5l12-2v13"/>
-                        <path d="M9 9l12-2"/>
-                        <circle cx="6" cy="18" r="3"/>
-                        <circle cx="18" cy="16" r="3"/>
-                    </svg>
-                </div>
-                <span class="game-card__tag" style="--card-accent: #f59e0b;">A3 · Interactive</span>
-                <h3 class="game-card__title">Modes</h3>
-                <p class="game-card__desc">Seven flavors of the major scale — Dorian, Phrygian, Lydian, and the rest.</p>
-            </a>
-
-            <a href="/theory/chord-progressions" class="game-card"
-               style="--card-accent: #4ade80;">
-                <div class="game-card__icon" aria-hidden="true" style="--card-accent: #4ade80;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="17 1 21 5 17 9"/>
-                        <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-                        <polyline points="7 23 3 19 7 15"/>
-                        <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-                    </svg>
-                </div>
-                <span class="game-card__tag" style="--card-accent: #4ade80;">A4 · Interactive</span>
-                <h3 class="game-card__title">Chord Progressions</h3>
-                <p class="game-card__desc">I–IV–V and beyond — how chords move and why progressions feel the way they do.</p>
-            </a>
-        </div>
-    </section>
-
-    <!-- ===== Practice Games ===== -->
-    <section class="games-section">
-        <h2 class="games-section__heading">Practice Games</h2>
-        <p class="games-section__sub">Pick a skill to sharpen — each game adapts to your level.</p>
-
-        <div class="games-grid">
-            <a href="/harmony" class="game-card" data-game="harmony">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
+            <!-- Rhythm & Creation -->
+            <div class="category-card" style="--cat-accent: #f59e0b;">
+                <div class="category-card__icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 18V5l12-2v13" />
                         <circle cx="6" cy="18" r="3" />
                         <circle cx="18" cy="16" r="3" />
                     </svg>
                 </div>
-                <span class="game-card__tag">Intervals</span>
-                <h3 class="game-card__title">Harmony Trainer</h3>
-                <p class="game-card__desc">Sing or play intervals with real-time pitch feedback.</p>
-            </a>
-
-            <a href="/melody" class="game-card" data-game="melody">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                        <line x1="12" y1="19" x2="12" y2="23" />
-                        <line x1="8" y1="23" x2="16" y2="23" />
-                    </svg>
+                <h3 class="category-card__name">Rhythm & Creation</h3>
+                <p class="category-card__desc">Lock in your groove, learn patterns, build something new from scratch.</p>
+                <div class="category-card__pills">
+                    <a href="/rhythm" class="cat-pill">Rhythm Lab</a>
+                    <a href="/strumming" class="cat-pill">Strum Patterns</a>
+                    <a href="/skratch" class="cat-pill">Skratch Studio</a>
                 </div>
-                <span class="game-card__tag">Melodic</span>
-                <h3 class="game-card__title">Melody Match</h3>
-                <p class="game-card__desc">Listen to a short melody and sing it back note by note.</p>
-            </a>
+            </div>
 
-            <a href="/chord-identification" class="game-card" data-game="chords">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                        <path
-                            d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-                    </svg>
-                </div>
-                <span class="game-card__tag">Chords</span>
-                <h3 class="game-card__title">Chord Spotter</h3>
-                <p class="game-card__desc">Listen to a synthesized chord and identify its quality.</p>
-            </a>
-
-            <a href="/rhythm" class="game-card" data-game="rhythm">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                </div>
-                <span class="game-card__tag">Rhythm</span>
-                <h3 class="game-card__title">Rhythm Lab</h3>
-                <p class="game-card__desc">Clap along to the beat with an EKG-style visual metronome.</p>
-            </a>
-
-            <a href="/strumming" class="game-card" data-game="strumming">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m11.99 16.98-3.13 3.13a2.2 2.2 0 0 1-3.12 0l-.87-.87a2.2 2.2 0 0 1 0-3.12l3.13-3.13" />
-                        <path
-                            d="m16.98 11.99 3.13-3.13a2.2 2.2 0 0 0 0-3.12l-.87-.87a2.2 2.2 0 0 0-3.12 0l-3.13 3.13" />
-                        <path d="m7.5 16.5 9-9" />
-                    </svg>
-                </div>
-                <span class="game-card__tag">Guitar</span>
-                <h3 class="game-card__title">Strum Patterns</h3>
-                <p class="game-card__desc">Play along to strumming patterns with a scrolling timeline.</p>
-            </a>
-
-            <a href="/games/swing-trainer" class="game-card" data-game="swing">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 8 16" />
-                        <circle cx="12" cy="4" r="1.5" fill="#fb923c" stroke="none" />
-                    </svg>
-                </div>
-                <span class="game-card__tag">Rhythm</span>
-                <h3 class="game-card__title">Swing Trainer</h3>
-                <p class="game-card__desc">Dial in the feel — train your ear to hear and match jazz swing ratios.</p>
-            </a>
-
-            <a href="/games/relative-key-trainer" class="game-card" data-game="relative">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
+            <!-- Patterns -->
+            <div class="category-card" style="--cat-accent: #38bdf8;">
+                <div class="category-card__icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="17 1 21 5 17 9" />
                         <path d="M3 11V9a4 4 0 0 1 4-4h14" />
                         <polyline points="7 23 3 19 7 15" />
                         <path d="M21 13v2a4 4 0 0 1-4 4H3" />
                     </svg>
                 </div>
-                <span class="game-card__tag">Theory</span>
-                <h3 class="game-card__title">Chord Walks</h3>
-                <p class="game-card__desc">Explore how chords connect through transforms on the Tonnetz — from relative
-                    keys to PLR chains.</p>
-            </a>
-
-            <a href="/games/scale-builder" class="game-card" data-game="scales">
-                <div class="game-card__icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 21h4V11h4v10h4V7h4v14h2" />
-                    </svg>
+                <h3 class="category-card__name">Patterns</h3>
+                <p class="category-card__desc">Understand what's underneath — scales, keys, modes, transforms, progressions.</p>
+                <div class="category-card__pills">
+                    <a href="/games/scale-builder" class="cat-pill">Scale Builder</a>
+                    <a href="/games/relative-key-trainer" class="cat-pill">Chord Walks</a>
+                    <a href="/theory/circle-of-fifths" class="cat-pill">Circle of Fifths</a>
+                    <a href="/theory/modes" class="cat-pill">Modes</a>
+                    <a href="/theory/chord-progressions" class="cat-pill">Progressions</a>
                 </div>
-                <span class="game-card__tag">Scales</span>
-                <h3 class="game-card__title">Scale Builder</h3>
-                <p class="game-card__desc">Build major and minor scales note by note — see them on the grid, hear them come alive.</p>
-            </a>
+            </div>
         </div>
     </section>
 
-    <!-- ===== Skratch Studio ===== -->
-    <section class="studio-feature">
-        <div class="studio-banner">
-            <div class="studio-content">
-                <div class="studio-label">Creative Sandbox</div>
-                <h2 class="studio-title">Skratch Studio</h2>
-                <p class="studio-desc">
-                    Drag-and-drop Blockly blocks to compose melodies, layer loops,
-                    and experiment with harmony — no code required.
-                </p>
-                <a href="/skratch" class="studio-cta">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
-                    Open Studio
-                </a>
-            </div>
-
-            <div class="studio-blocks" aria-hidden="true">
-                <div class="studio-blocks__block"></div>
-                <div class="studio-blocks__block"></div>
-                <div class="studio-blocks__block"></div>
-                <div class="studio-blocks__block"></div>
-                <div class="studio-blocks__block"></div>
-                <div class="studio-blocks__block"></div>
-                <div class="studio-blocks__block"></div>
-                <div class="studio-blocks__block"></div>
-                <div class="studio-blocks__block"></div>
-            </div>
-        </div>
+    <!-- ===== Fundamentals ===== -->
+    <section class="fundamentals-section">
+        <p class="fundamentals-line">
+            Brand new to this? <a href="/intro">Start from the beginning</a> — five interactive chapters, no prior knowledge needed.
+        </p>
     </section>
 </main>
 {% endblock %}
