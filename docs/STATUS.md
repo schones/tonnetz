@@ -1,7 +1,7 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-04-01
-**Branch:** `dev`
+**Last updated:** 2026-04-06
+**Branch:** `redesign/landing-page` (active) · `dev` (prior work)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v3)
 
@@ -9,14 +9,20 @@
 
 ## Current Focus
 
-Phase A complete. MVP polish sprint + showcase page in progress — targeting shareable URL for user testing.
+Landing page redesign and IA restructure in progress on `redesign/landing-page` branch.
+
+**Completed this cycle:**
+
+- New landing page: Explorer-centered hero with rotating song examples from song-examples.js
+- Nav restructure: Explorer, Ear Training, Rhythm & Play, Patterns, Fundamentals (replaces previous nav groupings)
+- Redesign spec: `docs/redesign-spec.md`
 
 **Immediate next steps:**
 
-1. Capture remaining showcase screenshots (Explorer with A minor, etc.) and run Claude Code build prompt
-2. Full component walkthrough — evaluate every feature, identify gaps for showcase/tutorial
-3. Verify Chapter 4 Tonnetz fix + test full chapter flow
-4. Verify post-onboarding routing, end-of-chapter next-steps cards, first-visit banners, nav cleanup, returning user index state
+1. Wire song example hooks into Explorer (clicking a song example loads it in Explorer)
+2. Wire song example hooks into Chord Walks (clicking a progression launches a walk)
+3. Showcase page build (screenshots + Claude Code build prompt)
+4. Full component walkthrough — evaluate every feature, identify gaps
 5. Fretboard panel polish — click-to-select notes, visual tuning
 6. End-to-end walkthrough as new user → fix anything broken
 7. Add BPM control to Swing Trainer
@@ -79,7 +85,7 @@ Phase A complete. MVP polish sprint + showcase page in progress — targeting sh
 - Onboarding preset cards (6 presets)
 - Post-onboarding routing to appropriate entry point
 - Returning user index page state
-- Nav restructured: Theory dropdown, Explorer, Games dropdown (all 7 games), Skratch Studio, Start Here
+- Nav restructured: Explorer, Ear Training, Rhythm & Play, Patterns, Fundamentals (redesign/landing-page branch)
 - Active state highlighting on current page nav link
 - First-visit dismissible banners on Explorer and Skratch Studio
 
@@ -149,6 +155,7 @@ See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 | Doc | Purpose |
 |---|---|
 | `docs/tonnetz-next-build-plan.md` | **Active roadmap** — Phases A–F + B.5, Song Examples DB, dependency graph |
+| `docs/redesign-spec.md` | Landing page redesign & IA restructure spec |
 | `docs/tonnetz-explorer-spec.md` | Explorer design, panel specs, canonical orientation |
 | `docs/voicing-explorer-spec.md` | Voicing Explorer — chord shapes, glow worm paths, projections, MIDI (future) |
 | `docs/tonnetz-content-architecture.md` | Content model, topic schema, lens system, starters, challenges |

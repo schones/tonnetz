@@ -4,6 +4,18 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-06 — Landing Page Redesign & Nav Restructure
+
+- Redesign planning conversation: rethought landing page and information architecture from scratch
+- Created redesign spec (`docs/redesign-spec.md`) covering new landing page concept and nav restructure
+- Built new landing page: Explorer-centered hero with rotating song examples pulled from song-examples.js — visitors immediately see the tool in action
+- Nav restructure: replaced previous groupings with Explorer, Ear Training, Rhythm & Play, Patterns, Fundamentals — organizes content by learning domain rather than feature type
+- All work on `redesign/landing-page` branch (3 commits: spec, landing page rebuild, nav restructure)
+- Decided: landing page should lead with the Explorer as the product's strongest hook
+- Decided: song examples rotate on the landing page to show real musical context
+- Decided: nav categories reflect how musicians think about practice, not how the app is built
+- Next: wire song example hooks into Explorer (click example → loads in Explorer), wire into Chord Walks, continue showcase page build
+
 ## 2026-04-01 evening — Showcase Page
 
 - Designed and planned `/showcase` feature tour page — standalone scrolling page to make the product's features immediately obvious to visitors (especially teachers)
