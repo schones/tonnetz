@@ -1,6 +1,6 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-04-06
+**Last updated:** 2026-04-07
 **Branch:** `redesign/landing-page` (active) · `dev` (prior work)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v3)
@@ -9,24 +9,27 @@
 
 ## Current Focus
 
-Landing page redesign and IA restructure in progress on `redesign/landing-page` branch.
+Landing page redesign, nav restructure, and guided walkthrough system built on `redesign/landing-page` branch. Ready for polish and merge.
 
 **Completed this cycle:**
 
-- New landing page: Explorer-centered hero with rotating song examples from song-examples.js
-- Nav restructure: Explorer, Ear Training, Rhythm & Play, Patterns, Fundamentals (replaces previous nav groupings)
+- New landing page: Explorer-centered hero ("Harmony has a shape. Explore it."), rotating song example prompts, 2×2 category grid (Visualize / Ear Training / Rhythm & Play / Patterns)
+- Nav restructure: Explorer, Ear Training, Rhythm & Play, Patterns, Fundamentals (no instance of "theory" in user-facing UI)
+- Explorer deep-linking: URL params for root, quality, progression, and walkthrough
+- Guided walkthrough system (`static/shared/walkthroughs.js`): floating card overlay in Explorer with 8 song-based walkthroughs, panel focus, related song lookup from song-examples.js, seeAlso links to games
 - Redesign spec: `docs/redesign-spec.md`
 
 **Immediate next steps:**
 
-1. Wire song example hooks into Explorer (clicking a song example loads it in Explorer)
-2. Wire song example hooks into Chord Walks (clicking a progression launches a walk)
-3. Showcase page build (screenshots + Claude Code build prompt)
-4. Full component walkthrough — evaluate every feature, identify gaps
-5. Fretboard panel polish — click-to-select notes, visual tuning
-6. End-to-end walkthrough as new user → fix anything broken
-7. Add BPM control to Swing Trainer
-8. Security review + backend proxy check → deploy to main → share URL
+1. Polish walkthrough card UI (sizing, transitions, mobile)
+2. Surface song examples contextually in games (Chord Walks, Chord Spotter, Scale Builder — not just walkthroughs)
+3. Fix Swing Trainer 500 error on production
+4. Merge `redesign/landing-page` → `dev` → `main` and deploy
+5. Design guided Explorer walkthrough spec for intro course chapters (reuse walkthrough system)
+6. Showcase page build (screenshots + Claude Code build prompt)
+7. Full component walkthrough — evaluate every feature, identify gaps
+8. Add BPM control to Swing Trainer
+9. Security review + backend proxy check → deploy to main → share URL
 
 ---
 
@@ -39,6 +42,24 @@ Landing page redesign and IA restructure in progress on `redesign/landing-page` 
 - Chord wheel: dual-ring circle of fifths with diatonic arc highlighting
 - Audio playback via music-engine.js / Tone.js / Salamander sampler
 - Canonical orientation locked: horizontal=P5, up-right=M3, down-right=m3, major=△, minor=▽
+- **Deep-linking via URL params**: ?root=, ?quality=, ?progression=, ?walkthrough= — Explorer initializes directly to specified state (no C major flash)
+
+### Guided Walkthrough System ✅ new
+- Floating card overlay in Explorer driven by `static/shared/walkthroughs.js`
+- 8 song-based walkthroughs: Yesterday voice leading, Am/C relationship (Eleanor Rigby), Creep chromatic mediant, ii-V-I jazz, Mixolydian (Norwegian Wood/Get Lucky), Stairway P transform, deceptive cadence (In My Life), twelve-bar blues
+- Each step sets chord state via HarmonyState, auto-plays audio, shows conversational explanation
+- Panel focus: individual steps can dim non-relevant panels to direct attention
+- "You'll also hear this in..." pulls related songs from song-examples.js by matching concept_specifics
+- "seeAlso" links on final steps nudge users toward relevant games
+- Next/Back/Exit navigation, step indicator, smooth transitions
+- Launched from landing page example prompts via /explorer?walkthrough=<id>
+- System is generic — new walkthroughs just need an entry in walkthroughs.js (future: intro course chapters)
+
+### Landing Page & Navigation ✅ new
+- Landing page: hero tagline, subtitle about musical intuition, rotating song example prompts (8 curated), Explorer preview (3-panel C major), 2×2 category grid, Fundamentals footer link
+- Nav: Explorer, Ear Training (dropdown), Rhythm & Play (dropdown), Patterns (dropdown), Fundamentals
+- No instance of "theory" in user-facing UI
+- Song example prompts deep-link to Explorer walkthroughs
 
 ### Voicing Explorer (Phase A5 — core complete)
 - Note Mode: toggle individual notes on/off across all three panels
@@ -70,7 +91,8 @@ Landing page redesign and IA restructure in progress on `redesign/landing-page` 
 - `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring
 - `keyboard-view.js` — highlight layer, click interaction
 - `chord-wheel.js` — dual-ring circle of fifths
-- `song-examples.js` — 73 curated real-song theory references (Song Examples DB v1.1 — added 6 swing feel entries with swing_ratio field)
+- `song-examples.js` — 73 curated real-song references (Song Examples DB v1.1 — added 6 swing feel entries with swing_ratio field)
+- `walkthroughs.js` — 8 guided Explorer walkthroughs with step data, panel focus, and concept_specifics tags
 
 ### Intro Module
 - Chapter 1: Sound & Notes (4 sections)
@@ -85,7 +107,6 @@ Landing page redesign and IA restructure in progress on `redesign/landing-page` 
 - Onboarding preset cards (6 presets)
 - Post-onboarding routing to appropriate entry point
 - Returning user index page state
-- Nav restructured: Explorer, Ear Training, Rhythm & Play, Patterns, Fundamentals (redesign/landing-page branch)
 - Active state highlighting on current page nav link
 - First-visit dismissible banners on Explorer and Skratch Studio
 
@@ -93,8 +114,6 @@ Landing page redesign and IA restructure in progress on `redesign/landing-page` 
 - Feature tour page at `/showcase` — designed in Google Stitch, Claude Code build prompt ready
 - Page structure: Hero → Explorer (annotated screenshot + before/after) → Games → Skratch Studio → Real Songs → Footer CTA
 - Design reference: Stitch export in `stitch-export/` (code.html, DESIGN.md, screen.png)
-- Real screenshots with annotation overlays (not AI-generated mockups)
-- Real song examples pulled from song-examples.js database
 - Awaiting: screenshot captures, Claude Code build, iteration
 
 ### Games & Tools
@@ -104,10 +123,9 @@ Landing page redesign and IA restructure in progress on `redesign/landing-page` 
 - Strum Patterns: scrolling timeline
 - Chord Spotter: chord quality identification
 - Scale Builder: note-by-note scale construction
-- **Swing Trainer** ✅ new: ear-training game for jazz swing feel — rotary knob, Gaussian waveform visualization, Practice/Test modes, 4-phase game loop, progressive scoring, session streak counter. At `/games/swing-trainer`. Standalone (not wired to HarmonyState). BPM fixed at 80 for now.
+- **Swing Trainer**: ear-training game for jazz swing feel — rotary knob, Gaussian waveform visualization, Practice/Test modes, 4-phase game loop, progressive scoring, session streak counter. At `/games/swing-trainer`. Standalone (not wired to HarmonyState). BPM fixed at 80 for now.
 - Skratch Studio: Blockly + audio + music creation blocks
 - Visual layer system (visual-config.js, visual-layer.js, visual-toggle.js)
-- Theory pages wired into site nav and Theory Hub
 
 ### Education Infrastructure
 - Onboarding & profile system (localStorage)
@@ -135,10 +153,11 @@ See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 
 ## Known Issues
 
+- **Swing Trainer 500 on production** — route returning server error, needs investigation before deploy
 - Swing Trainer: dial slightly finicky past midpoint (deferred)
 - Swing Trainer: song-examples.js swing_ratio field not yet consumed by game
 - Swing Trainer: not connected to HarmonyState (intentional for now)
-- Games page: Rhythm section grouping (Harmony/Rhythm/Explorer) designed but not yet implemented — Swing Trainer added as flat card with RHYTHM tag
+- Walkthrough card UI: needs polish pass (sizing, transitions, mobile responsiveness)
 - Sustain pedal bug: Organ/Synth in Skratch Studio — `triggerAttackRelease` bypasses sustain state
 - Mobile viewport jitter: tooltip uses `100vh` instead of `dvh`
 - Focus trapping / aria-modal missing on tooltips

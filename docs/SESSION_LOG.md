@@ -4,6 +4,36 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-07 — Landing Page Redesign, Nav Restructure & Guided Walkthrough System
+
+- Full product rethink session: assessed every feature on the site against target audience (musicians brushing up on skills + teachers as distribution channel)
+- North star established: "Help people become better musicians" — not a theory textbook
+- Decided: remove the word "theory" from all user-facing UI
+- Decided: Explorer is the centerpiece — the Tonnetz externalizes the spatial map that experienced musicians navigate by instinct
+- Decided: everything stays, but organized into four categories: Visualize, Ear Training, Rhythm & Creation, Patterns
+- Created redesign spec (`docs/redesign-spec.md`) covering landing page, nav, song integration, and guided walkthroughs
+- Built new landing page: hero ("Harmony has a shape. Explore it."), rotating song example prompts (8 curated from song-examples.js), Explorer preview, 2×2 category grid, Fundamentals footer link
+- Nav restructured: Explorer, Ear Training, Rhythm & Play, Patterns, Fundamentals — replaces Theory/Practice Games/Skratch Studio/Start Here/Tour
+- Built Explorer deep-linking: URL params (?root=, ?quality=, ?progression=, ?walkthrough=) so landing page examples load the Explorer in the right state
+- Built guided walkthrough system (`static/shared/walkthroughs.js`): floating card overlay in Explorer with step-by-step concept walkthroughs grounded in real songs
+  - 8 walkthroughs: Yesterday voice leading, Am/C relationship (Eleanor Rigby), Creep chromatic mediant, ii-V-I jazz, Mixolydian (Norwegian Wood/Get Lucky), Stairway P transform, deceptive cadence (In My Life), twelve-bar blues
+  - Each step sets chord state, plays audio, shows conversational explanation
+  - Panel focus: individual steps can dim non-relevant panels to direct attention (e.g., focus keyboard for voice leading, focus Tonnetz for transforms)
+  - "You'll also hear this in..." line pulls related songs from song-examples.js by matching concept_specifics
+  - "seeAlso" links on final steps nudge users toward relevant games (Chord Walks, Strum Patterns, etc.)
+  - Next/Back/Exit navigation, step indicator, smooth transitions
+- Fixed: Explorer no longer flashes C major before loading walkthrough's first chord
+- Wife's idea: walkthroughs should actually show the concept, not just link to the tool. She was right.
+- All work on `redesign/landing-page` branch
+- Decided: tagline "Harmony has a shape. Explore it." — respects the musician, invites curiosity
+- Decided: subtitle frames Tonnetz as "the map of the territory musicians already navigate by instinct"
+- Decided: category labels avoid "theory" — Visualize, Ear Training, Rhythm & Play, Patterns
+- Decided: intro course repositioned as "Fundamentals" — opt-in, not a gate
+- Decided: rotating song prompts use curated questions a musician actually has, grounded in real songs
+- Decided: walkthroughs are the Phase 2 evolution — turn "cool visualization" into "I learned something in 30 seconds"
+- Known issue: Swing Trainer returning 500 on production — needs fix before deploy
+- Next: polish walkthrough card UI, surface song examples contextually in games (Chord Walks, Chord Spotter, Scale Builder), fix Swing Trainer 500, update STATUS.md/SESSION_LOG.md in repo, merge to dev when ready
+
 ## 2026-04-06 — Landing Page Redesign & Nav Restructure
 
 - Redesign planning conversation: rethought landing page and information architecture from scratch
