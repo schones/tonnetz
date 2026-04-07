@@ -43,9 +43,17 @@
         stroke-linecap: round;
     }
 
-    .node-amber { fill: #f59e0b; }
-    .node-sky   { fill: #38bdf8; }
-    .node-green { fill: #4ade80; }
+    .node-amber {
+        fill: #f59e0b;
+    }
+
+    .node-sky {
+        fill: #38bdf8;
+    }
+
+    .node-green {
+        fill: #4ade80;
+    }
 
     .hero-lattice .triad-fill,
     .hero-lattice .triad-edge,
@@ -98,12 +106,29 @@
         line-height: 1.55;
     }
 
-    [data-theme="dark"] .hero-lattice { opacity: 0.40; }
-    [data-theme="dark"] .lattice-grid line { stroke: #7c75ff; }
-    [data-theme="dark"] .lattice-nodes circle { fill: #7c75ff; }
-    [data-theme="dark"] .triad-fill { fill: rgba(124, 117, 255, 0.25); }
-    [data-theme="dark"] .triad-edge { stroke: #7c75ff; }
-    [data-theme="dark"] .triad-node { filter: drop-shadow(0 0 6px currentColor); }
+    [data-theme="dark"] .hero-lattice {
+        opacity: 0.40;
+    }
+
+    [data-theme="dark"] .lattice-grid line {
+        stroke: #7c75ff;
+    }
+
+    [data-theme="dark"] .lattice-nodes circle {
+        fill: #7c75ff;
+    }
+
+    [data-theme="dark"] .triad-fill {
+        fill: rgba(124, 117, 255, 0.25);
+    }
+
+    [data-theme="dark"] .triad-edge {
+        stroke: #7c75ff;
+    }
+
+    [data-theme="dark"] .triad-node {
+        filter: drop-shadow(0 0 6px currentColor);
+    }
 
     /* ── Song Prompts Carousel ── */
     .prompts-section {
@@ -281,30 +306,110 @@
     }
 
     /* Tonnetz mini-grid colors */
-    .tn-line { stroke: var(--border); stroke-width: 1; }
-    .tn-node { fill: var(--text-secondary); opacity: 0.4; }
-    .tn-node-label { font-size: 9px; font-weight: 800; fill: var(--text-secondary); text-anchor: middle; dominant-baseline: central; font-family: var(--font-main); }
-    .tn-active { fill: var(--accent); opacity: 1; }
-    .tn-active-label { fill: #fff; }
-    .tn-tri-fill { fill: var(--accent); opacity: 0.12; }
-    .tn-tri-edge { stroke: var(--accent); stroke-width: 2; fill: none; stroke-linecap: round; }
+    .tn-line {
+        stroke: var(--border);
+        stroke-width: 1;
+    }
 
-    [data-theme="dark"] .tn-tri-fill { opacity: 0.2; }
+    .tn-node {
+        fill: var(--text-secondary);
+        opacity: 0.4;
+    }
+
+    .tn-node-label {
+        font-size: 9px;
+        font-weight: 800;
+        fill: var(--text-secondary);
+        text-anchor: middle;
+        dominant-baseline: central;
+        font-family: var(--font-main);
+    }
+
+    .tn-active {
+        fill: var(--accent);
+        opacity: 1;
+    }
+
+    .tn-active-label {
+        fill: #fff;
+    }
+
+    .tn-tri-fill {
+        fill: var(--accent);
+        opacity: 0.12;
+    }
+
+    .tn-tri-edge {
+        stroke: var(--accent);
+        stroke-width: 2;
+        fill: none;
+        stroke-linecap: round;
+    }
+
+    [data-theme="dark"] .tn-tri-fill {
+        opacity: 0.2;
+    }
 
     /* Chord wheel colors */
-    .cw-ring { fill: none; stroke: var(--border); stroke-width: 1; }
-    .cw-dot { fill: var(--text-secondary); opacity: 0.35; }
-    .cw-dot-active { fill: var(--accent); opacity: 1; }
-    .cw-label { font-size: 8px; font-weight: 800; fill: var(--text-secondary); text-anchor: middle; dominant-baseline: central; font-family: var(--font-main); }
-    .cw-label-active { fill: var(--accent); }
-    .cw-arc { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0.35; }
+    .cw-ring {
+        fill: none;
+        stroke: var(--border);
+        stroke-width: 1;
+    }
+
+    .cw-dot {
+        fill: var(--text-secondary);
+        opacity: 0.35;
+    }
+
+    .cw-dot-active {
+        fill: var(--accent);
+        opacity: 1;
+    }
+
+    .cw-label {
+        font-size: 8px;
+        font-weight: 800;
+        fill: var(--text-secondary);
+        text-anchor: middle;
+        dominant-baseline: central;
+        font-family: var(--font-main);
+    }
+
+    .cw-label-active {
+        fill: var(--accent);
+    }
+
+    .cw-arc {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 2;
+        opacity: 0.35;
+    }
 
     /* Keyboard colors */
-    .kb-white { fill: #f8f7f4; stroke: var(--border); stroke-width: 0.75; }
-    .kb-black { fill: #1a1a2e; }
-    .kb-active { fill: var(--accent); }
-    [data-theme="dark"] .kb-white { fill: #2a2847; stroke: #3a3860; }
-    [data-theme="dark"] .kb-black { fill: #0f0e1a; }
+    .kb-white {
+        fill: #f8f7f4;
+        stroke: var(--border);
+        stroke-width: 0.75;
+    }
+
+    .kb-black {
+        fill: #1a1a2e;
+    }
+
+    .kb-active {
+        fill: var(--accent);
+    }
+
+    [data-theme="dark"] .kb-white {
+        fill: #2a2847;
+        stroke: #3a3860;
+    }
+
+    [data-theme="dark"] .kb-black {
+        fill: #0f0e1a;
+    }
 
     /* ── Category Grid ── */
     .categories-section {
@@ -347,7 +452,9 @@
     .category-card::before {
         content: '';
         position: absolute;
-        top: 0; left: 0; right: 0;
+        top: 0;
+        left: 0;
+        right: 0;
         height: 4px;
         background: var(--cat-accent);
     }
@@ -587,7 +694,7 @@
         <div class="wordmark">tonnetz</div>
         <div class="hero-tagline">Harmony has a shape. Explore it.</div>
         <p class="hero-subtitle">
-            Great musicians navigate harmony by instinct. The Tonnetz is the map of that territory —
+            Musicians navigate harmony by instinct. The Tonnetz is the map of that territory —
             a spatial way to see how chords, keys, and scales connect. Build the intuition faster.
         </p>
     </section>
@@ -597,43 +704,51 @@
         <div class="prompts-carousel">
             <div class="prompt-card active">
                 <div class="prompt-card__question">"Why does Am feel so close to C major?"</div>
-                <div class="prompt-card__answer">They share two notes — only one changes. The Beatles exploit this in Eleanor Rigby with a single-note shift that transforms the whole mood.</div>
-                <a href="/explorer" class="prompt-card__cta">See it on the Tonnetz →</a>
+                <div class="prompt-card__answer">They share two notes — only one changes. The Beatles exploit this in
+                    Eleanor Rigby with a single-note shift that transforms the whole mood.</div>
+                <a href="/explorer?walkthrough=am_c_relationship" class="prompt-card__cta">Explore this →</a>
             </div>
             <div class="prompt-card">
                 <div class="prompt-card__question">"What makes the Creep progression hit so hard?"</div>
-                <div class="prompt-card__answer">Radiohead leaps from G to B — roots a major third apart. The distance creates that gut-punch feeling.</div>
-                <a href="/explorer" class="prompt-card__cta">Explore the L transform →</a>
+                <div class="prompt-card__answer">Radiohead leaps from G to B — roots a major third apart. The distance
+                    creates that gut-punch feeling.</div>
+                <a href="/explorer?walkthrough=creep_progression" class="prompt-card__cta">Explore this →</a>
             </div>
             <div class="prompt-card">
                 <div class="prompt-card__question">"How does a ii–V–I actually move?"</div>
-                <div class="prompt-card__answer">The strongest pull in jazz. Autumn Leaves and Fly Me to the Moon both ride this path — each chord resolves into the next like gravity.</div>
-                <a href="/explorer" class="prompt-card__cta">Trace the path →</a>
+                <div class="prompt-card__answer">The strongest pull in jazz. Autumn Leaves and Fly Me to the Moon both
+                    ride this path — each chord resolves into the next like gravity.</div>
+                <a href="/explorer?walkthrough=ii_V_I" class="prompt-card__cta">Explore this →</a>
             </div>
             <div class="prompt-card">
                 <div class="prompt-card__question">"Why does Mixolydian sound bluesy?"</div>
-                <div class="prompt-card__answer">One flatted note changes everything. Norwegian Wood and Get Lucky both live in Mixolydian — major key feel with a bluesy edge.</div>
-                <a href="/theory/modes" class="prompt-card__cta">Explore modes →</a>
+                <div class="prompt-card__answer">One flatted note changes everything. Norwegian Wood and Get Lucky both
+                    live in Mixolydian — major key feel with a bluesy edge.</div>
+                <a href="/explorer?walkthrough=mixolydian" class="prompt-card__cta">Explore this →</a>
             </div>
             <div class="prompt-card">
                 <div class="prompt-card__question">"How does Stairway to Heaven shift mood?"</div>
-                <div class="prompt-card__answer">Led Zeppelin toggles between major and minor with a single note — the P transform. Bright to dark and back, in one move.</div>
-                <a href="/explorer" class="prompt-card__cta">See the P transform →</a>
+                <div class="prompt-card__answer">Led Zeppelin toggles between major and minor with a single note — the P
+                    transform. Bright to dark and back, in one move.</div>
+                <a href="/explorer?walkthrough=stairway_P_transform" class="prompt-card__cta">Explore this →</a>
             </div>
             <div class="prompt-card">
                 <div class="prompt-card__question">"What's a deceptive cadence?"</div>
-                <div class="prompt-card__answer">Your ear expects resolution but gets a surprise. In My Life does this — V goes to vi instead of I. Surprise without chaos.</div>
-                <a href="/theory/chord-progressions" class="prompt-card__cta">Hear the resolution →</a>
+                <div class="prompt-card__answer">Your ear expects resolution but gets a surprise. In My Life does this —
+                    V goes to vi instead of I. Surprise without chaos.</div>
+                <a href="/explorer?walkthrough=deceptive_cadence" class="prompt-card__cta">Explore this →</a>
             </div>
             <div class="prompt-card">
                 <div class="prompt-card__question">"Why do I–IV–V songs all feel related?"</div>
-                <div class="prompt-card__answer">They're neighbors on the circle of fifths. Johnny B. Goode and every twelve-bar blues share this same three-chord backbone.</div>
-                <a href="/theory/circle-of-fifths" class="prompt-card__cta">See them connected →</a>
+                <div class="prompt-card__answer">They're neighbors on the circle of fifths. Johnny B. Goode and every
+                    twelve-bar blues share this same three-chord backbone.</div>
+                <a href="/explorer?walkthrough=twelve_bar_blues" class="prompt-card__cta">Explore this →</a>
             </div>
             <div class="prompt-card">
                 <div class="prompt-card__question">"How does Yesterday's bass line create emotion?"</div>
-                <div class="prompt-card__answer">McCartney's descending chromatic line pulls you down note by note — voice leading that makes the harmony ache.</div>
-                <a href="/explorer" class="prompt-card__cta">Trace the voice leading →</a>
+                <div class="prompt-card__answer">McCartney's descending chromatic line pulls you down note by note —
+                    voice leading that makes the harmony ache.</div>
+                <a href="/explorer?walkthrough=yesterday_voice_leading" class="prompt-card__cta">Explore this →</a>
             </div>
         </div>
         <div class="prompts-dots">
@@ -773,17 +888,17 @@
                     <div class="explorer-panel__title">Keyboard</div>
                     <svg width="168" height="70" viewBox="0 0 168 70" aria-hidden="true">
                         <!-- White keys -->
-                        <rect class="kb-white kb-active" x="0"   y="0" width="23" height="68" rx="2" />
-                        <rect class="kb-white" x="24"  y="0" width="23" height="68" rx="2" />
-                        <rect class="kb-white kb-active" x="48"  y="0" width="23" height="68" rx="2" />
-                        <rect class="kb-white" x="72"  y="0" width="23" height="68" rx="2" />
-                        <rect class="kb-white kb-active" x="96"  y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white kb-active" x="0" y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white" x="24" y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white kb-active" x="48" y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white" x="72" y="0" width="23" height="68" rx="2" />
+                        <rect class="kb-white kb-active" x="96" y="0" width="23" height="68" rx="2" />
                         <rect class="kb-white" x="120" y="0" width="23" height="68" rx="2" />
                         <rect class="kb-white" x="144" y="0" width="23" height="68" rx="2" />
                         <!-- Black keys -->
-                        <rect class="kb-black" x="16"  y="0" width="14" height="42" rx="2" />
-                        <rect class="kb-black" x="42"  y="0" width="14" height="42" rx="2" />
-                        <rect class="kb-black" x="88"  y="0" width="14" height="42" rx="2" />
+                        <rect class="kb-black" x="16" y="0" width="14" height="42" rx="2" />
+                        <rect class="kb-black" x="42" y="0" width="14" height="42" rx="2" />
+                        <rect class="kb-black" x="88" y="0" width="14" height="42" rx="2" />
                         <rect class="kb-black" x="114" y="0" width="14" height="42" rx="2" />
                         <rect class="kb-black" x="140" y="0" width="14" height="42" rx="2" />
                         <!-- Key labels -->
@@ -805,12 +920,15 @@
             <!-- Visualize -->
             <div class="category-card" style="--cat-accent: #10b981;">
                 <div class="category-card__icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon
+                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
                 </div>
                 <h3 class="category-card__name">Visualize</h3>
-                <p class="category-card__desc">See how chords, keys, and scales relate in space. Compare voicings, trace progressions, build intuition.</p>
+                <p class="category-card__desc">See how chords, keys, and scales relate in space. Compare voicings, trace
+                    progressions, build intuition.</p>
                 <div class="category-card__pills">
                     <a href="/explorer" class="cat-pill">Tonnetz Explorer</a>
                     <a href="/explorer" class="cat-pill">Voicing Explorer</a>
@@ -820,13 +938,16 @@
             <!-- Ear Training -->
             <div class="category-card" style="--cat-accent: #f87171;">
                 <div class="category-card__icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+                        <path
+                            d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
                     </svg>
                 </div>
                 <h3 class="category-card__name">Ear Training</h3>
-                <p class="category-card__desc">Recognize intervals, identify chord qualities, match melodies, internalize swing feel.</p>
+                <p class="category-card__desc">Recognize intervals, identify chord qualities, match melodies,
+                    internalize swing feel.</p>
                 <div class="category-card__pills">
                     <a href="/harmony" class="cat-pill">Harmony Trainer</a>
                     <a href="/chord-identification" class="cat-pill">Chord Spotter</a>
@@ -838,14 +959,16 @@
             <!-- Rhythm & Creation -->
             <div class="category-card" style="--cat-accent: #f59e0b;">
                 <div class="category-card__icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 18V5l12-2v13" />
                         <circle cx="6" cy="18" r="3" />
                         <circle cx="18" cy="16" r="3" />
                     </svg>
                 </div>
                 <h3 class="category-card__name">Rhythm & Creation</h3>
-                <p class="category-card__desc">Lock in your groove, learn patterns, build something new from scratch.</p>
+                <p class="category-card__desc">Lock in your groove, learn patterns, build something new from scratch.
+                </p>
                 <div class="category-card__pills">
                     <a href="/rhythm" class="cat-pill">Rhythm Lab</a>
                     <a href="/strumming" class="cat-pill">Strum Patterns</a>
@@ -856,7 +979,8 @@
             <!-- Patterns -->
             <div class="category-card" style="--cat-accent: #38bdf8;">
                 <div class="category-card__icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="17 1 21 5 17 9" />
                         <path d="M3 11V9a4 4 0 0 1 4-4h14" />
                         <polyline points="7 23 3 19 7 15" />
@@ -864,7 +988,8 @@
                     </svg>
                 </div>
                 <h3 class="category-card__name">Patterns</h3>
-                <p class="category-card__desc">Understand what's underneath — scales, keys, modes, transforms, progressions.</p>
+                <p class="category-card__desc">Understand what's underneath — scales, keys, modes, transforms,
+                    progressions.</p>
                 <div class="category-card__pills">
                     <a href="/games/scale-builder" class="cat-pill">Scale Builder</a>
                     <a href="/games/relative-key-trainer" class="cat-pill">Chord Walks</a>
@@ -879,7 +1004,8 @@
     <!-- ===== Fundamentals ===== -->
     <section class="fundamentals-section">
         <p class="fundamentals-line">
-            Brand new to this? <a href="/intro">Start from the beginning</a> — five interactive chapters, no prior knowledge needed.
+            Brand new to this? <a href="/intro">Start from the beginning</a> — five interactive chapters, no prior
+            knowledge needed.
         </p>
     </section>
 </main>

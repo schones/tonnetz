@@ -372,6 +372,191 @@
     transition: opacity 0.15s;
   }
   .intro-banner__dismiss:hover { opacity: 1; }
+
+  /* ── Walkthrough Overlay ────────────────────────────────────────── */
+  .wt-overlay {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 370px;
+    max-width: calc(100vw - 2rem);
+    background: rgba(22, 33, 62, 0.94);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem 1rem;
+    z-index: 900;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-primary);
+    font-family: 'Nunito', sans-serif;
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  [data-theme="light"] .wt-overlay {
+    background: rgba(240, 238, 255, 0.96);
+  }
+  .wt-overlay--visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .wt-close {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.1rem 0.3rem;
+    border-radius: 6px;
+    opacity: 0.6;
+    transition: opacity 0.15s, background 0.15s;
+  }
+  .wt-close:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .wt-song {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.45rem;
+    padding-right: 1.5rem;
+  }
+  .wt-step-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 0.4rem;
+    line-height: 1.3;
+  }
+  .wt-body {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+  .wt-also {
+    font-size: 0.74rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    opacity: 0.65;
+    margin-bottom: 0.75rem;
+    font-style: italic;
+  }
+
+  /* fade transition for step content */
+  .wt-fade-in {
+    animation: wtFadeIn 0.28s ease;
+  }
+  @keyframes wtFadeIn {
+    from { opacity: 0; transform: translateX(6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .wt-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  /* step indicator dots */
+  .wt-indicator {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  .wt-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    opacity: 0.3;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .wt-dot:hover { opacity: 0.6; }
+  .wt-dot--active {
+    opacity: 1;
+    background: var(--accent);
+    transform: scale(1.25);
+  }
+
+  /* navigation buttons */
+  .wt-nav {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .wt-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .wt-btn--back {
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .wt-btn--back:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .wt-btn--next {
+    background: var(--accent);
+    color: #fff;
+  }
+  .wt-btn--next:hover {
+    filter: brightness(1.12);
+  }
+
+  /* "See also" link nudge on final step */
+  .wt-see-also {
+    margin-bottom: 0.6rem;
+  }
+  .wt-see-also-link {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+  }
+  .wt-see-also-link:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
+
+  /* Panel focus dimming — applied by walkthrough overlay */
+  .exp-panel--dimmed {
+    opacity: 0.35;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .exp-panel {
+    transition: opacity 0.4s ease;
+  }
+
+  @media (max-width: 500px) {
+    .wt-overlay {
+      bottom: 0.5rem;
+      right: 0.5rem;
+      left: 0.5rem;
+      width: auto;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -557,6 +742,10 @@
     from '{{ url_for("static", filename="shared/fretboard-view.js") }}';
   import { getFeatureFlag, setFeatureFlag }
     from '{{ url_for("static", filename="shared/user-profile.js") }}';
+  import { WALKTHROUGHS }
+    from '{{ url_for("static", filename="shared/walkthroughs.js") }}';
+  import { WalkthroughOverlay }
+    from '{{ url_for("static", filename="shared/walkthrough-overlay.js") }}';
 
   // ── Welcome banner ───────────────────────────────────────────────────────
   {
@@ -1085,15 +1274,107 @@
   });
 
   // ════════════════════════════════════════════════════════════════
-  // INITIAL STATE — C major at depth 2, key of C
+  // URL PARAMETER DEEP-LINKING
+  // Supports:
+  //   ?root=C&quality=major   → set initial chord
+  //   ?progression=Am,C,G,F   → load a chord progression
+  // ════════════════════════════════════════════════════════════════
+
+  /**
+   * Parse a compact chord name like "Am", "Cm", "G", "A7", "Dm7" into { root, quality }.
+   * Returns null if unparseable.
+   */
+  function _parseChordName(name) {
+    if (!name) return null;
+    // Match root note (with optional sharp/flat) + optional quality suffix
+    const m = name.match(/^([A-Ga-g][#♯b♭]?)(m|min|minor|maj|major|dim|aug|7|m7|maj7)?$/);
+    if (!m) return null;
+    const letter = m[1].charAt(0).toUpperCase();
+    const acc = m[1].length > 1 ? m[1].charAt(1) : '';
+    let root = letter;
+    if (acc === '#' || acc === '♯') root += '♯';
+    else if (acc === 'b' || acc === '♭') root += '♭';
+    const suffix = (m[2] || '').toLowerCase();
+    let quality = 'major';
+    if (suffix === 'm' || suffix === 'min' || suffix === 'minor') quality = 'minor';
+    else if (suffix === 'dim') quality = 'diminished';
+    // For 7th chords (A7, Dm7, etc.) keep the triad quality — the Explorer
+    // works with triads, so we just set the closest triad.
+    else if (suffix === 'm7') quality = 'minor';
+    else if (suffix === '7' || suffix === 'maj7') quality = 'major';
+    return { root, quality };
+  }
+
+  const _urlParams = new URLSearchParams(window.location.search);
+  const _urlRoot        = _urlParams.get('root');
+  const _urlQuality     = _urlParams.get('quality');
+  const _urlProgression = _urlParams.get('progression');
+  const _urlWalkthrough = _urlParams.get('walkthrough');
+
+  // ════════════════════════════════════════════════════════════════
+  // INITIAL STATE — C major at depth 2, key of C (or URL override)
   // Use batch so the Tonnetz only rebuilds once.
   // ════════════════════════════════════════════════════════════════
 
-  HarmonyState.batch(state => {
-    state.tonnetzDepth = 2;
-    state.currentKey   = 0;
-  });
-  HarmonyState.setTriad('C', 'major');
+  if (_urlProgression) {
+    // Parse comma-separated chord names into progression format
+    const chordNames = _urlProgression.split(',').map(s => s.trim()).filter(Boolean);
+    const chords = chordNames.map(name => {
+      const parsed = _parseChordName(name);
+      if (!parsed) return null;
+      const notes = triadNotes(parsed.root, parsed.quality);
+      return { root: parsed.root, quality: parsed.quality, notes: notes || [] };
+    }).filter(Boolean);
+
+    if (chords.length > 0) {
+      // Infer key from first chord's root
+      const key = chords[0].root;
+      HarmonyState.batch(state => {
+        state.currentKey = 0;
+      });
+      HarmonyState.setProgression(chords, key);
+      HarmonyState.setProgressionIndex(0);
+    } else {
+      // Fallback to default
+      HarmonyState.batch(state => {
+        state.tonnetzDepth = 2;
+        state.currentKey   = 0;
+      });
+      HarmonyState.setTriad('C', 'major');
+    }
+  } else if (_urlRoot) {
+    // Single chord deep-link
+    const _rootLetter = _urlRoot.charAt(0).toUpperCase();
+    const _rootAcc = _urlRoot.length > 1 ? _urlRoot.charAt(1) : '';
+    let root = _rootLetter;
+    if (_rootAcc === '#' || _rootAcc === '♯') root += '♯';
+    else if (_rootAcc === 'b' || _rootAcc === '♭') root += '♭';
+    const quality = (_urlQuality || 'major').toLowerCase();
+    const validQ = ['major', 'minor', 'diminished'].includes(quality) ? quality : 'major';
+
+    HarmonyState.batch(state => {
+      state.tonnetzDepth = 2;
+      state.currentKey   = 0;
+    });
+    HarmonyState.setTriad(root, validQ);
+  } else if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
+    // Walkthrough deep-link: initialize to the first step's chord
+    // so the user never sees a flash of C major before the walkthrough starts.
+    const _wtSteps = WALKTHROUGHS[_urlWalkthrough].steps;
+    const _wtFirst = _wtSteps && _wtSteps.length > 0 ? _parseChordName(_wtSteps[0].chord) : null;
+    HarmonyState.batch(state => {
+      state.tonnetzDepth = 2;
+      state.currentKey   = 0;
+    });
+    HarmonyState.setTriad(_wtFirst ? _wtFirst.root : 'C', _wtFirst ? _wtFirst.quality : 'major');
+  } else {
+    // Default: C major
+    HarmonyState.batch(state => {
+      state.tonnetzDepth = 2;
+      state.currentKey   = 0;
+    });
+    HarmonyState.setTriad('C', 'major');
+  }
 
   // ════════════════════════════════════════════════════════════════
   // PROGRESSION TEST HARNESS (console-callable)
@@ -1110,6 +1391,46 @@
     HarmonyState.setProgression(chords, 'C');
     HarmonyState.setProgressionIndex(0);
     console.log('Progression loaded: I–V–vi–IV in C. Use HarmonyState.stepProgression(1) to advance.');
+  };
+
+  // ════════════════════════════════════════════════════════════════
+  // GUIDED WALKTHROUGH
+  // If ?walkthrough=key is present, start the guided overlay.
+  // The overlay drives HarmonyState; the existing subscriber handles
+  // panel updates and audio playback.
+  // ════════════════════════════════════════════════════════════════
+
+  const _wtOverlay = new WalkthroughOverlay({
+    onExit() {
+      // Return to default Explorer state after walkthrough ends
+      HarmonyState.setTriad('C', 'major');
+      // Clean URL without reload
+      const url = new URL(window.location);
+      url.searchParams.delete('walkthrough');
+      window.history.replaceState({}, '', url);
+    },
+    playChord(root, quality) {
+      return playChord(root, quality);
+    },
+  });
+
+  if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
+    // Dismiss the welcome banner if a walkthrough is starting
+    const _wtBanner = document.getElementById('explorer-welcome-banner');
+    if (_wtBanner) {
+      _wtBanner.remove();
+      setFeatureFlag('explorer_intro_seen', true);
+    }
+    _wtOverlay.start(WALKTHROUGHS[_urlWalkthrough]);
+  }
+
+  // Expose for console use
+  window.startWalkthrough = function(key) {
+    if (WALKTHROUGHS[key]) {
+      _wtOverlay.start(WALKTHROUGHS[key]);
+    } else {
+      console.log('Available walkthroughs:', Object.keys(WALKTHROUGHS).join(', '));
+    }
   };
 </script>
 {% endblock %}

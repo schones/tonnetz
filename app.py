@@ -206,7 +206,7 @@ def scale_builder():
 
 @app.route("/games/swing-trainer")
 def swing_trainer():
-    return send_from_directory("static/games", "swing-trainer.html")    
+    return render_template("games/swing-trainer.html")
 
 @app.route("/skratch")
 def skratch():
