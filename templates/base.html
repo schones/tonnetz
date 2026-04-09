@@ -233,7 +233,10 @@
 
   <script>
     (function () {
-      const saved = localStorage.getItem('tonnetz-theme') || 'light';
+      const templateTheme = document.documentElement.getAttribute('data-theme');
+      const saved = templateTheme === 'dark'
+        ? 'dark'
+        : (localStorage.getItem('tonnetz-theme') || 'light');
       document.documentElement.setAttribute('data-theme', saved);
       updateLogo(saved);
       updateToggleIcon(saved);
