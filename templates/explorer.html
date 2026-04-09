@@ -1,1576 +1,1641 @@
-{% extends "base.html" %}
-{% block title %}Tonnetz Explorer{% endblock %}
-{% block theme %}dark{% endblock %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
 
-{% block head %}
-<!-- Tone.js — must be in <head> so window.Tone is defined before any module runs -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SongLab Explorer</title>
 
-<style>
-  /* ── Page ────────────────────────────────────────────────────── */
-  .exp-page {
-    max-width: 1280px;
-    margin: 1.5rem auto;
-    padding: 0 1.5rem 3rem;
-  }
+  <!-- Google Fonts: Nunito -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800&display=swap" rel="stylesheet">
 
-  .exp-page h1 {
-    font-size: 1.4rem;
-    font-weight: 800;
-    margin-bottom: 0.2rem;
-  }
-  .exp-subtitle {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-  }
+  <!-- SongLab design tokens -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
 
-  /* ── Status strip ─────────────────────────────────────────────── */
-  .exp-status {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 0.9rem;
-    flex-wrap: wrap;
-  }
-  .exp-status-label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .exp-chord-badge {
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: var(--accent);
-    background: var(--accent-soft);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.28rem 0.9rem;
-    min-width: 110px;
-    text-align: center;
-  }
-  .exp-transform-badge {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.28rem 0.75rem;
-    min-width: 70px;
-    text-align: center;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .exp-transform-badge--visible {
-    opacity: 1;
-  }
+  <!-- Tone.js — must be in <head> so window.Tone is defined before any module runs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
-  /* ── Top row: Tonnetz + Chord Wheel ───────────────────────────── */
-  .exp-top {
-    display: flex;
-    gap: 1rem;
-    align-items: stretch;
-    margin-bottom: 0.75rem;
-  }
+  <style>
+    /* ============================================================
+       SongLab Explorer — Dark DAW Layout
+       ------------------------------------------------------------
+       Pulls accent / typography / spacing tokens from
+       design-tokens.css and layers DAW-specific surfaces on top.
+       ============================================================ */
+    :root {
+      /* DAW surface palette (specified for the redesign) */
+      --daw-deep:        #141310;
+      --daw-surface:     #181714;
+      --daw-raised:      #1F1D19;
+      --daw-elevated:    #25221C;
+      --daw-border:      #2A2620;
+      --daw-border-soft: #221F1A;
+      --daw-text:        #EFE9DC;
+      --daw-text-dim:    #9C9587;
+      --daw-text-mute:   #6A6457;
+      --daw-text-ghost:  #4B463B;
 
-  /* ── Panel shell ─────────────────────────────────────────────── */
-  .exp-panel {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--bg-card);
-    overflow: hidden;
-  }
-  .exp-panel-header {
-    padding: 0.38rem 0.9rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    border-bottom: 1px solid var(--border);
-  }
+      /* Accents — pull gold from tokens for consistency */
+      --gold:            var(--accent-gold);
+      --gold-soft:       rgba(212, 160, 60, 0.14);
+      --gold-edge:       rgba(212, 160, 60, 0.42);
+      --green:           var(--accent-transport);
+      --green-bright:    var(--accent-green);
+      --red:             #C0413B;
 
-  /* ── Tonnetz panel ───────────────────────────────────────────── */
-  .exp-panel--tonnetz {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .exp-panel--tonnetz .exp-panel-body {
-    height: 470px;
-    padding: 0;
-    position: relative;
-  }
-  #exp-tonnetz-container {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
+      /* ── Legacy aliases ─────────────────────────────────────
+         Shared components (Tonnetz, ChordWheel, KeyboardView)
+         read these older variable names. Map them onto the
+         DAW palette so the panels blend with the dark chrome.  */
+      --bg-primary:      var(--daw-deep);
+      --bg-secondary:    var(--daw-surface);
+      --bg-card:         var(--daw-elevated);
+      --bg-input:        var(--daw-raised);
+      --text-primary:    var(--daw-text);
+      --text-secondary:  var(--daw-text-dim);
+      --text-muted:      var(--daw-text-mute);
+      --text-highlight:  var(--gold);
+      --accent:          var(--gold);
+      --accent-soft:     var(--gold-soft);
+      --border:          var(--daw-border);
+      --border-input:    var(--daw-border);
+      --font-main:       var(--font-family-base);
 
-  /* ── Chord Wheel panel ───────────────────────────────────────── */
-  .exp-panel--chord-wheel {
-    flex: 0 0 auto;
-    width: 430px;
-  }
-  .exp-panel--chord-wheel .exp-panel-body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    height: 470px;
-    box-sizing: border-box;
-  }
-  #exp-chord-wheel-container {
-    width: 400px;
-    height: 400px;
-    overflow: visible;
-  }
+      /* ── Component-specific overrides for the dark DAW look ─ */
+      --keyboard-white-key-bg:     #2A2620;
+      --keyboard-black-key-bg:     #0E0B07;
+      --keyboard-highlight-primary: var(--gold);
+      --color-border:              var(--daw-border);
+      --color-primary:             var(--gold);
 
-  /* Font overrides for larger chord wheel labels (same approach as chord-wheel-test) */
-  #exp-chord-wheel-container .cw-label {
-    font-size: 12px;   /* base is 10px */
-  }
-  #exp-chord-wheel-container .cw-roman {
-    font-size: 9px;    /* base is 8px */
-  }
-
-  /* ── Keyboard panel ──────────────────────────────────────────── */
-  .exp-panel--keyboard {
-    margin-bottom: 0.75rem;
-  }
-  .exp-panel--keyboard .exp-panel-body {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    padding: 0.75rem 0.75rem;
-    overflow-x: auto;
-  }
-
-  /* ── Fretboard panel ─────────────────────────────────────────── */
-  .exp-panel--fretboard {
-    margin-bottom: 0.75rem;
-  }
-  .exp-panel--fretboard .exp-panel-body {
-    padding: 0.5rem 0.75rem;
-    overflow-x: auto;
-  }
-  #exp-fretboard-container {
-    width: 100%;
-    min-height: 180px;
-  }
-  .exp-panel--hidden {
-    display: none;
-  }
-
-  /* ── Controls bar ────────────────────────────────────────────── */
-  .exp-controls {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--bg-card);
-    padding: 0.7rem 1.1rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-    align-items: center;
-  }
-  .exp-ctrl-group {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-  .exp-ctrl-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    white-space: nowrap;
-  }
-  .exp-divider {
-    width: 1px;
-    height: 22px;
-    background: var(--border);
-    flex-shrink: 0;
-  }
-
-  /* ── Buttons ─────────────────────────────────────────────────── */
-  .exp-btn {
-    padding: 5px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg-primary, #fff);
-    color: var(--text-primary);
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
-    font-family: var(--font-main);
-    line-height: 1.4;
-  }
-  .exp-btn:hover:not(:disabled) {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .exp-btn--prl {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-    min-width: 32px;
-    text-align: center;
-    font-size: 0.9rem;
-  }
-  .exp-btn--prl:hover {
-    background: var(--accent) !important;
-    color: #fff !important;
-    border-color: var(--accent);
-  }
-  .exp-btn--sound {
-    border-style: dashed;
-    background: transparent;
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-  .exp-btn--sound-on {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-    border-style: solid;
-  }
-
-  .exp-btn--record-on {
-    background: #ff4757;
-    border-color: #ff4757;
-    color: #fff;
-    border-style: solid;
-    animation: recordPulse 1.5s ease infinite;
-  }
-  .exp-btn--record-on:hover:not(:disabled) {
-    background: #ff6b81 !important;
-    border-color: #ff6b81 !important;
-    color: #fff !important;
-  }
-  @keyframes recordPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.75; }
-  }
-  .exp-sequence-count {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-  .exp-btn--export {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-    white-space: nowrap;
-  }
-  .exp-btn--export:hover:not(:disabled) {
-    background: var(--accent) !important;
-    color: #fff !important;
-  }
-
-  /* ── Selects ─────────────────────────────────────────────────── */
-  .exp-select {
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg-primary, #fff);
-    color: var(--text-primary);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--font-main);
-  }
-
-  /* ── Mode toggle buttons ─────────────────────────────────────── */
-  .exp-btn--mode {
-    min-width: 58px;
-    text-align: center;
-  }
-  .exp-btn--mode-active {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-    min-width: 58px;
-    text-align: center;
-  }
-  .exp-btn--mode-active:hover:not(:disabled) {
-    background: var(--accent) !important;
-    color: #fff !important;
-  }
-
-  /* ── Note mode play controls ─────────────────────────────────── */
-  .exp-note-controls {
-    display: none;
-    align-items: center;
-    gap: 0.35rem;
-  }
-  .exp-note-controls--visible {
-    display: flex;
-  }
-  .exp-btn--play {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-    font-weight: 800;
-    min-width: 64px;
-  }
-  .exp-btn--play:hover:not(:disabled) {
-    background: var(--accent) !important;
-    color: #fff !important;
-  }
-  .exp-btn--clear {
-    color: var(--text-secondary);
-  }
-  .exp-arp-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-  }
-
-  /* ── Responsive ──────────────────────────────────────────────── */
-  @media (max-width: 860px) {
-    .exp-top {
-      flex-direction: column;
+      --tonnetz-edge-stroke:       var(--daw-border);
+      --tonnetz-node-fill:         var(--daw-elevated);
+      --tonnetz-node-stroke:       var(--daw-border);
+      --tonnetz-label-color:       var(--daw-text-dim);
+      --tonnetz-accent:            var(--gold);
     }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+
+    body {
+      background: var(--daw-deep);
+      color: var(--daw-text);
+      font-family: var(--font-family-base);
+      font-weight: var(--font-weight-regular);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; }
+
+    /* ── Nav bar ───────────────────────────────────────────── */
+    .sl-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-lg);
+      padding: var(--space-md) var(--space-xl);
+      background: var(--daw-deep);
+      border-bottom: 1px solid var(--daw-border);
+      flex-shrink: 0;
+    }
+
+    .sl-brand { display: flex; align-items: center; gap: var(--space-md); flex-shrink: 0; }
+    .sl-logo {
+      width: 36px; height: 36px;
+      border-radius: var(--radius-lg);
+      background: var(--accent-blue);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+    .sl-logo svg { display: block; }
+    .sl-brand__name {
+      font-family: var(--font-family-display);
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text);
+      letter-spacing: -0.01em;
+    }
+
+    .sl-nav__links {
+      display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap;
+    }
+    .sl-nav__link {
+      padding: 6px 14px;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text-dim);
+      transition: var(--transition-color);
+    }
+    .sl-nav__link:hover { color: var(--daw-text); background: var(--daw-raised); }
+    .sl-nav__link--active {
+      color: var(--gold);
+      background: var(--gold-soft);
+    }
+
+    .sl-nav__sound {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-surface);
+      color: var(--daw-text-dim);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: var(--transition-color);
+    }
+    .sl-nav__sound:hover { color: var(--gold); border-color: var(--gold-edge); }
+
+    /* ── Song info bar ─────────────────────────────────────── */
+    .sl-songbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-xl);
+      padding: var(--space-md) var(--space-xl);
+      background: var(--daw-surface);
+      border-bottom: 1px solid var(--daw-border);
+      flex-shrink: 0;
+    }
+    .sl-songbar__left {
+      display: flex; align-items: center; gap: var(--space-lg); min-width: 0;
+    }
+    .sl-songbar__transport { display: flex; gap: var(--space-xs); }
+    .sl-tbtn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: var(--transition-color), transform var(--transition-fast);
+    }
+    .sl-tbtn:hover { transform: scale(1.05); }
+    .sl-tbtn--play  { background: var(--green); color: #fff; border-color: transparent; }
+    .sl-tbtn--play:hover  { background: var(--green-bright); }
+    .sl-tbtn--stop  { color: var(--daw-text-dim); }
+    .sl-tbtn--stop:hover  { color: var(--daw-text); border-color: var(--daw-text-dim); }
+    .sl-tbtn svg { display: block; }
+
+    .sl-songinfo { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+    .sl-songinfo__title {
+      font-family: var(--font-family-display);
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text);
+      letter-spacing: -0.01em;
+      line-height: 1.15;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sl-songinfo__artist {
+      font-size: var(--font-size-sm);
+      color: var(--daw-text-dim);
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .sl-badges { display: flex; gap: var(--space-xs); }
+    .sl-badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--daw-raised);
+      border: 1px solid var(--daw-border);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text-dim);
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .sl-badge--key { color: var(--gold); border-color: var(--gold-edge); background: var(--gold-soft); }
+
+    .sl-songbar__right { display: flex; align-items: center; gap: var(--space-md); flex-shrink: 0; }
+    .sl-svc-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text-dim);
+      border: 1px solid var(--daw-border);
+      transition: var(--transition-color);
+    }
+    .sl-svc-link:hover { color: var(--daw-text); border-color: var(--daw-text-dim); }
+    .sl-svc-link svg { width: 14px; height: 14px; }
+
+    .sl-skratch-export {
+      padding: 7px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--gold);
+      background: var(--gold-soft);
+      color: var(--gold);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: var(--transition-color), transform var(--transition-fast);
+      white-space: nowrap;
+    }
+    .sl-skratch-export:hover { background: var(--gold); color: var(--daw-deep); }
+    .sl-skratch-export[hidden] { display: none !important; }
+
+    /* ── Main work area (sidebar + center) ─────────────────── */
+    .sl-work {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      background: var(--daw-deep);
+    }
+
+    /* ── Walkthrough sidebar ───────────────────────────────── */
+    .wts {
+      width: 230px;
+      flex-shrink: 0;
+      background: var(--daw-surface);
+      border-right: 1px solid var(--daw-border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .wts__head {
+      padding: var(--space-md) var(--space-lg) var(--space-sm);
+      border-bottom: 1px solid var(--daw-border-soft);
+    }
+    .wts__head-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .wts__label {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--daw-text-mute);
+    }
+    .wts__counter {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+    }
+    .wts__progress {
+      height: 4px;
+      border-radius: 999px;
+      background: var(--daw-elevated);
+      overflow: hidden;
+      position: relative;
+      --wt-progress: 0%;
+    }
+    .wts__progress::after {
+      content: '';
+      position: absolute; top: 0; left: 0; bottom: 0;
+      width: var(--wt-progress);
+      background: var(--gold);
+      border-radius: 999px;
+      transition: width var(--transition-base);
+    }
+
+    .wts__title {
+      padding: var(--space-md) var(--space-lg) 2px;
+      font-family: var(--font-family-display);
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text);
+      line-height: 1.25;
+    }
+    .wts__song {
+      padding: 0 var(--space-lg) var(--space-sm);
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-mute);
+      font-style: italic;
+    }
+
+    .wts__steps {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-xs) var(--space-sm) var(--space-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-height: 0;
+    }
+
+    .wts-step {
+      display: grid;
+      grid-template-columns: 26px 1fr 16px;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 8px var(--space-sm);
+      border-radius: var(--radius-md);
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--daw-text-dim);
+      cursor: pointer;
+      text-align: left;
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    }
+    .wts-step:hover { background: var(--daw-raised); color: var(--daw-text); }
+
+    .wts-step__badge {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--daw-elevated);
+      border: 1px solid var(--daw-border);
+      font-size: 11px;
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text-mute);
+      display: flex; align-items: center; justify-content: center;
+      transition: var(--transition-color);
+    }
+    .wts-step__body {
+      display: flex; flex-direction: column; min-width: 0;
+    }
+    .wts-step__chord {
+      font-family: var(--font-family-display);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: inherit;
+      line-height: 1.15;
+    }
+    .wts-step__fn {
+      font-size: 10.5px;
+      color: var(--daw-text-mute);
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .wts-step__check {
+      font-size: 12px;
+      color: var(--daw-text-ghost);
+      opacity: 0;
+      transition: opacity var(--transition-fast), color var(--transition-fast);
+    }
+
+    .wts-step--done {
+      color: var(--daw-text-mute);
+    }
+    .wts-step--done .wts-step__badge {
+      background: var(--gold-soft);
+      border-color: var(--gold-edge);
+      color: var(--gold);
+    }
+    .wts-step--done .wts-step__check { opacity: 0.7; color: var(--gold); }
+    .wts-step--done .wts-step__fn { color: var(--daw-text-ghost); }
+
+    .wts-step--active {
+      background: var(--daw-elevated);
+      border-color: var(--daw-border);
+      color: var(--daw-text);
+    }
+    .wts-step--active .wts-step__badge {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--daw-deep);
+      box-shadow: 0 0 0 3px var(--gold-soft);
+    }
+    .wts-step--active .wts-step__chord { color: var(--gold); }
+    .wts-step--active .wts-step__fn { color: var(--daw-text-dim); }
+
+    .wts-step--future { opacity: 0.55; }
+
+    .wts__note {
+      padding: var(--space-md) var(--space-lg);
+      border-top: 1px solid var(--daw-border-soft);
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-dim);
+      line-height: 1.55;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .wts__also {
+      padding: 0 var(--space-lg) var(--space-sm);
+      font-size: 10.5px;
+      color: var(--daw-text-mute);
+      font-style: italic;
+      line-height: 1.4;
+    }
+    .wts__see-also {
+      padding: 0 var(--space-lg) var(--space-sm);
+    }
+    .wts-see-also-link {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--gold);
+    }
+    .wts-see-also-link:hover { text-decoration: underline; }
+
+    .wts__foot {
+      padding: var(--space-sm) var(--space-md) var(--space-md);
+      border-top: 1px solid var(--daw-border-soft);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    .wts__nav-row { display: flex; gap: var(--space-sm); }
+    .wts-btn {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: var(--transition-color);
+    }
+    .wts-btn:hover:not(:disabled) {
+      color: var(--daw-text);
+      border-color: var(--daw-text-mute);
+    }
+    .wts-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .wts-btn--next {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--daw-deep);
+    }
+    .wts-btn--next:hover:not(:disabled) {
+      background: #E0AF4D;
+      color: var(--daw-deep);
+    }
+    .wts-btn--next:disabled { background: var(--daw-elevated); border-color: var(--daw-border); color: var(--daw-text-mute); }
+
+    .wts__exit {
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--daw-text-mute);
+      font-size: var(--font-size-xs);
+      cursor: pointer;
+      align-self: center;
+    }
+    .wts__exit:hover { color: var(--daw-text-dim); }
+
+    /* ── Center column ─────────────────────────────────────── */
+    .sl-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    /* ── Tonnetz panel header (with view tabs) ─────────────── */
+    .sl-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: var(--space-md) var(--space-md) var(--space-sm);
+    }
+
+    .exp-panel {
+      background: var(--daw-surface);
+      border: 1px solid var(--daw-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: opacity 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .exp-panel--hidden { display: none; }
+    .exp-panel--dimmed { opacity: 0.35; pointer-events: none; }
+
+    .exp-panel__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--daw-border-soft);
+      gap: var(--space-md);
+      flex-shrink: 0;
+    }
+    .exp-panel__label {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--daw-text-mute);
+    }
+
+    .sl-panel-tabs { display: flex; gap: 4px; }
+    .sl-panel-tab {
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--daw-text-mute);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: var(--transition-color);
+    }
+    .sl-panel-tab:hover { color: var(--daw-text-dim); background: var(--daw-raised); }
+    .sl-panel-tab--active {
+      background: var(--gold-soft);
+      border-color: var(--gold-edge);
+      color: var(--gold);
+    }
+    .sl-panel-tab:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .exp-panel--tonnetz { flex: 1; }
+    .exp-panel--tonnetz .exp-panel__body {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+    #exp-tonnetz-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Chord wheel kept in DOM (offscreen) so HarmonyState wiring stays alive */
     .exp-panel--chord-wheel {
+      position: absolute;
+      width: 1px; height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      left: -9999px;
+    }
+    #exp-chord-wheel-container { width: 400px; height: 400px; }
+    #exp-chord-wheel-container .cw-label { font-size: 12px; }
+    #exp-chord-wheel-container .cw-roman { font-size: 9px; }
+
+    /* ── Compact controls strip ─────────────────────────────── */
+    .sl-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: var(--daw-surface);
+      border: 1px solid var(--daw-border);
+      border-radius: var(--radius-lg);
+      margin: 0 var(--space-md) var(--space-sm);
+    }
+    .sl-ctrl-group {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .sl-ctrl-label {
+      font-size: 10.5px;
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--daw-text-mute);
+      white-space: nowrap;
+    }
+    .sl-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--daw-border);
+      flex-shrink: 0;
+    }
+    .sl-btn {
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: var(--transition-color);
+    }
+    .sl-btn:hover:not(:disabled) { color: var(--daw-text); border-color: var(--daw-text-mute); }
+    .sl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .sl-btn--gold {
+      color: var(--gold);
+      background: var(--gold-soft);
+      border-color: var(--gold-edge);
+    }
+    .sl-btn--gold:hover:not(:disabled) { background: var(--gold); color: var(--daw-deep); }
+    .sl-btn--prl { min-width: 32px; text-align: center; }
+    .sl-select {
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .sl-arp-label {
+      display: flex; align-items: center; gap: 4px;
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-dim);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .exp-note-controls { display: none; align-items: center; gap: 6px; }
+    .exp-note-controls--visible { display: flex; }
+
+    /* ── Keyboard panel ─────────────────────────────────────── */
+    .exp-panel--keyboard {
+      margin: 0 var(--space-md) var(--space-sm);
+      flex-shrink: 0;
+    }
+    .exp-panel--keyboard .exp-panel__body {
+      padding: var(--space-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      align-items: flex-start;
+      overflow-x: auto;
+    }
+    .sl-key-header {
+      display: flex; align-items: baseline; gap: var(--space-md);
       width: 100%;
     }
-    .exp-panel--chord-wheel .exp-panel-body {
-      height: 380px;
+    .sl-key-chord {
+      font-family: var(--font-family-display);
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-medium);
+      color: var(--gold);
     }
-    #exp-chord-wheel-container {
-      width: 340px;
-      height: 340px;
+    .sl-key-notes {
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-dim);
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
     }
-    .exp-panel--tonnetz .exp-panel-body {
-      height: 380px;
+
+    /* ── Fretboard panel ────────────────────────────────────── */
+    .exp-panel--fretboard {
+      margin: 0 var(--space-md) var(--space-sm);
+      flex-shrink: 0;
     }
-  }
-
-  /* ── Welcome banner ──────────────────────────────────────────── */
-  .intro-banner {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.65rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 0.7rem 1rem;
-    margin-bottom: 1rem;
-    max-height: 120px;
-    overflow: hidden;
-    animation: bannerSlideIn 0.35s ease;
-    transition: max-height 0.3s ease, opacity 0.25s ease,
-                padding 0.3s ease, margin 0.3s ease;
-  }
-  @keyframes bannerSlideIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .intro-banner--gone {
-    max-height: 0;
-    opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    margin-bottom: 0;
-    pointer-events: none;
-  }
-  .intro-banner__icon { flex-shrink: 0; font-size: 1rem; line-height: 1.5; }
-  .intro-banner__text {
-    flex: 1;
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
-  .intro-banner__dismiss {
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-size: 1.2rem;
-    line-height: 1;
-    padding: 0 0.1rem;
-    opacity: 0.6;
-    transition: opacity 0.15s;
-  }
-  .intro-banner__dismiss:hover { opacity: 1; }
-
-  /* ── Walkthrough Overlay ────────────────────────────────────────── */
-  .wt-overlay {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    width: 370px;
-    max-width: calc(100vw - 2rem);
-    background: rgba(22, 33, 62, 0.94);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1.2rem 1.4rem 1rem;
-    z-index: 900;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    color: var(--text-primary);
-    font-family: 'Nunito', sans-serif;
-    opacity: 0;
-    transform: translateY(12px);
-    pointer-events: none;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-  }
-  [data-theme="light"] .wt-overlay {
-    background: rgba(240, 238, 255, 0.96);
-  }
-  .wt-overlay--visible {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  .wt-close {
-    position: absolute;
-    top: 0.6rem;
-    right: 0.75rem;
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 1.4rem;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0.1rem 0.3rem;
-    border-radius: 6px;
-    opacity: 0.6;
-    transition: opacity 0.15s, background 0.15s;
-  }
-  .wt-close:hover {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .wt-song {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 0.45rem;
-    padding-right: 1.5rem;
-  }
-  .wt-step-title {
-    font-size: 1.1rem;
-    font-weight: 800;
-    margin-bottom: 0.4rem;
-    line-height: 1.3;
-  }
-  .wt-body {
-    font-size: 0.88rem;
-    line-height: 1.55;
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-  }
-  .wt-also {
-    font-size: 0.74rem;
-    line-height: 1.4;
-    color: var(--text-secondary);
-    opacity: 0.65;
-    margin-bottom: 0.75rem;
-    font-style: italic;
-  }
-
-  /* fade transition for step content */
-  .wt-fade-in {
-    animation: wtFadeIn 0.28s ease;
-  }
-  @keyframes wtFadeIn {
-    from { opacity: 0; transform: translateX(6px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
-  .wt-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-
-  /* step indicator dots */
-  .wt-indicator {
-    display: flex;
-    gap: 0.35rem;
-    align-items: center;
-  }
-  .wt-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--text-secondary);
-    opacity: 0.3;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.2s;
-  }
-  .wt-dot:hover { opacity: 0.6; }
-  .wt-dot--active {
-    opacity: 1;
-    background: var(--accent);
-    transform: scale(1.25);
-  }
-
-  /* navigation buttons */
-  .wt-nav {
-    display: flex;
-    gap: 0.4rem;
-  }
-  .wt-btn {
-    border: none;
-    border-radius: 8px;
-    padding: 0.4rem 0.9rem;
-    font-size: 0.82rem;
-    font-weight: 700;
-    font-family: 'Nunito', sans-serif;
-    cursor: pointer;
-    transition: background 0.15s, opacity 0.15s;
-  }
-  .wt-btn--back {
-    background: transparent;
-    color: var(--text-secondary);
-  }
-  .wt-btn--back:hover {
-    background: rgba(255, 255, 255, 0.06);
-  }
-  .wt-btn--next {
-    background: var(--accent);
-    color: #fff;
-  }
-  .wt-btn--next:hover {
-    filter: brightness(1.12);
-  }
-
-  /* Export link at bottom of bubble */
-  .wt-export-link {
-    margin-bottom: 0.5rem;
-  }
-  .wt-export-anchor {
-    font-size: 0.76rem;
-    font-weight: 600;
-    color: var(--accent);
-    text-decoration: none;
-    opacity: 0.8;
-    transition: opacity 0.15s;
-    cursor: pointer;
-  }
-  .wt-export-anchor:hover {
-    opacity: 1;
-    text-decoration: underline;
-  }
-
-  /* Draggable cursor */
-  .wt-overlay { cursor: grab; }
-  .wt-overlay button, .wt-overlay a { cursor: pointer; }
-
-  /* "See also" link nudge on final step */
-  .wt-see-also {
-    margin-bottom: 0.6rem;
-  }
-  .wt-see-also-link {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--accent);
-    text-decoration: none;
-    opacity: 0.85;
-    transition: opacity 0.15s;
-  }
-  .wt-see-also-link:hover {
-    opacity: 1;
-    text-decoration: underline;
-  }
-
-  /* Panel focus dimming — applied by walkthrough overlay */
-  .exp-panel--dimmed {
-    opacity: 0.35;
-    pointer-events: none;
-    transition: opacity 0.4s ease;
-  }
-  .exp-panel {
-    transition: opacity 0.4s ease;
-  }
-
-  @media (max-width: 500px) {
-    .wt-overlay {
-      bottom: 0.5rem;
-      right: 0.5rem;
-      left: 0.5rem;
-      width: auto;
+    .exp-panel--fretboard .exp-panel__body {
+      padding: var(--space-sm) var(--space-md);
+      overflow-x: auto;
     }
-  }
-</style>
-{% endblock %}
+    #exp-fretboard-container { width: 100%; min-height: 180px; }
 
-{% block content %}
-<div class="exp-page">
+    /* ── Status bar ────────────────────────────────────────── */
+    .sl-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      padding: var(--space-sm) var(--space-xl);
+      background: var(--daw-deep);
+      border-top: 1px solid var(--daw-border);
+      flex-shrink: 0;
+      font-size: var(--font-size-xs);
+    }
+    .sl-status__panels {
+      display: flex; align-items: center; gap: var(--space-sm);
+      color: var(--daw-text-mute);
+    }
+    .sl-status__panels strong {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text-mute);
+    }
+    .sl-panel-chip {
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      background: transparent;
+      color: var(--daw-text-mute);
+      transition: var(--transition-color);
+    }
+    .sl-panel-chip--active {
+      color: var(--gold);
+      background: var(--gold-soft);
+      border-color: var(--gold-edge);
+    }
+    .sl-panel-chip--inactive { color: var(--daw-text-mute); }
+    .sl-panel-chip--inactive:hover { color: var(--daw-text-dim); }
 
-  <h1>Tonnetz Explorer</h1>
-  <p class="exp-subtitle">
-    Click any chord on the Tonnetz or wheel — all panels stay in sync.
-    Use P, R, L to navigate harmonic transforms.
-    Switch to Note mode to build any chord one note at a time, then hit Play (or Spacebar).
-  </p>
+    .sl-status__right { display: flex; align-items: center; gap: var(--space-md); }
+    .sl-rec-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: var(--transition-color);
+    }
+    .sl-rec-btn:hover { color: var(--daw-text); }
+    .sl-rec-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--daw-text-mute);
+      display: inline-block;
+      transition: var(--transition-color);
+    }
+    .sl-rec-btn--on {
+      color: #fff; background: var(--red); border-color: var(--red);
+    }
+    .sl-rec-btn--on .sl-rec-dot { background: #fff; animation: recPulse 1.4s ease infinite; }
+    @keyframes recPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
-  <!-- First-visit welcome banner -->
-  <div id="explorer-welcome-banner" class="intro-banner" role="note" aria-label="Welcome tip">
-    <span class="intro-banner__icon" aria-hidden="true">&#128161;</span>
-    <span class="intro-banner__text">Three views of the same harmony. Click a chord on the wheel, a triangle on the grid, or keys on the keyboard — everything stays in sync. Try Note Mode (top toggle) to build your own voicings note by note.</span>
-    <button class="intro-banner__dismiss" id="explorer-banner-dismiss" aria-label="Dismiss welcome message">&#215;</button>
-  </div>
+    .sl-seq-count {
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-mute);
+      font-variant-numeric: tabular-nums;
+    }
 
-  <!-- Status strip -->
-  <div class="exp-status">
-    <span class="exp-status-label">Chord</span>
-    <div class="exp-chord-badge" id="exp-chord-badge">C major</div>
-    <div class="exp-transform-badge" id="exp-transform-badge">P →</div>
-  </div>
+    /* ── Responsive collapse ────────────────────────────────── */
+    @media (max-width: 900px) {
+      .wts { width: 200px; }
+    }
+    @media (max-width: 720px) {
+      .wts { display: none; }
+      .sl-songbar { flex-wrap: wrap; }
+    }
+  </style>
+</head>
 
-  <!-- Top row: Tonnetz (left) + Chord Wheel (right) -->
-  <div class="exp-top">
+<body>
+  <!-- ============ Nav ============ -->
+  <nav class="sl-nav">
+    <a href="/" class="sl-brand">
+      <span class="sl-logo" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 17.5V6.2L19 4v11.3" stroke="#D4A03C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <ellipse cx="7" cy="17.5" rx="2.5" ry="2" fill="#D4A03C"/>
+          <ellipse cx="17" cy="15.3" rx="2.5" ry="2" fill="#D4A03C"/>
+        </svg>
+      </span>
+      <span class="sl-brand__name">SongLab</span>
+    </a>
+    <div class="sl-nav__links">
+      <a href="/explorer" class="sl-nav__link sl-nav__link--active">Explorer</a>
+      <a href="/harmony" class="sl-nav__link">Ear training</a>
+      <a href="/rhythm" class="sl-nav__link">Rhythm &amp; play</a>
+      <a href="/skratch-studio" class="sl-nav__link">Skratch Studio</a>
+      <a href="/games/chord-walks" class="sl-nav__link">Games</a>
+    </div>
+    <button id="sl-sound-toggle" class="sl-nav__sound" aria-label="Toggle sound" title="Toggle sound">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </button>
+  </nav>
 
-    <div class="exp-panel exp-panel--tonnetz">
-      <div class="exp-panel-header">Tonnetz Neighborhood</div>
-      <div class="exp-panel-body">
-        <div id="exp-tonnetz-container"></div>
+  <!-- ============ Song info bar ============ -->
+  <div class="sl-songbar">
+    <div class="sl-songbar__left">
+      <div class="sl-songbar__transport">
+        <button class="sl-tbtn sl-tbtn--play" id="sl-transport-play" title="Play current chord" aria-label="Play">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="sl-tbtn sl-tbtn--stop" id="sl-transport-stop" title="Stop" aria-label="Stop">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+        </button>
+      </div>
+      <div class="sl-songinfo">
+        <div class="sl-songinfo__title" id="sl-song-title">Tonnetz Explorer</div>
+        <div class="sl-songinfo__artist" id="sl-song-artist">Free play — click any chord</div>
+      </div>
+      <div class="sl-badges">
+        <span class="sl-badge sl-badge--key" id="sl-badge-key">C major</span>
+        <span class="sl-badge" id="sl-badge-bpm">80 BPM</span>
       </div>
     </div>
+    <div class="sl-songbar__right">
+      <a class="sl-svc-link" id="sl-link-spotify" href="#" target="_blank" rel="noopener" title="Open in Spotify">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 10c3-1 7-1 10 1M7.5 13c2.5-.7 5.5-.6 8 .8M8 16c2-.5 4-.4 6 .6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>
+        Spotify
+      </a>
+      <a class="sl-svc-link" id="sl-link-apple" href="#" target="_blank" rel="noopener" title="Open in Apple Music">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V6l10-2v11"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="15" r="2"/></svg>
+        Apple
+      </a>
+      <button class="sl-skratch-export" id="btn-export-skratch" title="Export recorded sequence to Skratch Studio">→ Skratch Studio</button>
+    </div>
+  </div>
 
-    <div class="exp-panel exp-panel--chord-wheel">
-      <div class="exp-panel-header">Chord Wheel</div>
-      <div class="exp-panel-body">
+  <!-- ============ Main work area ============ -->
+  <div class="sl-work">
+
+    <!-- Walkthrough sidebar -->
+    <aside class="wts" id="wts-sidebar" aria-label="Guided walkthrough">
+      <div class="wts__head">
+        <div class="wts__head-row">
+          <span class="wts__label" data-wt-label>Walkthrough</span>
+          <span class="wts__counter" data-wt-counter>—</span>
+        </div>
+        <div class="wts__progress" data-wt-progress></div>
+      </div>
+      <div class="wts__title" data-wt-title>No walkthrough loaded</div>
+      <div class="wts__song" data-wt-song>Pick a song from the home page to start a guided tour.</div>
+      <div class="wts__steps" data-wt-steps></div>
+      <div class="wts__note" data-wt-note></div>
+      <div class="wts__also" data-wt-also style="display:none"></div>
+      <div class="wts__see-also" data-wt-see-also style="display:none"></div>
+      <div class="wts__foot">
+        <div class="wts__nav-row">
+          <button class="wts-btn wts-btn--back" data-wt-back disabled>← Back</button>
+          <button class="wts-btn wts-btn--next" data-wt-next disabled>Next →</button>
+        </div>
+        <button class="wts__exit" data-wt-exit hidden>Exit walkthrough</button>
+      </div>
+    </aside>
+
+    <!-- Center column -->
+    <div class="sl-center">
+
+      <!-- Tonnetz stage -->
+      <div class="sl-stage">
+        <div class="exp-panel exp-panel--tonnetz">
+          <div class="exp-panel__head">
+            <span class="exp-panel__label">Tonnetz Neighborhood</span>
+            <div class="sl-panel-tabs">
+              <button class="sl-panel-tab sl-panel-tab--active" id="sl-tab-tonnetz" type="button">Tonnetz</button>
+              <button class="sl-panel-tab" id="sl-tab-wheel" type="button" disabled title="Coming soon">Chord wheel</button>
+              <button class="sl-panel-tab" id="sl-tab-fretboard" type="button" disabled title="Coming soon">Fretboard</button>
+            </div>
+          </div>
+          <div class="exp-panel__body">
+            <div id="exp-tonnetz-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compact controls bar (preserves existing functionality) -->
+      <div class="sl-controls">
+        <div class="sl-ctrl-group">
+          <span class="sl-ctrl-label">Transform</span>
+          <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-P" title="Parallel">P</button>
+          <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-R" title="Relative">R</button>
+          <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-L" title="Leading-tone">L</button>
+        </div>
+        <div class="sl-divider"></div>
+        <div class="sl-ctrl-group">
+          <label class="sl-ctrl-label" for="exp-depth">Depth</label>
+          <select class="sl-select" id="exp-depth">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+        <div class="sl-divider"></div>
+        <div class="sl-ctrl-group">
+          <label class="sl-ctrl-label" for="exp-key">Key</label>
+          <select class="sl-select" id="exp-key">
+            <option value="0">C</option><option value="1">G</option><option value="2">D</option>
+            <option value="3">A</option><option value="4">E</option><option value="5">B</option>
+            <option value="6">F♯</option><option value="7">D♭</option><option value="8">A♭</option>
+            <option value="9">E♭</option><option value="10">B♭</option><option value="11">F</option>
+          </select>
+        </div>
+        <div class="sl-divider"></div>
+        <div class="sl-ctrl-group">
+          <span class="sl-ctrl-label">Keys</span>
+          <button class="sl-btn sl-btn--gold" id="btn-chord-mode">Chord</button>
+          <button class="sl-btn" id="btn-note-mode">Note</button>
+        </div>
+        <div class="exp-note-controls" id="note-mode-controls">
+          <div class="sl-divider"></div>
+          <button class="sl-btn sl-btn--gold" id="btn-note-play" title="Play active notes (Spacebar)">▶ Play</button>
+          <button class="sl-btn" id="btn-note-clear" title="Clear (Escape)">Clear</button>
+          <label class="sl-arp-label"><input type="checkbox" id="chk-arpeggiate"> Arp</label>
+        </div>
+        <div class="sl-divider"></div>
+        <div class="sl-ctrl-group">
+          <span class="sl-ctrl-label">View</span>
+          <button class="sl-btn sl-btn--gold" id="btn-view-keyboard">Keyboard</button>
+          <button class="sl-btn" id="btn-view-fretboard">Fretboard</button>
+          <button class="sl-btn" id="btn-view-both">Both</button>
+        </div>
+        <div class="sl-divider"></div>
+        <div class="sl-ctrl-group" id="inst-picker">
+          <span class="sl-ctrl-label">Sound</span>
+          <button class="sl-btn sl-btn--gold" id="btn-inst-piano"  data-inst="piano">Piano</button>
+          <button class="sl-btn"             id="btn-inst-guitar" data-inst="guitar">Guitar</button>
+          <button class="sl-btn"             id="btn-inst-voice"  data-inst="voice">Voice</button>
+        </div>
+      </div>
+
+      <!-- Keyboard panel -->
+      <div class="exp-panel exp-panel--keyboard">
+        <div class="exp-panel__head">
+          <span class="exp-panel__label">Keyboard</span>
+        </div>
+        <div class="exp-panel__body">
+          <div class="sl-key-header">
+            <span class="sl-key-chord" id="sl-key-chord">C major</span>
+            <span class="sl-key-notes" id="sl-key-notes">C · E · G</span>
+          </div>
+          <div id="exp-keyboard-container"></div>
+        </div>
+      </div>
+
+      <!-- Fretboard panel (hidden by default) -->
+      <div class="exp-panel exp-panel--fretboard exp-panel--hidden" id="exp-fretboard-panel">
+        <div class="exp-panel__head">
+          <span class="exp-panel__label">Fretboard</span>
+        </div>
+        <div class="exp-panel__body">
+          <div id="exp-fretboard-container"></div>
+        </div>
+      </div>
+
+      <!-- Off-screen chord wheel (kept alive for HarmonyState wiring) -->
+      <div class="exp-panel exp-panel--chord-wheel" aria-hidden="true">
         <div id="exp-chord-wheel-container"></div>
       </div>
-    </div>
 
-  </div>
-
-  <!-- Keyboard (full width) -->
-  <div class="exp-panel exp-panel--keyboard">
-    <div class="exp-panel-header">Keyboard</div>
-    <div class="exp-panel-body">
-      <div id="exp-keyboard-container"></div>
     </div>
   </div>
 
-  <!-- Fretboard (full width, toggleable) -->
-  <div class="exp-panel exp-panel--fretboard exp-panel--hidden" id="exp-fretboard-panel">
-    <div class="exp-panel-header">Fretboard</div>
-    <div class="exp-panel-body">
-      <div id="exp-fretboard-container"></div>
+  <!-- ============ Status bar ============ -->
+  <footer class="sl-status">
+    <div class="sl-status__panels">
+      <strong>Panels:</strong>
+      <button class="sl-panel-chip sl-panel-chip--active" id="sl-chip-tonnetz" type="button">Tonnetz</button>
+      <button class="sl-panel-chip sl-panel-chip--inactive" id="sl-chip-wheel" type="button">+ Chord wheel</button>
+      <button class="sl-panel-chip sl-panel-chip--inactive" id="sl-chip-fretboard" type="button">+ Fretboard</button>
     </div>
-  </div>
-
-  <!-- Controls bar -->
-  <div class="exp-controls">
-
-    <!-- PLR transforms -->
-    <div class="exp-ctrl-group">
-      <span class="exp-ctrl-label">Transform</span>
-      <button class="exp-btn exp-btn--prl" id="btn-P" title="Parallel — swap major/minor, keep root">P</button>
-      <button class="exp-btn exp-btn--prl" id="btn-R" title="Relative — share two notes, move by whole step">R</button>
-      <button class="exp-btn exp-btn--prl" id="btn-L" title="Leading-tone — share two notes, move by semitone">L</button>
+    <div class="sl-status__right">
+      <span class="sl-seq-count" id="sequence-count" hidden>0 chords</span>
+      <button class="sl-btn" id="btn-clear-sequence" hidden>Clear</button>
+      <button class="sl-rec-btn" id="btn-record" title="Record chord clicks for export to Skratch Studio">
+        <span class="sl-rec-dot"></span> Record
+      </button>
     </div>
+  </footer>
 
-    <div class="exp-divider"></div>
+  <!-- ============ Scripts ============ -->
+  <!-- Hide the global floating audio toggle (we surface it in the nav) -->
+  <style>.audio-toggle-btn { display: none !important; }</style>
+  <script src="{{ url_for('static', filename='shared/audio-toggle.js') }}"></script>
 
-    <!-- Depth selector -->
-    <div class="exp-ctrl-group">
-      <label class="exp-ctrl-label" for="exp-depth">Depth</label>
-      <select class="exp-select" id="exp-depth" title="How many PLR hops to show on the Tonnetz">
-        <option value="1">1</option>
-        <option value="2" selected>2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-      </select>
-    </div>
-
-    <div class="exp-divider"></div>
-
-    <!-- Key selector -->
-    <div class="exp-ctrl-group">
-      <label class="exp-ctrl-label" for="exp-key">Key</label>
-      <select class="exp-select" id="exp-key" title="Set the diatonic key context on the chord wheel">
-        <option value="0">C</option>
-        <option value="1">G</option>
-        <option value="2">D</option>
-        <option value="3">A</option>
-        <option value="4">E</option>
-        <option value="5">B</option>
-        <option value="6">F♯</option>
-        <option value="7">D♭</option>
-        <option value="8">A♭</option>
-        <option value="9">E♭</option>
-        <option value="10">B♭</option>
-        <option value="11">F</option>
-      </select>
-    </div>
-
-    <div class="exp-divider"></div>
-
-    <!-- Input mode toggle: Chord vs Note -->
-    <div class="exp-ctrl-group">
-      <span class="exp-ctrl-label">Keys</span>
-      <button class="exp-btn exp-btn--mode-active" id="btn-chord-mode"
-              title="Click a key to select a chord (major or minor based on key context)">Chord</button>
-      <button class="exp-btn exp-btn--mode" id="btn-note-mode"
-              title="Click keys to add/remove individual notes and build any chord">Note</button>
-    </div>
-
-    <div class="exp-divider"></div>
-
-    <!-- Instrument panel toggle: Keyboard / Fretboard / Both -->
-    <div class="exp-ctrl-group">
-      <span class="exp-ctrl-label">View</span>
-      <button class="exp-btn exp-btn--mode-active" id="btn-view-keyboard"
-              title="Show piano keyboard">Keyboard</button>
-      <button class="exp-btn exp-btn--mode" id="btn-view-fretboard"
-              title="Show guitar fretboard">Fretboard</button>
-      <button class="exp-btn exp-btn--mode" id="btn-view-both"
-              title="Show keyboard and fretboard stacked">Both</button>
-    </div>
-
-    <!-- Note mode play controls (only shown in Note Mode) -->
-    <div class="exp-note-controls" id="note-mode-controls">
-      <div class="exp-divider"></div>
-      <button class="exp-btn exp-btn--play" id="btn-note-play"
-              title="Play active notes as a chord (Spacebar)">&#9654; Play</button>
-      <button class="exp-btn exp-btn--clear" id="btn-note-clear"
-              title="Clear all active notes (Escape)">Clear</button>
-      <label class="exp-arp-label" title="Play notes one at a time (low to high)">
-        <input type="checkbox" id="chk-arpeggiate"> Arp
-      </label>
-    </div>
-
-    <div class="exp-divider"></div>
-
-    <!-- Instrument selector -->
-    <div class="exp-ctrl-group" id="inst-picker">
-      <span class="exp-ctrl-label">Sound</span>
-      <button class="exp-btn exp-btn--mode-active" id="btn-inst-piano"  data-inst="piano">Piano</button>
-      <button class="exp-btn exp-btn--mode"         id="btn-inst-guitar" data-inst="guitar">Guitar</button>
-      <button class="exp-btn exp-btn--mode"         id="btn-inst-voice"  data-inst="voice">Voice</button>
-    </div>
-
-    <div class="exp-divider"></div>
-
-    <!-- Sequence capture: Record / Export / Clear -->
-    <div class="exp-ctrl-group" id="exp-sequence-group">
-      <button class="exp-btn exp-btn--sound" id="btn-record"
-              title="Record chord clicks for export to Skratch Studio">Record</button>
-      <span class="exp-sequence-count" id="sequence-count" hidden>0 chords</span>
-      <button class="exp-btn exp-btn--export" id="btn-export-skratch" hidden
-              title="Export recorded sequence to Skratch Studio">Export to Skratch</button>
-      <button class="exp-btn exp-btn--clear" id="btn-clear-sequence" hidden
-              title="Discard recorded sequence">Clear</button>
-    </div>
-
-  </div>
-
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script type="module">
-  import { HarmonyState }
-    from '{{ url_for("static", filename="shared/harmony-state.js") }}';
-  import { TRANSFORMS, triadNotes, noteToPC }
-    from '{{ url_for("static", filename="shared/transforms.js") }}';
-  import { TonnetzNeighborhood }
-    from '{{ url_for("static", filename="shared/tonnetz-neighborhood.js") }}';
-  import { KeyboardView }
-    from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
-  import { ChordWheel, COF_MAJOR }
-    from '{{ url_for("static", filename="js/chord-wheel.js") }}';
-  import { ChordBubbleRenderer }
-    from '{{ url_for("static", filename="shared/chord-bubble-renderer.js") }}';
-  import { resolveChord }
-    from '{{ url_for("static", filename="shared/chord-resolver.js") }}';
-  import { FretboardView }
-    from '{{ url_for("static", filename="shared/fretboard-view.js") }}';
-  import { getFeatureFlag, setFeatureFlag }
-    from '{{ url_for("static", filename="shared/user-profile.js") }}';
-  import { WALKTHROUGHS }
-    from '{{ url_for("static", filename="shared/walkthroughs.js") }}';
-  import { WalkthroughOverlay }
-    from '{{ url_for("static", filename="shared/walkthrough-overlay.js") }}';
-
-  // ── Welcome banner ───────────────────────────────────────────────────────
-  {
-    const banner = document.getElementById('explorer-welcome-banner');
-    if (banner) {
-      if (getFeatureFlag('explorer_intro_seen')) {
-        banner.remove();
-      } else {
-        document.getElementById('explorer-banner-dismiss').addEventListener('click', () => {
-          setFeatureFlag('explorer_intro_seen', true);
-          banner.classList.add('intro-banner--gone');
-          banner.addEventListener('transitionend', () => banner.remove(), { once: true });
-        });
+  <script>
+    // ── Wire nav sound toggle to global AudioToggle ─────────────
+    (function () {
+      const ICON_ON  = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+      const ICON_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+      const btn = document.getElementById('sl-sound-toggle');
+      const floating = () => document.querySelector('.audio-toggle-btn');
+      function refresh() {
+        const muted = window.AudioToggle ? window.AudioToggle.isMuted() : false;
+        btn.innerHTML = muted ? ICON_OFF : ICON_ON;
+        btn.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+        btn.style.opacity = muted ? '0.55' : '1';
       }
-    }
-  }
-
-  // Expose for console debugging
-  window.HarmonyState        = HarmonyState;
-  window.TonnetzNeighborhood = TonnetzNeighborhood;
-
-  // ════════════════════════════════════════════════════════════════
-  // CHORD TRACKING
-  // ════════════════════════════════════════════════════════════════
-
-  let currentRoot    = 'C';
-  let currentQuality = 'major';
-
-  // ════════════════════════════════════════════════════════════════
-  // AUDIO
-  // Audio is ON by default. Tone.js AudioContext resumes on first
-  // user gesture via AudioToggle (shared/audio-toggle.js).
-  // ensureFullAudio() lazily loads Tone + Salamander sampler.
-  // ════════════════════════════════════════════════════════════════
-
-  let sampler = null;
-  let _audioInitPromise = null;
-
-  /** How long chords ring in chord mode (seconds). Piano-like sustain. */
-  const CHORD_SUSTAIN = 2.5;
-
-  /** Belt-and-suspenders Tone.js fallback loader (mirrors intro-audio.js). */
-  let _toneLoadPromise = null;
-  async function loadToneIfNeeded() {
-    if (window.Tone) return;
-    if (_toneLoadPromise) return _toneLoadPromise;
-    _toneLoadPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
-      script.onload  = resolve;
-      script.onerror = () => reject(new Error('Tone.js failed to load'));
-      document.head.appendChild(script);
-    });
-    return _toneLoadPromise;
-  }
-
-  /** Lazily init Tone + Salamander sampler + saved instrument on first play. */
-  async function ensureFullAudio() {
-    if (sampler) return;
-    if (_audioInitPromise) return _audioInitPromise;
-    _audioInitPromise = (async () => {
-      await loadToneIfNeeded();
-      await AudioToggle.ensureTone();
-      sampler = await KeyboardView.getSampler();
-      // Restore saved instrument preference
-      const savedInst = localStorage.getItem(INST_PREF_KEY) || 'piano';
-      if (savedInst !== 'piano') {
-        _switchInstrument(savedInst);
-      } else {
-        _syncInstButtons('piano', 'loaded');
-      }
+      btn.addEventListener('click', () => {
+        const f = floating();
+        if (f) f.click();
+        else refresh();
+      });
+      window.addEventListener('tonnetz:mute-changed', refresh);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', refresh);
+      } else { refresh(); }
     })();
-    return _audioInitPromise;
-  }
+  </script>
 
-  /** Build a voiced triad ascending from octave 4. Mirrors chord-wheel-test. */
-  function chordVoicing(root, quality) {
-    const notes = triadNotes(root, quality);
-    if (!notes) return [];
-    let oct = 4, prevPC = -1;
-    return notes.map(n => {
-      const ascii = n.replace(/♯/g, '#').replace(/♭/g, 'b');
-      const pc = noteToPC(n);
-      if (prevPC >= 0 && pc <= prevPC) oct++;
-      prevPC = pc;
-      return `${ascii}${oct}`;
-    });
-  }
+  <script type="module">
+    import { HarmonyState }
+      from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+    import { TRANSFORMS, triadNotes, noteToPC }
+      from '{{ url_for("static", filename="shared/transforms.js") }}';
+    import { TonnetzNeighborhood }
+      from '{{ url_for("static", filename="shared/tonnetz-neighborhood.js") }}';
+    import { KeyboardView }
+      from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+    import { ChordWheel, COF_MAJOR }
+      from '{{ url_for("static", filename="js/chord-wheel.js") }}';
+    import { ChordBubbleRenderer }
+      from '{{ url_for("static", filename="shared/chord-bubble-renderer.js") }}';
+    import { resolveChord }
+      from '{{ url_for("static", filename="shared/chord-resolver.js") }}';
+    import { FretboardView }
+      from '{{ url_for("static", filename="shared/fretboard-view.js") }}';
+    import { WALKTHROUGHS }
+      from '{{ url_for("static", filename="shared/walkthroughs.js") }}';
+    import { WalkthroughSidebar }
+      from '{{ url_for("static", filename="shared/walkthrough-sidebar.js") }}';
 
-  async function playChord(root, quality) {
-    if (AudioToggle.isMuted()) return;
-    try { if (sampler) sampler.releaseAll(); } catch (_) {}
-    await ensureFullAudio();
-    if (!sampler) return;
-    const voicing = chordVoicing(root, quality);
-    if (!voicing.length) return;
-    const velocity = 0.55 + Math.random() * 0.3;
-    sampler.volume.value = Math.random() * 4 - 2;
-    sampler.triggerAttackRelease(voicing, CHORD_SUSTAIN, Tone.now(), velocity);
-  }
+    // Expose for console debugging
+    window.HarmonyState        = HarmonyState;
+    window.TonnetzNeighborhood = TonnetzNeighborhood;
 
-  // ── Instrument picker ──────────────────────────────────────────────
-  const instPicker    = document.getElementById('inst-picker');
-  const instBtns      = instPicker.querySelectorAll('[data-inst]');
-  const INST_PREF_KEY = 'tonnetz_explorer_instrument';
+    // ════════════════════════════════════════════════════════════════
+    // CHORD TRACKING
+    // ════════════════════════════════════════════════════════════════
+    let currentRoot    = 'C';
+    let currentQuality = 'major';
 
-  function _syncInstButtons(activeInst, loadState) {
-    instBtns.forEach(btn => {
-      const isThis    = btn.dataset.inst === activeInst;
-      const isLoading = isThis && loadState === 'loading';
-      const isError   = isThis && loadState === 'error';
-      btn.classList.toggle('exp-btn--mode-active', isThis && loadState !== 'error');
-      btn.classList.remove('exp-btn--mode');
-      if (!isThis || isError) btn.classList.add('exp-btn--mode');
-      btn.disabled = loadState === 'loading';
-      if (isLoading) {
-        btn.textContent = btn.dataset.inst.charAt(0).toUpperCase() + btn.dataset.inst.slice(1) + '\u2026';
-      } else {
-        btn.textContent = btn.dataset.inst.charAt(0).toUpperCase() + btn.dataset.inst.slice(1);
-      }
-    });
-  }
+    // ════════════════════════════════════════════════════════════════
+    // AUDIO
+    // ════════════════════════════════════════════════════════════════
+    let sampler = null;
+    let _audioInitPromise = null;
+    const CHORD_SUSTAIN = 2.5;
+    const NOTE_SUSTAIN  = 2.0;
 
-  async function _switchInstrument(name) {
-    _syncInstButtons(name, 'loading');
-    try {
-      await KeyboardView.setInstrument(name);
-      sampler = KeyboardView.getSampler ? await KeyboardView.getSampler() : sampler;
-      localStorage.setItem(INST_PREF_KEY, name);
-      _syncInstButtons(name, 'loaded');
-    } catch (err) {
-      console.warn('[explorer] Instrument switch failed, falling back to piano:', err);
-      try { await KeyboardView.setInstrument('piano'); } catch (_) {}
-      localStorage.setItem(INST_PREF_KEY, 'piano');
-      _syncInstButtons(name, 'error');
-      setTimeout(() => _syncInstButtons('piano', 'loaded'), 2500);
-    }
-  }
-
-  instBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      _switchInstrument(btn.dataset.inst);
-    });
-  });
-
-  // ════════════════════════════════════════════════════════════════
-  // INITIALIZE PANNELS
-  // ════════════════════════════════════════════════════════════════
-
-  // ── Sequence capture (Record → Export to Skratch Studio) ──────────
-  let _recording = false;       // manual recording active
-  let _wtCapturing = false;     // walkthrough auto-capture active
-  let _sequence = [];           // captured chord events
-
-  const btnRecord       = document.getElementById('btn-record');
-  const btnExport       = document.getElementById('btn-export-skratch');
-  const btnClearSeq     = document.getElementById('btn-clear-sequence');
-  const sequenceCount   = document.getElementById('sequence-count');
-
-  function _updateSequenceUI() {
-    const has = _sequence.length > 0;
-    const active = _recording || _wtCapturing;
-    sequenceCount.textContent = `${_sequence.length} chord${_sequence.length !== 1 ? 's' : ''}`;
-    sequenceCount.hidden = !has && !active;
-    btnExport.hidden = !has || active;       // show only when stopped with data
-    btnClearSeq.hidden = !has || active;
-  }
-
-  function _pushChord(root, quality, transform) {
-    _sequence.push({ root, quality, transform: transform || null });
-    _updateSequenceUI();
-  }
-
-  function _resetSequence() {
-    _sequence = [];
-    _updateSequenceUI();
-  }
-
-  // Record toggle
-  btnRecord.addEventListener('click', () => {
-    _recording = !_recording;
-    if (_recording) {
-      _sequence = [];
-      btnRecord.textContent = '● Recording';
-      btnRecord.classList.remove('exp-btn--sound');
-      btnRecord.classList.add('exp-btn--record-on');
-    } else {
-      btnRecord.textContent = 'Record';
-      btnRecord.classList.remove('exp-btn--record-on');
-      btnRecord.classList.add('exp-btn--sound');
-    }
-    _updateSequenceUI();
-  });
-
-  // Export: save sequence to sessionStorage and open Skratch Studio
-  btnExport.addEventListener('click', () => {
-    if (!_sequence.length) return;
-
-    // Save to sessionStorage so Skratch Studio can pick it up on load
-    sessionStorage.setItem('tonnetz-export-sequence', JSON.stringify(_sequence));
-    console.log('[Explorer] stored sequence:', sessionStorage.getItem('tonnetz-export-sequence'));
-
-    // Also try BroadcastChannel in case Skratch Studio is already open
-    try {
-      const bridge = new BroadcastChannel('tonnetz-skratch-bridge');
-      bridge.postMessage({ type: 'import_sequence', chords: _sequence });
-      bridge.close();
-    } catch (err) { /* BroadcastChannel not supported or failed — sessionStorage path handles it */ }
-
-    // Open Skratch Studio in a new tab
-    window.open('/skratch-studio', '_blank');
-
-    // Visual confirmation
-    btnExport.textContent = 'Sent!';
-    btnExport.disabled = true;
-    setTimeout(() => {
-      btnExport.textContent = 'Export to Skratch';
-      btnExport.disabled = false;
-    }, 1500);
-  });
-
-  // Clear recorded sequence
-  btnClearSeq.addEventListener('click', _resetSequence);
-
-  // ── Tonnetz Neighborhood ─────────────────────────────────────────
-  TonnetzNeighborhood.init('exp-tonnetz-container', {
-    interactive: true,
-    onTriadClick({ root, quality }) {
-      // Clicking a Tonnetz triangle selects that chord → updates all panels
-      HarmonyState.setTriad(root, quality);
-    },
-    onTransformClick({ type, from }) {
-      // Clicking a PLR arrow label applies that transform
-      HarmonyState.setTransform(type, from.root, from.quality);
-    },
-    onNodeClick({ note }) {
-      // Only toggle notes in Note Mode — Chord Mode uses triangle/arrow clicks.
-      if (!noteInputMode) return;
-      HarmonyState.toggleNote(note);
-    },
-  });
-
-  // ── Chord Bubble (must init AFTER Tonnetz so its subscriber runs second) ─
-  const chordBubble = new ChordBubbleRenderer('exp-tonnetz-container', {
-    labelEl: 'exp-chord-badge',
-  });
-
-  // ── Chord Wheel ──────────────────────────────────────────────────
-  // ChordWheel auto-subscribes to HarmonyState and its click handlers
-  // call HarmonyState.setTriad() / HarmonyState.update({ currentKey })
-  // internally — no extra wiring needed here.
-  const wheel = new ChordWheel('#exp-chord-wheel-container', { initialKey: 0 });
-  window.wheel = wheel;
-
-  // ── Input mode: Chord vs Note ────────────────────────────────────
-  // noteInputMode = false → Chord mode (click = setTriad, existing behaviour)
-  // noteInputMode = true  → Note mode (click = toggleNote, accumulate notes)
-
-  let noteInputMode = false;
-
-  const btnChordMode = document.getElementById('btn-chord-mode');
-  const btnNoteMode  = document.getElementById('btn-note-mode');
-
-  function _setInputMode(isNoteMode) {
-    noteInputMode = isNoteMode;
-    btnChordMode.className = isNoteMode ? 'exp-btn exp-btn--mode'        : 'exp-btn exp-btn--mode-active';
-    btnNoteMode.className  = isNoteMode ? 'exp-btn exp-btn--mode-active' : 'exp-btn exp-btn--mode';
-
-    const noteControls = document.getElementById('note-mode-controls');
-    noteControls.classList.toggle('exp-note-controls--visible', isNoteMode);
-
-    if (isNoteMode) {
-      // Clear any existing chord so the Tonnetz doesn't stay locked to it.
-      // Keep tonnetzCenter so the grid doesn't jump.
-      HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
-    } else {
-      // Restore the last known chord when switching back to chord mode.
-      HarmonyState.setTriad(currentRoot, currentQuality);
-    }
-  }
-
-  btnChordMode.addEventListener('click', () => _setInputMode(false));
-  btnNoteMode.addEventListener('click',  () => _setInputMode(true));
-
-  // ── Keyboard View ────────────────────────────────────────────────
-  // noInternalAudio: true — the Explorer manages all audio itself so
-  //   keyboard note-press audio doesn't fight with chord-mode playChord.
-
-  // Circle-of-fifths pitch-class tables (mirrors chord-wheel.js constants).
-  const _COF_MAJOR_PC = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
-  const _COF_MINOR_PC = [9, 4, 11, 6, 1, 8, 3, 10, 5, 0, 7, 2];
-
-  /**
-   * Guess major vs minor quality for a note PC given the current key index.
-   * Diatonic major roots (IV, I, V) → major; diatonic minor roots (ii, vi, iii) → minor.
-   * Non-diatonic notes default to major.
-   */
-  function _guessQuality(pc, keyIdx) {
-    const prev = (keyIdx + 11) % 12;
-    const next = (keyIdx + 1)  % 12;
-    if ([_COF_MAJOR_PC[prev], _COF_MAJOR_PC[keyIdx], _COF_MAJOR_PC[next]].includes(pc)) return 'major';
-    if ([_COF_MINOR_PC[prev], _COF_MINOR_PC[keyIdx], _COF_MINOR_PC[next]].includes(pc)) return 'minor';
-    return 'major';
-  }
-
-  /** Sustain for a single note in Note Mode (seconds). */
-  const NOTE_SUSTAIN = 2.0;
-
-  KeyboardView.init('exp-keyboard-container', {
-    showLabels: true,
-    mode: 'both',            // display HarmonyState highlights AND allow key clicks
-    noInternalAudio: true,   // Explorer handles all audio; prevents double-play conflicts
-
-    onNotePlay(noteName, octave) {
-      if (noteInputMode) {
-        // ── Note Mode: toggle this exact octave (silent — use Play button for audio) ─
-        HarmonyState.toggleNote(noteName, octave);
-      } else {
-        // ── Chord Mode: build triad on this root ───────────────
-        const ascii  = noteName.replace(/♯/g, '#').replace(/♭/g, 'b');
-        const pc     = noteToPC(ascii);
-        const state  = HarmonyState.get();
-        const keyIdx = typeof state.currentKey === 'number' ? state.currentKey : 0;
-        HarmonyState.setTriad(noteName, _guessQuality(pc, keyIdx));
-        // Audio is handled by the HarmonyState subscriber → playChord().
-      }
-    },
-  });
-
-  // ── Fretboard View (composable panel — lazy init) ──────────────
-  let fretboard = null;
-
-  const kbPanel = document.querySelector('.exp-panel--keyboard');
-  const fbPanel = document.getElementById('exp-fretboard-panel');
-  const btnViewKb   = document.getElementById('btn-view-keyboard');
-  const btnViewFb   = document.getElementById('btn-view-fretboard');
-  const btnViewBoth = document.getElementById('btn-view-both');
-
-  function _ensureFretboard() {
-    if (!fretboard) {
-      fretboard = new FretboardView('exp-fretboard-container', { interactive: true });
-    }
-  }
-
-  function _destroyFretboard() {
-    if (fretboard) {
-      fretboard.destroy();
-      fretboard = null;
-    }
-  }
-
-  function _setView(mode) {
-    // Reset button styles
-    btnViewKb.className   = 'exp-btn exp-btn--mode';
-    btnViewFb.className   = 'exp-btn exp-btn--mode';
-    btnViewBoth.className = 'exp-btn exp-btn--mode';
-
-    if (mode === 'keyboard') {
-      btnViewKb.className = 'exp-btn exp-btn--mode-active';
-      kbPanel.classList.remove('exp-panel--hidden');
-      fbPanel.classList.add('exp-panel--hidden');
-      _destroyFretboard();
-    } else if (mode === 'fretboard') {
-      btnViewFb.className = 'exp-btn exp-btn--mode-active';
-      kbPanel.classList.add('exp-panel--hidden');
-      fbPanel.classList.remove('exp-panel--hidden');
-      _ensureFretboard();
-    } else {
-      // both
-      btnViewBoth.className = 'exp-btn exp-btn--mode-active';
-      kbPanel.classList.remove('exp-panel--hidden');
-      fbPanel.classList.remove('exp-panel--hidden');
-      _ensureFretboard();
-    }
-  }
-
-  btnViewKb.addEventListener('click',   () => _setView('keyboard'));
-  btnViewFb.addEventListener('click',   () => _setView('fretboard'));
-  btnViewBoth.addEventListener('click', () => _setView('both'));
-
-  // ════════════════════════════════════════════════════════════════
-  // NOTE MODE — PLAY & CLEAR
-  // ════════════════════════════════════════════════════════════════
-
-  /** Build a voiced list of Tone.js note strings from activeNotes, ascending by pitch. */
-  function buildNoteVoicing(activeNotes) {
-    const sorted = [...activeNotes].sort((a, b) => {
-      const midiA = a.octave * 12 + noteToPC(a.note);
-      const midiB = b.octave * 12 + noteToPC(b.note);
-      return midiA - midiB;
-    });
-    return sorted.map(n => {
-      const ascii = n.note.replace(/♯/g, '#').replace(/♭/g, 'b');
-      return `${ascii}${n.octave}`;
-    });
-  }
-
-  async function playNoteChord() {
-    if (AudioToggle.isMuted()) return;
-    try { if (sampler) sampler.releaseAll(); } catch (_) {}
-    await ensureFullAudio();
-    if (!sampler) return;
-    const activeNotes = HarmonyState.get().activeNotes;
-    if (!activeNotes.length) return;
-    const voicing = buildNoteVoicing(activeNotes);
-    if (!voicing.length) return;
-
-    const isArp = document.getElementById('chk-arpeggiate').checked;
-    const velocity = 0.55 + Math.random() * 0.3;
-    sampler.volume.value = Math.random() * 4 - 2;
-
-    if (isArp) {
-      const step = 0.13;  // seconds between arpeggiated notes
-      voicing.forEach((note, i) => {
-        sampler.triggerAttackRelease(note, NOTE_SUSTAIN, Tone.now() + i * step, velocity);
+    let _toneLoadPromise = null;
+    async function loadToneIfNeeded() {
+      if (window.Tone) return;
+      if (_toneLoadPromise) return _toneLoadPromise;
+      _toneLoadPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+        script.onload  = resolve;
+        script.onerror = () => reject(new Error('Tone.js failed to load'));
+        document.head.appendChild(script);
       });
-    } else {
-      sampler.triggerAttackRelease(voicing, NOTE_SUSTAIN, Tone.now(), velocity);
+      return _toneLoadPromise;
     }
-  }
 
-  function clearNotes() {
-    HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
-  }
-
-  document.getElementById('btn-note-play').addEventListener('click', () => playNoteChord().catch(() => {}));
-  document.getElementById('btn-note-clear').addEventListener('click', clearNotes);
-
-  // ── Keyboard shortcuts (Space = Play, Escape = Clear, note mode only) ──
-  document.addEventListener('keydown', e => {
-    if (!noteInputMode) return;
-    const tag = (e.target.tagName || '').toUpperCase();
-    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-    if (e.code === 'Space') {
-      e.preventDefault();
-      playNoteChord().catch(() => {});
-    } else if (e.code === 'Escape') {
-      clearNotes();
-    }
-  });
-
-  // ════════════════════════════════════════════════════════════════
-  // CONTROLS
-  // ════════════════════════════════════════════════════════════════
-
-  // ── PLR transform buttons ────────────────────────────────────────
-  ['P', 'R', 'L'].forEach(type => {
-    document.getElementById(`btn-${type}`).addEventListener('click', () => {
-      HarmonyState.setTransform(type, currentRoot, currentQuality);
-    });
-  });
-
-  // ── Depth selector ───────────────────────────────────────────────
-  document.getElementById('exp-depth').addEventListener('change', e => {
-    HarmonyState.update({ tonnetzDepth: parseInt(e.target.value, 10) });
-  });
-
-  // ── Key selector ─────────────────────────────────────────────────
-  document.getElementById('exp-key').addEventListener('change', e => {
-    const idx = parseInt(e.target.value, 10);
-    // Update the key context on the chord wheel, then play the tonic
-    HarmonyState.update({ currentKey: idx });
-    HarmonyState.setTriad(COF_MAJOR[idx], 'major');
-  });
-
-  // ════════════════════════════════════════════════════════════════
-  // NOTE MODE BADGE HELPERS
-  // ════════════════════════════════════════════════════════════════
-
-  /** Format a resolved chord for the educational chord badge. */
-  function _formatChordLabel(resolved) {
-    if (!resolved || !resolved.recognized) return resolved ? resolved.name : '—';
-    const { root, quality, symbol } = resolved;
-    if (quality === 'major') return `${root} major`;
-    if (quality === 'minor') return `${root} minor`;
-    return root + symbol;  // e.g. "B°", "C+", "Csus2", "G7", "Dm7"
-  }
-
-  /**
-   * Detect the inversion of a resolved chord given the full active notes list.
-   * Returns "1st inv", "2nd inv", "3rd inv", or "" for root position / unknown.
-   */
-  function _getInversion(resolved, activeNotes) {
-    if (!resolved || !resolved.recognized || !activeNotes || activeNotes.length < 2) return '';
-    const sorted = [...activeNotes].sort((a, b) =>
-      (a.octave * 12 + noteToPC(a.note)) - (b.octave * 12 + noteToPC(b.note))
-    );
-    const bassPC = noteToPC(sorted[0].note);
-    const rootPC = noteToPC(resolved.root);
-    if (isNaN(bassPC) || isNaN(rootPC) || bassPC === rootPC) return '';
-    const bassInterval = (bassPC - rootPC + 12) % 12;
-    const intervals = resolved.pcs.map(pc => (pc - rootPC + 12) % 12).sort((a, b) => a - b);
-    const idx = intervals.indexOf(bassInterval);
-    if (idx === 1) return '1st inv';
-    if (idx === 2) return '2nd inv';
-    if (idx === 3) return '3rd inv';
-    return '';
-  }
-
-  // ════════════════════════════════════════════════════════════════
-  // HARMONYSTATE SUBSCRIBER — UI sync + audio playback
-  // All chord changes (Tonnetz click, wheel click, PLR, controls)
-  // flow through HarmonyState and land here.
-  // ════════════════════════════════════════════════════════════════
-
-  let _lastRoot = null, _lastQuality = null;
-
-  const chordBadge     = document.getElementById('exp-chord-badge');
-  const transformBadge = document.getElementById('exp-transform-badge');
-  const keySelect      = document.getElementById('exp-key');
-
-  HarmonyState.on(state => {
-    // ── Resolve primary triad ──────────────────────────────────────
-    const primary = Array.isArray(state.activeTriads)
-      ? state.activeTriads.find(t => t.role === 'primary')
-      : null;
-
-    if (primary) {
-      currentRoot    = primary.root;
-      currentQuality = primary.quality;
-
-      // Update chord badge (ChordBubble may also update it; this handles
-      // the triad-mode path where bubble may not fire a label update)
-      const qualLabel = primary.quality === 'major' ? 'major' : 'minor';
-      chordBadge.textContent = `${primary.root} ${qualLabel}`;
-
-      // Play audio on chord change
-      if (primary.root !== _lastRoot || primary.quality !== _lastQuality) {
-        _lastRoot    = primary.root;
-        _lastQuality = primary.quality;
-        playChord(primary.root, primary.quality).catch(() => {});
-
-        // Capture for sequence recording (free exploration)
-        if (_recording) {
-          const t = state.activeTransform;
-          _pushChord(primary.root, primary.quality, t ? t.type : null);
+    async function ensureFullAudio() {
+      if (sampler) return;
+      if (_audioInitPromise) return _audioInitPromise;
+      _audioInitPromise = (async () => {
+        await loadToneIfNeeded();
+        await AudioToggle.ensureTone();
+        sampler = await KeyboardView.getSampler();
+        const savedInst = localStorage.getItem(INST_PREF_KEY) || 'piano';
+        if (savedInst !== 'piano') {
+          _switchInstrument(savedInst);
+        } else {
+          _syncInstButtons('piano', 'loaded');
         }
-      }
-    } else if ((state.activeNotes || []).length > 0 && (state.activeTriads || []).length === 0) {
-      // ── Note-accumulation mode (individual toggles) ────────────
-      const pcs = (state.activeNotes).map(n => noteToPC(n.note)).filter(pc => !isNaN(pc));
-      const uniquePCs = [...new Set(pcs)];
-      const resolved = uniquePCs.length >= 2 ? resolveChord(uniquePCs) : null;
-      if (uniquePCs.length === 1) {
-        const nameMap = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
-        chordBadge.textContent = nameMap[uniquePCs[0]] || '—';
-      } else if (resolved && resolved.recognized) {
-        const label = _formatChordLabel(resolved);
-        const inv   = _getInversion(resolved, state.activeNotes);
-        chordBadge.textContent = inv ? `${label} (${inv})` : label;
-      } else if (resolved) {
-        // Unrecognized interval combination — show note list
-        chordBadge.textContent = resolved.name;
-      }
-      // (ChordBubbleRenderer also updates the badge with its SVG label;
-      //  this subscriber runs after it and provides the canonical text.)
-    } else {
-      // Nothing active — clear badge (e.g. after switching to Note Mode).
-      chordBadge.textContent = '—';
+      })();
+      return _audioInitPromise;
     }
 
-    // ── Show transform label if a PLR move just happened ──────────
-    if (state.activeTransform) {
-      const t = state.activeTransform;
-      transformBadge.textContent = `${t.type}: ${t.from.root} ${t.from.quality[0]} → ${t.to.root} ${t.to.quality[0]}`;
-      transformBadge.classList.add('exp-transform-badge--visible');
-    } else {
-      transformBadge.classList.remove('exp-transform-badge--visible');
-    }
-
-    // ── Sync key dropdown from state.currentKey ────────────────────
-    if (typeof state.currentKey === 'number' && state.currentKey >= 0) {
-      if (keySelect.value !== String(state.currentKey)) {
-        keySelect.value = String(state.currentKey);
-      }
-    }
-  });
-
-  // ════════════════════════════════════════════════════════════════
-  // URL PARAMETER DEEP-LINKING
-  // Supports:
-  //   ?root=C&quality=major   → set initial chord
-  //   ?progression=Am,C,G,F   → load a chord progression
-  // ════════════════════════════════════════════════════════════════
-
-  /**
-   * Parse a compact chord name like "Am", "Cm", "G", "A7", "Dm7" into { root, quality }.
-   * Returns null if unparseable.
-   */
-  function _parseChordName(name) {
-    if (!name) return null;
-    // Match root note (with optional sharp/flat) + optional quality suffix
-    const m = name.match(/^([A-Ga-g][#♯b♭]?)(m|min|minor|maj|major|dim|aug|7|m7|maj7)?$/);
-    if (!m) return null;
-    const letter = m[1].charAt(0).toUpperCase();
-    const acc = m[1].length > 1 ? m[1].charAt(1) : '';
-    let root = letter;
-    if (acc === '#' || acc === '♯') root += '♯';
-    else if (acc === 'b' || acc === '♭') root += '♭';
-    const suffix = (m[2] || '').toLowerCase();
-    let quality = 'major';
-    if (suffix === 'm' || suffix === 'min' || suffix === 'minor') quality = 'minor';
-    else if (suffix === 'dim') quality = 'diminished';
-    // For 7th chords (A7, Dm7, etc.) keep the triad quality — the Explorer
-    // works with triads, so we just set the closest triad.
-    else if (suffix === 'm7') quality = 'minor';
-    else if (suffix === '7' || suffix === 'maj7') quality = 'major';
-    return { root, quality };
-  }
-
-  const _urlParams = new URLSearchParams(window.location.search);
-  const _urlRoot        = _urlParams.get('root');
-  const _urlQuality     = _urlParams.get('quality');
-  const _urlProgression = _urlParams.get('progression');
-  const _urlWalkthrough = _urlParams.get('walkthrough');
-
-  // ════════════════════════════════════════════════════════════════
-  // INITIAL STATE — C major at depth 2, key of C (or URL override)
-  // Use batch so the Tonnetz only rebuilds once.
-  // ════════════════════════════════════════════════════════════════
-
-  if (_urlProgression) {
-    // Parse comma-separated chord names into progression format
-    const chordNames = _urlProgression.split(',').map(s => s.trim()).filter(Boolean);
-    const chords = chordNames.map(name => {
-      const parsed = _parseChordName(name);
-      if (!parsed) return null;
-      const notes = triadNotes(parsed.root, parsed.quality);
-      return { root: parsed.root, quality: parsed.quality, notes: notes || [] };
-    }).filter(Boolean);
-
-    if (chords.length > 0) {
-      // Infer key from first chord's root
-      const key = chords[0].root;
-      HarmonyState.batch(state => {
-        state.currentKey = 0;
+    function chordVoicing(root, quality) {
+      const notes = triadNotes(root, quality);
+      if (!notes) return [];
+      let oct = 4, prevPC = -1;
+      return notes.map(n => {
+        const ascii = n.replace(/♯/g, '#').replace(/♭/g, 'b');
+        const pc = noteToPC(n);
+        if (prevPC >= 0 && pc <= prevPC) oct++;
+        prevPC = pc;
+        return `${ascii}${oct}`;
       });
-      HarmonyState.setProgression(chords, key);
-      HarmonyState.setProgressionIndex(0);
-    } else {
-      // Fallback to default
-      HarmonyState.batch(state => {
-        state.tonnetzDepth = 2;
-        state.currentKey   = 0;
-      });
-      HarmonyState.setTriad('C', 'major');
     }
-  } else if (_urlRoot) {
-    // Single chord deep-link
-    const _rootLetter = _urlRoot.charAt(0).toUpperCase();
-    const _rootAcc = _urlRoot.length > 1 ? _urlRoot.charAt(1) : '';
-    let root = _rootLetter;
-    if (_rootAcc === '#' || _rootAcc === '♯') root += '♯';
-    else if (_rootAcc === 'b' || _rootAcc === '♭') root += '♭';
-    const quality = (_urlQuality || 'major').toLowerCase();
-    const validQ = ['major', 'minor', 'diminished'].includes(quality) ? quality : 'major';
 
-    HarmonyState.batch(state => {
-      state.tonnetzDepth = 2;
-      state.currentKey   = 0;
-    });
-    HarmonyState.setTriad(root, validQ);
-  } else if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
-    // Walkthrough deep-link: initialize to the first step's chord
-    // so the user never sees a flash of C major before the walkthrough starts.
-    const _wtSteps = WALKTHROUGHS[_urlWalkthrough].steps;
-    const _wtFirst = _wtSteps && _wtSteps.length > 0 ? _parseChordName(_wtSteps[0].chord) : null;
-    HarmonyState.batch(state => {
-      state.tonnetzDepth = 2;
-      state.currentKey   = 0;
-    });
-    HarmonyState.setTriad(_wtFirst ? _wtFirst.root : 'C', _wtFirst ? _wtFirst.quality : 'major');
-  } else {
-    // Default: C major
-    HarmonyState.batch(state => {
-      state.tonnetzDepth = 2;
-      state.currentKey   = 0;
-    });
-    HarmonyState.setTriad('C', 'major');
-  }
+    async function playChord(root, quality) {
+      if (AudioToggle.isMuted()) return;
+      try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      await ensureFullAudio();
+      if (!sampler) return;
+      const voicing = chordVoicing(root, quality);
+      if (!voicing.length) return;
+      const velocity = 0.55 + Math.random() * 0.3;
+      sampler.volume.value = Math.random() * 4 - 2;
+      sampler.triggerAttackRelease(voicing, CHORD_SUSTAIN, Tone.now(), velocity);
+    }
 
-  // ════════════════════════════════════════════════════════════════
-  // PROGRESSION TEST HARNESS (console-callable)
-  // ════════════════════════════════════════════════════════════════
+    function stopAll() {
+      try { if (sampler) sampler.releaseAll(); } catch (_) {}
+    }
 
-  /** Load I–V–vi–IV in C and set to first chord. */
-  window.testProgression = function() {
-    const chords = [
-      { root: 'C', quality: 'major', notes: ['C', 'E', 'G'],  romanNumeral: 'I' },
-      { root: 'G', quality: 'major', notes: ['G', 'B', 'D'],  romanNumeral: 'V' },
-      { root: 'A', quality: 'minor', notes: ['A', 'C', 'E'],  romanNumeral: 'vi' },
-      { root: 'F', quality: 'major', notes: ['F', 'A', 'C'],  romanNumeral: 'IV' },
-    ];
-    HarmonyState.setProgression(chords, 'C');
-    HarmonyState.setProgressionIndex(0);
-    console.log('Progression loaded: I–V–vi–IV in C. Use HarmonyState.stepProgression(1) to advance.');
-  };
+    // ── Instrument picker ──────────────────────────────────────────
+    const instPicker    = document.getElementById('inst-picker');
+    const instBtns      = instPicker.querySelectorAll('[data-inst]');
+    const INST_PREF_KEY = 'tonnetz_explorer_instrument';
 
-  // ════════════════════════════════════════════════════════════════
-  // GUIDED WALKTHROUGH
-  // If ?walkthrough=key is present, start the guided overlay.
-  // The overlay drives HarmonyState; the existing subscriber handles
-  // panel updates and audio playback.
-  // ════════════════════════════════════════════════════════════════
+    function _syncInstButtons(activeInst, loadState) {
+      instBtns.forEach(btn => {
+        const isThis    = btn.dataset.inst === activeInst;
+        const isLoading = isThis && loadState === 'loading';
+        const isError   = isThis && loadState === 'error';
+        btn.classList.toggle('sl-btn--gold', isThis && loadState !== 'error');
+        btn.disabled = loadState === 'loading';
+        const cap = btn.dataset.inst.charAt(0).toUpperCase() + btn.dataset.inst.slice(1);
+        btn.textContent = isLoading ? cap + '\u2026' : cap;
+      });
+    }
 
-  const _wtOverlay = new WalkthroughOverlay({
-    onExit() {
-      // Stop walkthrough auto-capture and show export if chords were captured
-      _wtCapturing = false;
+    async function _switchInstrument(name) {
+      _syncInstButtons(name, 'loading');
+      try {
+        await KeyboardView.setInstrument(name);
+        sampler = KeyboardView.getSampler ? await KeyboardView.getSampler() : sampler;
+        localStorage.setItem(INST_PREF_KEY, name);
+        _syncInstButtons(name, 'loaded');
+      } catch (err) {
+        console.warn('[explorer] Instrument switch failed, falling back to piano:', err);
+        try { await KeyboardView.setInstrument('piano'); } catch (_) {}
+        localStorage.setItem(INST_PREF_KEY, 'piano');
+        _syncInstButtons(name, 'error');
+        setTimeout(() => _syncInstButtons('piano', 'loaded'), 2500);
+      }
+    }
+    instBtns.forEach(btn => btn.addEventListener('click', () => _switchInstrument(btn.dataset.inst)));
+
+    // ════════════════════════════════════════════════════════════════
+    // SEQUENCE CAPTURE (Record → Export to Skratch Studio)
+    // ════════════════════════════════════════════════════════════════
+    let _recording = false;
+    let _wtCapturing = false;
+    let _sequence = [];
+
+    const btnRecord     = document.getElementById('btn-record');
+    const btnExport     = document.getElementById('btn-export-skratch');
+    const btnClearSeq   = document.getElementById('btn-clear-sequence');
+    const sequenceCount = document.getElementById('sequence-count');
+
+    function _updateSequenceUI() {
+      const has = _sequence.length > 0;
+      const active = _recording || _wtCapturing;
+      sequenceCount.textContent = `${_sequence.length} chord${_sequence.length !== 1 ? 's' : ''}`;
+      sequenceCount.hidden = !has && !active;
+      btnExport.hidden    = !has || active;
+      btnClearSeq.hidden  = !has || active;
+    }
+
+    function _pushChord(root, quality, transform) {
+      _sequence.push({ root, quality, transform: transform || null });
       _updateSequenceUI();
-      // Return to default Explorer state after walkthrough ends
-      HarmonyState.setTriad('C', 'major');
-      // Clean URL without reload
-      const url = new URL(window.location);
-      url.searchParams.delete('walkthrough');
-      window.history.replaceState({}, '', url);
-    },
-    onStep({ root, quality, transform }) {
-      // Auto-capture each walkthrough chord into the sequence
-      if (_wtCapturing) {
-        _pushChord(root, quality, transform);
+    }
+    function _resetSequence() {
+      _sequence = [];
+      _updateSequenceUI();
+    }
+
+    btnRecord.addEventListener('click', () => {
+      _recording = !_recording;
+      if (_recording) {
+        _sequence = [];
+        btnRecord.classList.add('sl-rec-btn--on');
+        btnRecord.lastChild.textContent = ' Recording';
+      } else {
+        btnRecord.classList.remove('sl-rec-btn--on');
+        btnRecord.lastChild.textContent = ' Record';
       }
-    },
-    onExport() {
-      // Export captured walkthrough sequence to Skratch Studio
+      _updateSequenceUI();
+    });
+
+    btnExport.addEventListener('click', () => {
       if (!_sequence.length) return;
       sessionStorage.setItem('tonnetz-export-sequence', JSON.stringify(_sequence));
       try {
         const bridge = new BroadcastChannel('tonnetz-skratch-bridge');
         bridge.postMessage({ type: 'import_sequence', chords: _sequence });
         bridge.close();
-      } catch (err) { /* BroadcastChannel not supported */ }
+      } catch (err) {}
       window.open('/skratch-studio', '_blank');
-    },
-    playChord(root, quality) {
-      return playChord(root, quality);
-    },
-  });
+      const original = btnExport.textContent;
+      btnExport.textContent = 'Sent!';
+      btnExport.disabled = true;
+      setTimeout(() => { btnExport.textContent = original; btnExport.disabled = false; }, 1500);
+    });
+    btnClearSeq.addEventListener('click', _resetSequence);
 
-  function _startWalkthrough(wt) {
-    _wtCapturing = true;
-    _sequence = [];
-    _updateSequenceUI();
-    _wtOverlay.start(wt);
-  }
+    // ════════════════════════════════════════════════════════════════
+    // PANELS
+    // ════════════════════════════════════════════════════════════════
 
-  if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
-    // Dismiss the welcome banner if a walkthrough is starting
-    const _wtBanner = document.getElementById('explorer-welcome-banner');
-    if (_wtBanner) {
-      _wtBanner.remove();
-      setFeatureFlag('explorer_intro_seen', true);
+    // ── Tonnetz ────────────────────────────────────────────────────
+    TonnetzNeighborhood.init('exp-tonnetz-container', {
+      interactive: true,
+      onTriadClick({ root, quality }) {
+        HarmonyState.setTriad(root, quality);
+      },
+      onTransformClick({ type, from }) {
+        HarmonyState.setTransform(type, from.root, from.quality);
+      },
+      onNodeClick({ note }) {
+        if (!noteInputMode) return;
+        HarmonyState.toggleNote(note);
+      },
+    });
+
+    // The chord-bubble renderer keeps the chord label in sync with the Tonnetz.
+    // We point it at the song-title element so the bubble shares the songbar slot.
+    const chordBubble = new ChordBubbleRenderer('exp-tonnetz-container', {
+      labelEl: 'sl-key-chord',
+    });
+
+    // ── Chord Wheel (offscreen, still functional via HarmonyState) ─
+    const wheel = new ChordWheel('#exp-chord-wheel-container', { initialKey: 0 });
+    window.wheel = wheel;
+
+    // ── Input mode: Chord vs Note ──────────────────────────────────
+    let noteInputMode = false;
+    const btnChordMode = document.getElementById('btn-chord-mode');
+    const btnNoteMode  = document.getElementById('btn-note-mode');
+
+    function _setInputMode(isNoteMode) {
+      noteInputMode = isNoteMode;
+      btnChordMode.classList.toggle('sl-btn--gold', !isNoteMode);
+      btnNoteMode.classList.toggle('sl-btn--gold', isNoteMode);
+      const noteControls = document.getElementById('note-mode-controls');
+      noteControls.classList.toggle('exp-note-controls--visible', isNoteMode);
+      if (isNoteMode) {
+        HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
+      } else {
+        HarmonyState.setTriad(currentRoot, currentQuality);
+      }
     }
-    _startWalkthrough(WALKTHROUGHS[_urlWalkthrough]);
-  }
+    btnChordMode.addEventListener('click', () => _setInputMode(false));
+    btnNoteMode.addEventListener('click',  () => _setInputMode(true));
 
-  // Expose for console use
-  window.startWalkthrough = function(key) {
-    if (WALKTHROUGHS[key]) {
-      _startWalkthrough(WALKTHROUGHS[key]);
+    // ── Keyboard ───────────────────────────────────────────────────
+    const _COF_MAJOR_PC = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+    const _COF_MINOR_PC = [9, 4, 11, 6, 1, 8, 3, 10, 5, 0, 7, 2];
+
+    function _guessQuality(pc, keyIdx) {
+      const prev = (keyIdx + 11) % 12;
+      const next = (keyIdx + 1)  % 12;
+      if ([_COF_MAJOR_PC[prev], _COF_MAJOR_PC[keyIdx], _COF_MAJOR_PC[next]].includes(pc)) return 'major';
+      if ([_COF_MINOR_PC[prev], _COF_MINOR_PC[keyIdx], _COF_MINOR_PC[next]].includes(pc)) return 'minor';
+      return 'major';
+    }
+
+    KeyboardView.init('exp-keyboard-container', {
+      showLabels: true,
+      mode: 'both',
+      noInternalAudio: true,
+      onNotePlay(noteName, octave) {
+        if (noteInputMode) {
+          HarmonyState.toggleNote(noteName, octave);
+        } else {
+          const ascii  = noteName.replace(/♯/g, '#').replace(/♭/g, 'b');
+          const pc     = noteToPC(ascii);
+          const state  = HarmonyState.get();
+          const keyIdx = typeof state.currentKey === 'number' ? state.currentKey : 0;
+          HarmonyState.setTriad(noteName, _guessQuality(pc, keyIdx));
+        }
+      },
+    });
+
+    // ── Fretboard (lazy) ───────────────────────────────────────────
+    let fretboard = null;
+    const kbPanel = document.querySelector('.exp-panel--keyboard');
+    const fbPanel = document.getElementById('exp-fretboard-panel');
+    const btnViewKb   = document.getElementById('btn-view-keyboard');
+    const btnViewFb   = document.getElementById('btn-view-fretboard');
+    const btnViewBoth = document.getElementById('btn-view-both');
+
+    function _ensureFretboard() {
+      if (!fretboard) fretboard = new FretboardView('exp-fretboard-container', { interactive: true });
+    }
+    function _destroyFretboard() {
+      if (fretboard) { fretboard.destroy(); fretboard = null; }
+    }
+    function _setView(mode) {
+      btnViewKb.classList.remove('sl-btn--gold');
+      btnViewFb.classList.remove('sl-btn--gold');
+      btnViewBoth.classList.remove('sl-btn--gold');
+      if (mode === 'keyboard') {
+        btnViewKb.classList.add('sl-btn--gold');
+        kbPanel.classList.remove('exp-panel--hidden');
+        fbPanel.classList.add('exp-panel--hidden');
+        _destroyFretboard();
+      } else if (mode === 'fretboard') {
+        btnViewFb.classList.add('sl-btn--gold');
+        kbPanel.classList.add('exp-panel--hidden');
+        fbPanel.classList.remove('exp-panel--hidden');
+        _ensureFretboard();
+      } else {
+        btnViewBoth.classList.add('sl-btn--gold');
+        kbPanel.classList.remove('exp-panel--hidden');
+        fbPanel.classList.remove('exp-panel--hidden');
+        _ensureFretboard();
+      }
+    }
+    btnViewKb.addEventListener('click',   () => _setView('keyboard'));
+    btnViewFb.addEventListener('click',   () => _setView('fretboard'));
+    btnViewBoth.addEventListener('click', () => _setView('both'));
+
+    // ════════════════════════════════════════════════════════════════
+    // NOTE MODE — PLAY & CLEAR
+    // ════════════════════════════════════════════════════════════════
+    function buildNoteVoicing(activeNotes) {
+      const sorted = [...activeNotes].sort((a, b) => {
+        const midiA = a.octave * 12 + noteToPC(a.note);
+        const midiB = b.octave * 12 + noteToPC(b.note);
+        return midiA - midiB;
+      });
+      return sorted.map(n => `${n.note.replace(/♯/g, '#').replace(/♭/g, 'b')}${n.octave}`);
+    }
+
+    async function playNoteChord() {
+      if (AudioToggle.isMuted()) return;
+      try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      await ensureFullAudio();
+      if (!sampler) return;
+      const activeNotes = HarmonyState.get().activeNotes;
+      if (!activeNotes.length) return;
+      const voicing = buildNoteVoicing(activeNotes);
+      if (!voicing.length) return;
+      const isArp = document.getElementById('chk-arpeggiate').checked;
+      const velocity = 0.55 + Math.random() * 0.3;
+      sampler.volume.value = Math.random() * 4 - 2;
+      if (isArp) {
+        const step = 0.13;
+        voicing.forEach((note, i) => {
+          sampler.triggerAttackRelease(note, NOTE_SUSTAIN, Tone.now() + i * step, velocity);
+        });
+      } else {
+        sampler.triggerAttackRelease(voicing, NOTE_SUSTAIN, Tone.now(), velocity);
+      }
+    }
+
+    function clearNotes() {
+      HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
+    }
+
+    document.getElementById('btn-note-play').addEventListener('click', () => playNoteChord().catch(() => {}));
+    document.getElementById('btn-note-clear').addEventListener('click', clearNotes);
+
+    document.addEventListener('keydown', e => {
+      if (!noteInputMode) return;
+      const tag = (e.target.tagName || '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      if (e.code === 'Space') { e.preventDefault(); playNoteChord().catch(() => {}); }
+      else if (e.code === 'Escape') { clearNotes(); }
+    });
+
+    // ════════════════════════════════════════════════════════════════
+    // CONTROLS
+    // ════════════════════════════════════════════════════════════════
+    ['P', 'R', 'L'].forEach(type => {
+      document.getElementById(`btn-${type}`).addEventListener('click', () => {
+        HarmonyState.setTransform(type, currentRoot, currentQuality);
+      });
+    });
+
+    document.getElementById('exp-depth').addEventListener('change', e => {
+      HarmonyState.update({ tonnetzDepth: parseInt(e.target.value, 10) });
+    });
+    document.getElementById('exp-key').addEventListener('change', e => {
+      const idx = parseInt(e.target.value, 10);
+      HarmonyState.update({ currentKey: idx });
+      HarmonyState.setTriad(COF_MAJOR[idx], 'major');
+    });
+
+    // ── Transport buttons in song info bar ─────────────────────────
+    document.getElementById('sl-transport-play').addEventListener('click', () => {
+      playChord(currentRoot, currentQuality).catch(() => {});
+    });
+    document.getElementById('sl-transport-stop').addEventListener('click', stopAll);
+
+    // ════════════════════════════════════════════════════════════════
+    // BADGE / SONGINFO HELPERS
+    // ════════════════════════════════════════════════════════════════
+    function _formatChordLabel(resolved) {
+      if (!resolved || !resolved.recognized) return resolved ? resolved.name : '—';
+      const { root, quality, symbol } = resolved;
+      if (quality === 'major') return `${root} major`;
+      if (quality === 'minor') return `${root} minor`;
+      return root + symbol;
+    }
+    function _getInversion(resolved, activeNotes) {
+      if (!resolved || !resolved.recognized || !activeNotes || activeNotes.length < 2) return '';
+      const sorted = [...activeNotes].sort((a, b) =>
+        (a.octave * 12 + noteToPC(a.note)) - (b.octave * 12 + noteToPC(b.note))
+      );
+      const bassPC = noteToPC(sorted[0].note);
+      const rootPC = noteToPC(resolved.root);
+      if (isNaN(bassPC) || isNaN(rootPC) || bassPC === rootPC) return '';
+      const bassInterval = (bassPC - rootPC + 12) % 12;
+      const intervals = resolved.pcs.map(pc => (pc - rootPC + 12) % 12).sort((a, b) => a - b);
+      const idx = intervals.indexOf(bassInterval);
+      if (idx === 1) return '1st inv';
+      if (idx === 2) return '2nd inv';
+      if (idx === 3) return '3rd inv';
+      return '';
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // HARMONYSTATE SUBSCRIBER — UI sync + audio
+    // ════════════════════════════════════════════════════════════════
+    let _lastRoot = null, _lastQuality = null;
+    let _wtSidebar = null;  // assigned later — referenced in subscriber below
+    const chordLabelEl = document.getElementById('sl-key-chord');
+    const notesLabelEl = document.getElementById('sl-key-notes');
+    const keyBadgeEl   = document.getElementById('sl-badge-key');
+    const keySelect    = document.getElementById('exp-key');
+
+    function _formatNotes(notes) {
+      if (!notes || !notes.length) return '';
+      return notes.join(' · ');
+    }
+
+    HarmonyState.on(state => {
+      const primary = Array.isArray(state.activeTriads)
+        ? state.activeTriads.find(t => t.role === 'primary')
+        : null;
+
+      if (primary) {
+        currentRoot    = primary.root;
+        currentQuality = primary.quality;
+        const qualLabel = primary.quality === 'major' ? 'major' : 'minor';
+        chordLabelEl.textContent = `${primary.root} ${qualLabel}`;
+        notesLabelEl.textContent = _formatNotes(triadNotes(primary.root, primary.quality));
+
+        if (primary.root !== _lastRoot || primary.quality !== _lastQuality) {
+          _lastRoot    = primary.root;
+          _lastQuality = primary.quality;
+          playChord(primary.root, primary.quality).catch(() => {});
+          if (_recording) {
+            const t = state.activeTransform;
+            _pushChord(primary.root, primary.quality, t ? t.type : null);
+          }
+        }
+      } else if ((state.activeNotes || []).length > 0 && (state.activeTriads || []).length === 0) {
+        const pcs = (state.activeNotes).map(n => noteToPC(n.note)).filter(pc => !isNaN(pc));
+        const uniquePCs = [...new Set(pcs)];
+        const resolved = uniquePCs.length >= 2 ? resolveChord(uniquePCs) : null;
+        if (uniquePCs.length === 1) {
+          const nameMap = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+          chordLabelEl.textContent = nameMap[uniquePCs[0]] || '—';
+        } else if (resolved && resolved.recognized) {
+          const label = _formatChordLabel(resolved);
+          const inv   = _getInversion(resolved, state.activeNotes);
+          chordLabelEl.textContent = inv ? `${label} (${inv})` : label;
+        } else if (resolved) {
+          chordLabelEl.textContent = resolved.name;
+        }
+        notesLabelEl.textContent = _formatNotes(state.activeNotes.map(n => n.note));
+      } else {
+        chordLabelEl.textContent = '—';
+        notesLabelEl.textContent = '';
+      }
+
+      if (typeof state.currentKey === 'number' && state.currentKey >= 0) {
+        if (keySelect.value !== String(state.currentKey)) {
+          keySelect.value = String(state.currentKey);
+        }
+        const keyName = COF_MAJOR[state.currentKey];
+        const wtActive = _wtSidebar && _wtSidebar.active;
+        if (keyName && !wtActive) keyBadgeEl.textContent = `${keyName} major`;
+      }
+    });
+
+    // ════════════════════════════════════════════════════════════════
+    // URL DEEP-LINKING
+    // ════════════════════════════════════════════════════════════════
+    function _parseChordName(name) {
+      if (!name) return null;
+      const m = name.match(/^([A-Ga-g][#♯b♭]?)(m|min|minor|maj|major|dim|aug|7|m7|maj7)?$/);
+      if (!m) return null;
+      const letter = m[1].charAt(0).toUpperCase();
+      const acc = m[1].length > 1 ? m[1].charAt(1) : '';
+      let root = letter;
+      if (acc === '#' || acc === '♯') root += '♯';
+      else if (acc === 'b' || acc === '♭') root += '♭';
+      const suffix = (m[2] || '').toLowerCase();
+      let quality = 'major';
+      if (suffix === 'm' || suffix === 'min' || suffix === 'minor') quality = 'minor';
+      else if (suffix === 'dim') quality = 'diminished';
+      else if (suffix === 'm7') quality = 'minor';
+      else if (suffix === '7' || suffix === 'maj7') quality = 'major';
+      return { root, quality };
+    }
+
+    const _urlParams      = new URLSearchParams(window.location.search);
+    const _urlRoot        = _urlParams.get('root');
+    const _urlQuality     = _urlParams.get('quality');
+    const _urlProgression = _urlParams.get('progression');
+    const _urlWalkthrough = _urlParams.get('walkthrough');
+
+    if (_urlProgression) {
+      const chordNames = _urlProgression.split(',').map(s => s.trim()).filter(Boolean);
+      const chords = chordNames.map(name => {
+        const parsed = _parseChordName(name);
+        if (!parsed) return null;
+        const notes = triadNotes(parsed.root, parsed.quality);
+        return { root: parsed.root, quality: parsed.quality, notes: notes || [] };
+      }).filter(Boolean);
+      if (chords.length > 0) {
+        HarmonyState.batch(state => { state.currentKey = 0; });
+        HarmonyState.setProgression(chords, chords[0].root);
+        HarmonyState.setProgressionIndex(0);
+      } else {
+        HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
+        HarmonyState.setTriad('C', 'major');
+      }
+    } else if (_urlRoot) {
+      const _rootLetter = _urlRoot.charAt(0).toUpperCase();
+      const _rootAcc = _urlRoot.length > 1 ? _urlRoot.charAt(1) : '';
+      let root = _rootLetter;
+      if (_rootAcc === '#' || _rootAcc === '♯') root += '♯';
+      else if (_rootAcc === 'b' || _rootAcc === '♭') root += '♭';
+      const quality = (_urlQuality || 'major').toLowerCase();
+      const validQ = ['major', 'minor', 'diminished'].includes(quality) ? quality : 'major';
+      HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
+      HarmonyState.setTriad(root, validQ);
+    } else if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
+      const _wtSteps = WALKTHROUGHS[_urlWalkthrough].steps;
+      const _wtFirst = _wtSteps && _wtSteps.length > 0 ? _parseChordName(_wtSteps[0].chord) : null;
+      HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
+      HarmonyState.setTriad(_wtFirst ? _wtFirst.root : 'C', _wtFirst ? _wtFirst.quality : 'major');
     } else {
-      console.log('Available walkthroughs:', Object.keys(WALKTHROUGHS).join(', '));
+      HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
+      HarmonyState.setTriad('C', 'major');
     }
-  };
-</script>
-{% endblock %}
+
+    // ════════════════════════════════════════════════════════════════
+    // GUIDED WALKTHROUGH SIDEBAR
+    // ════════════════════════════════════════════════════════════════
+    const sidebarEl = document.getElementById('wts-sidebar');
+    const songTitleEl  = document.getElementById('sl-song-title');
+    const songArtistEl = document.getElementById('sl-song-artist');
+    const exitBtn      = sidebarEl.querySelector('[data-wt-exit]');
+
+    function _splitSongAndArtist(songStr) {
+      // "Yesterday — The Beatles" → ["Yesterday", "The Beatles"]
+      if (!songStr) return ['', ''];
+      const parts = songStr.split(' \u2014 ');
+      if (parts.length === 2) return [parts[0].trim(), parts[1].trim()];
+      const dashParts = songStr.split(' — ');
+      if (dashParts.length === 2) return [dashParts[0].trim(), dashParts[1].trim()];
+      return [songStr.trim(), ''];
+    }
+
+    _wtSidebar = new WalkthroughSidebar({
+      rootEl: sidebarEl,
+      onExit() {
+        _wtCapturing = false;
+        _updateSequenceUI();
+        // Restore default song info
+        songTitleEl.textContent  = 'Tonnetz Explorer';
+        songArtistEl.textContent = 'Free play — click any chord';
+        exitBtn.hidden = true;
+        HarmonyState.setTriad('C', 'major');
+        const url = new URL(window.location);
+        url.searchParams.delete('walkthrough');
+        window.history.replaceState({}, '', url);
+      },
+      onStep({ root, quality, transform }) {
+        if (_wtCapturing) _pushChord(root, quality, transform);
+      },
+      onExport() {
+        if (!_sequence.length) return;
+        sessionStorage.setItem('tonnetz-export-sequence', JSON.stringify(_sequence));
+        try {
+          const bridge = new BroadcastChannel('tonnetz-skratch-bridge');
+          bridge.postMessage({ type: 'import_sequence', chords: _sequence });
+          bridge.close();
+        } catch (err) {}
+        window.open('/skratch-studio', '_blank');
+      },
+      playChord(root, quality) { return playChord(root, quality); },
+    });
+
+    function _startWalkthrough(wt) {
+      _wtCapturing = true;
+      _sequence = [];
+      _updateSequenceUI();
+      // Update song info bar from walkthrough metadata
+      const [song, artist] = _splitSongAndArtist(wt.song);
+      songTitleEl.textContent  = song || wt.title || 'Walkthrough';
+      songArtistEl.textContent = artist || wt.title || '';
+      exitBtn.hidden = false;
+      _wtSidebar.start(wt);
+    }
+
+    if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
+      _startWalkthrough(WALKTHROUGHS[_urlWalkthrough]);
+    }
+
+    window.startWalkthrough = function(key) {
+      if (WALKTHROUGHS[key]) _startWalkthrough(WALKTHROUGHS[key]);
+      else console.log('Available walkthroughs:', Object.keys(WALKTHROUGHS).join(', '));
+    };
+
+    // ════════════════════════════════════════════════════════════════
+    // PROGRESSION TEST HARNESS (console-callable)
+    // ════════════════════════════════════════════════════════════════
+    window.testProgression = function() {
+      const chords = [
+        { root: 'C', quality: 'major', notes: ['C', 'E', 'G'],  romanNumeral: 'I' },
+        { root: 'G', quality: 'major', notes: ['G', 'B', 'D'],  romanNumeral: 'V' },
+        { root: 'A', quality: 'minor', notes: ['A', 'C', 'E'],  romanNumeral: 'vi' },
+        { root: 'F', quality: 'major', notes: ['F', 'A', 'C'],  romanNumeral: 'IV' },
+      ];
+      HarmonyState.setProgression(chords, 'C');
+      HarmonyState.setProgressionIndex(0);
+    };
+  </script>
+</body>
+</html>
