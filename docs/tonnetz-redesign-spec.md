@@ -24,7 +24,7 @@
 
 **Tagline:** "Harmony has a shape. Explore it." (or similar — avoid the word "theory")
 
-**Subtitle:** Something like: "Musicians navigate harmony by instinct. The Tonnetz is the map of that territory — a spatial way to see how chords, keys, and scales connect. Build the intuition faster."
+**Subtitle:** Something like: "Great musicians navigate harmony by instinct. The Tonnetz is the map of that territory — a spatial way to see how chords, keys, and scales connect. Build the intuition faster."
 
 **Key principle:** Respect the musician. You already have instincts; this helps you understand and extend them.
 
