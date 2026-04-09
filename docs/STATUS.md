@@ -1,65 +1,107 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-04-07
-**Branch:** `redesign/landing-page` (active) · `dev` (prior work)
+**Last updated:** 2026-04-09
+**Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
-**Active roadmap:** `docs/tonnetz-next-build-plan.md` (Post-MVP Build Plan v3)
+**Active roadmap:** `docs/songlab-redesign-plan.md` + `docs/tonnetz-next-build-plan.md`
+**Platform name:** SongLab (rebrand from "Music Theory Games" in progress)
 
 ---
 
 ## Current Focus
 
-Landing page redesign, nav restructure, and guided walkthrough system built on `redesign/landing-page` branch. Ready for polish and merge.
+SongLab redesign on `dev`. Skratch Studio integration merged in. Explorer DAW redesign complete; remaining surfaces (Skratch Studio DAW, games, branding sweep) still to do before deploy.
 
 **Completed this cycle:**
 
-- New landing page: Explorer-centered hero ("Harmony has a shape. Explore it."), rotating song example prompts, 2×2 category grid (Visualize / Ear Training / Rhythm & Play / Patterns)
-- Nav restructure: Explorer, Ear Training, Rhythm & Play, Patterns, Fundamentals (no instance of "theory" in user-facing UI)
-- Explorer deep-linking: URL params for root, quality, progression, and walkthrough
-- Guided walkthrough system (`static/shared/walkthroughs.js`): floating card overlay in Explorer with 8 song-based walkthroughs, panel focus, related song lookup from song-examples.js, seeAlso links to games
-- Redesign spec: `docs/redesign-spec.md`
+- **Skratch Studio integration** (merged from `feature/skratch-integration` → `dev`):
+  - Code review and fixes on Antigravity-built integration
+  - Deduplicated PLR transform math (now imports from `transforms.js`)
+  - Removed dead `drawCanvasGrid` code
+  - Fixed MIDI export BPM header + drum skip warning
+  - Refactored Explorer→Skratch bridge: real-time click streaming → record-and-export pattern
+  - Walkthroughs auto-capture progression; free exploration has record/stop toggle
+  - Export uses `sessionStorage` + `window.open` (no need to pre-open Skratch Studio)
+  - Swapped PolySynth → Salamander piano sampler for chord playback
+  - Renamed `/skratch` → `/skratch-studio`
+  - Renamed `/games/relative-key-trainer` → `/games/chord-walks`
+  - Sound defaults to ON across all pages
+  - Added Skratch Studio card to landing page
+- **SongLab rebrand kickoff**: "Music Theory Games" → "SongLab"
+- **Design tokens**: created `static/css/design-tokens.css` (light/dark theme system, color tokens, fluid typography)
+- **Landing page redesign**: MIDI pad song grid, warm light theme, SongLab branding
+- **Explorer full redesign**:
+  - DAW-style dark theme with transport controls and song info bar
+  - Walkthrough sidebar replacing floating overlay bubble
+  - Tonnetz animations: pulsing nodes, glow worm paths, ghost trails
+  - Chord quality color families (blue=major, green=minor, coral=borrowed)
+  - Panel tabs (Tonnetz / Chord Wheel / Fretboard) wired and working
+  - "Begin" button for audio activation
+  - Harmonic function labels on walkthrough steps
+  - Fixed chord wheel visibility behind other panels
+- **Planning docs added**:
+  - `docs/songlab-redesign-plan.md` — full implementation plan with CSS tokens
+  - `docs/tonnetz-next-phase-plan.md` — walkthroughs, song packs, copyright, aesthetics
+  - `docs/visual-engine-spec.md` — generative art engine driven by Tonnetz geometry
 
 **Immediate next steps:**
 
-1. Polish walkthrough card UI (sizing, transitions, mobile)
-2. Surface song examples contextually in games (Chord Walks, Chord Spotter, Scale Builder — not just walkthroughs)
-3. Fix Swing Trainer 500 error on production
-4. Merge `redesign/landing-page` → `dev` → `main` and deploy
-5. Design guided Explorer walkthrough spec for intro course chapters (reuse walkthrough system)
-6. Showcase page build (screenshots + Claude Code build prompt)
-7. Full component walkthrough — evaluate every feature, identify gaps
-8. Add BPM control to Swing Trainer
-9. Security review + backend proxy check → deploy to main → share URL
+1. Explorer prompt 2 fixes: test all walkthroughs end-to-end, verify ghost trails
+2. Skratch Studio DAW redesign (Phase 4)
+3. Games + remaining pages: light theme + design tokens (Phase 5)
+4. SongLab branding sweep across all pages (Phase 6)
+5. Deploy to Railway as SongLab
+6. User testing with 15–20 participants
+7. Visual engine implementation (post-launch — see `docs/visual-engine-spec.md`)
+8. Fix Swing Trainer 500 error on production
+9. Polish, merge `dev` → `main`
 
 ---
 
 ## What's Working
 
-### Tonnetz Explorer
-- Three-panel tool at `/explorer`: Tonnetz neighborhood, chord wheel, keyboard
-- All panels synchronized via HarmonyState pub/sub
-- Chord-quality coloring (blue=major, coral=minor)
-- Chord wheel: dual-ring circle of fifths with diatonic arc highlighting
-- Audio playback via music-engine.js / Tone.js / Salamander sampler
+### Tonnetz Explorer ✅ DAW redesign
+- DAW-style dark theme at `/explorer`: transport controls, song info bar, walkthrough sidebar
+- Tabbed panel area: Tonnetz / Chord Wheel / Fretboard (all wired and synchronized via HarmonyState)
+- Chord-quality color families: blue=major, green=minor, coral=borrowed
+- Tonnetz animations: pulsing nodes, glow worm paths, ghost trails
+- "Begin" button for audio context activation
+- Harmonic function labels on walkthrough steps
+- Audio via music-engine.js / Tone.js / Salamander sampler (sound defaults to ON)
 - Canonical orientation locked: horizontal=P5, up-right=M3, down-right=m3, major=△, minor=▽
-- **Deep-linking via URL params**: ?root=, ?quality=, ?progression=, ?walkthrough= — Explorer initializes directly to specified state (no C major flash)
+- Deep-linking via URL params: ?root=, ?quality=, ?progression=, ?walkthrough=
+- Record-and-export bridge to Skratch Studio (sessionStorage + window.open)
 
-### Guided Walkthrough System ✅ new
-- Floating card overlay in Explorer driven by `static/shared/walkthroughs.js`
+### Guided Walkthrough System ✅ sidebar
+- Walkthrough sidebar in Explorer (replaced floating overlay bubble) driven by `static/shared/walkthroughs.js`
 - 8 song-based walkthroughs: Yesterday voice leading, Am/C relationship (Eleanor Rigby), Creep chromatic mediant, ii-V-I jazz, Mixolydian (Norwegian Wood/Get Lucky), Stairway P transform, deceptive cadence (In My Life), twelve-bar blues
-- Each step sets chord state via HarmonyState, auto-plays audio, shows conversational explanation
-- Panel focus: individual steps can dim non-relevant panels to direct attention
+- Each step sets chord state via HarmonyState, auto-plays audio, shows conversational explanation with harmonic function label
+- Panel focus: individual steps can dim non-relevant panels
 - "You'll also hear this in..." pulls related songs from song-examples.js by matching concept_specifics
 - "seeAlso" links on final steps nudge users toward relevant games
-- Next/Back/Exit navigation, step indicator, smooth transitions
+- Walkthroughs auto-capture progression for one-click export to Skratch Studio
 - Launched from landing page example prompts via /explorer?walkthrough=<id>
-- System is generic — new walkthroughs just need an entry in walkthroughs.js (future: intro course chapters)
 
-### Landing Page & Navigation ✅ new
-- Landing page: hero tagline, subtitle about musical intuition, rotating song example prompts (8 curated), Explorer preview (3-panel C major), 2×2 category grid, Fundamentals footer link
+### Skratch Studio Integration ✅ new
+- `/skratch-studio` route (renamed from `/skratch`)
+- Record-and-export pattern: Explorer captures progression → exports via sessionStorage → Skratch Studio opens with session preloaded
+- Free exploration has record/stop toggle
+- PLR transform math deduplicated — imports from `transforms.js`
+- MIDI export: BPM header + drum skip warning fixes
+- Skratch Studio card on landing page
+- DAW redesign still pending (Phase 4)
+
+### Landing Page & Navigation ✅ SongLab rebrand
+- Warm light-theme landing page with MIDI pad song grid and SongLab branding
+- Hero tagline, subtitle about musical intuition, 2×2 category grid, Fundamentals footer link
+- Skratch Studio card alongside Explorer entry
 - Nav: Explorer, Ear Training (dropdown), Rhythm & Play (dropdown), Patterns (dropdown), Fundamentals
 - No instance of "theory" in user-facing UI
-- Song example prompts deep-link to Explorer walkthroughs
+- `/games/chord-walks` (renamed from `/games/relative-key-trainer`)
+
+### Design System ✅ new
+- `static/css/design-tokens.css` — light/dark theme tokens, color palette, fluid typography
+- Explorer fully on the dark token set; remaining surfaces still to migrate (Phase 5)
 
 ### Voicing Explorer (Phase A5 — core complete)
 - Note Mode: toggle individual notes on/off across all three panels
@@ -173,8 +215,11 @@ See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 
 | Doc | Purpose |
 |---|---|
-| `docs/tonnetz-next-build-plan.md` | **Active roadmap** — Phases A–F + B.5, Song Examples DB, dependency graph |
-| `docs/redesign-spec.md` | Landing page redesign & IA restructure spec |
+| `docs/songlab-redesign-plan.md` | **Active roadmap** — SongLab rebrand & redesign plan with CSS tokens |
+| `docs/tonnetz-next-phase-plan.md` | Walkthroughs, song packs, copyright, aesthetics roadmap |
+| `docs/visual-engine-spec.md` | Generative art engine spec (Tonnetz-driven, post-launch) |
+| `docs/tonnetz-next-build-plan.md` | Post-MVP build plan (Phases A–F + B.5, Song Examples DB) |
+| `docs/redesign-spec.md` | Prior landing page redesign & IA restructure spec |
 | `docs/tonnetz-explorer-spec.md` | Explorer design, panel specs, canonical orientation |
 | `docs/voicing-explorer-spec.md` | Voicing Explorer — chord shapes, glow worm paths, projections, MIDI (future) |
 | `docs/tonnetz-content-architecture.md` | Content model, topic schema, lens system, starters, challenges |
