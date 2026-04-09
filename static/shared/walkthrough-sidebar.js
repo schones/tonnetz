@@ -225,6 +225,8 @@ class WalkthroughSidebar {
       row.type = 'button';
       row.className = 'wts-step';
       row.dataset.idx = String(i);
+      const parsed = parseChordName(step.chord);
+      if (parsed) row.dataset.quality = parsed.quality;
       row.innerHTML = `
         <span class="wts-step__badge">${i + 1}</span>
         <span class="wts-step__body">

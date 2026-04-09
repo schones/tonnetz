@@ -45,6 +45,19 @@
       --green-bright:    var(--accent-green);
       --red:             #C0413B;
 
+      /* ── Chord-quality color families ─────────────────────── */
+      --q-major-fill:    rgba(45, 95, 138, 0.20);
+      --q-major-stroke:  #3A8BC9;
+      --q-major-text:    #7BBDE8;
+
+      --q-minor-fill:    rgba(76, 175, 80, 0.15);
+      --q-minor-stroke:  #4CAF50;
+      --q-minor-text:    #7BC67E;
+
+      --q-dom-fill:      rgba(232, 116, 97, 0.20);
+      --q-dom-stroke:    #E87461;
+      --q-dom-text:      #F0A899;
+
       /* ── Legacy aliases ─────────────────────────────────────
          Shared components (Tonnetz, ChordWheel, KeyboardView)
          read these older variable names. Map them onto the
@@ -66,15 +79,115 @@
       /* ── Component-specific overrides for the dark DAW look ─ */
       --keyboard-white-key-bg:     #2A2620;
       --keyboard-black-key-bg:     #0E0B07;
-      --keyboard-highlight-primary: var(--gold);
+      --keyboard-highlight-primary: var(--q-major-stroke);
       --color-border:              var(--daw-border);
-      --color-primary:             var(--gold);
+      --color-primary:             var(--q-major-stroke);
 
       --tonnetz-edge-stroke:       var(--daw-border);
       --tonnetz-node-fill:         var(--daw-elevated);
       --tonnetz-node-stroke:       var(--daw-border);
       --tonnetz-label-color:       var(--daw-text-dim);
       --tonnetz-accent:            var(--gold);
+
+      /* Override shared tonnetz quality vars so triangles
+         pick up the chord-quality color families.          */
+      --tn-major-fill:             var(--q-major-stroke);
+      --tn-minor-fill:             var(--q-minor-stroke);
+    }
+
+    /* ── Tonnetz animations (Explorer-specific polish) ─────── */
+
+    /* Active chord triangle pulse (opacity 0.15 → 0.35) */
+    .tonnetz-svg .tn-tri--primary.tn-tri--quality-major,
+    .tonnetz-svg .tn-tri--primary.tn-tri--quality-minor {
+      fill: var(--q-major-fill);
+      stroke: var(--q-major-stroke);
+      stroke-width: 2;
+      opacity: 0.25;
+      animation: sl-tri-pulse 2s ease-in-out infinite, sl-tri-fade-in 0.3s ease-out;
+    }
+    .tonnetz-svg .tn-tri--primary.tn-tri--quality-minor {
+      fill: var(--q-minor-fill);
+      stroke: var(--q-minor-stroke);
+    }
+    @keyframes sl-tri-pulse {
+      0%, 100% { opacity: 0.15; }
+      50%      { opacity: 0.35; }
+    }
+    @keyframes sl-tri-fade-in {
+      from { fill-opacity: 0; stroke-opacity: 0; }
+      to   { fill-opacity: 1; stroke-opacity: 1; }
+    }
+
+    /* Inactive (neighborhood) triads: dimmer quality tint */
+    .tonnetz-svg .tn-tri--quality-major:not(.tn-tri--primary):not(.tn-tri--ghost):not(.tn-tri--interactive:hover) {
+      fill: var(--q-major-fill);
+      opacity: 0.06;
+    }
+    .tonnetz-svg .tn-tri--quality-minor:not(.tn-tri--primary):not(.tn-tri--ghost):not(.tn-tri--interactive:hover) {
+      fill: var(--q-minor-fill);
+      opacity: 0.06;
+    }
+
+    /* Active node fade-in on chord change */
+    .tonnetz-svg .tn-node--active circle {
+      animation: sl-node-fade-in 0.3s ease-out;
+      fill: var(--q-major-stroke);
+      stroke: var(--q-major-stroke);
+    }
+    /* When active chord is minor, recolor active nodes green */
+    .tonnetz-svg[data-chord-quality="minor"] .tn-node--active circle {
+      fill: var(--q-minor-stroke);
+      stroke: var(--q-minor-stroke);
+    }
+    .tonnetz-svg[data-chord-quality="dominant"] .tn-node--active circle {
+      fill: var(--q-dom-stroke);
+      stroke: var(--q-dom-stroke);
+    }
+    @keyframes sl-node-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* Glow worm path opacity pulse (0.4 → 0.7) */
+    .tonnetz-svg .tn-worm-path,
+    .tonnetz-svg .tn-worm-glow,
+    .tonnetz-svg .tn-worm-node-glow,
+    .tonnetz-svg .tn-worm-node-ring {
+      animation: sl-worm-pulse 2s ease-in-out infinite;
+    }
+    @keyframes sl-worm-pulse {
+      0%, 100% { opacity: 0.4; }
+      50%      { opacity: 0.7; }
+    }
+
+    /* Ghost trail: faded dashed outline of the previous chord's triangle */
+    .wt-ghost-tri {
+      fill: none;
+      stroke: var(--daw-text-dim);
+      stroke-width: 2;
+      stroke-dasharray: 6 4;
+      opacity: 0.2;
+      pointer-events: none;
+      animation: sl-ghost-fade 0.3s ease-out;
+    }
+    .wt-ghost-tri[data-quality="major"] { stroke: var(--q-major-stroke); }
+    .wt-ghost-tri[data-quality="minor"] { stroke: var(--q-minor-stroke); }
+    @keyframes sl-ghost-fade {
+      from { opacity: 0; }
+      to   { opacity: 0.2; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tonnetz-svg .tn-tri--primary,
+      .tonnetz-svg .tn-worm-path,
+      .tonnetz-svg .tn-worm-glow,
+      .tonnetz-svg .tn-worm-node-glow,
+      .tonnetz-svg .tn-worm-node-ring,
+      .tonnetz-svg .tn-node--active circle,
+      .wt-ghost-tri {
+        animation: none !important;
+      }
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -301,7 +414,7 @@
       width: var(--wt-progress);
       background: var(--gold);
       border-radius: 999px;
-      transition: width var(--transition-base);
+      transition: width 0.6s ease;
     }
 
     .wts__title {
@@ -395,6 +508,7 @@
       background: var(--daw-elevated);
       border-color: var(--daw-border);
       color: var(--daw-text);
+      animation: wts-slide-in 0.3s ease-out;
     }
     .wts-step--active .wts-step__badge {
       background: var(--gold);
@@ -404,6 +518,43 @@
     }
     .wts-step--active .wts-step__chord { color: var(--gold); }
     .wts-step--active .wts-step__fn { color: var(--daw-text-dim); }
+
+    /* Quality-colored badges + chord text for the active step */
+    .wts-step--active[data-quality="major"] .wts-step__badge {
+      background: var(--q-major-stroke);
+      border-color: var(--q-major-stroke);
+      color: #fff;
+      box-shadow: 0 0 0 3px var(--q-major-fill);
+    }
+    .wts-step--active[data-quality="major"] .wts-step__chord { color: var(--q-major-text); }
+
+    .wts-step--active[data-quality="minor"] .wts-step__badge {
+      background: var(--q-minor-stroke);
+      border-color: var(--q-minor-stroke);
+      color: #fff;
+      box-shadow: 0 0 0 3px var(--q-minor-fill);
+    }
+    .wts-step--active[data-quality="minor"] .wts-step__chord { color: var(--q-minor-text); }
+
+    /* Subtle quality tint on done-step badges */
+    .wts-step--done[data-quality="major"] .wts-step__badge {
+      background: var(--q-major-fill);
+      border-color: var(--q-major-stroke);
+      color: var(--q-major-text);
+    }
+    .wts-step--done[data-quality="minor"] .wts-step__badge {
+      background: var(--q-minor-fill);
+      border-color: var(--q-minor-stroke);
+      color: var(--q-minor-text);
+    }
+
+    @keyframes wts-slide-in {
+      from { transform: translateY(6px); opacity: 0.4; }
+      to   { transform: translateY(0);   opacity: 1;   }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wts-step--active { animation: none; }
+    }
 
     .wts-step--future { opacity: 0.55; }
 
@@ -555,11 +706,39 @@
       position: relative;
       min-height: 0;
     }
-    #exp-tonnetz-container {
+    .sl-stage-view {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
+    }
+    .sl-stage-view[hidden] { display: none; }
+
+    /* Chord wheel stage view — centered inside the stage */
+    #exp-wheel-stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-md);
+    }
+    #exp-wheel-stage #exp-chord-wheel-container {
+      position: relative;
+      left: auto;
+      opacity: 1;
+      pointer-events: auto;
+      width: min(90%, 520px);
+      height: min(90%, 520px);
+      overflow: visible;
+    }
+
+    /* Fretboard stage view — fills the stage vertically */
+    #exp-fretboard-stage {
+      padding: var(--space-md);
+      overflow: auto;
+    }
+    #exp-fretboard-stage #exp-fretboard-stage-container {
+      width: 100%;
+      min-height: 220px;
     }
 
     /* Chord wheel kept in DOM (offscreen) so HarmonyState wiring stays alive */
@@ -667,13 +846,42 @@
       font-family: var(--font-family-display);
       font-size: var(--font-size-md);
       font-weight: var(--font-weight-medium);
-      color: var(--gold);
+      color: var(--q-major-text);
+      transition: color 0.3s ease;
     }
+    .sl-key-chord[data-quality="minor"]    { color: var(--q-minor-text); }
+    .sl-key-chord[data-quality="dominant"] { color: var(--q-dom-text); }
+
     .sl-key-notes {
       font-size: var(--font-size-xs);
-      color: var(--daw-text-dim);
+      color: var(--q-major-text);
+      opacity: 0.72;
       letter-spacing: 0.04em;
       font-variant-numeric: tabular-nums;
+      transition: color 0.3s ease;
+    }
+    .sl-key-notes[data-quality="minor"]    { color: var(--q-minor-text); }
+    .sl-key-notes[data-quality="dominant"] { color: var(--q-dom-text); }
+
+    /* Dynamic keyboard highlight color driven by chord quality */
+    #exp-keyboard-container[data-chord-quality="minor"] {
+      --keyboard-highlight-primary: var(--q-minor-stroke);
+      --color-primary: var(--q-minor-stroke);
+    }
+    #exp-keyboard-container[data-chord-quality="dominant"] {
+      --keyboard-highlight-primary: var(--q-dom-stroke);
+      --color-primary: var(--q-dom-stroke);
+    }
+    /* Ensure black keys that are chord tones get a visibly stronger fill */
+    #exp-keyboard-container .kv-key--triad.kv-key--black {
+      background: var(--keyboard-highlight-primary);
+      box-shadow:
+        inset 0 0 0 2px var(--keyboard-highlight-primary),
+        0 0 8px color-mix(in srgb, var(--keyboard-highlight-primary) 70%, transparent);
+      opacity: 1;
+    }
+    #exp-keyboard-container .kv-key--triad {
+      transition: background 0.3s ease, box-shadow 0.3s ease;
     }
 
     /* ── Fretboard panel ────────────────────────────────────── */
@@ -867,15 +1075,17 @@
       <div class="sl-stage">
         <div class="exp-panel exp-panel--tonnetz">
           <div class="exp-panel__head">
-            <span class="exp-panel__label">Tonnetz Neighborhood</span>
+            <span class="exp-panel__label" id="sl-stage-label">Tonnetz Neighborhood</span>
             <div class="sl-panel-tabs">
-              <button class="sl-panel-tab sl-panel-tab--active" id="sl-tab-tonnetz" type="button">Tonnetz</button>
-              <button class="sl-panel-tab" id="sl-tab-wheel" type="button" disabled title="Coming soon">Chord wheel</button>
-              <button class="sl-panel-tab" id="sl-tab-fretboard" type="button" disabled title="Coming soon">Fretboard</button>
+              <button class="sl-panel-tab sl-panel-tab--active" id="sl-tab-tonnetz"   type="button" data-stage-view="tonnetz">Tonnetz</button>
+              <button class="sl-panel-tab"                      id="sl-tab-wheel"     type="button" data-stage-view="wheel">Chord wheel</button>
+              <button class="sl-panel-tab"                      id="sl-tab-fretboard" type="button" data-stage-view="fretboard">Fretboard</button>
             </div>
           </div>
           <div class="exp-panel__body">
-            <div id="exp-tonnetz-container"></div>
+            <div id="exp-tonnetz-container" class="sl-stage-view" data-stage-view="tonnetz"></div>
+            <div id="exp-wheel-stage"       class="sl-stage-view" data-stage-view="wheel" hidden></div>
+            <div id="exp-fretboard-stage"   class="sl-stage-view" data-stage-view="fretboard" hidden></div>
           </div>
         </div>
       </div>
@@ -1233,9 +1443,55 @@
       labelEl: 'sl-key-chord',
     });
 
-    // ── Chord Wheel (offscreen, still functional via HarmonyState) ─
+    // ── Chord Wheel ────────────────────────────────────────────────
+    // The chord wheel lives inside the offscreen wrapper by default but we
+    // move its container into the stage "wheel view" so the tab can swap to
+    // it. ChordWheel subscribes to HarmonyState so moving the DOM is safe.
+    const _wheelContainer = document.getElementById('exp-chord-wheel-container');
+    const _wheelStageEl   = document.getElementById('exp-wheel-stage');
+    if (_wheelContainer && _wheelStageEl) _wheelStageEl.appendChild(_wheelContainer);
     const wheel = new ChordWheel('#exp-chord-wheel-container', { initialKey: 0 });
     window.wheel = wheel;
+
+    // ── Stage tabs (Tonnetz / Chord wheel / Fretboard) ─────────────
+    const STAGE_LABELS = {
+      tonnetz:   'Tonnetz Neighborhood',
+      wheel:     'Circle of Fifths',
+      fretboard: 'Fretboard',
+    };
+    const stageLabelEl = document.getElementById('sl-stage-label');
+    const stageTabs    = document.querySelectorAll('.sl-panel-tab[data-stage-view]');
+    const stageViews   = document.querySelectorAll('.sl-stage-view[data-stage-view]');
+    let _stageFretboard = null;
+
+    function _setStageView(name) {
+      if (!STAGE_LABELS[name]) return;
+
+      // Lazily create a stage-scoped fretboard the first time its tab is shown
+      if (name === 'fretboard' && !_stageFretboard) {
+        const host = document.getElementById('exp-fretboard-stage');
+        if (host && !host.querySelector('#exp-fretboard-stage-container')) {
+          const fbDiv = document.createElement('div');
+          fbDiv.id = 'exp-fretboard-stage-container';
+          host.appendChild(fbDiv);
+        }
+        _stageFretboard = new FretboardView('exp-fretboard-stage-container', { interactive: true });
+      }
+
+      stageTabs.forEach(t => {
+        t.classList.toggle('sl-panel-tab--active', t.dataset.stageView === name);
+      });
+      stageViews.forEach(v => {
+        v.hidden = v.dataset.stageView !== name;
+      });
+      stageLabelEl.textContent = STAGE_LABELS[name];
+    }
+
+    stageTabs.forEach(tab => {
+      tab.removeAttribute('disabled');
+      tab.removeAttribute('title');
+      tab.addEventListener('click', () => _setStageView(tab.dataset.stageView));
+    });
 
     // ── Input mode: Chord vs Note ──────────────────────────────────
     let noteInputMode = false;
@@ -1429,15 +1685,70 @@
     // HARMONYSTATE SUBSCRIBER — UI sync + audio
     // ════════════════════════════════════════════════════════════════
     let _lastRoot = null, _lastQuality = null;
+    let _ghostPrevChord = null;   // { root, quality } — previous chord for ghost trail
     let _wtSidebar = null;  // assigned later — referenced in subscriber below
     const chordLabelEl = document.getElementById('sl-key-chord');
     const notesLabelEl = document.getElementById('sl-key-notes');
     const keyBadgeEl   = document.getElementById('sl-badge-key');
     const keySelect    = document.getElementById('exp-key');
+    const keyboardContainerEl = document.getElementById('exp-keyboard-container');
 
     function _formatNotes(notes) {
       if (!notes || !notes.length) return '';
       return notes.join(' · ');
+    }
+
+    /** Tag UI elements with the current chord quality so quality-color CSS
+     *  rules kick in across the Tonnetz, keyboard, and chord labels.         */
+    function _applyQualityAttribute(quality) {
+      const q = quality || '';
+      const tonnetzSvg = document.querySelector('#exp-tonnetz-container svg.tonnetz-svg');
+      if (tonnetzSvg) tonnetzSvg.dataset.chordQuality = q;
+      if (keyboardContainerEl) keyboardContainerEl.dataset.chordQuality = q;
+      if (chordLabelEl) chordLabelEl.dataset.quality = q;
+      if (notesLabelEl) notesLabelEl.dataset.quality = q;
+    }
+
+    /** Inject (or refresh) a faded dashed ghost triangle showing the previous
+     *  chord's position on the current Tonnetz neighborhood. If the previous
+     *  chord isn't visible in the current lattice (e.g. it's outside depth),
+     *  silently skip.                                                        */
+    function _renderGhostTrail() {
+      const svg = document.querySelector('#exp-tonnetz-container svg.tonnetz-svg');
+      if (!svg) return;
+      const scene = svg.querySelector('.tn-scene');
+      if (!scene) return;
+
+      // Always wipe any previous ghost layer before re-rendering.
+      scene.querySelectorAll('.wt-ghost-layer').forEach(g => g.remove());
+      if (!_ghostPrevChord) return;
+
+      // Find the triangle polygon for the ghost chord in the CURRENT Tonnetz.
+      // The Tonnetz renderer tags every polygon with data-root / data-quality.
+      const candidates = svg.querySelectorAll('.tn-tri');
+      let srcPoly = null;
+      for (const t of candidates) {
+        if (t.classList.contains('tn-tri--primary')) continue;
+        if (t.dataset.root === _ghostPrevChord.root &&
+            t.dataset.quality === _ghostPrevChord.quality) {
+          srcPoly = t;
+          break;
+        }
+      }
+      if (!srcPoly) return;
+
+      const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      layer.classList.add('wt-ghost-layer');
+      const ghost = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      ghost.setAttribute('points', srcPoly.getAttribute('points'));
+      ghost.classList.add('wt-ghost-tri');
+      ghost.dataset.quality = _ghostPrevChord.quality || '';
+      layer.appendChild(ghost);
+
+      // Insert BEFORE the node layer so nodes stay on top of the ghost.
+      const nodeLayer = scene.querySelector('.tonnetz-nodes');
+      if (nodeLayer) scene.insertBefore(layer, nodeLayer);
+      else scene.appendChild(layer);
     }
 
     HarmonyState.on(state => {
@@ -1451,8 +1762,13 @@
         const qualLabel = primary.quality === 'major' ? 'major' : 'minor';
         chordLabelEl.textContent = `${primary.root} ${qualLabel}`;
         notesLabelEl.textContent = _formatNotes(triadNotes(primary.root, primary.quality));
+        _applyQualityAttribute(primary.quality);
 
         if (primary.root !== _lastRoot || primary.quality !== _lastQuality) {
+          // Remember the previous chord as a ghost before overwriting.
+          if (_lastRoot && _lastQuality) {
+            _ghostPrevChord = { root: _lastRoot, quality: _lastQuality };
+          }
           _lastRoot    = primary.root;
           _lastQuality = primary.quality;
           playChord(primary.root, primary.quality).catch(() => {});
@@ -1461,6 +1777,10 @@
             _pushChord(primary.root, primary.quality, t ? t.type : null);
           }
         }
+
+        // Redraw the ghost trail AFTER Tonnetz/ChordBubble have finished their
+        // renders this tick — they're the subscribers registered before us.
+        _renderGhostTrail();
       } else if ((state.activeNotes || []).length > 0 && (state.activeTriads || []).length === 0) {
         const pcs = (state.activeNotes).map(n => noteToPC(n.note)).filter(pc => !isNaN(pc));
         const uniquePCs = [...new Set(pcs)];
@@ -1476,9 +1796,15 @@
           chordLabelEl.textContent = resolved.name;
         }
         notesLabelEl.textContent = _formatNotes(state.activeNotes.map(n => n.note));
+        _applyQualityAttribute(resolved && resolved.quality ? resolved.quality : 'major');
+        _ghostPrevChord = null;
+        _renderGhostTrail();
       } else {
         chordLabelEl.textContent = '—';
         notesLabelEl.textContent = '';
+        _applyQualityAttribute('');
+        _ghostPrevChord = null;
+        _renderGhostTrail();
       }
 
       if (typeof state.currentKey === 'number' && state.currentKey >= 0) {
@@ -1581,6 +1907,9 @@
         songTitleEl.textContent  = 'Tonnetz Explorer';
         songArtistEl.textContent = 'Free play — click any chord';
         exitBtn.hidden = true;
+        // Clear ghost trail so it doesn't linger into free-play mode
+        _ghostPrevChord = null;
+        _renderGhostTrail();
         HarmonyState.setTriad('C', 'major');
         const url = new URL(window.location);
         url.searchParams.delete('walkthrough');
