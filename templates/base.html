@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="{% block theme %}light{% endblock %}">
 
 <head>
   <meta charset="UTF-8">
@@ -10,6 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- SongLab design tokens (must load before shared styles so vars are available) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
 
   <!-- Shared design system -->
   <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">

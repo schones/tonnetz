@@ -1,0 +1,114 @@
+/* ============================================================
+   SongLab Design Tokens
+   ------------------------------------------------------------
+   CSS custom properties shared across the SongLab redesign.
+   Two themes:
+     - data-theme="light"  (landing page, game pages)
+     - data-theme="dark"   (Explorer, Skratch Studio)
+   ============================================================ */
+
+:root {
+  /* ── Accent colors (shared across both themes) ────────────── */
+  --accent-gold:           #D4A03C;
+  --accent-blue:           #2D5F8A;
+  --accent-blue-bright:    #3A8BC9;
+  --accent-coral:          #E87461;
+  --accent-green:          #4CAF50;
+  --accent-red:            #C62828;
+  --accent-transport:      #2E7D32;
+
+  /* ── Chord quality color families ─────────────────────────── */
+  --chord-major:           var(--accent-blue);
+  --chord-major-bright:    var(--accent-blue-bright);
+  --chord-minor:           var(--accent-green);
+  --chord-minor-bright:    #66BB6A;
+  --chord-borrowed:        var(--accent-coral);
+  --chord-augmented:       var(--accent-coral);
+
+  /* ── Typography: fluid font sizes ─────────────────────────── */
+  --font-family-base:      'Nunito', system-ui, -apple-system, sans-serif;
+  --font-family-display:   'Nunito', system-ui, -apple-system, sans-serif;
+
+  --font-size-xs:          clamp(0.70rem, 0.66rem + 0.20vw, 0.78rem);
+  --font-size-sm:          clamp(0.80rem, 0.76rem + 0.20vw, 0.88rem);
+  --font-size-base:        clamp(0.92rem, 0.88rem + 0.25vw, 1.02rem);
+  --font-size-md:          clamp(1.00rem, 0.95rem + 0.30vw, 1.12rem);
+  --font-size-lg:          clamp(1.15rem, 1.08rem + 0.40vw, 1.32rem);
+  --font-size-xl:          clamp(1.40rem, 1.28rem + 0.60vw, 1.65rem);
+  --font-size-2xl:         clamp(1.75rem, 1.55rem + 1.00vw, 2.20rem);
+  --font-size-3xl:         clamp(2.20rem, 1.85rem + 1.75vw, 3.10rem);
+  --font-size-4xl:         clamp(2.80rem, 2.20rem + 3.00vw, 4.40rem);
+
+  /* Two-weight scale only */
+  --font-weight-regular:   400;
+  --font-weight-medium:    500;
+
+  /* ── Spacing scale ────────────────────────────────────────── */
+  --space-xs:              4px;
+  --space-sm:              8px;
+  --space-md:              12px;
+  --space-lg:              16px;
+  --space-xl:              24px;
+  --space-2xl:             32px;
+
+  /* ── Border radius scale ──────────────────────────────────── */
+  --radius-sm:             4px;
+  --radius-md:             6px;
+  --radius-lg:             8px;
+  --radius-xl:             12px;
+  --radius-pad:            10px;
+
+  /* ── Transition defaults ──────────────────────────────────── */
+  --transition-fast:       120ms ease;
+  --transition-base:       180ms ease;
+  --transition-slow:       260ms ease;
+  --transition-color:      color 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+/* ============================================================
+   LIGHT THEME
+   ============================================================ */
+[data-theme="light"] {
+  /* Backgrounds */
+  --bg-deep:               #F1ECE0;
+  --bg-base:               #F7F3E8;
+  --bg-surface:            #FFFFFF;
+  --bg-raised:             #FBF8EF;
+  --bg-input:              #FFFFFF;
+
+  /* Text */
+  --text-primary:          #1F1B16;
+  --text-secondary:        #4A4339;
+  --text-tertiary:         #6B6457;
+  --text-muted:            #8C8576;
+  --text-ghost:            #B3AC9D;
+
+  /* Borders */
+  --border-color:          #D9D2C0;
+  --border-strong:         #BFB6A0;
+  --border-subtle:         #E8E2D2;
+}
+
+/* ============================================================
+   DARK THEME
+   ============================================================ */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-deep:               #0E0E12;
+  --bg-base:               #15151B;
+  --bg-surface:            #1C1C24;
+  --bg-raised:             #23232E;
+  --bg-input:              #12121A;
+
+  /* Text */
+  --text-primary:          #F2EFE6;
+  --text-secondary:        #C7C2B5;
+  --text-tertiary:         #9A9486;
+  --text-muted:            #726C5F;
+  --text-ghost:            #4A4538;
+
+  /* Borders */
+  --border-color:          #2E2E3A;
+  --border-strong:         #43434F;
+  --border-subtle:         #23232E;
+}
