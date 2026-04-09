@@ -706,13 +706,89 @@
       position: relative;
       min-height: 0;
     }
+
+    /* ── Walkthrough begin overlay (audio gesture gate) ──────── */
+    .exp-begin-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 18, 22, 0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      animation: exp-begin-fade-in 220ms ease;
+    }
+    .exp-begin-overlay[hidden] { display: none; }
+
+    @keyframes exp-begin-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .exp-begin-overlay__btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      background: transparent;
+      border: 0;
+      color: #fff;
+      font-family: var(--font-family-base, inherit);
+      cursor: pointer;
+      padding: 12px 24px;
+    }
+
+    .exp-begin-overlay__circle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: var(--gold, #D4A03C);
+      color: #1f1b16;
+      font-size: 44px;
+      line-height: 1;
+      padding-left: 6px; /* nudge play triangle visually centered */
+      box-shadow:
+        0 0 0 6px rgba(212, 160, 60, 0.18),
+        0 0 0 14px rgba(212, 160, 60, 0.10),
+        0 14px 32px rgba(0, 0, 0, 0.45);
+      transition: transform 160ms ease, box-shadow 220ms ease;
+    }
+
+    .exp-begin-overlay__btn:hover .exp-begin-overlay__circle {
+      transform: scale(1.04);
+      box-shadow:
+        0 0 0 8px rgba(212, 160, 60, 0.22),
+        0 0 0 18px rgba(212, 160, 60, 0.12),
+        0 18px 40px rgba(0, 0, 0, 0.5);
+    }
+    .exp-begin-overlay__btn:active .exp-begin-overlay__circle {
+      transform: scale(0.97);
+    }
+
+    .exp-begin-overlay__title {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      max-width: 420px;
+      text-align: center;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+    }
     .sl-stage-view {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
     }
-    .sl-stage-view[hidden] { display: none; }
+    /* Use !important so this beats the ID-scoped display rules below
+       (#exp-wheel-stage sets display:flex, which would otherwise win on
+       specificity and leave the inactive stage view rendered on top of
+       the active one). */
+    .sl-stage-view[hidden] { display: none !important; }
 
     /* Chord wheel stage view — centered inside the stage */
     #exp-wheel-stage {
@@ -1086,6 +1162,14 @@
             <div id="exp-tonnetz-container" class="sl-stage-view" data-stage-view="tonnetz"></div>
             <div id="exp-wheel-stage"       class="sl-stage-view" data-stage-view="wheel" hidden></div>
             <div id="exp-fretboard-stage"   class="sl-stage-view" data-stage-view="fretboard" hidden></div>
+
+            <!-- Walkthrough begin overlay (gates AudioContext on iOS) -->
+            <div id="exp-begin-overlay" class="exp-begin-overlay" hidden role="dialog" aria-label="Begin walkthrough">
+              <button class="exp-begin-overlay__btn" type="button" id="exp-begin-btn">
+                <span class="exp-begin-overlay__circle" aria-hidden="true">▶</span>
+                <span class="exp-begin-overlay__title" data-begin-title>Explore</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1687,6 +1771,7 @@
     let _lastRoot = null, _lastQuality = null;
     let _ghostPrevChord = null;   // { root, quality } — previous chord for ghost trail
     let _wtSidebar = null;  // assigned later — referenced in subscriber below
+    let _suppressAutoPlay = false; // true while begin-overlay is gating audio
     const chordLabelEl = document.getElementById('sl-key-chord');
     const notesLabelEl = document.getElementById('sl-key-notes');
     const keyBadgeEl   = document.getElementById('sl-badge-key');
@@ -1771,7 +1856,9 @@
           }
           _lastRoot    = primary.root;
           _lastQuality = primary.quality;
-          playChord(primary.root, primary.quality).catch(() => {});
+          if (!_suppressAutoPlay) {
+            playChord(primary.root, primary.quality).catch(() => {});
+          }
           if (_recording) {
             const t = state.activeTransform;
             _pushChord(primary.root, primary.quality, t ? t.type : null);
@@ -1873,6 +1960,9 @@
     } else if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
       const _wtSteps = WALKTHROUGHS[_urlWalkthrough].steps;
       const _wtFirst = _wtSteps && _wtSteps.length > 0 ? _parseChordName(_wtSteps[0].chord) : null;
+      // Suppress auto-play until the user clicks the Begin button — gates the
+      // AudioContext on iOS and creates an intentional start moment.
+      _suppressAutoPlay = true;
       HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
       HarmonyState.setTriad(_wtFirst ? _wtFirst.root : 'C', _wtFirst ? _wtFirst.quality : 'major');
     } else {
@@ -1943,8 +2033,47 @@
       _wtSidebar.start(wt);
     }
 
+    // ── Begin overlay (audio gesture gate for walkthroughs) ───────
+    // When the page loads with a walkthrough URL param, show a centered
+    // "Begin" play button over the Tonnetz. Clicking it counts as a user
+    // gesture so we can resume the AudioContext (required on iOS) before
+    // playing the first chord.
+    function _showBeginOverlay(wt) {
+      const overlay = document.getElementById('exp-begin-overlay');
+      const btn     = document.getElementById('exp-begin-btn');
+      if (!overlay || !btn) {
+        _suppressAutoPlay = false;
+        _startWalkthrough(wt);
+        return;
+      }
+      const titleEl = overlay.querySelector('[data-begin-title]');
+
+      const [songName] = _splitSongAndArtist(wt.song);
+      const label = songName || wt.title || 'this song';
+      titleEl.textContent = `Explore ${label}`;
+      overlay.hidden = false;
+
+      const begin = async (e) => {
+        e && e.preventDefault();
+        btn.removeEventListener('click', begin);
+        overlay.hidden = true;
+        _suppressAutoPlay = false;
+        // User gesture path — resume Tone.js AudioContext, load sampler.
+        try { await ensureFullAudio(); } catch (_) {}
+        _startWalkthrough(wt);
+        // Step 0's chord matches the pre-loaded triad, so the HarmonyState
+        // subscriber won't auto-play it. Trigger the first chord explicitly.
+        const firstStep = wt.steps && wt.steps[0];
+        if (firstStep) {
+          const parsed = _parseChordName(firstStep.chord);
+          if (parsed) playChord(parsed.root, parsed.quality).catch(() => {});
+        }
+      };
+      btn.addEventListener('click', begin);
+    }
+
     if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
-      _startWalkthrough(WALKTHROUGHS[_urlWalkthrough]);
+      _showBeginOverlay(WALKTHROUGHS[_urlWalkthrough]);
     }
 
     window.startWalkthrough = function(key) {

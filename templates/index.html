@@ -191,6 +191,15 @@
       gap: var(--space-lg);
     }
 
+    .sl-grid--hero {
+      grid-template-columns: repeat(2, 1fr);
+      margin-bottom: var(--space-lg);
+    }
+
+    .sl-grid--small {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
     /* ── Song Pads ──────────────────────────────────────────── */
     .sl-pad {
       position: relative;
@@ -320,6 +329,50 @@
       line-height: 1.5;
     }
 
+    /* ── Hero tool cards (Explorer + Skratch Studio) ───────── */
+    .sl-card--hero {
+      position: relative;
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-xl);
+      min-height: 200px;
+      padding: var(--space-2xl);
+      overflow: hidden;
+    }
+
+    .sl-card--hero .sl-card__art {
+      flex-shrink: 0;
+      width: 110px;
+      height: 110px;
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-raised);
+      color: var(--accent-blue);
+    }
+
+    .sl-card--hero.sl-card--skratch .sl-card__art {
+      color: var(--pad-coral);
+    }
+
+    .sl-card--hero .sl-card__copy {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      min-width: 0;
+    }
+
+    .sl-card--hero .sl-card__title {
+      font-size: var(--font-size-xl);
+      letter-spacing: -0.01em;
+    }
+
+    .sl-card--hero .sl-card__desc {
+      font-size: var(--font-size-base);
+      color: var(--text-secondary);
+    }
+
     .sl-card--compact {
       padding: var(--space-md) var(--space-lg);
       gap: var(--space-xs);
@@ -356,6 +409,21 @@
       }
       .sl-section { padding: var(--space-lg) var(--space-lg); }
       .sl-nav { padding: var(--space-sm) var(--space-lg); }
+    }
+
+    @media (max-width: 720px) {
+      .sl-grid--hero {
+        grid-template-columns: 1fr;
+      }
+      .sl-card--hero {
+        min-height: 0;
+        padding: var(--space-xl);
+        gap: var(--space-lg);
+      }
+      .sl-card--hero .sl-card__art {
+        width: 80px;
+        height: 80px;
+      }
     }
 
     @media (max-width: 540px) {
@@ -461,34 +529,64 @@
   <!-- ===== Tools ===== -->
   <section class="sl-section" aria-labelledby="sl-tools-label">
     <p class="sl-section__label" id="sl-tools-label">Tools</p>
-    <div class="sl-grid">
-      <a class="sl-card" href="/explorer">
-        <span class="sl-card__icon" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="9"/>
-            <circle cx="12" cy="12" r="3"/>
-            <line x1="12" y1="3" x2="12" y2="9"/>
-            <line x1="12" y1="15" x2="12" y2="21"/>
-            <line x1="3" y1="12" x2="9" y2="12"/>
-            <line x1="15" y1="12" x2="21" y2="12"/>
+
+    <!-- Hero row: Explorer + Skratch Studio -->
+    <div class="sl-grid sl-grid--hero">
+      <a class="sl-card sl-card--hero sl-card--explorer" href="/explorer">
+        <span class="sl-card__art" aria-hidden="true">
+          <!-- Tonnetz: interconnected circles in triangular lattice -->
+          <svg width="84" height="84" viewBox="0 0 84 84" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Connecting lines (lattice edges) -->
+            <line x1="18" y1="22" x2="42" y2="22"/>
+            <line x1="42" y1="22" x2="66" y2="22"/>
+            <line x1="18" y1="62" x2="42" y2="62"/>
+            <line x1="42" y1="62" x2="66" y2="62"/>
+            <line x1="30" y1="42" x2="54" y2="42"/>
+            <line x1="18" y1="22" x2="30" y2="42"/>
+            <line x1="42" y1="22" x2="30" y2="42"/>
+            <line x1="42" y1="22" x2="54" y2="42"/>
+            <line x1="66" y1="22" x2="54" y2="42"/>
+            <line x1="30" y1="42" x2="18" y2="62"/>
+            <line x1="30" y1="42" x2="42" y2="62"/>
+            <line x1="54" y1="42" x2="42" y2="62"/>
+            <line x1="54" y1="42" x2="66" y2="62"/>
+            <!-- Nodes -->
+            <circle cx="18" cy="22" r="4" fill="currentColor" fill-opacity="0.18"/>
+            <circle cx="42" cy="22" r="4" fill="currentColor" fill-opacity="0.18"/>
+            <circle cx="66" cy="22" r="4" fill="currentColor" fill-opacity="0.18"/>
+            <circle cx="30" cy="42" r="5" fill="currentColor" fill-opacity="0.45"/>
+            <circle cx="54" cy="42" r="5" fill="currentColor" fill-opacity="0.45"/>
+            <circle cx="18" cy="62" r="4" fill="currentColor" fill-opacity="0.18"/>
+            <circle cx="42" cy="62" r="4" fill="currentColor" fill-opacity="0.18"/>
+            <circle cx="66" cy="62" r="4" fill="currentColor" fill-opacity="0.18"/>
           </svg>
         </span>
-        <h3 class="sl-card__title">Tonnetz Explorer</h3>
-        <p class="sl-card__desc">See harmony in space.</p>
+        <span class="sl-card__copy">
+          <h3 class="sl-card__title">Tonnetz Explorer</h3>
+          <p class="sl-card__desc">See harmony in space</p>
+        </span>
       </a>
-      <a class="sl-card" href="/skratch-studio">
-        <span class="sl-card__icon" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/>
-            <path d="M14 17.5h7"/>
-            <path d="M17.5 14v7"/>
+      <a class="sl-card sl-card--hero sl-card--skratch" href="/skratch-studio">
+        <span class="sl-card__art" aria-hidden="true">
+          <!-- Stacked Blockly-style blocks -->
+          <svg width="84" height="84" viewBox="0 0 84 84" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Top block -->
+            <path d="M14 18 H38 a2 2 0 0 1 2 2 v4 a2 2 0 0 0 2 2 h6 a2 2 0 0 0 2 -2 v-4 a2 2 0 0 1 2 -2 H66 a2 2 0 0 1 2 2 V32 a2 2 0 0 1 -2 2 H14 a2 2 0 0 1 -2 -2 V20 a2 2 0 0 1 2 -2 z" fill="currentColor" fill-opacity="0.16"/>
+            <!-- Middle block -->
+            <path d="M14 38 H38 a2 2 0 0 1 2 2 v4 a2 2 0 0 0 2 2 h6 a2 2 0 0 0 2 -2 v-4 a2 2 0 0 1 2 -2 H66 a2 2 0 0 1 2 2 V52 a2 2 0 0 1 -2 2 H14 a2 2 0 0 1 -2 -2 V40 a2 2 0 0 1 2 -2 z" fill="currentColor" fill-opacity="0.30"/>
+            <!-- Bottom block -->
+            <path d="M14 58 H38 a2 2 0 0 1 2 2 v4 a2 2 0 0 0 2 2 h6 a2 2 0 0 0 2 -2 v-4 a2 2 0 0 1 2 -2 H66 a2 2 0 0 1 2 2 V72 a2 2 0 0 1 -2 2 H14 a2 2 0 0 1 -2 -2 V60 a2 2 0 0 1 2 -2 z" fill="currentColor" fill-opacity="0.45"/>
           </svg>
         </span>
-        <h3 class="sl-card__title">Skratch Studio</h3>
-        <p class="sl-card__desc">Build and remix.</p>
+        <span class="sl-card__copy">
+          <h3 class="sl-card__title">Skratch Studio</h3>
+          <p class="sl-card__desc">Build and remix</p>
+        </span>
       </a>
+    </div>
+
+    <!-- Secondary tools row -->
+    <div class="sl-grid sl-grid--small">
       <a class="sl-card" href="/harmony">
         <span class="sl-card__icon" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
