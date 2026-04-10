@@ -327,18 +327,6 @@
     .sl-badge--key { color: var(--gold); border-color: var(--gold-edge); background: var(--gold-soft); }
 
     .sl-songbar__right { display: flex; align-items: center; gap: var(--space-md); flex-shrink: 0; }
-    .sl-svc-link {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 10px;
-      border-radius: var(--radius-md);
-      font-size: var(--font-size-xs);
-      font-weight: var(--font-weight-medium);
-      color: var(--daw-text-dim);
-      border: 1px solid var(--daw-border);
-      transition: var(--transition-color);
-    }
-    .sl-svc-link:hover { color: var(--daw-text); border-color: var(--daw-text-dim); }
-    .sl-svc-link svg { width: 14px; height: 14px; }
 
     .sl-skratch-export {
       padding: 7px 14px;
@@ -716,10 +704,10 @@
 
     /* ── Tonnetz panel header (with view tabs) ─────────────── */
     .sl-stage {
-      flex: 1 1 60%;
+      flex: 1 1 auto;
       display: flex;
       flex-direction: column;
-      min-height: 0;
+      min-height: 280px;
       padding: 8px var(--space-md) 6px;
     }
 
@@ -992,6 +980,12 @@
       align-items: center;
       overflow-x: auto;
     }
+    #exp-keyboard-container {
+      --keyboard-white-key-w: 34px;
+      --keyboard-white-key-h: 100px;
+      --keyboard-black-key-w: 16px;
+      --keyboard-black-key-h: 63px;
+    }
     #exp-keyboard-container .kv-note-label { font-size: var(--font-size-xs); font-weight: 600; }
     #exp-keyboard-container .kv-common-dot { display: none !important; }
     .sl-key-header {
@@ -1047,12 +1041,14 @@
     .exp-panel--fretboard {
       margin: 0 var(--space-md) var(--space-sm);
       flex-shrink: 0;
+      max-height: 220px;
     }
     .exp-panel--fretboard .exp-panel__body {
       padding: var(--space-sm) var(--space-md);
       overflow-x: auto;
+      overflow-y: auto;
     }
-    #exp-fretboard-container { width: 100%; min-height: 180px; }
+    #exp-fretboard-container { width: 100%; min-height: 140px; }
 
     /* ── Status bar ────────────────────────────────────────── */
     .sl-status {
@@ -1191,14 +1187,6 @@
       </div>
     </div>
     <div class="sl-songbar__right">
-      <a class="sl-svc-link" id="sl-link-spotify" href="#" target="_blank" rel="noopener" title="Open in Spotify">
-        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 10c3-1 7-1 10 1M7.5 13c2.5-.7 5.5-.6 8 .8M8 16c2-.5 4-.4 6 .6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>
-        Spotify
-      </a>
-      <a class="sl-svc-link" id="sl-link-apple" href="#" target="_blank" rel="noopener" title="Open in Apple Music">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V6l10-2v11"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="15" r="2"/></svg>
-        Apple
-      </a>
       <button class="sl-skratch-export" id="btn-export-skratch" title="Export recorded sequence to SkratchLab">→ SkratchLab</button>
     </div>
   </div>
