@@ -945,7 +945,7 @@ export function init() {
       return;
     }
     _popoutWindow = window.open(
-      '/skratch-studio/piano-popout',
+      '/skratchlab/piano-popout',
       'skratch-piano-popout',
       'width=900,height=280,resizable=yes,scrollbars=no'
     );

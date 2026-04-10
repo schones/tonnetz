@@ -287,7 +287,7 @@ const VisualToggle = {
 
       <hr class="vt-divider">
 
-      <a id="vt-studio-link" class="vt-studio-link" href="/skratch-studio?visualPreset=${VisualConfig.preset}"
+      <a id="vt-studio-link" class="vt-studio-link" href="/skratchlab?visualPreset=${VisualConfig.preset}"
          target="_blank" rel="noopener">Open in Skratch Studio →</a>
     `;
   },
@@ -375,7 +375,7 @@ const VisualToggle = {
 
     // Update studio link
     const link = this._panel.querySelector('#vt-studio-link');
-    if (link) link.href = `/skratch-studio?visualPreset=${VisualConfig.preset}`;
+    if (link) link.href = `/skratchlab?visualPreset=${VisualConfig.preset}`;
   },
 };
 

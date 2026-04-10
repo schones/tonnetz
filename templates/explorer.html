@@ -1158,7 +1158,7 @@
       <a href="/explorer" class="sl-nav__link sl-nav__link--active">Explorer</a>
       <a href="/harmony" class="sl-nav__link">Ear training</a>
       <a href="/rhythm" class="sl-nav__link">Rhythm &amp; play</a>
-      <a href="/skratch-studio" class="sl-nav__link">SkratchLab</a>
+      <a href="/skratchlab" class="sl-nav__link">SkratchLab</a>
       <a href="/games/chord-walks" class="sl-nav__link">Games</a>
     </div>
     <button id="sl-sound-toggle" class="sl-nav__sound" aria-label="Toggle sound" title="Toggle sound">
@@ -1587,7 +1587,7 @@
         bridge.postMessage({ type: 'import_sequence', chords: _sequence });
         bridge.close();
       } catch (err) {}
-      window.open('/skratch-studio', '_blank');
+      window.open('/skratchlab', '_blank');
       const original = btnExport.textContent;
       btnExport.textContent = 'Sent!';
       btnExport.disabled = true;
@@ -2111,7 +2111,7 @@
           bridge.postMessage({ type: 'import_sequence', chords: _sequence });
           bridge.close();
         } catch (err) {}
-        window.open('/skratch-studio', '_blank');
+        window.open('/skratchlab', '_blank');
       },
       async onSelectSong(key, wt) {
         // User picked a song from the sidebar dropdown — this click is a
