@@ -26,6 +26,7 @@ const WALKTHROUGHS = {
   yesterday_voice_leading: {
     title: "Yesterday's Aching Bass Line",
     song: "Yesterday — The Beatles",
+    category: "Voice Leading",
     seeAlso: { label: "Harmony Trainer", href: "/games/chord-walks" },
     steps: [
       { chord: "F", function: "tonic",            title: "Start here", body: "F major. Bright, stable. Listen to where the bass note sits.", autoPlay: true },
@@ -38,6 +39,7 @@ const WALKTHROUGHS = {
   am_c_relationship: {
     title: "Two Chords, Two Shared Notes",
     song: "Eleanor Rigby — The Beatles",
+    category: "Transforms",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
     steps: [
       { chord: "Am", function: "tonic (i)",       title: "A minor", body: "Three notes: A, C, E. Watch where they sit on the Tonnetz.", autoPlay: true, focus: "tonnetz" },
@@ -49,6 +51,7 @@ const WALKTHROUGHS = {
   creep_progression: {
     title: "The Shock of the Chromatic Mediant",
     song: "Creep — Radiohead",
+    category: "Transforms",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
     steps: [
       { chord: "G",  function: "tonic",             title: "Home base", body: "G major. Comfortable, stable. This is where the verse starts.", autoPlay: true },
@@ -61,6 +64,7 @@ const WALKTHROUGHS = {
   ii_V_I: {
     title: "The Backbone of Jazz",
     song: "Autumn Leaves / Fly Me to the Moon",
+    category: "Jazz Harmony",
     steps: [
       { chord: "Dm", function: "predominant (ii)", title: "The ii chord", body: "D minor in the key of C. It creates gentle tension — a sense of leaning forward.", autoPlay: true },
       { chord: "G",  function: "dominant (V)",     title: "The V chord", body: "G major. The tension builds. Your ear is now really wanting to resolve somewhere. Watch the path on the Tonnetz from Dm to G — it's a clean, short move.", autoPlay: true, focus: "tonnetz" },
@@ -71,6 +75,7 @@ const WALKTHROUGHS = {
   mixolydian: {
     title: "One Note Changes Everything",
     song: "Norwegian Wood — The Beatles",
+    category: "Modes & Scales",
     steps: [
       { chord: "G", function: "tonic",          title: "G major", body: "A normal G major chord. The key of G major has an F♯ in it.", autoPlay: true },
       { chord: "F", function: "♭VII (borrowed)",title: "Now add an F natural chord", body: "F major instead of F♯ diminished. That one note — F natural instead of F♯ — is what makes Mixolydian sound different from regular major. Bluesier, earthier.", autoPlay: true },
@@ -81,6 +86,7 @@ const WALKTHROUGHS = {
   stairway_P_transform: {
     title: "Light and Shadow",
     song: "Stairway to Heaven — Led Zeppelin",
+    category: "Transforms",
     steps: [
       { chord: "Am", function: "tonic (i)",      title: "The opening", body: "A minor. Dark, contemplative. This is where Stairway begins.", autoPlay: true },
       { chord: "A",  function: "parallel major", title: "Flip to major", body: "A major. Same root, completely different feeling — like the sun coming through clouds. On the Tonnetz, this is the P transform: one note moves, the whole mood inverts.", autoPlay: true, highlightTransform: "P", focus: "tonnetz", concept_specifics: ["P_transform", "parallel_major_minor"] },
@@ -92,6 +98,7 @@ const WALKTHROUGHS = {
   deceptive_cadence: {
     title: "The Chord Your Ear Didn't Expect",
     song: "In My Life — The Beatles",
+    category: "Progressions",
     steps: [
       { chord: "C",  function: "tonic (I)",    title: "Start in C", body: "We're home in C major.", autoPlay: true },
       { chord: "G",  function: "dominant (V)", title: "The V chord", body: "G major — the dominant. Your ear has heard this a million times and it KNOWS what comes next. It expects to resolve back to C.", autoPlay: true },
@@ -102,6 +109,7 @@ const WALKTHROUGHS = {
   why_does_my_heart_moby: {
     title: "Six Chords That Ache",
     song: "Why Does My Heart Feel So Bad? — Moby",
+    category: "Modes & Scales",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
     steps: [
       { chord: "Am", function: "tonic (i)",            title: "Start in the dark", body: "A minor. The whole song begins right here, on the most melancholy chord in the key. Hold this feeling.", autoPlay: true },
@@ -116,6 +124,7 @@ const WALKTHROUGHS = {
   twelve_bar_blues: {
     title: "Three Chords, One Triangle",
     song: "Johnny B. Goode — Chuck Berry",
+    category: "Progressions",
     seeAlso: { label: "Strum Patterns", href: "/games/strum-patterns" },
     steps: [
       { chord: "C", function: "tonic (I)",       title: "The I chord", body: "C major. Home base for the blues.", autoPlay: true },
