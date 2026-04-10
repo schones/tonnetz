@@ -919,6 +919,34 @@
       background: var(--daw-border);
     }
 
+    .rhythm-bpm-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+    }
+    .rhythm-bpm-control__label {
+      font-size: var(--font-size-2xs);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--daw-text-mute);
+      flex-shrink: 0;
+    }
+    .rhythm-bpm-slider {
+      flex: 1;
+      accent-color: var(--gold);
+    }
+    .rhythm-bpm-control__value {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text);
+      min-width: 48px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
     .rhythm-pattern {
       display: flex;
       gap: 4px;
@@ -1878,14 +1906,17 @@
 
     // ── Rhythm stage renderer ──────────────────────────────────────
     let currentRhythmData = null;
+    let _userBpmOverride = null;  // slider-set BPM, persists across step navigation
 
     function renderRhythmStage(rhythm) {
       const container = document.getElementById('exp-rhythm-stage');
       if (!container) return;
       // If rhythm is changing, stop any in-flight playback so the playhead
-      // doesn't keep ticking against a stale set of cells.
+      // doesn't keep ticking against a stale set of cells. New song → drop
+      // any prior user BPM override so the slider starts at the song default.
       if (currentRhythmData !== rhythm) {
         rhythmEngine.stop();
+        _userBpmOverride = null;
       }
       currentRhythmData = rhythm;
       if (!rhythm) {
@@ -1915,6 +1946,14 @@
           </button>
         </div>`;
 
+      const initialBpm = _userBpmOverride ?? rhythm.bpm;
+      const bpmHTML = `
+        <div class="rhythm-bpm-control">
+          <label class="rhythm-bpm-control__label" for="rhythm-bpm-slider">Tempo</label>
+          <input type="range" id="rhythm-bpm-slider" min="60" max="280" step="5" value="${initialBpm}" class="rhythm-bpm-slider" />
+          <span class="rhythm-bpm-control__value" id="rhythm-bpm-value">${initialBpm} BPM</span>
+        </div>`;
+
       const patternHTML = rhythm.pattern.map(p => {
         const isDown = !p.beat.includes('&');
         return `
@@ -1930,6 +1969,7 @@
 
       container.innerHTML = `
         ${metaHTML}
+        ${bpmHTML}
         <div class="rhythm-pattern">${patternHTML}</div>
         <div class="rhythm-legend">
           <span class="rhythm-legend__item"><span class="rhythm-legend__dot rhythm-legend__dot--bass"></span>Bass (root/fifth)</span>
@@ -1948,9 +1988,23 @@
             playIcon.textContent = '▶';
             playBtn.classList.remove('rhythm-play--playing');
           } else if (currentRhythmData) {
-            rhythmEngine.start(currentRhythmData.pattern, currentRhythmData.bpm, currentRoot);
+            const bpm = _userBpmOverride ?? currentRhythmData.bpm;
+            rhythmEngine.start(currentRhythmData.pattern, bpm, currentRoot);
             playIcon.textContent = '■';
             playBtn.classList.add('rhythm-play--playing');
+          }
+        });
+      }
+
+      const bpmSlider = document.getElementById('rhythm-bpm-slider');
+      const bpmValue  = document.getElementById('rhythm-bpm-value');
+      if (bpmSlider && bpmValue) {
+        bpmSlider.addEventListener('input', e => {
+          const bpm = parseInt(e.target.value, 10);
+          _userBpmOverride = bpm;
+          bpmValue.textContent = bpm + ' BPM';
+          if (rhythmEngine.playing) {
+            Tone.Transport.bpm.value = bpm;
           }
         });
       }
@@ -1964,6 +2018,11 @@
       _synths: null,
       _sequence: null,
       _playing: false,
+      _currentRoot: 'C',
+
+      setRoot(newRoot) {
+        this._currentRoot = newRoot;
+      },
 
       init() {
         if (this._synths) return;
@@ -1990,12 +2049,13 @@
         this.init();
         this.stop();
 
+        this._currentRoot = rootNote;
         Tone.Transport.bpm.value = bpm;
         const events = pattern.map((step, i) => ({ ...step, _i: i }));
 
         this._sequence = new Tone.Sequence((time, step) => {
           if (step.type === 'bass') {
-            this._synths.bass.triggerAttackRelease(rootNote + '2', '8n', time);
+            this._synths.bass.triggerAttackRelease(this._currentRoot + '2', '8n', time);
           } else if (step.type === 'snare') {
             this._synths.snare.triggerAttackRelease('8n', time);
           } else if (step.type === 'strum') {
@@ -2238,6 +2298,7 @@
     let _ghostPrevChord = null;   // { root, quality } — previous chord for ghost trail
     let _wtSidebar = null;  // assigned later — referenced in subscriber below
     let _suppressAutoPlay = false; // true while begin-overlay is gating audio
+    let _walkthroughStepChange = false; // true during a walkthrough step transition
     const chordLabelEl = document.getElementById('sl-key-chord');
     const notesLabelEl = document.getElementById('sl-key-notes');
     const keyBadgeEl   = document.getElementById('sl-badge-key');
@@ -2292,6 +2353,23 @@
         chordLabelEl.textContent = `${primary.root} ${qualLabel}`;
         notesLabelEl.textContent = _formatNotes(triadNotes(primary.root, primary.quality));
         _applyQualityAttribute(primary.quality);
+
+        // Keep the rhythm engine's bass tracking the current chord. A
+        // walkthrough step change restarts the sequence so the playhead
+        // realigns to beat 1; user clicks just nudge the bass root so the
+        // beat keeps running underneath.
+        if (rhythmEngine.playing && currentRhythmData) {
+          if (_walkthroughStepChange) {
+            const bpm = _userBpmOverride ?? currentRhythmData.bpm;
+            rhythmEngine.start(currentRhythmData.pattern, bpm, primary.root);
+            const playBtn  = document.getElementById('rhythm-play-btn');
+            const playIcon = document.getElementById('rhythm-play-icon');
+            if (playBtn)  playBtn.classList.add('rhythm-play--playing');
+            if (playIcon) playIcon.textContent = '■';
+          } else {
+            rhythmEngine.setRoot(primary.root);
+          }
+        }
 
         let chordChanged = false;
         if (primary.root !== _lastRoot || primary.quality !== _lastQuality) {
@@ -2470,15 +2548,13 @@
         for (const f of focusList) {
           if (STAGE_LABELS[f]) { _setStageView(f); break; }
         }
-        // If the rhythm pattern is currently playing, restart it with the
-        // new chord root so the bass tracks the progression.
-        if (rhythmEngine.playing && currentRhythmData) {
-          rhythmEngine.start(currentRhythmData.pattern, currentRhythmData.bpm, root);
-          const playBtn  = document.getElementById('rhythm-play-btn');
-          const playIcon = document.getElementById('rhythm-play-icon');
-          if (playBtn)  playBtn.classList.add('rhythm-play--playing');
-          if (playIcon) playIcon.textContent = '■';
-        }
+        // Mark the next HarmonyState dispatch as walkthrough-driven so the
+        // subscriber knows to restart the rhythm sequence (re-aligning the
+        // playhead to beat 1) instead of just nudging the bass root.
+        // Reset on the next tick after the synchronous subscriber call chain
+        // finishes, so user clicks revert to the bass-only path.
+        _walkthroughStepChange = true;
+        setTimeout(() => { _walkthroughStepChange = false; }, 0);
       },
       onExport() {
         if (!_sequence.length) return;

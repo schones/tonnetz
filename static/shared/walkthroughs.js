@@ -141,7 +141,7 @@ const WALKTHROUGHS = {
     seeAlso: { label: "Swing Trainer", href: "/games/swing-trainer" },
     rhythm: {
       time_sig: "4/4",
-      bpm: 220,
+      bpm: 160,
       feel: "Train beat",
       description: "The train beat alternates bass on downbeats with muted strums on every upbeat. No drums needed — the guitar IS the rhythm section.",
       pattern: [
