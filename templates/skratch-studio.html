@@ -252,12 +252,18 @@
     }
     .sk-beat-dot.flash { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
 
-    /* ── Main row: sidebar | workspace | channel ───────────── */
+    /* ── Main row: [sidebar | workspace] (50%) | channel (50%) ── */
     .sk-main {
       flex: 1;
       display: flex;
       min-height: 0;
       background: var(--daw-deep);
+    }
+    .sk-left {
+      flex: 1 1 50%;
+      display: flex;
+      min-width: 0;
+      min-height: 0;
     }
 
     /* ── Sidebar (block category browser) ──────────────────── */
@@ -347,10 +353,10 @@
       z-index: 5;
     }
 
-    /* ── Right channel strip ───────────────────────────────── */
+    /* ── Right channel strip (50% — instrument/performance panel) ── */
     .sk-channel {
-      width: 232px;
-      flex-shrink: 0;
+      flex: 1 1 50%;
+      min-width: 0;
       background: var(--daw-surface);
       border-left: 1px solid var(--daw-border);
       display: flex;
@@ -358,11 +364,11 @@
       overflow-y: auto;
     }
     .sk-channel__section {
-      padding: var(--space-md);
+      padding: var(--space-lg) var(--space-xl);
       border-bottom: 1px solid var(--daw-border-soft);
       display: flex;
       flex-direction: column;
-      gap: var(--space-sm);
+      gap: var(--space-md);
     }
     .sk-channel__label {
       font-size: 9.5px;
@@ -400,20 +406,20 @@
       box-shadow: inset 0 0 0 1px var(--gold-edge);
     }
 
-    /* Compact keyboard mount */
+    /* Playable keyboard mount — sized for click/touch performance */
     .sk-keyboard-mount {
       width: 100%;
       overflow-x: auto;
-      padding-bottom: 4px;
-      /* shrink Piano widget to fit channel */
-      --sk-kw: 13px;
-      --sk-kh: 60px;
-      --sk-bkw: 8px;
-      --sk-bkh: 36px;
-      --sk-mdw: 6px;
-      --sk-bmdw: 5px;
+      padding-bottom: 6px;
+      /* Generous Piano widget sizing — this is a primary instrument here */
+      --sk-kw: 32px;
+      --sk-kh: 140px;
+      --sk-bkw: 20px;
+      --sk-bkh: 86px;
+      --sk-mdw: 12px;
+      --sk-bmdw: 9px;
     }
-    .sk-keyboard-mount #pianoContainer { display: flex; justify-content: flex-start; }
+    .sk-keyboard-mount #pianoContainer { display: flex; justify-content: center; }
 
     /* Volume slider with readout */
     .sk-vol-row {
@@ -434,19 +440,19 @@
       text-align: right;
     }
 
-    /* Loop pedal — compact channel-strip layout */
+    /* Loop pedal — performance panel layout */
     .sk-lp__btns {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
     }
     .sk-lp-btn {
-      padding: 5px 6px;
-      border-radius: var(--radius-sm);
+      padding: 10px 8px;
+      border-radius: var(--radius-md);
       border: 1px solid var(--daw-border);
       background: var(--daw-raised);
       color: var(--daw-text-dim);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: var(--font-weight-medium);
       cursor: pointer;
       text-align: center;
@@ -523,11 +529,13 @@
       left: -9999px;
     }
 
-    /* Compact canvas inside channel strip */
+    /* Canvas inside channel strip — capped so it doesn't dominate */
     .sk-canvas-wrap {
       position: relative;
       width: 100%;
+      max-width: 320px;
       aspect-ratio: 1;
+      margin: 0 auto;
       background: var(--daw-deep);
       border: 1px solid var(--daw-border);
       border-radius: var(--radius-sm);
@@ -635,7 +643,6 @@
     /* ── Responsive collapse ───────────────────────────────── */
     @media (max-width: 1100px) {
       .sk-sidebar { width: 138px; }
-      .sk-channel { width: 210px; }
     }
     @media (max-width: 900px) {
       .sk-sidebar { display: none; }
@@ -685,7 +692,7 @@
 
       <div class="sk-meter">
         <span class="sk-meter__label">BPM</span>
-        <input id="bpmInput" class="sk-bpm-input" type="number" min="40" max="220" value="120" aria-label="Beats per minute">
+        <input id="bpmInput" class="sk-bpm-input" type="number" min="40" max="220" value="80" aria-label="Beats per minute">
       </div>
       <div class="sk-meter">
         <span class="sk-meter__label">Key</span>
@@ -707,6 +714,9 @@
 
   <!-- ============ Main row ============ -->
   <div class="sk-main">
+
+    <!-- ── Left half: sidebar + Blockly workspace ── -->
+    <div class="sk-left">
 
     <!-- ── Sidebar (drives Blockly toolbox) ── -->
     <aside class="sk-sidebar" id="sk-sidebar" aria-label="Block categories">
@@ -745,6 +755,8 @@
         <div id="errorBar" class="sk-error-bar" hidden></div>
       </div>
     </div>
+
+    </div><!-- /.sk-left -->
 
     <!-- ── Right channel strip ── -->
     <aside class="sk-channel" aria-label="Channel strip">
@@ -840,8 +852,8 @@
 
   <!-- ── Hidden legacy controls (preserved for studio.js compatibility) ── -->
   <div class="sk-hidden" aria-hidden="true">
-    <input id="bpmSlider" type="range" min="40" max="220" value="120">
-    <span id="bpmValue">120</span>
+    <input id="bpmSlider" type="range" min="40" max="220" value="80">
+    <span id="bpmValue">80</span>
     <select id="canvasSizeSelect">
       <option value="200" selected>200</option>
       <option value="400">400</option>

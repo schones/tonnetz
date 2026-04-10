@@ -1099,8 +1099,8 @@ export function init() {
   }
   bpmSlider.addEventListener('input', () => _applyBpm(parseInt(bpmSlider.value, 10)));
   if (bpmInput) {
-    bpmInput.addEventListener('change', () => _applyBpm(parseInt(bpmInput.value, 10) || 120));
-    bpmInput.addEventListener('input',  () => _applyBpm(parseInt(bpmInput.value, 10) || 120));
+    bpmInput.addEventListener('change', () => _applyBpm(parseInt(bpmInput.value, 10) || 80));
+    bpmInput.addEventListener('input',  () => _applyBpm(parseInt(bpmInput.value, 10) || 80));
   }
 
   // Volume control
@@ -1966,7 +1966,7 @@ function handleExportMidi() {
 
   events.sort((a, b) => a.startTick - b.startTick);
 
-  const bpm = parseInt(document.getElementById('bpmSlider')?.value, 10) || 120;
+  const bpm = parseInt(document.getElementById('bpmSlider')?.value, 10) || 80;
   const track = new MidiWriter.Track();
   track.setTempo(bpm);
   track.addEvent(new MidiWriter.ProgramChangeEvent({instrument: 1}));
