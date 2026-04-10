@@ -204,7 +204,7 @@
         }
 
         .btn--primary {
-            background: #1565c0;
+            background: var(--accent);
             color: var(--btn-primary-text);
         }
 
@@ -280,7 +280,7 @@
         }
 
         .inst-btn--active {
-            background: #1565c0;
+            background: var(--accent);
             color: #fff;
         }
 
@@ -344,12 +344,12 @@
 
         .tonnetz-toggle-btn:hover {
             background: var(--bg-hover, #313244);
-            border-color: var(--accent, #6c63ff);
+            border-color: var(--accent, #2D5F8A);
         }
 
         .tonnetz-toggle-btn[aria-expanded="true"] {
-            border-color: var(--accent, #6c63ff);
-            color: var(--accent, #6c63ff);
+            border-color: var(--accent, #2D5F8A);
+            color: var(--accent, #2D5F8A);
         }
 
         .tonnetz-panel-wrap {
@@ -419,8 +419,8 @@
         }
 
         .tonnetz-depth-btn:hover:not(:disabled) {
-            border-color: var(--accent, #6c63ff);
-            color: var(--accent, #6c63ff);
+            border-color: var(--accent, #2D5F8A);
+            color: var(--accent, #2D5F8A);
         }
 
         .tonnetz-depth-btn:disabled {
@@ -784,7 +784,7 @@
 
             const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             dot.setAttribute('cx', T_CX); dot.setAttribute('cy', T_CY);
-            dot.setAttribute('r', '7'); dot.setAttribute('fill', '#1565c0');
+            dot.setAttribute('r', '7'); dot.style.fill = 'var(--accent)';
             svg.appendChild(dot);
         }
 

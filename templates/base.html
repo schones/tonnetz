@@ -4,12 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Tonnetz{% endblock %}</title>
+  <title>{% block title %}SongLab{% endblock %}</title>
 
   <!-- Google Fonts: Nunito -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800&display=swap" rel="stylesheet">
 
   <!-- SongLab design tokens (must load before shared styles so vars are available) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
@@ -19,50 +19,43 @@
 
   <style>
     :root {
-      --bg-primary: #ffffff;
-      --bg-secondary: #f8f7f4;
-      --bg-card: #f0eeff;
-      --bg-input: #f5f4ff;
-      --text-primary: #1a1a2e;
-      --text-secondary: #6b7280;
-      --text-muted: #6b7280;
-      --text-highlight: #7c3aed;
-      --text-success: #16a34a;
-      --text-error: #dc2626;
-      --text-warning: #d97706;
-      --text-info: #0284c7;
-      --text-accent-warm: #e64a19;
-      --accent: #6c63ff;
-      --accent-soft: #f0eeff;
-      --border: #e8e6f0;
-      --border-input: #d1d5db;
-      --btn-primary-bg: linear-gradient(135deg, #1565c0, #5e35b1);
-      --btn-primary-text: #ffffff;
-      --table-row-alt: rgba(0, 0, 0, 0.03);
-      --font-main: 'Nunito', sans-serif;
+      /* Map old variable names to SongLab warm palette */
+      --bg-primary:       #F7F3E8;
+      --bg-secondary:     #F1ECE0;
+      --bg-card:          #FFFFFF;
+      --bg-input:         #FFFFFF;
+      --text-primary:     #1F1B16;
+      --text-secondary:   #4A4339;
+      --text-muted:       #6B6457;
+      --text-highlight:   #2D5F8A;
+      --text-success:     #4CAF50;
+      --text-error:       #C62828;
+      --text-warning:     #D4A03C;
+      --text-info:        #2D5F8A;
+      --text-accent-warm: #E87461;
+      --accent:           #2D5F8A;
+      --accent-soft:      rgba(45, 95, 138, 0.10);
+      --border:           #D9D2C0;
+      --border-input:     #BFB6A0;
+      --btn-primary-bg:   #2D5F8A;
+      --btn-primary-text: #FFFFFF;
+      --table-row-alt:    rgba(0, 0, 0, 0.03);
+      --font-main:        'Nunito', system-ui, -apple-system, sans-serif;
     }
 
     [data-theme="dark"] {
-      --bg-primary: #1e1e2e;
-      --bg-secondary: #12111f;
-      --bg-card: #16213e;
-      --bg-input: #0f1529;
-      --text-primary: #e8e6ff;
-      --text-secondary: #6b7280;
-      --text-muted: #aaaaaa;
-      --text-highlight: #ffca28;
-      --text-success: #00e676;
-      --text-error: #ff1744;
-      --text-warning: #ff9100;
-      --text-info: #90caf9;
-      --text-accent-warm: #ff5722;
-      --accent: #7c75ff;
-      --accent-soft: #1e1b38;
-      --border: #2a2847;
-      --border-input: #333333;
-      --btn-primary-bg: linear-gradient(135deg, #1565c0, #5e35b1);
-      --btn-primary-text: #ffffff;
-      --table-row-alt: rgba(255, 255, 255, 0.03);
+      --bg-primary:       #15151B;
+      --bg-secondary:     #0E0E12;
+      --bg-card:          #1C1C24;
+      --bg-input:         #12121A;
+      --text-primary:     #F2EFE6;
+      --text-secondary:   #B5AE9F;
+      --text-muted:       #8A8374;
+      --text-highlight:   #3A8BC9;
+      --accent:           #3A8BC9;
+      --accent-soft:      rgba(58, 139, 201, 0.12);
+      --border:           #2E2E3A;
+      --border-input:     #43434F;
     }
 
     body {
@@ -74,66 +67,104 @@
   </style>
 
   <style>
-    /* ── Nav dropdown ── */
-    .nav-dropdown {
-      position: relative;
-    }
-
-    .nav-dropdown__menu {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      display: none;
-      flex-direction: column;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 6px 0.4rem 0.4rem 0.4rem;
-      /* preserve the 6px top */
-      min-width: 200px;
-      z-index: 200;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    }
-
-    [data-theme="dark"] .nav-dropdown__menu {
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    }
-
-    .nav-dropdown:hover .nav-dropdown__menu {
+    /* ── SongLab nav ─────────────────────────────────────────── */
+    .sl-nav {
       display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-lg);
+      padding: var(--space-md) var(--space-2xl);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
     }
 
-    .nav-dropdown__item {
-      display: block;
-      padding: 6px 12px;
-      border-radius: 7px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      font-family: var(--font-main);
-      color: var(--text-primary);
+    .sl-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      flex-shrink: 0;
       text-decoration: none;
-      transition: background 0.1s, color 0.1s;
     }
 
-    .nav-dropdown__item:hover {
-      background: var(--accent-soft);
-      color: var(--accent);
+    .sl-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-lg);
+      background: var(--accent-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(45, 95, 138, 0.25);
     }
 
-    .nav-dropdown__divider {
-      height: 1px;
-      background: var(--border);
-      margin: 0.3rem 0.5rem;
+    .sl-logo svg { display: block; }
+
+    .sl-brand__name {
+      font-family: var(--font-family-display);
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-medium);
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
     }
 
-    .nav-dropdown__label {
-      padding: 4px 12px 2px;
-      font-size: 0.65rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      font-family: var(--font-main);
+    .sl-nav__links {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      flex-wrap: wrap;
+    }
+
+    .sl-nav__link {
+      padding: 6px 14px;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: var(--transition-color);
+    }
+
+    .sl-nav__link:hover {
+      color: var(--accent-blue);
+      background: var(--bg-raised);
+    }
+
+    .sl-nav__link--active {
+      color: var(--accent-blue);
+      background: var(--bg-raised);
+    }
+
+    .sl-nav__sound {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: var(--transition-color);
+    }
+
+    .sl-nav__sound:hover {
+      color: var(--accent-blue);
+      border-color: var(--border-color);
+    }
+
+    @media (max-width: 900px) {
+      .sl-nav { padding: var(--space-sm) var(--space-lg); }
+    }
+
+    @media (max-width: 540px) {
+      .sl-nav__links { gap: 0; }
+      .sl-nav__link {
+        padding: 4px 8px;
+        font-size: var(--font-size-xs);
+      }
     }
   </style>
 
@@ -141,156 +172,88 @@
 </head>
 
 <body>
-  <nav style="display:flex; align-items:center; justify-content:space-between;
-              padding:0.75rem 1.5rem; border-bottom:1px solid var(--border); gap:1rem;">
-    <a href="/" style="text-decoration:none; flex-shrink:0;">
-      <img id="site-logo" src="{{ url_for('static', filename='shared/tonnetz-logo-light.svg') }}" alt="Tonnetz"
-        height="44" style="display:block;">
+  <nav class="sl-nav">
+    <a href="/" class="sl-brand">
+      <span class="sl-logo" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 17.5V6.2L19 4v11.3" stroke="#D4A03C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <ellipse cx="7" cy="17.5" rx="2.5" ry="2" fill="#D4A03C"/>
+          <ellipse cx="17" cy="15.3" rx="2.5" ry="2" fill="#D4A03C"/>
+        </svg>
+      </span>
+      <span class="sl-brand__name">SongLab</span>
     </a>
-    <div style="display:flex; align-items:center; gap:0.25rem; flex-wrap:wrap;">
-      <!-- Explorer (hero position) -->
-      <a href="/explorer" data-nav-link
-         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
-                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                transition:border-color 0.12s, background 0.12s;"
-        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
-        Explorer
-      </a>
-      <!-- Ear Training dropdown -->
-      <div class="nav-dropdown">
-        <span data-nav-dropdown="/harmony,/chord-identification,/melody,/games/swing-trainer"
-              style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                     background:var(--bg-card); color:var(--text-primary);
-                     font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                     cursor:default; display:inline-flex; align-items:center; gap:5px;
-                     white-space:nowrap;">
-          Ear Training <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
-        </span>
-        <div class="nav-dropdown__menu">
-          <a href="/harmony" class="nav-dropdown__item">Harmony Trainer</a>
-          <a href="/chord-identification" class="nav-dropdown__item">Chord Spotter</a>
-          <a href="/melody" class="nav-dropdown__item">Melody Match</a>
-          <a href="/games/swing-trainer" class="nav-dropdown__item">Swing Trainer</a>
-        </div>
-      </div>
-      <!-- Rhythm & Play dropdown -->
-      <div class="nav-dropdown">
-        <span data-nav-dropdown="/rhythm,/strumming,/skratchlab"
-              style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                     background:var(--bg-card); color:var(--text-primary);
-                     font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                     cursor:default; display:inline-flex; align-items:center; gap:5px;
-                     white-space:nowrap;">
-          Rhythm &amp; Play <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
-        </span>
-        <div class="nav-dropdown__menu">
-          <a href="/rhythm" class="nav-dropdown__item">Rhythm Lab</a>
-          <a href="/strumming" class="nav-dropdown__item">Strum Patterns</a>
-          <a href="/skratchlab" class="nav-dropdown__item">SkratchLab</a>
-        </div>
-      </div>
-      <!-- Patterns dropdown -->
-      <div class="nav-dropdown">
-        <span data-nav-dropdown="/games/scale-builder,/games/chord-walks,/theory/circle-of-fifths,/theory/modes,/theory/chord-progressions"
-              style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                     background:var(--bg-card); color:var(--text-primary);
-                     font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                     cursor:default; display:inline-flex; align-items:center; gap:5px;
-                     white-space:nowrap;">
-          Patterns <span style="font-size:0.6rem; opacity:0.55; margin-top:1px;">▾</span>
-        </span>
-        <div class="nav-dropdown__menu">
-          <a href="/games/scale-builder" class="nav-dropdown__item">Scale Builder</a>
-          <a href="/games/chord-walks" class="nav-dropdown__item">Chord Walks</a>
-          <a href="/theory/circle-of-fifths" class="nav-dropdown__item">Circle of Fifths</a>
-          <a href="/theory/modes" class="nav-dropdown__item">Modes</a>
-          <a href="/theory/chord-progressions" class="nav-dropdown__item">Chord Progressions</a>
-        </div>
-      </div>
-      <!-- Fundamentals -->
-      <a href="/intro" data-nav-link
-         style="padding:5px 13px; border-radius:7px; border:1px solid var(--border);
-                background:var(--bg-card); color:var(--text-primary); text-decoration:none;
-                font-size:0.82rem; font-weight:700; font-family:var(--font-main);
-                transition:border-color 0.12s, background 0.12s;"
-        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-soft)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg-card)'">
-        Fundamentals
-      </a>
+    <div class="sl-nav__links">
+      <a href="/explorer" class="sl-nav__link">Explorer</a>
+      <a href="/harmony" class="sl-nav__link">Ear training</a>
+      <a href="/rhythm" class="sl-nav__link">Rhythm &amp; play</a>
+      <a href="/skratchlab" class="sl-nav__link">SkratchLab</a>
+      <a href="/games/chord-walks" class="sl-nav__link">Games</a>
     </div>
-    <button id="theme-toggle" aria-label="Toggle dark mode" style="background:none;border:none;cursor:pointer;
-                   font-size:20px;padding:4px 8px; flex-shrink:0;">🌙</button>
+    <button id="sl-sound-toggle" class="sl-nav__sound" aria-label="Toggle sound" title="Toggle sound">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </button>
   </nav>
 
   {% block content %}{% endblock %}
 
   {% block scripts %}{% endblock %}
 
+  <!-- Hide the global floating audio toggle — surfaced inside the nav instead. -->
+  <style>.audio-toggle-btn { display: none !important; }</style>
+
   <!-- Global audio mute/unmute toggle (loads on every page) -->
   <script src="{{ url_for('static', filename='shared/audio-toggle.js') }}"></script>
 
   <script>
+    // Highlight the current nav link based on window.location.pathname.
     (function () {
-      const templateTheme = document.documentElement.getAttribute('data-theme');
-      const saved = templateTheme === 'dark'
-        ? 'dark'
-        : (localStorage.getItem('tonnetz-theme') || 'light');
-      document.documentElement.setAttribute('data-theme', saved);
-      updateLogo(saved);
-      updateToggleIcon(saved);
-
-      document.getElementById('theme-toggle').addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('tonnetz-theme', next);
-        updateLogo(next);
-        updateToggleIcon(next);
+      var path = window.location.pathname;
+      document.querySelectorAll('.sl-nav__link').forEach(function (el) {
+        var href = el.getAttribute('href');
+        if (!href) return;
+        // Games tab spans every /games/* route, not just its own href.
+        var prefix = href.indexOf('/games/') === 0 ? '/games' : href;
+        if (path === prefix || path.startsWith(prefix + '/')) {
+          el.classList.add('sl-nav__link--active');
+        }
       });
-
-      function updateLogo(theme) {
-        const logo = document.getElementById('site-logo');
-        if (!logo) return;
-        logo.src = theme === 'dark'
-          ? "{{ url_for('static', filename='shared/tonnetz-logo-dark.svg') }}"
-          : "{{ url_for('static', filename='shared/tonnetz-logo-light.svg') }}";
-      }
-
-      function updateToggleIcon(theme) {
-        const btn = document.getElementById('theme-toggle');
-        if (!btn) return;
-        btn.textContent = theme === 'dark' ? '☀️' : '🌙';
-      }
     })();
   </script>
 
   <script>
+    // Wire the in-nav sound button to the global AudioToggle.
     (function () {
-      var path = window.location.pathname;
-      // Highlight direct nav links whose href matches current path
-      document.querySelectorAll('a[data-nav-link]').forEach(function (el) {
-        var href = el.getAttribute('href');
-        if (!href) return;
-        var active = path === href || (href !== '/' && path.startsWith(href + '/'));
-        if (active) {
-          el.style.borderColor = 'var(--accent)';
-          el.style.background = 'var(--accent-soft)';
-          el.onmouseout = null;
-        }
+      const ICON_ON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+      const ICON_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+      const btn = document.getElementById('sl-sound-toggle');
+      if (!btn) return;
+      const floating = () => document.querySelector('.audio-toggle-btn');
+
+      function refresh() {
+        const muted = window.AudioToggle ? window.AudioToggle.isMuted() : false;
+        btn.innerHTML = muted ? ICON_OFF : ICON_ON;
+        btn.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+        btn.title = muted ? 'Sound off — click to unmute' : 'Sound on — click to mute';
+        btn.style.opacity = muted ? '0.55' : '1';
+      }
+
+      btn.addEventListener('click', () => {
+        const f = floating();
+        if (f) f.click();
+        else refresh();
       });
-      // Highlight dropdown triggers when current path falls under their routes
-      document.querySelectorAll('span[data-nav-dropdown]').forEach(function (el) {
-        var prefixes = el.getAttribute('data-nav-dropdown').split(',');
-        var active = prefixes.some(function (p) {
-          return path === p || path.startsWith(p + '/');
-        });
-        if (active) {
-          el.style.borderColor = 'var(--accent)';
-          el.style.background = 'var(--accent-soft)';
-        }
-      });
+
+      window.addEventListener('tonnetz:mute-changed', refresh);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', refresh);
+      } else {
+        refresh();
+      }
     })();
   </script>
 </body>
