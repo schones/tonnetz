@@ -169,6 +169,41 @@
       line-height: 1.55;
     }
 
+    /* ── Audience selector ──────────────────────────────────── */
+    .sl-audience {
+      text-align: center;
+      padding: var(--space-lg) var(--space-2xl) 0;
+    }
+    .sl-audience__tabs {
+      display: inline-flex;
+      gap: var(--space-xs);
+      padding: 4px;
+      background: var(--bg-deep);
+      border-radius: 999px;
+    }
+    .sl-audience__tab {
+      padding: 8px 24px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-family-base);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sl-audience__tab:hover { color: var(--text-primary); }
+    .sl-audience__tab--active {
+      background: var(--accent-blue);
+      color: #fff;
+    }
+    .sl-audience__desc {
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+      margin-top: var(--space-md);
+    }
+
     /* ── Section scaffolding ────────────────────────────────── */
     .sl-section {
       max-width: 1100px;
@@ -265,6 +300,22 @@
       color: rgba(255, 255, 255, 0.82);
       margin: 0;
     }
+
+    .sl-pad__badge {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: var(--font-size-2xs);
+      font-weight: var(--font-weight-medium);
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.85);
+      letter-spacing: 0.02em;
+    }
+
+    /* Reserve room for the bottom badge so it doesn't collide with the artist line */
+    .sl-pad { padding-bottom: calc(var(--space-lg) + 18px); }
 
     .sl-pad--browse {
       --pad-color: var(--pad-gray);
@@ -481,55 +532,20 @@
     <p class="sl-tagline__sub">See how your favorite songs move through harmonic space. Play, explore, create.</p>
   </header>
 
-  <!-- ===== Song Pads ===== -->
+  <!-- ===== Audience selector ===== -->
+  <section class="sl-audience">
+    <div class="sl-audience__tabs" id="audience-tabs">
+      <button class="sl-audience__tab sl-audience__tab--active" data-audience="kids">Kids</button>
+      <button class="sl-audience__tab" data-audience="student">Students</button>
+      <button class="sl-audience__tab" data-audience="musician">Musicians</button>
+    </div>
+    <p class="sl-audience__desc" id="audience-desc"></p>
+  </section>
+
+  <!-- ===== Song Pads (filtered by audience) ===== -->
   <section class="sl-section" aria-labelledby="sl-songs-label">
     <p class="sl-section__label" id="sl-songs-label">Explore a song</p>
-    <div class="sl-grid">
-      <a class="sl-pad" style="--pad-color: var(--pad-blue);" href="/explorer?walkthrough=yesterday_voice_leading">
-        <span class="sl-pad__key">F major</span>
-        <h3 class="sl-pad__title">Yesterday</h3>
-        <p class="sl-pad__artist">The Beatles</p>
-      </a>
-      <a class="sl-pad" style="--pad-color: var(--pad-gold);" href="/explorer?walkthrough=am_c_relationship">
-        <span class="sl-pad__key">E minor</span>
-        <h3 class="sl-pad__title">Eleanor Rigby</h3>
-        <p class="sl-pad__artist">The Beatles</p>
-      </a>
-      <a class="sl-pad" style="--pad-color: var(--pad-coral);" href="/explorer?walkthrough=creep_progression">
-        <span class="sl-pad__key">G major</span>
-        <h3 class="sl-pad__title">Creep</h3>
-        <p class="sl-pad__artist">Radiohead</p>
-      </a>
-      <a class="sl-pad" style="--pad-color: var(--pad-green);" href="/explorer?walkthrough=stairway_P_transform">
-        <span class="sl-pad__key">A minor</span>
-        <h3 class="sl-pad__title">Stairway to Heaven</h3>
-        <p class="sl-pad__artist">Led Zeppelin</p>
-      </a>
-      <a class="sl-pad" style="--pad-color: var(--pad-purple);" href="/explorer?walkthrough=mixolydian">
-        <span class="sl-pad__key">E mixolydian</span>
-        <h3 class="sl-pad__title">Norwegian Wood</h3>
-        <p class="sl-pad__artist">The Beatles</p>
-      </a>
-      <a class="sl-pad" style="--pad-color: var(--pad-teal);" href="/explorer?walkthrough=deceptive_cadence">
-        <span class="sl-pad__key">A major</span>
-        <h3 class="sl-pad__title">In My Life</h3>
-        <p class="sl-pad__artist">The Beatles</p>
-      </a>
-      <a class="sl-pad" style="--pad-color: var(--pad-brown);" href="/explorer?walkthrough=twelve_bar_blues">
-        <span class="sl-pad__key">B♭ major</span>
-        <h3 class="sl-pad__title">Johnny B. Goode</h3>
-        <p class="sl-pad__artist">Chuck Berry</p>
-      </a>
-      <a class="sl-pad" style="--pad-color: var(--pad-plum);" href="/explorer?walkthrough=why_does_my_heart_moby">
-        <span class="sl-pad__key">A minor</span>
-        <h3 class="sl-pad__title">Why Does My Heart Feel So Bad?</h3>
-        <p class="sl-pad__artist">Moby</p>
-      </a>
-      <a class="sl-pad sl-pad--browse" href="/explorer">
-        <h3 class="sl-pad__title">Browse all songs →</h3>
-        <p class="sl-pad__artist">74 examples</p>
-      </a>
-    </div>
+    <div class="sl-grid" id="song-pad-grid"></div>
   </section>
 
   <!-- ===== Tools ===== -->
@@ -712,6 +728,78 @@
       } else {
         refresh();
       }
+    })();
+  </script>
+
+  <script>
+    // MIDI-pad song grid filtered by audience.
+    // Keys must match entries in static/shared/walkthroughs.js.
+    (function () {
+      const LANDING_SONGS = [
+        // Kids
+        { key: 'let_it_go_pop_formula',   song: 'Let It Go',                 artist: 'Frozen',        keyLabel: 'A♭ major',    audience: 'kids',     badge: 'Progression',  color: 'blue'   },
+        { key: 'friend_in_me_shuffle',    song: "You've Got a Friend in Me", artist: 'Toy Story',     keyLabel: 'C major',     audience: 'kids',     badge: 'Rhythm',       color: 'gold'   },
+
+        // Students
+        { key: 'stand_by_me_doo_wop',     song: 'Stand By Me',               artist: 'Ben E. King',   keyLabel: 'A major',     audience: 'student',  badge: 'Progression',  color: 'teal'   },
+        { key: 'lean_on_me_gospel',       song: 'Lean on Me',                artist: 'Bill Withers',  keyLabel: 'C major',     audience: 'student',  badge: 'Progression',  color: 'coral'  },
+
+        // Musicians
+        { key: 'yesterday_voice_leading', song: 'Yesterday',                 artist: 'The Beatles',   keyLabel: 'F major',     audience: 'musician', badge: 'Voice Leading', color: 'blue'  },
+        { key: 'am_c_relationship',       song: 'Eleanor Rigby',             artist: 'The Beatles',   keyLabel: 'E minor',     audience: 'musician', badge: 'Transforms',    color: 'green' },
+        { key: 'creep_progression',       song: 'Creep',                     artist: 'Radiohead',     keyLabel: 'G major',     audience: 'musician', badge: 'Transforms',    color: 'coral' },
+        { key: 'stairway_P_transform',    song: 'Stairway to Heaven',        artist: 'Led Zeppelin',  keyLabel: 'A minor',     audience: 'musician', badge: 'Transforms',    color: 'purple'},
+        { key: 'ii_V_I',                  song: 'Autumn Leaves',             artist: 'Jazz Standard', keyLabel: 'C major',     audience: 'musician', badge: 'Jazz',          color: 'gold'  },
+        { key: 'mixolydian',              song: 'Norwegian Wood',            artist: 'The Beatles',   keyLabel: 'E mixolydian',audience: 'musician', badge: 'Modes',         color: 'plum'  },
+        { key: 'deceptive_cadence',       song: 'In My Life',                artist: 'The Beatles',   keyLabel: 'A major',     audience: 'musician', badge: 'Progression',   color: 'teal'  },
+        { key: 'folsom_train_beat',       song: 'Folsom Prison Blues',       artist: 'Johnny Cash',   keyLabel: 'E major',     audience: 'musician', badge: 'Rhythm',        color: 'brown' },
+        { key: 'twelve_bar_blues',        song: 'Johnny B. Goode',           artist: 'Chuck Berry',   keyLabel: 'B♭ major',    audience: 'musician', badge: 'Blues',         color: 'gray'  },
+        { key: 'why_does_my_heart_moby',  song: 'Why Does My Heart Feel So Bad?', artist: 'Moby',    keyLabel: 'A minor',     audience: 'musician', badge: 'Progression',   color: 'plum'  },
+      ];
+
+      const AUDIENCE_DESCS = {
+        kids:     'Fun songs you already know — learn what makes them work.',
+        student:  'Classic songs every musician should understand.',
+        musician: 'Deep dives into harmony, voice leading, and rhythm.',
+      };
+
+      const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+
+      function renderAudienceSongs(audience) {
+        const grid = document.getElementById('song-pad-grid');
+        const desc = document.getElementById('audience-desc');
+        if (!grid || !desc) return;
+        desc.textContent = AUDIENCE_DESCS[audience] || '';
+
+        const filtered = LANDING_SONGS.filter((s) => s.audience === audience);
+        const cards = filtered.map((s) => `
+          <a class="sl-pad" style="--pad-color: var(--pad-${s.color});" href="/explorer?walkthrough=${encodeURIComponent(s.key)}">
+            <span class="sl-pad__key">${escapeHtml(s.keyLabel)}</span>
+            <h3 class="sl-pad__title">${escapeHtml(s.song)}</h3>
+            <p class="sl-pad__artist">${escapeHtml(s.artist)}</p>
+            <span class="sl-pad__badge">${escapeHtml(s.badge)}</span>
+          </a>
+        `).join('');
+        const browse = `
+          <a class="sl-pad sl-pad--browse" href="/explorer">
+            <h3 class="sl-pad__title">Browse all songs →</h3>
+            <p class="sl-pad__artist">More walkthroughs</p>
+          </a>
+        `;
+        grid.innerHTML = cards + browse;
+      }
+
+      document.querySelectorAll('.sl-audience__tab').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.sl-audience__tab').forEach((t) => t.classList.remove('sl-audience__tab--active'));
+          tab.classList.add('sl-audience__tab--active');
+          renderAudienceSongs(tab.dataset.audience);
+        });
+      });
+
+      renderAudienceSongs('kids');
     })();
   </script>
 </body>

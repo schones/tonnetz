@@ -1806,6 +1806,87 @@ const SONG_EXAMPLES = [
     era_tags: ["classic", "boomer", "genx"],
     demo: null,
     preference_tags: ["funk", "soul", "classic", "stevie", "groove"]
+  },
+
+  // ═══════════════════════════════════════════
+  // KIDS & STUDENT FAVORITES
+  // ═══════════════════════════════════════════
+
+  {
+    id: "let_it_go_pop_formula",
+    concept_ids: ["diatonic_chords", "chord_function"],
+    concept_specifics: ["I_IV_V", "vi_chord", "backbeat"],
+    game_ids: ["chord_progression_builder", "harmony_trainer"],
+    song: "Let It Go",
+    artist: "Idina Menzel (Robert Lopez & Kristen Anderson-Lopez)",
+    year: 2013,
+    genre_tags: ["pop", "film_score", "kids"],
+    insight: {
+      playful: "Let It Go uses the same four chords as a TON of pop songs you know! It's like a magic recipe — I, V, vi, IV — that just makes a chorus feel huge and singable. That's why everyone learned it in two seconds.",
+      musician: "The Let It Go chorus rides the I–V–vi–IV pop formula in A♭ major (A♭–E♭–Fm–D♭). It's the same loop powering Don't Stop Believin', With or Without You, and hundreds of other modern pop hits. The Lopezes pair it with a steady backbeat and a soaring melody so the chord pattern feels inevitable rather than formulaic.",
+      theorist: "I–V–vi–IV (the so-called 'axis progression') cycles through tonic, dominant, submediant, and subdominant — alternating tonic-functioning chords with predominant motion to create a continuously rising-and-relaxing harmonic loop. Its ubiquity in modern pop comes from the symmetrical voice-leading and the bittersweet vi which delays full resolution."
+    },
+    min_age: 5,
+    era_tags: ["modern", "millennial", "genz", "alpha"],
+    demo: null,
+    preference_tags: ["disney", "frozen", "pop", "kids", "empowering", "singalong"]
+  },
+  {
+    id: "friend_in_me_shuffle",
+    concept_ids: ["diatonic_chords", "rhythm"],
+    concept_specifics: ["shuffle", "jazz_harmony", "ii_V_I"],
+    game_ids: ["chord_progression_builder", "rhythm_tapper", "swing_trainer"],
+    song: "You've Got a Friend in Me",
+    artist: "Randy Newman",
+    year: 1995,
+    genre_tags: ["jazz", "film_score", "kids"],
+    insight: {
+      playful: "This song bounces! That's because it's in a shuffle feel — instead of even beats, the rhythm goes LONG-short, LONG-short, like skipping. And the chords are warm jazzy ones that hug you like a best friend.",
+      musician: "Randy Newman writes 'You've Got a Friend in Me' over a shuffle feel in C, leaning on warm jazz voicings and a ii–V–I backbone instead of straight pop changes. The triplet swing gives it that loping, vaudeville-piano bounce, and the jazz harmony (passing diminished chords, secondary dominants) is what separates it from a generic kids' tune.",
+      theorist: "The shuffle subdivides the beat as a triplet with the middle note silenced — long-short-long-short. Newman weaves ii–V–I cadences and chromatic passing chords through that triplet groove, producing a Tin Pan Alley pastiche that scans as both jazzy-sophisticated and immediately friendly."
+    },
+    min_age: 5,
+    era_tags: ["modern", "millennial"],
+    demo: null,
+    preference_tags: ["disney", "pixar", "toy_story", "jazz", "kids", "warm"]
+  },
+  {
+    id: "stand_by_me_doo_wop",
+    concept_ids: ["diatonic_chords", "chord_function"],
+    concept_specifics: ["I_IV_V", "I_vi_IV_V", "doo_wop", "backbeat"],
+    game_ids: ["chord_progression_builder", "harmony_trainer"],
+    song: "Stand By Me",
+    artist: "Ben E. King",
+    year: 1961,
+    genre_tags: ["soul", "pop"],
+    insight: {
+      playful: "Stand By Me has a famous walking bass line — DOON, doon-doon, DOON, doon-doon — that just keeps going. Underneath it, only four chords loop the entire song. Four chords! That's it!",
+      musician: "Stand By Me is the I–vi–IV–V doo-wop progression in A major (A–F♯m–D–E), anchored by one of the most iconic walking bass lines in pop. The vi chord (F♯m) is the relative minor of A, sharing two notes with the tonic, which is why the loop feels so smooth and emotionally grounded.",
+      theorist: "The I–vi–IV–V cycle traverses tonic → tonic substitute → predominant → dominant in even harmonic rhythm, with each move stepping by either a third or a fourth. The walking bass outlines roots and fifths in stepwise eighth notes, providing a continuous melodic line that voice-leads the entire progression independently of the chord tones above."
+    },
+    min_age: 8,
+    era_tags: ["classic", "boomer", "universal"],
+    demo: null,
+    preference_tags: ["soul", "doo_wop", "classic", "famous", "bass_line"]
+  },
+  {
+    id: "lean_on_me_gospel",
+    concept_ids: ["diatonic_chords", "chord_function"],
+    concept_specifics: ["I_IV_V", "backbeat"],
+    game_ids: ["chord_progression_builder", "harmony_trainer"],
+    song: "Lean on Me",
+    artist: "Bill Withers",
+    year: 1972,
+    genre_tags: ["soul", "gospel", "pop"],
+    insight: {
+      playful: "Lean on Me sounds like everyone in the room is singing together, doesn't it? That's because the piano walks straight up the scale — C, D, E, F — and the chords are simple gospel chords your whole family can sing along to.",
+      musician: "Lean on Me is built on a gospel piano figure that walks the C major scale stepwise in the bass under I–IV–V–I changes. Bill Withers keeps the harmony deliberately plain so the melody and the call-and-response choir feel — that 'sing this with me' quality — can carry the song. Same chord skeleton as a thousand country and folk tunes, but the slow tempo and gospel piano voicings recast it completely.",
+      theorist: "The piece alternates I, IV, and V triads in C major with a stepwise scalar bass that doubles as melodic line. The lyrical bass motion (C–D–E–F) creates apparent passing harmonies while the underlying functional progression remains tonic–subdominant–dominant. The gospel idiom adds the offbeat right-hand voicings and the choir-like call-and-response phrasing."
+    },
+    min_age: 8,
+    era_tags: ["classic", "boomer", "universal"],
+    demo: null,
+    preference_tags: ["soul", "gospel", "classic", "singalong", "community"]
   }
 ];
 

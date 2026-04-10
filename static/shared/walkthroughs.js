@@ -27,6 +27,7 @@ const WALKTHROUGHS = {
     title: "Yesterday's Aching Bass Line",
     song: "Yesterday — The Beatles",
     category: "Voice Leading",
+    audience: "musician",
     seeAlso: { label: "Harmony Trainer", href: "/games/chord-walks" },
     steps: [
       { chord: "F", function: "tonic",            title: "Start here", body: "F major. Bright, stable. Listen to where the bass note sits.", autoPlay: true },
@@ -40,6 +41,7 @@ const WALKTHROUGHS = {
     title: "Two Chords, Two Shared Notes",
     song: "Eleanor Rigby — The Beatles",
     category: "Transforms",
+    audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
     steps: [
       { chord: "Am", function: "tonic (i)",       title: "A minor", body: "Three notes: A, C, E. Watch where they sit on the Tonnetz.", autoPlay: true, focus: "tonnetz" },
@@ -52,6 +54,7 @@ const WALKTHROUGHS = {
     title: "The Shock of the Chromatic Mediant",
     song: "Creep — Radiohead",
     category: "Transforms",
+    audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
     steps: [
       { chord: "G",  function: "tonic",             title: "Home base", body: "G major. Comfortable, stable. This is where the verse starts.", autoPlay: true },
@@ -65,6 +68,7 @@ const WALKTHROUGHS = {
     title: "The Backbone of Jazz",
     song: "Autumn Leaves / Fly Me to the Moon",
     category: "Jazz Harmony",
+    audience: "musician",
     steps: [
       { chord: "Dm", function: "predominant (ii)", title: "The ii chord", body: "D minor in the key of C. It creates gentle tension — a sense of leaning forward.", autoPlay: true },
       { chord: "G",  function: "dominant (V)",     title: "The V chord", body: "G major. The tension builds. Your ear is now really wanting to resolve somewhere. Watch the path on the Tonnetz from Dm to G — it's a clean, short move.", autoPlay: true, focus: "tonnetz" },
@@ -76,6 +80,7 @@ const WALKTHROUGHS = {
     title: "One Note Changes Everything",
     song: "Norwegian Wood — The Beatles",
     category: "Modes & Scales",
+    audience: "musician",
     steps: [
       { chord: "G", function: "tonic",          title: "G major", body: "A normal G major chord. The key of G major has an F♯ in it.", autoPlay: true },
       { chord: "F", function: "♭VII (borrowed)",title: "Now add an F natural chord", body: "F major instead of F♯ diminished. That one note — F natural instead of F♯ — is what makes Mixolydian sound different from regular major. Bluesier, earthier.", autoPlay: true },
@@ -87,6 +92,7 @@ const WALKTHROUGHS = {
     title: "Light and Shadow",
     song: "Stairway to Heaven — Led Zeppelin",
     category: "Transforms",
+    audience: "musician",
     steps: [
       { chord: "Am", function: "tonic (i)",      title: "The opening", body: "A minor. Dark, contemplative. This is where Stairway begins.", autoPlay: true },
       { chord: "A",  function: "parallel major", title: "Flip to major", body: "A major. Same root, completely different feeling — like the sun coming through clouds. On the Tonnetz, this is the P transform: one note moves, the whole mood inverts.", autoPlay: true, highlightTransform: "P", focus: "tonnetz", concept_specifics: ["P_transform", "parallel_major_minor"] },
@@ -99,6 +105,7 @@ const WALKTHROUGHS = {
     title: "The Chord Your Ear Didn't Expect",
     song: "In My Life — The Beatles",
     category: "Progressions",
+    audience: "musician",
     steps: [
       { chord: "C",  function: "tonic (I)",    title: "Start in C", body: "We're home in C major.", autoPlay: true },
       { chord: "G",  function: "dominant (V)", title: "The V chord", body: "G major — the dominant. Your ear has heard this a million times and it KNOWS what comes next. It expects to resolve back to C.", autoPlay: true },
@@ -110,6 +117,7 @@ const WALKTHROUGHS = {
     title: "Six Chords That Ache",
     song: "Why Does My Heart Feel So Bad? — Moby",
     category: "Modes & Scales",
+    audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
     steps: [
       { chord: "Am", function: "tonic (i)",            title: "Start in the dark", body: "A minor. The whole song begins right here, on the most melancholy chord in the key. Hold this feeling.", autoPlay: true },
@@ -125,6 +133,7 @@ const WALKTHROUGHS = {
     title: "Three Chords, One Triangle",
     song: "Johnny B. Goode — Chuck Berry",
     category: "Progressions",
+    audience: "musician",
     seeAlso: { label: "Strum Patterns", href: "/games/strum-patterns" },
     steps: [
       { chord: "C", function: "tonic (I)",       title: "The I chord", body: "C major. Home base for the blues.", autoPlay: true },
@@ -138,6 +147,7 @@ const WALKTHROUGHS = {
     title: "The Train Beat",
     song: "Folsom Prison Blues — Johnny Cash",
     category: "Rhythm & Feel",
+    audience: "musician",
     seeAlso: { label: "Swing Trainer", href: "/games/swing-trainer" },
     rhythm: {
       time_sig: "4/4",
@@ -196,6 +206,122 @@ const WALKTHROUGHS = {
         autoPlay: true,
         concept_specifics: ["train_beat", "I_IV_V", "twelve_bar_blues"]
       }
+    ]
+  },
+
+  let_it_go_pop_formula: {
+    title: "The Pop Formula",
+    song: "Let It Go — Frozen",
+    category: "Progressions",
+    audience: "kids",
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 120,
+      feel: "Power ballad",
+      description: "Straight four-on-the-floor feel that builds from gentle verse to huge chorus. The steady beat lets Elsa's melody soar.",
+      pattern: [
+        { beat: "1", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "2", label: "SNARE",type: "snare" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "3", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "4", label: "SNARE",type: "snare" },
+        { beat: "&", label: "·",    type: "strum" }
+      ]
+    },
+    steps: [
+      { chord: "Ab", function: "tonic (I)", title: "Home", body: "A♭ major. This is home base — where the chorus starts. Strong, bright, confident. This is where 'Let it go!' lands.", autoPlay: true, concept_specifics: ["I_IV_V"] },
+      { chord: "Eb", function: "dominant (V)", title: "The lift", body: "E♭ major — the V chord. It lifts the energy up, like taking a deep breath before the next line.", autoPlay: true },
+      { chord: "Fm", function: "relative minor (vi)", title: "The emotion", body: "F minor — the vi chord. This is where the feeling deepens. Major chords sound happy, minor chords sound thoughtful or sad. The song keeps moving between these feelings.", autoPlay: true, concept_specifics: ["vi_chord"] },
+      { chord: "Db", function: "subdominant (IV)", title: "The push", body: "D♭ major — the IV chord. It pushes you forward, wanting to go back to the start. I→V→vi→IV. This exact pattern is in hundreds of pop songs — Adele, Ed Sheeran, Taylor Swift. It works every time.", autoPlay: true, concept_specifics: ["I_IV_V"] }
+    ]
+  },
+
+  friend_in_me_shuffle: {
+    title: "The Shuffle Feel",
+    song: "You've Got a Friend in Me — Toy Story",
+    category: "Rhythm & Feel",
+    audience: "kids",
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 108,
+      feel: "Shuffle",
+      description: "A shuffle splits each beat into three instead of two — long-short, long-short. It's what makes this song bounce and swing instead of marching straight.",
+      pattern: [
+        { beat: "1", label: "LONG", type: "bass" },
+        { beat: "a", label: "short",type: "strum" },
+        { beat: "2", label: "LONG", type: "snare" },
+        { beat: "a", label: "short",type: "strum" },
+        { beat: "3", label: "LONG", type: "bass" },
+        { beat: "a", label: "short",type: "strum" },
+        { beat: "4", label: "LONG", type: "snare" },
+        { beat: "a", label: "short",type: "strum" }
+      ]
+    },
+    steps: [
+      { chord: "C", function: "tonic (I)", title: "That bouncy start", body: "C major with a shuffle feel. Listen to how the rhythm bounces — LONG-short, LONG-short. That's a shuffle. It's what makes this song feel like a lazy afternoon with your best friend.", autoPlay: true, focus: "rhythm", concept_specifics: ["shuffle"] },
+      { chord: "F", function: "subdominant (IV)", title: "The warm move", body: "F major — the IV chord. In jazz and blues, I→IV is the most natural first move. The shuffle keeps bouncing, the chord gets warmer.", autoPlay: true, concept_specifics: ["I_IV_V"] },
+      { chord: "C", function: "back to I", title: "Back home", body: "C major again. Notice how the shuffle feel stays constant even when the chords change. The rhythm is the glue.", autoPlay: true },
+      { chord: "G", function: "dominant (V)", title: "The turnaround", body: "G major — the V chord. This pulls you back to C. Randy Newman uses jazzy chords throughout, but the backbone is still I-IV-V with a shuffle. Simple ingredients, warm result.", autoPlay: true, concept_specifics: ["ii_V_I", "shuffle"] }
+    ]
+  },
+
+  stand_by_me_doo_wop: {
+    title: "The Doo-Wop Loop",
+    song: "Stand By Me — Ben E. King",
+    category: "Progressions",
+    audience: "student",
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 115,
+      feel: "Straight eighth",
+      description: "Steady eighth notes on the bass line walking root to fifth. The kick and snare alternate on 1-2-3-4 with the backbeat on 2 and 4.",
+      pattern: [
+        { beat: "1", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "2", label: "SNARE",type: "snare" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "3", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "4", label: "SNARE",type: "snare" },
+        { beat: "&", label: "·",    type: "strum" }
+      ]
+    },
+    steps: [
+      { chord: "A", function: "tonic (I)", title: "The anchor", body: "A major. The bass line starts here and barely leaves — that walking bass IS the song. Ben E. King built one of the most famous songs ever on four chords that loop forever.", autoPlay: true, concept_specifics: ["I_IV_V"] },
+      { chord: "F#m", function: "submediant (vi)", title: "The lean", body: "F♯ minor — the vi chord. This is A major's relative minor. They share two notes, so the move feels natural, just a little more emotional. Every doo-wop group in the 50s knew this trick.", autoPlay: true, concept_specifics: ["vi_chord", "relative_major_minor"] },
+      { chord: "D", function: "subdominant (IV)", title: "The lift", body: "D major — the IV chord. The progression opens up here. I→vi→IV→V is called the doo-wop progression because it's in thousands of songs from that era. And it never stopped — you'll hear it in everything from 'No Woman No Cry' to 'Someone Like You.'", autoPlay: true, concept_specifics: ["I_IV_V"] },
+      { chord: "E", function: "dominant (V)", title: "The pull back", body: "E major — the V chord. It creates tension that wants to resolve back to A. And it does, and then the whole thing loops again. Four chords. One of the greatest songs ever written.", autoPlay: true, concept_specifics: ["I_IV_V", "backbeat"] }
+    ]
+  },
+
+  lean_on_me_gospel: {
+    title: "The Gospel Piano",
+    song: "Lean on Me — Bill Withers",
+    category: "Progressions",
+    audience: "student",
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 76,
+      feel: "Gospel ballad",
+      description: "Slow, steady, piano-driven. The left hand walks a bass line while the right hand plays chords on the offbeats. Every note breathes.",
+      pattern: [
+        { beat: "1", label: "BASS", type: "bass" },
+        { beat: "&", label: "chord",type: "strum" },
+        { beat: "2", label: "BASS", type: "bass" },
+        { beat: "&", label: "chord",type: "strum" },
+        { beat: "3", label: "BASS", type: "bass" },
+        { beat: "&", label: "chord",type: "strum" },
+        { beat: "4", label: "BASS", type: "bass" },
+        { beat: "&", label: "chord",type: "strum" }
+      ]
+    },
+    steps: [
+      { chord: "C", function: "tonic (I)", title: "Simple and strong", body: "C major. The piano walks up the scale — C, D, E, F — while the right hand lays down chords. Bill Withers was a factory worker who wrote one of the most-covered songs in history. No fancy theory, just truth.", autoPlay: true, concept_specifics: ["I_IV_V"] },
+      { chord: "F", function: "subdominant (IV)", title: "The IV chord", body: "F major. I→IV is the most common chord move in all of music. In gospel, the IV chord is where the choir lifts. It feels like the room gets bigger.", autoPlay: true, concept_specifics: ["I_IV_V"] },
+      { chord: "C", function: "back to I", title: "Back to earth", body: "C major again. The whole song barely leaves home. That's the power of simplicity — three chords and a walking bass line, and everyone in the room is singing along.", autoPlay: true },
+      { chord: "G", function: "dominant (V)", title: "The resolve", body: "G major — the V. It pulls back to C. Lean on Me uses almost the same three chords as Folsom Prison Blues (I-IV-V), but the slow gospel piano makes it feel completely different. Same skeleton, different soul.", autoPlay: true, concept_specifics: ["I_IV_V"] }
     ]
   },
 };

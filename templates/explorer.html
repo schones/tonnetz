@@ -1095,6 +1095,11 @@
       flex-shrink: 0;
       margin: 0 2px;
     }
+    .sl-vol-slider {
+      width: 60px;
+      accent-color: var(--gold);
+      cursor: pointer;
+    }
     .sl-btn {
       padding: 3px 8px;
       border-radius: var(--radius-sm);
@@ -1191,10 +1196,10 @@
       overflow-x: auto;
     }
     #exp-keyboard-container {
-      --keyboard-white-key-w: 34px;
-      --keyboard-white-key-h: 100px;
-      --keyboard-black-key-w: 16px;
-      --keyboard-black-key-h: 63px;
+      --keyboard-white-key-w: 38px;
+      --keyboard-white-key-h: 120px;
+      --keyboard-black-key-w: 18px;
+      --keyboard-black-key-h: 76px;
     }
     #exp-keyboard-container .kv-note-label { font-size: var(--font-size-xs); font-weight: 600; }
     #exp-keyboard-container .kv-key--white .kv-note-label { color: #3A3630; }
@@ -1538,6 +1543,15 @@
           <button class="sl-btn sl-btn--gold" id="btn-inst-piano"  data-inst="piano">Piano</button>
           <button class="sl-btn"             id="btn-inst-guitar" data-inst="guitar">Guitar</button>
           <button class="sl-btn"             id="btn-inst-voice"  data-inst="voice">Voice</button>
+        </div>
+        <div class="sl-divider"></div>
+        <div class="sl-ctrl-group">
+          <span class="sl-ctrl-label">Rhythm</span>
+          <input type="range" class="sl-vol-slider" id="vol-rhythm" min="0" max="100" value="70" step="5" title="Rhythm volume">
+        </div>
+        <div class="sl-ctrl-group">
+          <span class="sl-ctrl-label">Chords</span>
+          <input type="range" class="sl-vol-slider" id="vol-chords" min="0" max="100" value="80" step="5" title="Chord volume">
         </div>
       </div>
 
@@ -2258,6 +2272,22 @@
       HarmonyState.setTriad(COF_MAJOR[idx], 'major');
     });
 
+    document.getElementById('vol-rhythm').addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      const db = val === 0 ? -Infinity : (val / 100) * 30 - 30;
+      if (rhythmEngine._synths) {
+        rhythmEngine._synths.bass.volume.value  = db - 6;
+        rhythmEngine._synths.snare.volume.value = db - 10;
+        rhythmEngine._synths.strum.volume.value = db - 16;
+      }
+    });
+
+    document.getElementById('vol-chords').addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      const db = val === 0 ? -Infinity : (val / 100) * 30 - 30;
+      if (sampler) sampler.volume.value = db;
+    });
+
     // ── Transport buttons in song info bar ─────────────────────────
     document.getElementById('sl-transport-play').addEventListener('click', () => {
       playChord(currentRoot, currentQuality).catch(() => {});
@@ -2387,6 +2417,8 @@
             const t = state.activeTransform;
             _pushChord(primary.root, primary.quality, t ? t.type : null);
           }
+        } else if (!_walkthroughStepChange && !_suppressAutoPlay) {
+          playChord(primary.root, primary.quality).catch(() => {});
         }
 
         // Push the previous chord into ChordBubbleRenderer's history trail
