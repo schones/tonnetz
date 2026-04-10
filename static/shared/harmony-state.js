@@ -171,6 +171,27 @@ const HarmonyState = {
   },
 
   /**
+   * Highlight a triad on the existing Tonnetz neighborhood WITHOUT recentering
+   * the grid. Same as setTriad except tonnetzCenter is preserved, so the grid
+   * stays grounded — chords come to the viewer instead of the viewer jumping
+   * to them. The renderer will only auto-recenter if the chord turns out to
+   * be outside the visible neighborhood.
+   */
+  highlightTriad(root, quality, role) {
+    role = role || "primary";
+    const notes = triadNotes(root, quality);
+    const triad = { root, quality, notes, role, color: null };
+    const activeNotes = _notesFromTriad(notes, role);
+
+    this.update({
+      activeTriads: [triad],
+      activeNotes,
+      activeTransform: null,
+      // tonnetzCenter intentionally omitted — preserves the current center
+    });
+  },
+
+  /**
    * Add a triad without clearing existing ones. Appends to activeNotes.
    */
   addTriad(root, quality, role) {
@@ -221,6 +242,44 @@ const HarmonyState = {
         movingTone: analysis.movingTone,
       },
       tonnetzCenter: { root: to.root, quality: to.quality },
+    });
+  },
+
+  /**
+   * Like setTransform but does NOT recenter the Tonnetz grid. The transform
+   * is highlighted on the existing neighborhood — used by walkthroughs that
+   * want to demo PLR moves without making the grid jump.
+   */
+  highlightTransform(type, fromRoot, fromQuality) {
+    const transform = TRANSFORMS[type];
+    if (!transform) return;
+
+    const to = transform.apply(fromRoot, fromQuality);
+    const analysis = analyzeTransform(fromRoot, fromQuality, to.root, to.quality);
+
+    const fromNotes = triadNotes(fromRoot, fromQuality);
+    const toNotes = triadNotes(to.root, to.quality);
+
+    const fromTriad = { root: fromRoot, quality: fromQuality, notes: fromNotes, role: "ghost", color: null };
+    const toTriad = { root: to.root, quality: to.quality, notes: toNotes, role: "primary", color: null };
+
+    const activeNotes = [
+      ..._notesFromTriad(fromNotes, "ghost"),
+      ..._notesFromTriad(toNotes, "primary"),
+    ];
+
+    this.update({
+      activeTriads: [fromTriad, toTriad],
+      activeNotes,
+      activeTransform: {
+        type,
+        from: { root: fromRoot, quality: fromQuality },
+        to: { root: to.root, quality: to.quality },
+        label: transform.humanLabel.intermediate,
+        commonTones: analysis.commonTones,
+        movingTone: analysis.movingTone,
+      },
+      // tonnetzCenter intentionally omitted — preserves the current center
     });
   },
 

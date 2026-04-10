@@ -95,24 +95,25 @@
       --tn-minor-fill:             var(--q-minor-stroke);
     }
 
-    /* ── Tonnetz animations (Explorer-specific polish) ─────── */
+    /* ── Tonnetz chord-change visuals ───────────────────────────────
+     * Match the chord-progressions page energy: active chord lights
+     * up cleanly (brief fade-in, no continuous pulse) and the previous
+     * chord persists as a faded glow worm trail rendered by
+     * ChordBubbleRenderer (see explorer.js → chordBubble.setHistory).
+     * ────────────────────────────────────────────────────────────── */
 
-    /* Active chord triangle pulse (opacity 0.15 → 0.35) */
+    /* Active chord triangle: clean fill with a quick fade-in on change */
     .tonnetz-svg .tn-tri--primary.tn-tri--quality-major,
     .tonnetz-svg .tn-tri--primary.tn-tri--quality-minor {
       fill: var(--q-major-fill);
       stroke: var(--q-major-stroke);
       stroke-width: 2;
-      opacity: 0.25;
-      animation: sl-tri-pulse 2s ease-in-out infinite, sl-tri-fade-in 0.3s ease-out;
+      opacity: 0.45;
+      animation: sl-tri-fade-in 0.35s ease-out;
     }
     .tonnetz-svg .tn-tri--primary.tn-tri--quality-minor {
       fill: var(--q-minor-fill);
       stroke: var(--q-minor-stroke);
-    }
-    @keyframes sl-tri-pulse {
-      0%, 100% { opacity: 0.15; }
-      50%      { opacity: 0.35; }
     }
     @keyframes sl-tri-fade-in {
       from { fill-opacity: 0; stroke-opacity: 0; }
@@ -131,7 +132,7 @@
 
     /* Active node fade-in on chord change */
     .tonnetz-svg .tn-node--active circle {
-      animation: sl-node-fade-in 0.3s ease-out;
+      animation: sl-node-fade-in 0.35s ease-out;
       fill: var(--q-major-stroke);
       stroke: var(--q-major-stroke);
     }
@@ -149,33 +150,26 @@
       to   { opacity: 1; }
     }
 
-    /* Glow worm path opacity pulse (0.4 → 0.7) */
+    /* Glow worm: brief fade-in on chord change, then sit stable */
     .tonnetz-svg .tn-worm-path,
     .tonnetz-svg .tn-worm-glow,
     .tonnetz-svg .tn-worm-node-glow,
     .tonnetz-svg .tn-worm-node-ring {
-      animation: sl-worm-pulse 2s ease-in-out infinite;
+      animation: sl-worm-fade-in 0.35s ease-out;
     }
-    @keyframes sl-worm-pulse {
-      0%, 100% { opacity: 0.4; }
-      50%      { opacity: 0.7; }
+    @keyframes sl-worm-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
 
-    /* Ghost trail: faded dashed outline of the previous chord's triangle */
-    .wt-ghost-tri {
-      fill: none;
-      stroke: var(--daw-text-dim);
-      stroke-width: 2;
-      stroke-dasharray: 6 4;
-      opacity: 0.2;
-      pointer-events: none;
-      animation: sl-ghost-fade 0.3s ease-out;
+    /* History trail (previous chord) — slightly fainter than chord-
+       progressions' multi-chord trail since we only keep one. */
+    .tonnetz-svg .tn-prog-trail {
+      animation: sl-trail-fade-in 0.35s ease-out;
     }
-    .wt-ghost-tri[data-quality="major"] { stroke: var(--q-major-stroke); }
-    .wt-ghost-tri[data-quality="minor"] { stroke: var(--q-minor-stroke); }
-    @keyframes sl-ghost-fade {
+    @keyframes sl-trail-fade-in {
       from { opacity: 0; }
-      to   { opacity: 0.2; }
+      to   { opacity: 0.35; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -185,7 +179,7 @@
       .tonnetz-svg .tn-worm-node-glow,
       .tonnetz-svg .tn-worm-node-ring,
       .tonnetz-svg .tn-node--active circle,
-      .wt-ghost-tri {
+      .tonnetz-svg .tn-prog-trail {
         animation: none !important;
       }
     }
@@ -1260,8 +1254,8 @@
           <label class="sl-ctrl-label" for="exp-depth">Depth</label>
           <select class="sl-select" id="exp-depth">
             <option value="1">1</option>
-            <option value="2" selected>2</option>
-            <option value="3">3</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
             <option value="4">4</option>
           </select>
         </div>
@@ -1586,13 +1580,16 @@
         // Always re-trigger audio on click (even if the same chord is already
         // active). The HarmonyState subscriber dedupes auto-play for unchanged
         // chords, so we suppress its play and fire the audio directly here.
+        // highlightTriad keeps the Tonnetz center grounded — the renderer
+        // only auto-slides if the clicked chord falls outside the visible
+        // neighborhood.
         _suppressAutoPlay = true;
-        HarmonyState.setTriad(root, quality);
+        HarmonyState.highlightTriad(root, quality);
         _suppressAutoPlay = false;
         playChord(root, quality).catch(() => {});
       },
       onTransformClick({ type, from }) {
-        HarmonyState.setTransform(type, from.root, from.quality);
+        HarmonyState.highlightTransform(type, from.root, from.quality);
       },
       onNodeClick({ note }) {
         if (!noteInputMode) return;
@@ -1670,7 +1667,7 @@
       if (isNoteMode) {
         HarmonyState.update({ activeNotes: [], activeTriads: [], activeTransform: null });
       } else {
-        HarmonyState.setTriad(currentRoot, currentQuality);
+        HarmonyState.highlightTriad(currentRoot, currentQuality);
       }
     }
     btnChordMode.addEventListener('click', () => _setInputMode(false));
@@ -1702,7 +1699,9 @@
           const pc     = noteToPC(ascii);
           const state  = HarmonyState.get();
           const keyIdx = typeof state.currentKey === 'number' ? state.currentKey : 0;
-          HarmonyState.setTriad(noteName, _guessQuality(pc, keyIdx));
+          // highlightTriad keeps the Tonnetz center grounded; the renderer
+          // auto-slides only if the chord lands outside the visible grid.
+          HarmonyState.highlightTriad(noteName, _guessQuality(pc, keyIdx));
         }
       },
     });
@@ -1875,46 +1874,24 @@
       if (notesLabelEl) notesLabelEl.dataset.quality = q;
     }
 
-    /** Inject (or refresh) a faded dashed ghost triangle showing the previous
-     *  chord's position on the current Tonnetz neighborhood. If the previous
-     *  chord isn't visible in the current lattice (e.g. it's outside depth),
-     *  silently skip.                                                        */
-    function _renderGhostTrail() {
-      const svg = document.querySelector('#exp-tonnetz-container svg.tonnetz-svg');
-      if (!svg) return;
-      const scene = svg.querySelector('.tn-scene');
-      if (!scene) return;
-
-      // Always wipe any previous ghost layer before re-rendering.
-      scene.querySelectorAll('.wt-ghost-layer').forEach(g => g.remove());
-      if (!_ghostPrevChord) return;
-
-      // Find the triangle polygon for the ghost chord in the CURRENT Tonnetz.
-      // The Tonnetz renderer tags every polygon with data-root / data-quality.
-      const candidates = svg.querySelectorAll('.tn-tri');
-      let srcPoly = null;
-      for (const t of candidates) {
-        if (t.classList.contains('tn-tri--primary')) continue;
-        if (t.dataset.root === _ghostPrevChord.root &&
-            t.dataset.quality === _ghostPrevChord.quality) {
-          srcPoly = t;
-          break;
-        }
+    /** Hand the previous chord (and its common tones with the current chord)
+     *  to ChordBubbleRenderer so it draws a faded glow worm trail + a one-shot
+     *  gold pulse on shared notes — same visual language the chord-progressions
+     *  page uses for its multi-chord trail, scaled down to a single previous
+     *  chord since Explorer is free-click rather than a fixed progression.   */
+    function _pushChordHistory(currentRoot, currentQuality) {
+      if (!_ghostPrevChord) {
+        chordBubble.clearHistory();
+        return;
       }
-      if (!srcPoly) return;
-
-      const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      layer.classList.add('wt-ghost-layer');
-      const ghost = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      ghost.setAttribute('points', srcPoly.getAttribute('points'));
-      ghost.classList.add('wt-ghost-tri');
-      ghost.dataset.quality = _ghostPrevChord.quality || '';
-      layer.appendChild(ghost);
-
-      // Insert BEFORE the node layer so nodes stay on top of the ghost.
-      const nodeLayer = scene.querySelector('.tonnetz-nodes');
-      if (nodeLayer) scene.insertBefore(layer, nodeLayer);
-      else scene.appendChild(layer);
+      const prevNotes = triadNotes(_ghostPrevChord.root, _ghostPrevChord.quality) || [];
+      const currNotes = triadNotes(currentRoot, currentQuality) || [];
+      const currPCs   = new Set(currNotes.map(n => noteToPC(n)));
+      const commonTones = prevNotes.filter(n => currPCs.has(noteToPC(n)));
+      chordBubble.setHistory(
+        { root: _ghostPrevChord.root, quality: _ghostPrevChord.quality, notes: prevNotes },
+        commonTones,
+      );
     }
 
     HarmonyState.on(state => {
@@ -1930,7 +1907,9 @@
         notesLabelEl.textContent = _formatNotes(triadNotes(primary.root, primary.quality));
         _applyQualityAttribute(primary.quality);
 
+        let chordChanged = false;
         if (primary.root !== _lastRoot || primary.quality !== _lastQuality) {
+          chordChanged = true;
           // Remember the previous chord as a ghost before overwriting.
           if (_lastRoot && _lastQuality) {
             _ghostPrevChord = { root: _lastRoot, quality: _lastQuality };
@@ -1946,9 +1925,12 @@
           }
         }
 
-        // Redraw the ghost trail AFTER Tonnetz/ChordBubble have finished their
-        // renders this tick — they're the subscribers registered before us.
-        _renderGhostTrail();
+        // Push the previous chord into ChordBubbleRenderer's history trail
+        // ONLY when the chord actually changed — this is what fires the
+        // gold common-tone pulse exactly once per transition. Passive
+        // re-renders (depth change, etc.) skip this so the trail stays
+        // visible without re-triggering the pulse animation.
+        if (chordChanged) _pushChordHistory(primary.root, primary.quality);
       } else if ((state.activeNotes || []).length > 0 && (state.activeTriads || []).length === 0) {
         const pcs = (state.activeNotes).map(n => noteToPC(n.note)).filter(pc => !isNaN(pc));
         const uniquePCs = [...new Set(pcs)];
@@ -1966,13 +1948,17 @@
         notesLabelEl.textContent = _formatNotes(state.activeNotes.map(n => n.note));
         _applyQualityAttribute(resolved && resolved.quality ? resolved.quality : 'major');
         _ghostPrevChord = null;
-        _renderGhostTrail();
+        _lastRoot = null;
+        _lastQuality = null;
+        chordBubble.clearHistory();
       } else {
         chordLabelEl.textContent = '—';
         notesLabelEl.textContent = '';
         _applyQualityAttribute('');
         _ghostPrevChord = null;
-        _renderGhostTrail();
+        _lastRoot = null;
+        _lastQuality = null;
+        chordBubble.clearHistory();
       }
 
       if (typeof state.currentKey === 'number' && state.currentKey >= 0) {
@@ -2025,7 +2011,7 @@
         HarmonyState.setProgression(chords, chords[0].root);
         HarmonyState.setProgressionIndex(0);
       } else {
-        HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
+        HarmonyState.batch(state => { state.tonnetzDepth = 3; state.currentKey = 0; });
         HarmonyState.setTriad('C', 'major');
       }
     } else if (_urlRoot) {
@@ -2036,7 +2022,7 @@
       else if (_rootAcc === 'b' || _rootAcc === '♭') root += '♭';
       const quality = (_urlQuality || 'major').toLowerCase();
       const validQ = ['major', 'minor', 'diminished'].includes(quality) ? quality : 'major';
-      HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
+      HarmonyState.batch(state => { state.tonnetzDepth = 3; state.currentKey = 0; });
       HarmonyState.setTriad(root, validQ);
     } else if (_urlWalkthrough && WALKTHROUGHS[_urlWalkthrough]) {
       const _wtSteps = WALKTHROUGHS[_urlWalkthrough].steps;
@@ -2044,10 +2030,10 @@
       // Suppress auto-play until the user clicks the Begin button — gates the
       // AudioContext on iOS and creates an intentional start moment.
       _suppressAutoPlay = true;
-      HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
+      HarmonyState.batch(state => { state.tonnetzDepth = 3; state.currentKey = 0; });
       HarmonyState.setTriad(_wtFirst ? _wtFirst.root : 'C', _wtFirst ? _wtFirst.quality : 'major');
     } else {
-      HarmonyState.batch(state => { state.tonnetzDepth = 2; state.currentKey = 0; });
+      HarmonyState.batch(state => { state.tonnetzDepth = 3; state.currentKey = 0; });
       HarmonyState.setTriad('C', 'major');
     }
 
@@ -2078,9 +2064,11 @@
         songTitleEl.textContent  = 'Tonnetz Explorer';
         songArtistEl.textContent = 'Free play — click any chord';
         exitBtn.hidden = true;
-        // Clear ghost trail so it doesn't linger into free-play mode
+        // Clear history trail so it doesn't linger into free-play mode
         _ghostPrevChord = null;
-        _renderGhostTrail();
+        _lastRoot = null;
+        _lastQuality = null;
+        chordBubble.clearHistory();
         HarmonyState.setTriad('C', 'major');
         const url = new URL(window.location);
         url.searchParams.delete('walkthrough');

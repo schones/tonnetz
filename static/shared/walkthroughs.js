@@ -99,6 +99,20 @@ const WALKTHROUGHS = {
     ]
   },
 
+  why_does_my_heart_moby: {
+    title: "Six Chords That Ache",
+    song: "Why Does My Heart Feel So Bad? — Moby",
+    seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
+    steps: [
+      { chord: "Am", function: "tonic (i)",            title: "Start in the dark", body: "A minor. The whole song begins right here, on the most melancholy chord in the key. Hold this feeling.", autoPlay: true },
+      { chord: "Em", function: "modal v",              title: "Minor v, not V", body: "E minor instead of E major. That's the trick — there's no leading tone, no dominant pull. The harmony stops trying to resolve and just floats. This is what makes Moby sound so… resigned.", autoPlay: true, focus: "tonnetz", concept_specifics: ["modal_v", "no_leading_tone"] },
+      { chord: "G",  function: "♭VII (subtonic)",      title: "An R-transform glide", body: "G major. Watch the Tonnetz — Em and G share two notes (G and B). It's the R transform: one note moves, two stay put. That's why the slide from Em to G feels effortless, like the music is just leaning sideways.", autoPlay: true, highlightTransform: "R", focus: "tonnetz", concept_specifics: ["R_transform"] },
+      { chord: "D",  function: "Dorian IV",            title: "The single bright note", body: "D major. In A minor we'd expect D minor — but Moby uses D major, borrowed from A Dorian. That one F♯ is the entire reason this song sounds wistful instead of just sad. Hope, rationed by a single semitone.", autoPlay: true, concept_specifics: ["dorian", "borrowed_chord", "modal_mixture"] },
+      { chord: "F",  function: "VI / IV of relative major", title: "The chorus opens", body: "F major. Same notes as the verse — we haven't changed key — but the music suddenly feels like a window has opened. F is the IV chord of C major, the relative major. The center of gravity is shifting.", autoPlay: true, focus: "tonnetz" },
+      { chord: "C",  function: "III / I of relative major", title: "Release", body: "C major. Now we hear it: the song has slid into the relative major without ever changing a key signature. F→C is just IV→I in C major — the simplest, most settled motion in all of Western music. After all that floating in A minor, the chorus lands like an exhale.", autoPlay: true, concept_specifics: ["relative_major_minor", "modal_pivot", "voice_leading"] },
+    ]
+  },
+
   twelve_bar_blues: {
     title: "Three Chords, One Triangle",
     song: "Johnny B. Goode — Chuck Berry",

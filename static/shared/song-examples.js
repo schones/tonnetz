@@ -1278,6 +1278,25 @@ const SONG_EXAMPLES = [
     demo: null,
     preference_tags: ["pop", "modern", "dance", "catchy"]
   },
+  {
+    id: "why_does_my_heart_moby",
+    concept_ids: ["minor_scale", "diatonic_chords", "modes"],
+    concept_specifics: ["i_v_VII_IV", "dorian_color", "relative_major_chorus", "voice_leading"],
+    game_ids: ["chord_progression_builder", "harmony_trainer", "chord_walks"],
+    song: "Why Does My Heart Feel So Bad?",
+    artist: "Moby",
+    year: 1999,
+    genre_tags: ["electronic", "downtempo", "trip_hop", "pop"],
+    insight: {
+      playful: "Moby's 'Why Does My Heart Feel So Bad?' uses just six chords, but every one of them aches. The verse floats between sad chords that never quite resolve, and then the chorus opens up like a window letting in sunlight — all without ever changing key.",
+      musician: "The verse loops Am–Em–G–D in A minor. Notice the v is minor (Em), not the dominant E — there's no leading tone, no harmonic 'pull,' just modal floating. The D major (IV instead of iv) is borrowed from A Dorian — that single F♯ is what gives the progression its yearning, hopeful color. The chorus drops into F–C, which is just I–V in C major (the relative major). Same notes, recentered. That pivot from 'minor floating' to 'major release' is the entire emotional arc of the song.",
+      theorist: "The verse i–v–♭VII–IV resists functional dominant motion entirely: the modal v (Em) replaces V, eliminating the leading tone, and the IV (D major) imports F♯ from Dorian. This gives the verse a static, plagal quality despite four distinct harmonies. The chorus enacts a relative-key shift to C Ionian via direct re-centering on F–C (IV–I in C, or ♭VI–♭III viewed from A minor) — no pivot chord, just a perceptual gear-change exploiting the natural minor / relative major equivalence. Voice leading is unusually smooth: Em→G is a clean R transform (sharing G and B), while the P5 moves G→D and F→C trace a single horizontal edge on the Tonnetz, holding one common tone with stepwise motion in the other voices."
+    },
+    min_age: 8,
+    era_tags: ["millennial", "genz"],
+    demo: null,
+    preference_tags: ["electronic", "downtempo", "emotional", "modern", "dreamy", "longing"]
+  },
 
 
   // ═══════════════════════════════════════════

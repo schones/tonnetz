@@ -436,14 +436,18 @@ class WalkthroughSidebar {
       });
     }
 
+    // Use the highlight* variants so the Tonnetz center stays grounded on
+    // the walkthrough's tonic — chords come to the viewer instead of the
+    // grid jumping to chase each chord.  The renderer will only auto-slide
+    // if a chord turns out to be outside the visible neighborhood.
     if (step.highlightTransform && this._prevChord) {
-      HarmonyState.setTransform(
+      HarmonyState.highlightTransform(
         step.highlightTransform,
         this._prevChord.root,
         this._prevChord.quality
       );
     } else {
-      HarmonyState.setTriad(parsed.root, parsed.quality);
+      HarmonyState.highlightTriad(parsed.root, parsed.quality);
     }
 
     // Force replay if the chord didn't change between steps

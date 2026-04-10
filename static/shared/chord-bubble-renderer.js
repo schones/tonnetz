@@ -304,6 +304,16 @@ class ChordBubbleRenderer {
     this._unsub = null;
     this._group = null;   // <g class="tn-chord-bubble-layer">
 
+    // History trail (single-chord exploration mode):
+    //   _historyChord       — { root, quality, notes } of the previous chord
+    //   _historyCommonTones — note names common to history + current chord
+    //   _historyPulseId     — bumps each setHistory() call; renderer fires the
+    //                         gold pulse animation only when it sees a new id
+    this._historyChord       = null;
+    this._historyCommonTones = [];
+    this._historyPulseId     = 0;
+    this._historyRenderedId  = 0;
+
     const el = typeof container === 'string'
       ? document.getElementById(container)
       : container;
@@ -323,6 +333,31 @@ class ChordBubbleRenderer {
     if (this._unsub) { this._unsub(); this._unsub = null; }
     if (this._group?.parentNode) this._group.parentNode.removeChild(this._group);
     this._group = null;
+  }
+
+  // ── Single-chord history trail (Explorer mode) ───────────────────
+  //
+  // Outside of progression playback the renderer can hold one "previous
+  // chord" and draw it as a faded glow worm trail behind the active chord,
+  // plus a one-shot gold pulse on shared (common) tones. This is how
+  // Explorer brings the chord-progressions visual energy to free clicking.
+
+  /**
+   * @param {{root:string, quality:string, notes?:string[]}|null} historyChord
+   * @param {string[]} [commonToneNotes]  Note names common to history + current chord.
+   */
+  setHistory(historyChord, commonToneNotes) {
+    this._historyChord       = historyChord || null;
+    this._historyCommonTones = commonToneNotes || [];
+    this._historyPulseId++;
+    this._render(HarmonyState.get());
+  }
+
+  clearHistory() {
+    this._historyChord       = null;
+    this._historyCommonTones = [];
+    this._historyPulseId++;
+    this._render(HarmonyState.get());
   }
 
   // ── Internal ─────────────────────────────────────────────────────
@@ -368,6 +403,37 @@ class ChordBubbleRenderer {
   _renderSingle(svg, state) {
     const triads = state.activeTriads || [];
     const primary = triads.find(t => t.role === 'primary');
+
+    // ── History trail: draw the previous chord as a faded glow worm
+    //    behind the active one. Same visual language as the chord-
+    //    progressions trail, but driven by Explorer's chord-change
+    //    handler instead of HarmonyState.progressionState.
+    if (this._historyChord && primary) {
+      const samePrimary =
+        this._historyChord.root === primary.root &&
+        this._historyChord.quality === primary.quality;
+      if (!samePrimary) {
+        _ensureFilter(svg);
+        const gridNodes = _allGridNodes(svg);
+        // Use a colour that contrasts with the active worm — match the
+        // history chord's own quality so it stays legible.
+        const histResolved = resolveChord(
+          (this._historyChord.notes || []).map(n => noteToPC(n)).filter(pc => !isNaN(pc))
+        );
+        const histColor =
+          (histResolved && QUALITY_COLORS[histResolved.quality]) || DEFAULT_COLOR;
+        this._renderTrailChord(svg, this._historyChord, histColor, gridNodes);
+
+        // One-shot gold pulse on common tones — only when a *new* history
+        // has just been set (we compare pulse ids so passive re-renders
+        // from other state changes don't keep retriggering it).
+        if (this._historyPulseId !== this._historyRenderedId &&
+            this._historyCommonTones.length > 0) {
+          this._renderCommonTonePulse(svg, this._historyCommonTones);
+        }
+        this._historyRenderedId = this._historyPulseId;
+      }
+    }
 
     const rawNotes = primary?.notes
       ? primary.notes.map(note => ({ note, octave: 4 }))

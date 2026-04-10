@@ -40,7 +40,7 @@ const NODE_R = 20;        // node circle radius
 const FONT_SIZE = 12;     // note-name font size
 const PAD = 80;           // viewBox padding around outermost nodes
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const RECENTER_MS = 400;  // slide animation duration
+const RECENTER_MS = 600;  // slide animation duration
 
 // ════════════════════════════════════════════════════════════════════
 // CSS
@@ -481,6 +481,51 @@ function _findCompactCluster(activePCs, nodes) {
 
 function _triKey(isUp, tq, tr) {
   return `${isUp ? 'u' : 'd'}_${tq}_${tr}`;
+}
+
+/**
+ * BFS along PLR neighbors from a starting triad to locate a target triad's
+ * lattice (tq, tr, isUp) coordinates.  Used by recenter to compute the slide
+ * offset for chords that aren't yet in the visible neighborhood.  Returns
+ * null if not found within maxDepth.
+ */
+function _findTriadLatticePosition(fromRoot, fromQuality, targetRoot, targetQuality, maxDepth) {
+  const targetPC = noteToPC(targetRoot);
+  const fromIsUp = fromQuality === 'major';
+  const queue = [{ root: fromRoot, quality: fromQuality, isUp: fromIsUp, tq: 0, tr: 0, d: 0 }];
+  const visited = new Set();
+
+  while (queue.length > 0) {
+    const item = queue.shift();
+    const key = _triKey(item.isUp, item.tq, item.tr);
+    if (visited.has(key)) continue;
+    visited.add(key);
+
+    if (noteToPC(item.root) === targetPC && item.quality === targetQuality) {
+      return { tq: item.tq, tr: item.tr, isUp: item.isUp };
+    }
+
+    if (item.d < maxDepth) {
+      const nbrs = getNeighbors(item.root, item.quality);
+      const nbrPos = neighborTriPos(item.isUp, item.tq, item.tr);
+      for (const t of ['P', 'L', 'R']) {
+        const nbr = nbrs[t];
+        const pos = nbrPos[t];
+        const nk = _triKey(pos.isUp, pos.tq, pos.tr);
+        if (!visited.has(nk)) {
+          queue.push({
+            root: nbr.root,
+            quality: nbr.quality,
+            isUp: pos.isUp,
+            tq: pos.tq,
+            tr: pos.tr,
+            d: item.d + 1,
+          });
+        }
+      }
+    }
+  }
+  return null;
 }
 
 function _nodeKey(q, r) {
@@ -1035,6 +1080,7 @@ const TonnetzNeighborhood = {
   _depth: 1,
   _neighborhood: null,
   _hasRendered: false,
+  _hasPlacedChord: false,   // true once we've rendered with any primary triad
   _animationId: 0,
 
   /**
@@ -1098,6 +1144,7 @@ const TonnetzNeighborhood = {
     this._container.appendChild(svg);
     this._svg = svg;
     this._hasRendered = false;
+    this._hasPlacedChord = false;
     this._animationId = 0;
 
     // Subscribe to HarmonyState
@@ -1109,22 +1156,47 @@ const TonnetzNeighborhood = {
 
   /**
    * Re-center the view on a different triad, with a smooth slide animation.
+   * @param {string}  root
+   * @param {string}  quality
+   * @param {boolean} [animate=true] — set false to snap without sliding
    */
-  recenter(root, quality) {
+  recenter(root, quality, animate) {
+    if (animate === undefined) animate = true;
     const oldNeighborhood = this._neighborhood;
-    const shouldAnimate = this._hasRendered && oldNeighborhood && this._centerRoot != null;
+    const oldRoot         = this._centerRoot;
+    const oldQuality      = this._centerQuality;
+    const shouldAnimate   = animate && this._hasRendered && oldNeighborhood && oldRoot != null;
 
-    // Find the target triad's lattice position in the OLD neighborhood
+    // Find the target triad's lattice position relative to the OLD center.
+    // First try the visible neighborhood (cheap); if the target is outside
+    // the visible depth, fall back to a deeper PLR-walk so the slide still
+    // animates from the correct off-screen origin.
     let offsetX = 0, offsetY = 0;
     if (shouldAnimate) {
       const targetPC = noteToPC(root);
+      let pos = null;
       for (const [, tri] of oldNeighborhood.triads) {
         if (noteToPC(tri.root) === targetPC && tri.quality === quality) {
-          const pos = toSVG(tri.tq, tri.tr);
-          offsetX = pos.x;
-          offsetY = pos.y;
+          pos = toSVG(tri.tq, tri.tr);
           break;
         }
+      }
+      if (!pos) {
+        const lattice = _findTriadLatticePosition(oldRoot, oldQuality, root, quality, 8);
+        if (lattice) {
+          // BFS from old center is in the old center's local lattice frame.
+          // toSVG of the target's (tq, tr) in the new neighborhood is what
+          // we need — but in the OLD frame the new center sat at (0,0), so
+          // the target's offset relative to the old SVG origin is exactly
+          // toSVG(lattice.tq, lattice.tr).  After rebuild we want the new
+          // content (which puts the new center at SVG origin) to start
+          // visually where the new center used to live in the old frame.
+          pos = toSVG(lattice.tq, lattice.tr);
+        }
+      }
+      if (pos) {
+        offsetX = pos.x;
+        offsetY = pos.y;
       }
     }
 
@@ -1133,10 +1205,13 @@ const TonnetzNeighborhood = {
     this._centerQuality = quality;
     this._neighborhood  = buildNeighborhood(root, quality, this._depth);
 
-    // Sync HarmonyState so keyboard and other subscribers update
+    // Sync HarmonyState's tonnetzCenter without triggering another render —
+    // the cached center on this instance is now `root/quality` so the next
+    // render() call would no-op anyway, but other subscribers (and the
+    // re-entry guard in render()) need the state to match.
     const current = HarmonyState.get().tonnetzCenter;
     if (!current || current.root !== root || current.quality !== quality) {
-      HarmonyState.setTriad(root, quality);
+      HarmonyState.updateSilent({ tonnetzCenter: { root, quality } });
     }
 
     _renderAll(this._svg, this._neighborhood, HarmonyState.get(), this._opts);
@@ -1168,7 +1243,7 @@ const TonnetzNeighborhood = {
       if (this._animationId !== myId) return;
       requestAnimationFrame(() => {
         if (this._animationId !== myId) return;
-        scene.style.transition = `transform ${RECENTER_MS}ms ease-out`;
+        scene.style.transition = `transform ${RECENTER_MS}ms ease-in-out`;
         scene.setAttribute('transform', 'translate(0, 0)');
 
         // Clean up after animation completes
@@ -1198,6 +1273,17 @@ const TonnetzNeighborhood = {
   /**
    * Full re-render from a HarmonyState snapshot.
    * Usually called automatically via subscription.
+   *
+   * Recentering policy:
+   *   - If state.tonnetzCenter has explicitly changed, snap-rebuild around
+   *     the new center (no animation).  Consumers that want a slide call
+   *     `recenter()` explicitly so they control timing (e.g. relative-key-
+   *     trainer waits 800ms after a transform before recentering).
+   *   - Otherwise, if the active primary triad lies OUTSIDE the visible
+   *     neighborhood, auto-recenter onto it WITH animation.  This is the
+   *     path that `HarmonyState.highlightTriad` uses: nearby chords are
+   *     just highlighted on the grounded grid, and a smooth slide kicks in
+   *     only when a chord turns out to be too far away to show in place.
    */
   render(state) {
     if (!this._svg) return;
@@ -1207,21 +1293,60 @@ const TonnetzNeighborhood = {
     const newQual = (center && center.quality) || this._centerQuality || 'major';
     const newDep  = state.tonnetzDepth || this._depth;
 
-    const needsRebuild =
+    const centerChanged =
       newRoot !== this._centerRoot ||
-      newQual !== this._centerQuality ||
-      newDep  !== this._depth ||
-      !this._neighborhood;
+      newQual !== this._centerQuality;
+    const depthChanged     = newDep !== this._depth;
+    const needsInitialBuild = !this._neighborhood;
 
-    if (needsRebuild) {
+    // ── Path 1: explicit center change, depth change, or initial build ─
+    //    Rebuild without animation; consumers manage slide timing themselves.
+    if (centerChanged || depthChanged || needsInitialBuild) {
       this._centerRoot    = newRoot;
       this._centerQuality = newQual;
       this._depth         = newDep;
       this._neighborhood  = buildNeighborhood(newRoot, newQual, newDep);
+      _renderAll(this._svg, this._neighborhood, state, this._opts);
+      this._hasRendered = true;
+      this._markPlaced(state);
+      return;
+    }
+
+    // ── Path 2: no center/depth change, but maybe the active primary
+    //           triad falls outside the visible neighborhood.  If so,
+    //           auto-recenter onto it with a smooth slide.  This is how
+    //           walkthroughs (which use highlightTriad to keep the center
+    //           pinned) get a smooth slide when a chord lands off the
+    //           visible grid — and only then.
+    const primary = (state.activeTriads || []).find(t => t.role === 'primary');
+    if (primary && this._hasRendered && this._neighborhood) {
+      const targetPC = noteToPC(primary.root);
+      let visible = false;
+      for (const [, tri] of this._neighborhood.triads) {
+        if (noteToPC(tri.root) === targetPC && tri.quality === primary.quality) {
+          visible = true;
+          break;
+        }
+      }
+      if (!visible) {
+        // Snap on the very first chord placement after init (nothing to
+        // slide from); animate every transition after that.
+        this.recenter(primary.root, primary.quality, this._hasPlacedChord);
+        this._markPlaced(state);
+        return;
+      }
     }
 
     _renderAll(this._svg, this._neighborhood, state, this._opts);
     this._hasRendered = true;
+    this._markPlaced(state);
+  },
+
+  /** Flip _hasPlacedChord on once any primary triad has rendered. */
+  _markPlaced(state) {
+    if (this._hasPlacedChord) return;
+    const hasPrimary = (state.activeTriads || []).some(t => t.role === 'primary');
+    if (hasPrimary) this._hasPlacedChord = true;
   },
 
   /** Unsubscribe from HarmonyState, remove SVG. */
@@ -1236,6 +1361,7 @@ const TonnetzNeighborhood = {
     this._centerRoot   = null;
     this._centerQuality = null;
     this._hasRendered   = false;
+    this._hasPlacedChord = false;
   },
 };
 
