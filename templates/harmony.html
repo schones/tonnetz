@@ -821,6 +821,13 @@
         }
         const TEST_TOTAL = 10;
 
+        // ── URL params (deep-linking) ──
+        const _params = new URLSearchParams(window.location.search);
+        const _paramRoot = _params.get('root');
+        const _paramInterval = _params.get('interval');
+        const _paramDifficulty = _params.get('difficulty');
+        const _paramMode = _params.get('mode');
+
         const state = {
             mode: 'practice', difficulty: 'easy', rootNote: 'C4', interval: 7, playerName: 'Player',
             adaptiveLevel: 'easy', consecutiveHits: 0,
@@ -1208,6 +1215,34 @@
         // Initialize on page load
         populateSelectors();
         buildTuner();
+
+        // ── Apply URL params (deep-linking) ──
+        // Root: append "4" if no octave digit (e.g. "A" → "A4")
+        if (_paramRoot) {
+            const rootValue = /\d/.test(_paramRoot) ? _paramRoot : `${_paramRoot}4`;
+            const rootSel = $('select-root');
+            const opt = Array.from(rootSel.options).find(o => o.value === rootValue);
+            if (opt) {
+                state.rootNote = rootValue;
+                rootSel.value = rootValue;
+                $('game-root').value = rootValue;
+            }
+        }
+        if (_paramInterval !== null) {
+            const i = parseInt(_paramInterval, 10);
+            if (Number.isFinite(i) && i >= 0 && i <= 12) {
+                state.interval = i;
+                $('game-interval').value = String(i);
+            }
+        }
+        if (_paramDifficulty && ['easy', 'medium', 'hard', 'adaptive'].includes(_paramDifficulty)) {
+            state.difficulty = _paramDifficulty;
+            $('select-difficulty').value = _paramDifficulty;
+        }
+        if (_paramMode && ['practice', 'test'].includes(_paramMode)) {
+            state.mode = _paramMode;
+            $('select-mode').value = _paramMode;
+        }
 
         // ── Tonnetz panel bridge ────────────────────────────────────────
         // Module script registers .push() and .clear() handlers here.

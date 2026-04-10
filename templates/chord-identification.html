@@ -389,6 +389,15 @@
     sampler.triggerAttackRelease(notes, duration || 1.8);
   }
 
+  /* ── URL params (deep-linking) ── */
+  const _params = new URLSearchParams(window.location.search);
+  const _paramKey = _params.get('key');
+  const _paramProgression = _params.get('progression');
+  window.__ciHints = {
+    key: _paramKey || null,
+    progression: _paramProgression || null,
+  };
+
   /* ── State ── */
   const state = {
     mode: 'practice',
@@ -428,11 +437,26 @@
       ? `Adaptive \u2014 ${label}` : label;
   }
 
+  /* ── Parse a note name like "A", "Eb", "G#" to a pitch class (0-11) ── */
+  function parseNoteNameToPC(name) {
+    if (!name || typeof name !== 'string') return null;
+    const m = name.trim().match(/^([A-Ga-g])([#b]?)$/);
+    if (!m) return null;
+    const letterPC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1].toUpperCase()];
+    const acc = m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0;
+    return ((letterPC + acc) % 12 + 12) % 12;
+  }
+
   /* ── Generate a random chord ── */
   function pickChord() {
     const pool = activePool();
     state.currentQuality = pool[Math.floor(Math.random() * pool.length)];
-    state.currentRoot = ROOT_MIDI_MIN + Math.floor(Math.random() * (ROOT_MIDI_MAX - ROOT_MIDI_MIN + 1));
+    if (state._pendingRootPC != null) {
+      state.currentRoot = ROOT_MIDI_MIN + state._pendingRootPC;
+      state._pendingRootPC = null;
+    } else {
+      state.currentRoot = ROOT_MIDI_MIN + Math.floor(Math.random() * (ROOT_MIDI_MAX - ROOT_MIDI_MIN + 1));
+    }
   }
 
   /* ── Render answer buttons ── */
@@ -651,5 +675,14 @@
 
   /* ── Begin loading samples immediately (before user gesture) ── */
   buildSampler();
+
+  /* ── Apply URL-driven hints ── */
+  if (_paramKey) {
+    const pc = parseNoteNameToPC(_paramKey);
+    if (pc != null) state._pendingRootPC = pc;
+  }
+  if (_paramProgression) {
+    state.progressionHint = _paramProgression;
+  }
 </script>
 {% endblock %}

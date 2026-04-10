@@ -908,8 +908,47 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+  // ── URL params (deep-linking): stash on window for the game module to read ──
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    const tier = parseInt(params.get('tier'), 10);
+    const transform = params.get('transform');
+    const root = params.get('root');
+    window.__rktParams = {
+      tier: Number.isFinite(tier) && tier >= 1 && tier <= 4 ? tier : null,
+      transform: transform && ['P', 'R', 'L'].includes(transform.toUpperCase())
+        ? transform.toUpperCase() : null,
+      root: root || null,
+    };
+  })();
+</script>
 <script type="module">
   import { init } from '{{ url_for("static", filename="games/relative-key-trainer.js") }}';
   init();
+
+  // ── Apply URL-driven hints once the user clicks past the start overlay ──
+  (function () {
+    const p = window.__rktParams;
+    if (!p || !p.tier) return;
+
+    const startOverlay = document.getElementById('start-overlay');
+    if (!startOverlay) return;
+
+    function applyTier() {
+      const tab = document.querySelector(`.rkt-tier-tab[data-tier="${p.tier}"]`);
+      if (tab && !tab.classList.contains('rkt-tier-tab--active')) tab.click();
+    }
+
+    // The game flips #start-overlay to display:none once Tone.js audio starts.
+    const observer = new MutationObserver(() => {
+      if (startOverlay.style.display === 'none') {
+        observer.disconnect();
+        // Defer to let the game's own initial phase setup run first.
+        setTimeout(applyTier, 0);
+      }
+    });
+    observer.observe(startOverlay, { attributes: true, attributeFilter: ['style'] });
+  })();
 </script>
 {% endblock %}

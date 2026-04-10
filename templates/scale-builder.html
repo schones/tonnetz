@@ -652,8 +652,53 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+  // ── URL params (deep-linking): stash on window for the game module to read ──
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    const root = params.get('root');
+    const mode = params.get('mode');
+    const stage = parseInt(params.get('stage'), 10);
+    window.__sbParams = {
+      root: root || null,
+      mode: mode || null,
+      stage: Number.isFinite(stage) && stage >= 1 && stage <= 4 ? stage : null,
+    };
+  })();
+</script>
 <script type="module">
   import { init } from '{{ url_for("static", filename="games/scale-builder.js") }}';
   init();
+
+  // ── Apply URL-driven hints after init (and after audio starts) ──
+  (function () {
+    const p = window.__sbParams;
+    if (!p || (!p.stage && !p.mode)) return;
+
+    const startOverlay = document.getElementById('start-overlay');
+    const main = document.getElementById('main-content');
+    if (!startOverlay || !main) return;
+
+    function applyHints() {
+      if (p.stage) {
+        const tab = document.querySelector(`.sb-stage-tab[data-stage="${p.stage}"]`);
+        if (tab && !tab.classList.contains('sb-stage-tab--active')) tab.click();
+      }
+      if (p.mode && ['intro', 'practice', 'test'].includes(p.mode)) {
+        const modeTab = document.querySelector(`.sb-mode-tab[data-mode="${p.mode}"]`);
+        if (modeTab && !modeTab.classList.contains('sb-mode-tab--active')) modeTab.click();
+      }
+    }
+
+    // The game hides #start-overlay and shows #main-content once audio is ready.
+    const observer = new MutationObserver(() => {
+      if (startOverlay.style.display === 'none') {
+        observer.disconnect();
+        // Defer one tick so the game's own switchStage(1) runs first.
+        setTimeout(applyHints, 0);
+      }
+    });
+    observer.observe(startOverlay, { attributes: true, attributeFilter: ['style'] });
+  })();
 </script>
 {% endblock %}

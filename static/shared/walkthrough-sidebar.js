@@ -26,6 +26,73 @@ import SONG_EXAMPLES from './song-examples.js';
 import { WALKTHROUGHS } from './walkthroughs.js';
 
 // ════════════════════════════════════════════════════════════════════
+// CONCEPT → GAME LINK MAP
+// ════════════════════════════════════════════════════════════════════
+
+const CONCEPT_GAME_MAP = {
+  // PLR transforms → Chord Walks tier 3
+  P_transform:           { label: 'Chord Walks',       href: '/games/chord-walks',     params: { tier: 3, transform: 'P' } },
+  R_transform:           { label: 'Chord Walks',       href: '/games/chord-walks',     params: { tier: 3, transform: 'R' } },
+  L_transform:           { label: 'Chord Walks',       href: '/games/chord-walks',     params: { tier: 3, transform: 'L' } },
+
+  // Voice leading / ear training → Harmony Trainer
+  voice_leading:         { label: 'Harmony Trainer',    href: '/harmony',               params: { mode: 'practice' } },
+  chromatic_bass:        { label: 'Harmony Trainer',    href: '/harmony',               params: { mode: 'practice' } },
+
+  // Progressions → Chord Identification
+  ii_V_I:                { label: 'Chord Spotter',      href: '/chord-identification',  params: { progression: 'ii-V-I' } },
+  deceptive_cadence:     { label: 'Chord Spotter',      href: '/chord-identification',  params: { progression: 'V-vi' } },
+  V_vi:                  { label: 'Chord Spotter',      href: '/chord-identification',  params: { progression: 'V-vi' } },
+  I_IV_V:                { label: 'Chord Spotter',      href: '/chord-identification',  params: { progression: 'I-IV-V' } },
+  twelve_bar_blues:      { label: 'Chord Spotter',      href: '/chord-identification',  params: { progression: 'I-IV-V' } },
+
+  // Modes / scales → Scale Builder
+  mixolydian:            { label: 'Scale Builder',      href: '/games/scale-builder',   params: { mode: 'mixolydian' } },
+  dorian:                { label: 'Scale Builder',      href: '/games/scale-builder',   params: { mode: 'dorian' } },
+  modal_mixture:         { label: 'Scale Builder',      href: '/games/scale-builder',   params: {} },
+
+  // Relative/parallel → Chord Walks
+  relative_major_minor:  { label: 'Chord Walks',       href: '/games/chord-walks',     params: { tier: 2, transform: 'R' } },
+  parallel_major_minor:  { label: 'Chord Walks',       href: '/games/chord-walks',     params: { tier: 3, transform: 'P' } },
+};
+
+function buildGameLinks(step) {
+  const specifics = step && step.concept_specifics;
+  if (!specifics || !specifics.length) return [];
+
+  // Deduplicate by href; merge params; keep first label seen.
+  const byHref = new Map();
+  for (const concept of specifics) {
+    const entry = CONCEPT_GAME_MAP[concept];
+    if (!entry) continue;
+    if (byHref.has(entry.href)) {
+      const existing = byHref.get(entry.href);
+      existing.params = { ...entry.params, ...existing.params };
+    } else {
+      byHref.set(entry.href, { label: entry.label, href: entry.href, params: { ...entry.params } });
+    }
+  }
+  if (!byHref.size) return [];
+
+  // Add root from current chord, if parseable.
+  const parsed = parseChordName(step.chord);
+  if (parsed && parsed.root) {
+    for (const entry of byHref.values()) {
+      if (entry.params.root == null) entry.params.root = parsed.root;
+    }
+  }
+
+  return [...byHref.values()].map(entry => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(entry.params)) {
+      if (v != null && v !== '') qs.set(k, String(v));
+    }
+    const query = qs.toString();
+    return { label: entry.label, url: query ? `${entry.href}?${query}` : entry.href };
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
 // CHORD NAME PARSER (mirrors Explorer's _parseChordName)
 // ════════════════════════════════════════════════════════════════════
 
@@ -152,6 +219,7 @@ class WalkthroughSidebar {
     this._stepsEl    = $('[data-wt-steps]');
     this._noteEl     = $('[data-wt-note]');
     this._alsoEl     = $('[data-wt-also]');
+    this._tryThisEl  = $('[data-wt-try-this]');
     this._seeAlsoEl  = $('[data-wt-see-also]');
     this._backBtn    = $('[data-wt-back]');
     this._nextBtn    = $('[data-wt-next]');
@@ -291,6 +359,7 @@ class WalkthroughSidebar {
     if (this._stepsEl)    this._stepsEl.innerHTML = '';
     if (this._noteEl)     this._noteEl.textContent = '';
     if (this._alsoEl)     { this._alsoEl.textContent = ''; this._alsoEl.style.display = 'none'; }
+    if (this._tryThisEl)  { this._tryThisEl.innerHTML = ''; this._tryThisEl.style.display = 'none'; }
     if (this._seeAlsoEl)  { this._seeAlsoEl.innerHTML = ''; this._seeAlsoEl.style.display = 'none'; }
     if (this._exportBtn)  this._exportBtn.style.display = 'none';
     if (this._backBtn)    this._backBtn.disabled = true;
@@ -380,6 +449,22 @@ class WalkthroughSidebar {
       } else {
         this._alsoEl.textContent = '';
         this._alsoEl.style.display = 'none';
+      }
+    }
+
+    // "Try this" contextual game pills
+    if (this._tryThisEl) {
+      const games = buildGameLinks(step);
+      if (games.length) {
+        this._tryThisEl.innerHTML = games.map(g =>
+          `<a class="wts-game-pill" href="${g.url}" title="Practice this concept">
+            <span class="wts-game-pill__icon">🎮</span>${g.label}
+          </a>`
+        ).join('');
+        this._tryThisEl.style.display = '';
+      } else {
+        this._tryThisEl.innerHTML = '';
+        this._tryThisEl.style.display = 'none';
       }
     }
 

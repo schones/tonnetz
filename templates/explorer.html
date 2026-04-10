@@ -626,6 +626,37 @@
     }
     .wts-see-also-link:hover { text-decoration: underline; }
 
+    .wts__try-this {
+      padding: var(--space-xs) var(--space-lg) var(--space-sm);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .wts-game-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      font-size: 11px;
+      font-weight: var(--font-weight-medium);
+      text-decoration: none;
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+      white-space: nowrap;
+    }
+    .wts-game-pill:hover {
+      background: var(--gold-soft);
+      border-color: var(--gold-edge);
+      color: var(--gold);
+    }
+    .wts-game-pill__icon {
+      font-size: 12px;
+      line-height: 1;
+    }
+
     .wts__foot {
       padding: var(--space-sm) var(--space-md) var(--space-md);
       border-top: 1px solid var(--daw-border-soft);
@@ -1201,6 +1232,7 @@
       <div class="wts__steps" data-wt-steps></div>
       <div class="wts__note" data-wt-note></div>
       <div class="wts__also" data-wt-also style="display:none"></div>
+      <div class="wts__try-this" data-wt-try-this style="display:none"></div>
       <div class="wts__see-also" data-wt-see-also style="display:none"></div>
       <div class="wts__foot">
         <div class="wts__nav-row">
