@@ -4,6 +4,74 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-10 — Explorer Polish, Rhythm Analysis, Audience Tracks
+
+**Layout & visual polish**
+
+- Platform rename: SongLab → **SkratchLab** (interactive rhythm-building surface), with Explorer remaining the analysis surface
+- Font token normalization: introduced `--font-size-2xs` and pushed it through nav/labels for consistent type scale
+- Nav consistency pass across all surfaces (alignment, spacing, active state)
+- Walkthrough sidebar typography bump: wider sidebar, larger body text for readability
+- Real piano keyboard proportions: cream-colored white keys, accurate black-key width and offsets — now the default
+- Tonnetz canvas lightened for better contrast against dark theme
+- Dark theme overall contrast bump
+- Removed Spotify/Apple Music links from song cards
+- Fixed fretboard/keyboard proportions in the "Both" view (no more squashing)
+
+**Info pills**
+
+- "Learn" pills on Tonnetz and Chord Wheel headers, linking out to the relevant fundamentals content
+- Compact ⓘ pills on Transform and Key controls
+- All pill destinations route to fundamentals topic pages
+
+**Game deep-linking**
+
+- Added `CONCEPT_GAME_MAP` for concept → game routing
+- "Try this" pills on walkthrough steps that launch the relevant game pre-configured
+- Games now read `URLSearchParams` for pre-configured state (root, quality, mode, etc.)
+
+**Base.html restyle**
+
+- Purple palette → warm palette across base template
+- New SkratchLab nav inherited by all 20+ child pages automatically
+- Consistent look and feel across the platform without per-page edits
+
+**Rhythm analysis (new)**
+
+- 7 new rhythm-focused song entries
+- New `concept_specifics` for rhythm: `train_beat`, `shuffle`, `syncopation`, `odd_meter`, `backbeat`
+- Folsom Prison Blues dual walkthrough (harmony + rhythm)
+- **Rhythm tab in Explorer** as 4th stage tab alongside Tonnetz / Chord Wheel / Fretboard
+- Tone.js playback engine with playhead animation over the rhythm grid
+- BPM slider on the Rhythm tab
+- Bass voice follows the chord root through the progression
+- Volume controls per voice
+- Keyboard remains playable over the running rhythm (improvise on top)
+
+**Audience tracks (new)**
+
+- 4 new walkthroughs:
+  - **Kids:** Let It Go, You've Got a Friend in Me
+  - **Students:** Stand By Me, Lean on Me
+- New `audience` field on every walkthrough
+- Landing page redesign: audience tabs (kids / students / general) with filtered MIDI pad grid
+
+**Decisions**
+
+- All walkthroughs should eventually have rhythm data
+- **SkratchLab** is for interactive rhythm building; **Explorer** is for rhythm analysis — clean split between create vs. study
+- Rhythm display uses **Option B text notation** (chosen over alternative grid notations)
+- Real piano proportions are the keyboard default going forward
+
+**Next priorities**
+
+1. Backfill rhythm data for all remaining walkthroughs
+2. Multi-chord glow worm paths on Tonnetz
+3. SkratchLab rhythm blocks (Blockly extension)
+4. User testing prep
+
+---
+
 ## 2026-04-09 — Skratch Studio Integration + SongLab/Explorer Redesign
 
 **Skratch Studio integration (merged `feature/skratch-integration` → `dev`)**

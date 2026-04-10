@@ -1,18 +1,44 @@
 # Tonnetz Project Status
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-10
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-redesign-plan.md` + `docs/tonnetz-next-build-plan.md`
-**Platform name:** SongLab (rebrand from "Music Theory Games" in progress)
+**Platform name:** SongLab · SkratchLab (rebrand complete)
 
 ---
 
 ## Current Focus
 
-SongLab redesign on `dev`. Skratch Studio integration merged in. Explorer DAW redesign complete; remaining surfaces (Skratch Studio DAW, games, branding sweep) still to do before deploy.
+SkratchLab rebrand complete. Explorer is fully restyled with rhythm analysis as a 4th stage tab (Tonnetz / Chord Wheel / Fretboard / Rhythm), `base.html` is fully restyled (warm palette inherited by all child pages), and the landing page now has an audience-segmented song picker (kids / students / general). Next up: backfill rhythm data for all walkthroughs, multi-chord glow worm paths, SkratchLab rhythm blocks, and user testing prep.
 
-**Completed this cycle:**
+**Completed this cycle (2026-04-10):**
+
+- **Explorer polish & restyle**: SkratchLab rename, font token normalization (`--font-size-2xs`), nav consistency, walkthrough sidebar typography bump, real piano keyboard proportions (cream keys) as default, lightened Tonnetz canvas, dark theme contrast bump, removed Spotify/Apple links, fixed fretboard/keyboard proportions in Both view
+- **Info pills**: Learn pills on Tonnetz/Chord wheel headers, compact ⓘ on Transform/Key controls, all linking to fundamentals content
+- **Game deep-linking**: `CONCEPT_GAME_MAP`, "Try this" pills on walkthrough steps, games read `URLSearchParams` for pre-configured state
+- **base.html restyle**: purple → warm palette, new SkratchLab nav, all 20+ child pages inherit the new look automatically
+- **Rhythm analysis (new)**:
+  - 7 rhythm song entries
+  - New `concept_specifics`: `train_beat`, `shuffle`, `syncopation`, `odd_meter`, `backbeat`
+  - Folsom Prison Blues dual walkthrough (harmony + rhythm)
+  - Rhythm tab in Explorer (4th stage tab)
+  - Tone.js playback engine with playhead animation
+  - BPM slider, bass-follows-chord-root, per-voice volume controls
+  - Keyboard plays over the running rhythm
+- **Audience tracks (new)**:
+  - 4 new walkthroughs: Let It Go, You've Got a Friend in Me (kids); Stand By Me, Lean on Me (students)
+  - `audience` field on all walkthroughs
+  - Landing page redesigned with audience tabs and filtered MIDI pad grid
+
+**Decisions:**
+
+- All walkthroughs should eventually have rhythm data
+- SkratchLab = interactive rhythm building; Explorer = rhythm analysis
+- Option B text notation for rhythm display
+- Real piano proportions as keyboard default
+
+**Completed earlier (2026-04-09):**
 
 - **Skratch Studio integration** (merged from `feature/skratch-integration` → `dev`):
   - Code review and fixes on Antigravity-built integration
@@ -46,15 +72,16 @@ SongLab redesign on `dev`. Skratch Studio integration merged in. Explorer DAW re
 
 **Immediate next steps:**
 
-1. Explorer prompt 2 fixes: test all walkthroughs end-to-end, verify ghost trails
-2. Skratch Studio DAW redesign (Phase 4)
-3. Games + remaining pages: light theme + design tokens (Phase 5)
-4. SongLab branding sweep across all pages (Phase 6)
-5. Deploy to Railway as SongLab
-6. User testing with 15–20 participants
-7. Visual engine implementation (post-launch — see `docs/visual-engine-spec.md`)
-8. Fix Swing Trainer 500 error on production
-9. Polish, merge `dev` → `main`
+1. Backfill rhythm data for all remaining walkthroughs
+2. Multi-chord glow worm paths on Tonnetz
+3. SkratchLab rhythm blocks (Blockly extension)
+4. User testing prep (15–20 participants)
+5. Skratch Studio DAW redesign (Phase 4)
+6. Games + remaining pages: light theme + design tokens (Phase 5)
+7. Deploy to Railway as SongLab/SkratchLab
+8. Visual engine implementation (post-launch — see `docs/visual-engine-spec.md`)
+9. Fix Swing Trainer 500 error on production
+10. Polish, merge `dev` → `main`
 
 ---
 
