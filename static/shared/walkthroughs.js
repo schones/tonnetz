@@ -124,6 +124,55 @@ const WALKTHROUGHS = {
       { chord: "C", function: "back to tonic",   title: "That's the whole blues", body: "From Johnny B. Goode to Hound Dog to a thousand songs you know — it's these three neighbors taking turns. The simplest path through harmonic space, and it never gets old.", autoPlay: true, concept_specifics: ["twelve_bar_blues", "I_IV_V"] },
     ]
   },
+
+  folsom_train_beat: {
+    title: "The Train Beat",
+    song: "Folsom Prison Blues — Johnny Cash",
+    category: "Rhythm & Feel",
+    seeAlso: { label: "Swing Trainer", href: "/games/swing-trainer" },
+    steps: [
+      {
+        chord: "E",
+        function: "tonic (I)",
+        title: "The one chord",
+        body: "E major. Home base. But before you focus on the chord — listen to the rhythm. BOOM-chk-SNAP-chk, BOOM-chk-SNAP-chk. That's the train beat. The bass hits on 1 and 3, a snare or brush on 2 and 4, and muted guitar strums fill every upbeat.",
+        autoPlay: true,
+        concept_specifics: ["train_beat", "I_IV_V"]
+      },
+      {
+        chord: "A",
+        function: "subdominant (IV)",
+        title: "The IV chord arrives",
+        body: "A major — the IV chord. The chord changes but the rhythm never breaks. BOOM-chk-SNAP-chk keeps rolling. That's what makes the train beat feel like a train — the groove is a constant engine underneath the harmony.",
+        autoPlay: true,
+        concept_specifics: ["I_IV_V"]
+      },
+      {
+        chord: "E",
+        function: "back to I",
+        title: "Back home",
+        body: "E major again. In a 12-bar blues, you spend most of your time on the I chord. The train beat makes even this static harmony feel like it's moving forward.",
+        autoPlay: true,
+        concept_specifics: ["twelve_bar_blues"]
+      },
+      {
+        chord: "B",
+        function: "dominant (V)",
+        title: "The turnaround",
+        body: "B major — the V chord. This is the tension point that pulls you back to E. In Folsom Prison Blues, this is where the verse peaks before resolving. Three chords, one relentless rhythm — that's all you need.",
+        autoPlay: true,
+        concept_specifics: ["I_IV_V", "twelve_bar_blues"]
+      },
+      {
+        chord: "E",
+        function: "resolution (I)",
+        title: "I-IV-V and the train beat",
+        body: "The whole song is three chords — E, A, B — over a train beat that never stops. Johnny Cash didn't need complexity. The BOOM-chk-SNAP-chk pattern IS the song. You'll hear the same engine driving Ring of Fire, Mama Tried, Cry Cry Cry, and hundreds of country songs.",
+        autoPlay: true,
+        concept_specifics: ["train_beat", "I_IV_V", "twelve_bar_blues"]
+      }
+    ]
+  },
 };
 
 export { WALKTHROUGHS };

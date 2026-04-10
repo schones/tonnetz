@@ -1667,6 +1667,145 @@ const SONG_EXAMPLES = [
       loop: true
     },
     preference_tags: ["rock", "blues", "folk_rock", "classic_rock", "haunting"]
+  },
+
+
+  // ═══════════════════════════════════════════
+  // RHYTHM & FEEL
+  // ═══════════════════════════════════════════
+
+  {
+    id: "folsom_train_beat",
+    concept_ids: ["intervals", "triads"],
+    concept_specifics: ["train_beat", "I_IV_V", "twelve_bar_blues"],
+    game_ids: ["chord_progression_builder", "harmony_trainer", "swing_trainer"],
+    song: "Folsom Prison Blues",
+    artist: "Johnny Cash",
+    year: 1955,
+    genre_tags: ["country", "rockabilly"],
+    insight: {
+      playful: "Listen for the BOOM-chk-SNAP-chk pattern — that's the train beat! The bass walks a steady line while the guitar does quick muted strums between every beat. It sounds like a train rolling down the tracks.",
+      musician: "The train beat is built on alternating bass notes (root and fifth) on the downbeats with muted string hits on the upbeats. This creates the boom-chicka-boom-chicka pattern that drives the rhythm without a drum kit. Cash's Tennessee Two (Luther Perkins on guitar, Marshall Grant on bass) practically invented the sound — it's a I–IV–V twelve-bar blues underneath, but the train beat is what makes it Folsom.",
+      theorist: "Rhythmically, the train beat divides each beat into two equal eighth notes with a strong bass-strum alternation. The bass alternates root-fifth while muted strums fill every upbeat, creating a steady 2-feel within 4/4 time. Harmonically, the song is a strict I–IV–V twelve-bar blues in E, so the rhythmic invention carries the entire identity."
+    },
+    min_age: 8,
+    era_tags: ["classic", "boomer"],
+    demo: null,
+    preference_tags: ["country", "rockabilly", "classic", "cash"]
+  },
+  {
+    id: "ring_of_fire_train_beat",
+    concept_ids: ["rhythm", "triads"],
+    concept_specifics: ["train_beat", "I_IV_V"],
+    game_ids: ["chord_progression_builder", "rhythm_tapper"],
+    song: "Ring of Fire",
+    artist: "Johnny Cash",
+    year: 1963,
+    genre_tags: ["country"],
+    insight: {
+      playful: "Ring of Fire has those bright mariachi horns blaring on top — but underneath, the band is doing that same boom-chicka train beat. The horns play the famous melody, the bass and guitar keep the train rolling.",
+      musician: "Ring of Fire layers mariachi-style trumpets over a train beat foundation. Anita Carter (and later Cash) sings over a I–IV–V country progression while the bass and muted guitar lock into the steady boom-chicka. The combination of the Mexican horn fanfare with Cash's freight-train rhythm section is what makes the arrangement so distinctive — two different musical worlds stacked on the same pulse.",
+      theorist: "The trumpet figure outlines the I and IV triads in parallel motion, sitting on top of a train-beat rhythm section. The rhythmic foundation never deviates from the alternating bass-strum pattern, which lets the horn ornamentation feel exotic without disturbing the underlying meter or the I–IV–V harmonic frame."
+    },
+    min_age: 8,
+    era_tags: ["classic", "boomer"],
+    demo: null,
+    preference_tags: ["country", "classic", "cash", "horns"]
+  },
+  {
+    id: "mama_tried_train_beat",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["train_beat"],
+    game_ids: ["rhythm_tapper"],
+    song: "Mama Tried",
+    artist: "Merle Haggard",
+    year: 1968,
+    genre_tags: ["country", "bakersfield"],
+    insight: {
+      playful: "Mama Tried is the train beat at full speed — the boom-chicka is moving so fast it really does sound like a freight train flying down the tracks. Try tapping along: BOOM-chk-BOOM-chk, no breaks!",
+      musician: "Mama Tried is a cornerstone of the Bakersfield sound — Haggard's answer to the slick Nashville production of the era. The train beat is pushed to a faster clip than Cash's typical tempo, with twangy Telecaster lead lines riding over the boom-chicka. The faster pace turns the train-beat shuffle into something almost driving and rock-and-roll, which is exactly what made Bakersfield country feel rougher and rowdier than its Nashville cousin.",
+      theorist: "At Mama Tried's tempo (~120 BPM), the alternating bass-and-strum pattern produces a continuous eighth-note pulse where the strum onsets effectively double the perceived BPM. The Bakersfield aesthetic — Telecasters, pedal steel, and a hard-driving train beat — represents a deliberate rhythmic intensification of traditional honky-tonk."
+    },
+    min_age: 8,
+    era_tags: ["classic", "boomer"],
+    demo: null,
+    preference_tags: ["country", "bakersfield", "classic", "haggard"]
+  },
+  {
+    id: "cry_cry_cry_train_beat",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["train_beat"],
+    game_ids: ["rhythm_tapper"],
+    song: "Cry Cry Cry",
+    artist: "Johnny Cash",
+    year: 1955,
+    genre_tags: ["country", "rockabilly"],
+    insight: {
+      playful: "This was Johnny Cash's very first single — and the train beat is right there from the start! Just the bass, the muted guitar, and Cash's voice. No drums needed.",
+      musician: "Cry Cry Cry is Cash's debut single and a pure example of the train beat in its rawest form. There are no drums on the record — the rhythm is entirely produced by Marshall Grant's slap bass alternating root-fifth and Luther Perkins's muted Telecaster eighth notes. This is where the Tennessee Two sound was crystallized.",
+      theorist: "The track is essentially a study in minimum viable rhythm: a single guitar voice supplying every upbeat while a single bass voice supplies every downbeat. The absence of drums foregrounds the train-beat rhythmic engine and demonstrates how a complete groove can be built from two interlocked melodic instruments alone."
+    },
+    min_age: 8,
+    era_tags: ["classic", "vintage"],
+    demo: null,
+    preference_tags: ["country", "rockabilly", "classic", "cash"]
+  },
+  {
+    id: "jackson_train_beat",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["train_beat"],
+    game_ids: ["rhythm_tapper"],
+    song: "Jackson",
+    artist: "Johnny Cash & June Carter",
+    year: 1967,
+    genre_tags: ["country"],
+    insight: {
+      playful: "Jackson is a duet — Johnny and June trade lines back and forth — but the train beat keeps chugging along underneath the whole time. Boom-chicka-boom-chicka, no matter who's singing.",
+      musician: "Jackson uses the train beat as a constant rhythmic floor while the vocal call-and-response between Cash and Carter does all the storytelling work. The rhythm section never breaks character, which lets the duet feel conversational and theatrical without the arrangement crowding the singers.",
+      theorist: "The unbroken train-beat ostinato functions as a structural constant against which the vocal phrasing varies. By holding the rhythmic pattern static across verse, chorus, and trade-off lines, the arrangement isolates the melodic and lyrical interplay as the only changing element — a deliberate use of rhythmic invariance for textural focus."
+    },
+    min_age: 8,
+    era_tags: ["classic", "boomer"],
+    demo: null,
+    preference_tags: ["country", "duet", "classic", "cash"]
+  },
+  {
+    id: "get_rhythm_train_beat",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["train_beat", "syncopation"],
+    game_ids: ["rhythm_tapper"],
+    song: "Get Rhythm",
+    artist: "Johnny Cash",
+    year: 1956,
+    genre_tags: ["country", "rockabilly"],
+    insight: {
+      playful: "The lyrics literally tell you to 'get rhythm when you get the blues' — and the song is a master class in train beat. Cash even snaps his fingers off the beat, between the boom and the chicka. Meta!",
+      musician: "Get Rhythm sits on a textbook train beat but adds finger snaps and vocal accents that fall on the upbeats — pushing the feel toward syncopation. The lyric is a pep talk about rhythm itself, and the arrangement keeps proving the point: every element reinforces or playfully tugs against the boom-chicka pulse.",
+      theorist: "The train-beat foundation provides a strict on/off subdivision, while the snap and vocal accents on the 'and' of each beat introduce a layer of syncopation against that pulse. The result is two simultaneous rhythmic strata — a metrically literal bass-and-strum and an off-beat upper layer — without disturbing the underlying duple feel."
+    },
+    min_age: 8,
+    era_tags: ["classic", "vintage"],
+    demo: null,
+    preference_tags: ["country", "rockabilly", "classic", "cash"]
+  },
+  {
+    id: "superstition_syncopation",
+    concept_ids: ["rhythm"],
+    concept_specifics: ["syncopation"],
+    game_ids: ["rhythm_tapper"],
+    song: "Superstition",
+    artist: "Stevie Wonder",
+    year: 1972,
+    genre_tags: ["funk", "soul"],
+    insight: {
+      playful: "Try tapping along to the main keyboard riff in Superstition — it feels weirdly slippery, right? That's because almost every note lands BETWEEN the beats, not on them. Your foot taps one place, the riff lands in the gaps.",
+      musician: "Superstition's clavinet riff is a syncopation clinic. Stevie Wonder places nearly every accented note on the 'and' of a beat or on a sixteenth-note offbeat, leaving the downbeats to the drums. The result is a riff that grooves hard precisely because it never lines up with the snare on 2 and 4 — your ear is constantly resolving the offbeat phrases against the implied pulse.",
+      theorist: "The riff exploits sixteenth-note syncopation by stressing weak metric positions (the 'e' and 'a' of each beat) while the kick and snare anchor the strong beats. This produces a polarized groove in which the melodic and rhythmic layers occupy complementary metric slots, generating forward momentum from the perceptual tension between expected and actual accents."
+    },
+    min_age: 10,
+    era_tags: ["classic", "boomer", "genx"],
+    demo: null,
+    preference_tags: ["funk", "soul", "classic", "stevie", "groove"]
   }
 ];
 
