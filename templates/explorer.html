@@ -879,6 +879,127 @@
       min-height: 220px;
     }
 
+    /* ── Rhythm stage view ──────────────────────────────────── */
+    #exp-rhythm-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-xl);
+      gap: 24px;
+    }
+
+    .rhythm-meta {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+    .rhythm-meta__item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .rhythm-meta__label {
+      font-size: var(--font-size-2xs);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--daw-text-mute);
+    }
+    .rhythm-meta__value {
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text);
+    }
+    .rhythm-meta__value--gold { color: var(--gold); }
+    .rhythm-meta__divider {
+      width: 1px;
+      height: 32px;
+      background: var(--daw-border);
+    }
+
+    .rhythm-pattern {
+      display: flex;
+      gap: 4px;
+      width: 100%;
+      max-width: 560px;
+    }
+    .rhythm-beat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .rhythm-beat__num {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text-ghost);
+    }
+    .rhythm-beat__num--down { color: var(--daw-text-dim); }
+    .rhythm-beat__cell {
+      font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-medium);
+      padding: 8px 4px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      width: 100%;
+    }
+    .rhythm-beat__cell--bass {
+      background: rgba(45, 95, 138, 0.15);
+      border: 1px solid rgba(45, 95, 138, 0.35);
+      color: #85B7EB;
+    }
+    .rhythm-beat__cell--snare {
+      background: rgba(212, 160, 60, 0.12);
+      border: 1px solid rgba(212, 160, 60, 0.30);
+      color: var(--gold);
+    }
+    .rhythm-beat__cell--strum {
+      background: var(--daw-deep);
+      border: 1px solid var(--daw-border);
+      color: var(--daw-text-ghost);
+    }
+
+    .rhythm-legend {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+    .rhythm-legend__item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-mute);
+    }
+    .rhythm-legend__dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+    .rhythm-legend__dot--bass { background: #2D5F8A; }
+    .rhythm-legend__dot--snare { background: var(--gold); }
+    .rhythm-legend__dot--strum { background: var(--daw-border); }
+
+    .rhythm-desc {
+      font-size: var(--font-size-sm);
+      color: var(--daw-text-dim);
+      text-align: center;
+      line-height: 1.6;
+      max-width: 420px;
+    }
+    .rhythm-desc__highlight { color: var(--gold); }
+
+    .rhythm-empty {
+      font-size: var(--font-size-sm);
+      color: var(--daw-text-mute);
+      text-align: center;
+      padding: var(--space-2xl);
+    }
+
     /* Chord wheel kept in DOM (offscreen) so HarmonyState wiring stays alive */
     .exp-panel--chord-wheel {
       position: absolute;
@@ -1287,12 +1408,14 @@
                 <span class="sl-info-pill__icon">ⓘ</span> Learn
               </a>
               <button class="sl-panel-tab"                      id="sl-tab-fretboard" type="button" data-stage-view="fretboard">Fretboard</button>
+              <button class="sl-panel-tab"                      id="sl-tab-rhythm"    type="button" data-stage-view="rhythm">Rhythm</button>
             </div>
           </div>
           <div class="exp-panel__body">
             <div id="exp-tonnetz-container" class="sl-stage-view" data-stage-view="tonnetz"></div>
             <div id="exp-wheel-stage"       class="sl-stage-view" data-stage-view="wheel" hidden></div>
             <div id="exp-fretboard-stage"   class="sl-stage-view" data-stage-view="fretboard" hidden></div>
+            <div id="exp-rhythm-stage"      class="sl-stage-view" data-stage-view="rhythm" hidden></div>
 
             <!-- Walkthrough begin overlay (gates AudioContext on iOS) -->
             <div id="exp-begin-overlay" class="exp-begin-overlay" hidden role="dialog" aria-label="Begin walkthrough">
@@ -1683,11 +1806,12 @@
     const wheel = new ChordWheel('#exp-chord-wheel-container', { initialKey: 0 });
     window.wheel = wheel;
 
-    // ── Stage tabs (Tonnetz / Chord wheel / Fretboard) ─────────────
+    // ── Stage tabs (Tonnetz / Chord wheel / Fretboard / Rhythm) ────
     const STAGE_LABELS = {
       tonnetz:   'Tonnetz Neighborhood',
       wheel:     'Circle of Fifths',
       fretboard: 'Fretboard',
+      rhythm:    'Rhythm',
     };
     const stageLabelEl = document.getElementById('sl-stage-label');
     const stageTabs    = document.querySelectorAll('.sl-panel-tab[data-stage-view]');
@@ -1722,6 +1846,60 @@
       tab.removeAttribute('title');
       tab.addEventListener('click', () => _setStageView(tab.dataset.stageView));
     });
+
+    // ── Rhythm stage renderer ──────────────────────────────────────
+    function renderRhythmStage(rhythm) {
+      const container = document.getElementById('exp-rhythm-stage');
+      if (!container) return;
+      if (!rhythm) {
+        container.innerHTML = '<div class="rhythm-empty">No rhythm analysis for this song yet.</div>';
+        return;
+      }
+
+      const metaHTML = `
+        <div class="rhythm-meta">
+          <div class="rhythm-meta__item">
+            <span class="rhythm-meta__label">Time</span>
+            <span class="rhythm-meta__value">${rhythm.time_sig}</span>
+          </div>
+          <div class="rhythm-meta__divider"></div>
+          <div class="rhythm-meta__item">
+            <span class="rhythm-meta__label">BPM</span>
+            <span class="rhythm-meta__value">${rhythm.bpm}</span>
+          </div>
+          <div class="rhythm-meta__divider"></div>
+          <div class="rhythm-meta__item">
+            <span class="rhythm-meta__label">Feel</span>
+            <span class="rhythm-meta__value rhythm-meta__value--gold">${rhythm.feel}</span>
+          </div>
+        </div>`;
+
+      const patternHTML = rhythm.pattern.map(p => {
+        const isDown = !p.beat.includes('&');
+        return `
+          <div class="rhythm-beat">
+            <span class="rhythm-beat__num ${isDown ? 'rhythm-beat__num--down' : ''}">${p.beat}</span>
+            <div class="rhythm-beat__cell rhythm-beat__cell--${p.type}">${p.label}</div>
+          </div>`;
+      }).join('');
+
+      const descHTML = rhythm.description
+        ? `<p class="rhythm-desc">${rhythm.description.replace(rhythm.feel, `<span class="rhythm-desc__highlight">${rhythm.feel}</span>`)}</p>`
+        : '';
+
+      container.innerHTML = `
+        ${metaHTML}
+        <div class="rhythm-pattern">${patternHTML}</div>
+        <div class="rhythm-legend">
+          <span class="rhythm-legend__item"><span class="rhythm-legend__dot rhythm-legend__dot--bass"></span>Bass (root/fifth)</span>
+          <span class="rhythm-legend__item"><span class="rhythm-legend__dot rhythm-legend__dot--snare"></span>Snare/brush</span>
+          <span class="rhythm-legend__item"><span class="rhythm-legend__dot rhythm-legend__dot--strum"></span>Muted strum</span>
+        </div>
+        ${descHTML}`;
+    }
+
+    // Initial empty state — no walkthrough loaded yet.
+    renderRhythmStage(null);
 
     // ── Input mode: Chord vs Note ──────────────────────────────────
     let noteInputMode = false;
@@ -2139,13 +2317,20 @@
         _lastRoot = null;
         _lastQuality = null;
         chordBubble.clearHistory();
+        renderRhythmStage(null);
         HarmonyState.setTriad('C', 'major');
         const url = new URL(window.location);
         url.searchParams.delete('walkthrough');
         window.history.replaceState({}, '', url);
       },
-      onStep({ root, quality, transform }) {
+      onStep({ root, quality, transform, focus }) {
         if (_wtCapturing) _pushChord(root, quality, transform);
+        // Auto-switch the stage view if the step's focus targets a stage tab
+        // (e.g. focus: "rhythm" pops the rhythm tab on its arrival).
+        const focusList = Array.isArray(focus) ? focus : (focus ? [focus] : []);
+        for (const f of focusList) {
+          if (STAGE_LABELS[f]) { _setStageView(f); break; }
+        }
       },
       onExport() {
         if (!_sequence.length) return;
@@ -2189,6 +2374,7 @@
       songTitleEl.textContent  = song || wt.title || 'Walkthrough';
       songArtistEl.textContent = artist || wt.title || '';
       exitBtn.hidden = false;
+      renderRhythmStage(wt.rhythm || null);
       _wtSidebar.start(wt);
     }
 

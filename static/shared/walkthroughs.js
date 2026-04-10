@@ -139,6 +139,22 @@ const WALKTHROUGHS = {
     song: "Folsom Prison Blues — Johnny Cash",
     category: "Rhythm & Feel",
     seeAlso: { label: "Swing Trainer", href: "/games/swing-trainer" },
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 220,
+      feel: "Train beat",
+      description: "The train beat alternates bass on downbeats with muted strums on every upbeat. No drums needed — the guitar IS the rhythm section.",
+      pattern: [
+        { beat: "1", label: "BOOM", type: "bass" },
+        { beat: "&", label: "chk",  type: "strum" },
+        { beat: "2", label: "SNAP", type: "snare" },
+        { beat: "&", label: "chk",  type: "strum" },
+        { beat: "3", label: "BOOM", type: "bass" },
+        { beat: "&", label: "chk",  type: "strum" },
+        { beat: "4", label: "SNAP", type: "snare" },
+        { beat: "&", label: "chk",  type: "strum" }
+      ]
+    },
     steps: [
       {
         chord: "E",

@@ -518,6 +518,7 @@ class WalkthroughSidebar {
         root: parsed.root,
         quality: parsed.quality,
         transform: step.highlightTransform || null,
+        focus: step.focus || null,
       });
     }
 
