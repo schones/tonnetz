@@ -1,4 +1,4 @@
-// blocks.js — Custom Blockly block definitions for Skratch Studio
+// blocks.js — Custom Blockly block definitions for SkratchLab
 
 export function registerBlocks() {
 

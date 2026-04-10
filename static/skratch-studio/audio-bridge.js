@@ -1,4 +1,4 @@
-// audio-bridge.js — Connects Tone.js and mic pitch detection to the Skratch Studio sandbox
+// audio-bridge.js — Connects Tone.js and mic pitch detection to the SkratchLab sandbox
 //
 // Piano: uses Tone.Sampler loaded from the Salamander Grand Piano sample library
 //        (https://tonejs.github.io/audio/salamander/). Samples begin loading as soon

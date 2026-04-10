@@ -1,4 +1,4 @@
-// studio.js — Main entry point for Skratch Studio
+// studio.js — Main entry point for SkratchLab
 
 import { registerBlocks, getToolboxXml } from './blocks.js';
 import { registerGenerators } from './generators.js';

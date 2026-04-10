@@ -29,8 +29,8 @@ import { HarmonyState } from './harmony-state.js';
 
 const WHITE_W = 40;   // white key width, px
 const WHITE_H = 150;  // white key height, px
-const BLACK_W = 24;   // black key width, px
-const BLACK_H = 100;  // black key height, px
+const BLACK_W = 19;   // black key width, px (real piano ratio: 0.468 of white)
+const BLACK_H = 95;   // black key height, px (real piano ratio: 0.633 of white)
 
 /** Pitch class → is black key? */
 const BLACK_PCS = new Set([1, 3, 6, 8, 10]); // C#, D#, F#, G#, A#

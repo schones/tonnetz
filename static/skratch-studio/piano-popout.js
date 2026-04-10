@@ -1,4 +1,4 @@
-// piano-popout.js — Pop-out keyboard window for Skratch Studio
+// piano-popout.js — Pop-out keyboard window for SkratchLab
 //
 // This window has NO AudioBridge. All note-on/note-off/sustain events are
 // forwarded to the main studio window via BroadcastChannel, where the
@@ -142,7 +142,7 @@ channel.onmessage = (e) => {
           btnMarkMode.classList.add('active');
           piano.setMarkMode(true);
         }
-        statusMsg.textContent = 'Connected to Skratch Studio.';
+        statusMsg.textContent = 'Connected to SkratchLab.';
         break;
 
       case 'instrument':

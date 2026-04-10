@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skratch Studio — Keyboard</title>
+  <title>SkratchLab — Keyboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
   <!-- Tone.js — needed for BroadcastChannel message types that reference instrument names -->
   <style>
@@ -162,7 +162,7 @@
 
 <body>
   <div class="popout-header">
-    <span class="popout-header__title">&#9835; Skratch Studio — Keyboard</span>
+    <span class="popout-header__title">&#9835; SkratchLab — Keyboard</span>
     <div class="popout-controls">
       <select id="soundSelect" class="popout-select" aria-label="Instrument">
         <option value="piano">Piano</option>
@@ -201,7 +201,7 @@
     <div id="pianoContainer"></div>
   </div>
 
-  <div class="popout-status" id="statusMsg">Connecting to Skratch Studio…</div>
+  <div class="popout-status" id="statusMsg">Connecting to SkratchLab…</div>
 
   <script type="module" src="{{ url_for('static', filename='skratch-studio/piano-popout.js') }}"></script>
 </body>
