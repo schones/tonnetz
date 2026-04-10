@@ -23,6 +23,7 @@
 
 import { HarmonyState } from './harmony-state.js';
 import SONG_EXAMPLES from './song-examples.js';
+import { WALKTHROUGHS } from './walkthroughs.js';
 
 // ════════════════════════════════════════════════════════════════════
 // CHORD NAME PARSER (mirrors Explorer's _parseChordName)
@@ -115,6 +116,8 @@ class WalkthroughSidebar {
    * @param {Function}    [options.onExit]
    * @param {Function}    [options.onStep] — called as ({root, quality, transform}) on each step
    * @param {Function}    [options.onExport]
+   * @param {Function}    [options.onSelectSong] — called as (key, walkthrough) when the
+   *                       user picks a new song from the dropdown
    * @param {Function}    [options.playChord] — async (root, quality) => void
    */
   constructor(options = {}) {
@@ -124,13 +127,16 @@ class WalkthroughSidebar {
     this._onExit = options.onExit || (() => {});
     this._onStep = options.onStep || null;
     this._onExport = options.onExport || null;
+    this._onSelectSong = options.onSelectSong || null;
     this._playChord = options.playChord || null;
 
     this._walkthrough = null;
+    this._walkthroughKey = null;
     this._stepIndex = 0;
     this._prevChord = null;
 
     this._cacheRefs();
+    this._populateSongSelect();
     this._bindEvents();
     this.renderEmpty();
   }
@@ -151,6 +157,64 @@ class WalkthroughSidebar {
     this._nextBtn    = $('[data-wt-next]');
     this._exitBtn    = $('[data-wt-exit]');
     this._exportBtn  = $('[data-wt-export]');
+    this._songSelect = $('[data-wt-song-select]');
+  }
+
+  // ── Populate the "Choose a song" dropdown from WALKTHROUGHS ──────
+  _populateSongSelect() {
+    if (!this._songSelect) return;
+
+    // Preserve the placeholder option (first child) and rebuild the rest.
+    const placeholder = this._songSelect.querySelector('option[value=""]');
+    this._songSelect.innerHTML = '';
+    if (placeholder) this._songSelect.appendChild(placeholder);
+
+    // Group by category if present; otherwise sort alphabetically by title.
+    const entries = Object.entries(WALKTHROUGHS);
+    const hasCategories = entries.some(([, wt]) => wt && wt.category);
+
+    if (hasCategories) {
+      const groups = new Map();
+      entries.forEach(([key, wt]) => {
+        const cat = (wt && wt.category) || 'Other';
+        if (!groups.has(cat)) groups.set(cat, []);
+        groups.get(cat).push([key, wt]);
+      });
+      const sortedCats = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+      sortedCats.forEach(cat => {
+        const group = document.createElement('optgroup');
+        group.label = cat;
+        groups.get(cat)
+          .sort((a, b) => (a[1].title || '').localeCompare(b[1].title || ''))
+          .forEach(([key, wt]) => group.appendChild(this._makeSongOption(key, wt)));
+        this._songSelect.appendChild(group);
+      });
+    } else {
+      entries
+        .sort((a, b) => (a[1].title || '').localeCompare(b[1].title || ''))
+        .forEach(([key, wt]) => this._songSelect.appendChild(this._makeSongOption(key, wt)));
+    }
+  }
+
+  _makeSongOption(key, wt) {
+    const opt = document.createElement('option');
+    opt.value = key;
+    // Pull the song name out of "Song — Artist" for a more compact label.
+    const songPart = (wt.song || '').split(/ [\u2014—] /)[0].trim();
+    opt.textContent = songPart ? `${songPart} — ${wt.title}` : (wt.title || key);
+    return opt;
+  }
+
+  _findWalkthroughKey(wt) {
+    if (!wt) return null;
+    for (const key in WALKTHROUGHS) {
+      if (WALKTHROUGHS[key] === wt) return key;
+    }
+    // Fallback: match by title (in case a fresh object was passed in).
+    for (const key in WALKTHROUGHS) {
+      if (WALKTHROUGHS[key] && WALKTHROUGHS[key].title === wt.title) return key;
+    }
+    return null;
   }
 
   _bindEvents() {
@@ -158,6 +222,22 @@ class WalkthroughSidebar {
     if (this._nextBtn)   this._nextBtn.addEventListener('click', () => this._next());
     if (this._exitBtn)   this._exitBtn.addEventListener('click', () => this.exit());
     if (this._exportBtn) this._exportBtn.addEventListener('click', () => this._onExport && this._onExport());
+    if (this._songSelect) {
+      this._songSelect.addEventListener('change', (e) => {
+        const key = e.target.value;
+        if (!key) return;
+        const wt = WALKTHROUGHS[key];
+        if (!wt) return;
+        if (this._onSelectSong) {
+          // Delegate to the host (Explorer) so it can update song info bar,
+          // reset capture state, unlock audio on the user gesture, etc.
+          this._onSelectSong(key, wt);
+        } else {
+          // No host handler — just start it ourselves.
+          this.start(wt);
+        }
+      });
+    }
 
     document.addEventListener('keydown', (e) => {
       if (!this.active) return;
@@ -177,9 +257,13 @@ class WalkthroughSidebar {
   start(walkthrough) {
     if (!walkthrough || !walkthrough.steps || !walkthrough.steps.length) return;
     this._walkthrough = walkthrough;
+    this._walkthroughKey = this._findWalkthroughKey(walkthrough);
     this._stepIndex = 0;
     this._prevChord = null;
     this._root.classList.add('wts--active');
+    if (this._songSelect && this._walkthroughKey) {
+      this._songSelect.value = this._walkthroughKey;
+    }
     this._renderShell();
     this._goToStep(0);
   }
@@ -187,6 +271,7 @@ class WalkthroughSidebar {
   exit() {
     applyPanelFocus([]);
     this._walkthrough = null;
+    this._walkthroughKey = null;
     this._root.classList.remove('wts--active');
     this.renderEmpty();
     this._onExit();
@@ -202,7 +287,7 @@ class WalkthroughSidebar {
     if (this._counterEl)  this._counterEl.textContent = '—';
     if (this._progressEl) this._progressEl.style.setProperty('--wt-progress', '0%');
     if (this._titleEl)    this._titleEl.textContent = 'No walkthrough loaded';
-    if (this._songEl)     this._songEl.textContent = 'Pick a song from the home page to start a guided tour.';
+    if (this._songEl)     this._songEl.textContent = 'Pick a song above to start a guided tour.';
     if (this._stepsEl)    this._stepsEl.innerHTML = '';
     if (this._noteEl)     this._noteEl.textContent = '';
     if (this._alsoEl)     { this._alsoEl.textContent = ''; this._alsoEl.style.display = 'none'; }
@@ -210,6 +295,7 @@ class WalkthroughSidebar {
     if (this._exportBtn)  this._exportBtn.style.display = 'none';
     if (this._backBtn)    this._backBtn.disabled = true;
     if (this._nextBtn)    this._nextBtn.disabled = true;
+    if (this._songSelect) this._songSelect.value = '';
   }
 
   // ── Render shell when a walkthrough loads ────────────────────────

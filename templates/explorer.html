@@ -417,6 +417,54 @@
       transition: width 0.6s ease;
     }
 
+    /* ── Song selector (dropdown) ──────────────────────────── */
+    .wts__song-picker {
+      padding: var(--space-sm) var(--space-lg) var(--space-sm);
+      border-bottom: 1px solid var(--daw-border-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .wts__song-picker-label {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--daw-text-mute);
+    }
+    .wts__song-picker-select {
+      width: 100%;
+      padding: 7px 28px 7px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--daw-border);
+      background-color: var(--daw-elevated);
+      color: var(--daw-text);
+      font-family: inherit;
+      font-size: var(--font-size-sm);
+      line-height: 1.2;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23C99B3C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='1,1.5 6,6.5 11,1.5'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 10px 7px;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+    }
+    .wts__song-picker-select:hover {
+      border-color: var(--daw-text-mute);
+      background-color: var(--daw-raised);
+    }
+    .wts__song-picker-select:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px var(--gold-soft);
+    }
+    .wts__song-picker-select option {
+      background: var(--daw-surface);
+      color: var(--daw-text);
+    }
+
     .wts__title {
       padding: var(--space-md) var(--space-lg) 2px;
       font-family: var(--font-family-display);
@@ -1148,6 +1196,12 @@
           <span class="wts__counter" data-wt-counter>—</span>
         </div>
         <div class="wts__progress" data-wt-progress></div>
+      </div>
+      <div class="wts__song-picker">
+        <label class="wts__song-picker-label" for="wts-song-select">Choose a song</label>
+        <select class="wts__song-picker-select" id="wts-song-select" data-wt-song-select>
+          <option value="">— Select a walkthrough —</option>
+        </select>
       </div>
       <div class="wts__title" data-wt-title>No walkthrough loaded</div>
       <div class="wts__song" data-wt-song>Pick a song from the home page to start a guided tour.</div>
@@ -2037,6 +2091,26 @@
           bridge.close();
         } catch (err) {}
         window.open('/skratch-studio', '_blank');
+      },
+      async onSelectSong(key, wt) {
+        // User picked a song from the sidebar dropdown — this click is a
+        // user gesture, so we can unlock AudioContext directly instead of
+        // routing through the Begin overlay.
+        _suppressAutoPlay = false;
+        try { await ensureFullAudio(); } catch (_) {}
+        _startWalkthrough(wt);
+        // Reflect the selection in the URL so it stays shareable.
+        const url = new URL(window.location);
+        url.searchParams.set('walkthrough', key);
+        window.history.replaceState({}, '', url);
+        // Step 0's chord may match the currently loaded triad — in which
+        // case the HarmonyState subscriber won't auto-play it. Kick off
+        // the first chord explicitly.
+        const firstStep = wt.steps && wt.steps[0];
+        if (firstStep) {
+          const parsed = _parseChordName(firstStep.chord);
+          if (parsed) playChord(parsed.root, parsed.quality).catch(() => {});
+        }
       },
       playChord(root, quality) { return playChord(root, quality); },
     });
