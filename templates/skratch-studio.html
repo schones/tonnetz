@@ -4,10 +4,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skratch Studio — Music Theory Games</title>
+  <title>Skratch Studio — SongLab</title>
+
+  <!-- Google Fonts: Nunito (matches Explorer) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+  <!-- SongLab design tokens -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='shared/styles.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='skratch-studio/studio.css') }}">
+
   <!-- Blockly -->
   <script src="https://unpkg.com/blockly/blockly_compressed.js"></script>
   <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
@@ -20,259 +28,909 @@
   <script src="/static/shared/audio-toggle.js"></script>
   <!-- MidiWriterJS for MIDI export -->
   <script src="https://cdn.jsdelivr.net/npm/midi-writer-js@2.1.4/build/browser.min.js"></script>
+
   <style>
-    /* ── Welcome banner ── */
-    .intro-banner {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.65rem;
-      background: #181825;
-      border: 1px solid #3a3a50;
-      border-radius: 0.75rem;
-      padding: 0.7rem 1rem;
-      margin: 0.5rem 1rem;
-      max-height: 120px;
-      overflow: hidden;
-      animation: bannerSlideIn 0.35s ease;
-      transition: max-height 0.3s ease, opacity 0.25s ease,
-                  padding 0.3s ease, margin 0.3s ease;
+    /* ============================================================
+       Skratch Studio — SongLab DAW Layout
+       ------------------------------------------------------------
+       Mirrors the Explorer's dark DAW palette and component
+       conventions, layered on top of design-tokens.css.
+       ============================================================ */
+    :root {
+      /* DAW surface palette (shared with Explorer) */
+      --daw-deep:        #141310;
+      --daw-surface:     #181714;
+      --daw-raised:      #1F1D19;
+      --daw-elevated:    #25221C;
+      --daw-border:      #2A2620;
+      --daw-border-soft: #221F1A;
+      --daw-text:        #EFE9DC;
+      --daw-text-dim:    #9C9587;
+      --daw-text-mute:   #6A6457;
+      --daw-text-ghost:  #4B463B;
+
+      --gold:            var(--accent-gold);
+      --gold-soft:       rgba(212, 160, 60, 0.14);
+      --gold-edge:       rgba(212, 160, 60, 0.42);
+      --green:           var(--accent-transport);
+      --green-bright:    var(--accent-green);
+      --red:             #C0413B;
     }
-    @keyframes bannerSlideIn {
-      from { opacity: 0; transform: translateY(-6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .intro-banner--gone {
-      max-height: 0;
-      opacity: 0;
-      padding-top: 0;
-      padding-bottom: 0;
-      margin-top: 0;
-      margin-bottom: 0;
-      pointer-events: none;
-    }
-    .intro-banner__icon { flex-shrink: 0; font-size: 1rem; line-height: 1.5; }
-    .intro-banner__text {
-      flex: 1;
-      font-size: 0.82rem;
-      color: #9399b2;
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+
+    body {
+      background: var(--daw-deep);
+      color: var(--daw-text);
+      font-family: var(--font-family-base);
+      font-weight: var(--font-weight-regular);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
     }
-    .intro-banner__dismiss {
+
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; }
+
+    /* Hide the global floating audio toggle (we surface it in the nav) */
+    .audio-toggle-btn { display: none !important; }
+
+    /* ── Nav bar (matches Explorer) ────────────────────────── */
+    .sl-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-lg);
+      padding: 8px var(--space-xl);
+      background: var(--daw-deep);
+      border-bottom: 1px solid var(--daw-border);
       flex-shrink: 0;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #9399b2;
-      font-size: 1.2rem;
-      line-height: 1;
-      padding: 0 0.1rem;
-      opacity: 0.6;
-      transition: opacity 0.15s;
     }
-    .intro-banner__dismiss:hover { opacity: 1; }
+    .sl-brand { display: flex; align-items: center; gap: var(--space-md); flex-shrink: 0; }
+    .sl-logo {
+      width: 32px; height: 32px;
+      border-radius: var(--radius-md);
+      background: var(--accent-blue);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+    .sl-brand__name {
+      font-family: var(--font-family-display);
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text);
+      letter-spacing: -0.01em;
+    }
+    .sl-nav__links { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; }
+    .sl-nav__link {
+      padding: 5px 12px;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text-dim);
+      transition: var(--transition-color);
+    }
+    .sl-nav__link:hover { color: var(--daw-text); background: var(--daw-raised); }
+    .sl-nav__link--active { color: var(--gold); background: var(--gold-soft); }
+
+    .sl-nav__sound {
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-surface);
+      color: var(--daw-text-dim);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: var(--transition-color);
+    }
+    .sl-nav__sound:hover { color: var(--gold); border-color: var(--gold-edge); }
+
+    /* ── Transport bar ─────────────────────────────────────── */
+    .sk-transport {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-lg);
+      padding: var(--space-sm) var(--space-xl);
+      background: var(--daw-surface);
+      border-bottom: 1px solid var(--daw-border);
+      flex-shrink: 0;
+    }
+    .sk-transport__left,
+    .sk-transport__right {
+      display: flex; align-items: center; gap: var(--space-md);
+    }
+    .sk-tbtn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: var(--transition-color), transform var(--transition-fast);
+    }
+    .sk-tbtn:hover:not(:disabled) { transform: scale(1.05); }
+    .sk-tbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .sk-tbtn--play { background: var(--green); color: #fff; border-color: transparent; }
+    .sk-tbtn--play:hover:not(:disabled) { background: var(--green-bright); }
+    .sk-tbtn--stop { background: var(--red); color: #fff; border-color: transparent; }
+    .sk-tbtn--stop:hover:not(:disabled) { background: #d6534c; }
+
+    .sk-meter {
+      display: flex; flex-direction: column; align-items: flex-start;
+      gap: 1px;
+      padding: 0 var(--space-sm);
+      border-left: 1px solid var(--daw-border-soft);
+      min-width: 70px;
+    }
+    .sk-meter__label {
+      font-size: 9.5px;
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--daw-text-mute);
+    }
+    .sk-meter__value {
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+    .sk-bpm-input {
+      width: 50px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--daw-text);
+      font-family: inherit;
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-medium);
+      font-variant-numeric: tabular-nums;
+      padding: 0;
+      line-height: 1.1;
+      border-radius: var(--radius-sm);
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .sk-bpm-input::-webkit-outer-spin-button,
+    .sk-bpm-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .sk-bpm-input:hover { border-color: var(--daw-border); }
+    .sk-bpm-input:focus { outline: none; border-color: var(--gold-edge); background: var(--daw-raised); padding: 0 4px; }
+
+    .sk-meter__value--gold { color: var(--gold); }
+
+    .sk-loop-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      user-select: none;
+      transition: var(--transition-color);
+    }
+    .sk-loop-toggle input { display: none; }
+    .sk-loop-toggle:hover { color: var(--daw-text); border-color: var(--daw-text-mute); }
+    .sk-loop-toggle.is-on {
+      color: var(--gold);
+      background: var(--gold-soft);
+      border-color: var(--gold-edge);
+    }
+
+    .sk-midi-export {
+      padding: 7px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--gold);
+      background: var(--gold-soft);
+      color: var(--gold);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: var(--transition-color), transform var(--transition-fast);
+      white-space: nowrap;
+    }
+    .sk-midi-export:hover { background: var(--gold); color: var(--daw-deep); }
+
+    .sk-beat-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--daw-elevated);
+      border: 1px solid var(--daw-border);
+      flex-shrink: 0;
+      transition: background 0.05s;
+    }
+    .sk-beat-dot.flash { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+
+    /* ── Main row: sidebar | workspace | channel ───────────── */
+    .sk-main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      background: var(--daw-deep);
+    }
+
+    /* ── Sidebar (block category browser) ──────────────────── */
+    .sk-sidebar {
+      width: 158px;
+      flex-shrink: 0;
+      background: var(--daw-surface);
+      border-right: 1px solid var(--daw-border);
+      overflow-y: auto;
+      padding: var(--space-md) 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    .sk-sidebar__group { display: flex; flex-direction: column; }
+    .sk-sidebar__label {
+      font-size: 9.5px;
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--daw-text-mute);
+      padding: 0 var(--space-md) 6px;
+    }
+    .sk-cat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px var(--space-md);
+      background: transparent;
+      border: 0;
+      border-left: 2px solid transparent;
+      color: var(--daw-text-dim);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-regular);
+      text-align: left;
+      cursor: pointer;
+      transition: var(--transition-color);
+      width: 100%;
+    }
+    .sk-cat:hover { color: var(--daw-text); background: var(--daw-raised); }
+    .sk-cat.is-active {
+      color: var(--gold);
+      background: var(--gold-soft);
+      border-left-color: var(--gold);
+    }
+    .sk-cat__icon { font-size: 13px; width: 16px; text-align: center; }
+
+    /* ── Workspace (Blockly) ───────────────────────────────── */
+    .sk-workspace {
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .sk-blockly-host {
+      flex: 1;
+      position: relative;
+      background: var(--daw-deep);
+      background-image:
+        radial-gradient(circle, rgba(212, 160, 60, 0.06) 1px, transparent 1px);
+      background-size: 22px 22px;
+      overflow: hidden;
+    }
+    #blocklyDiv {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+    }
+
+    /* Blockly dark workspace tweaks */
+    .blocklyMainBackground { stroke: none !important; fill: transparent !important; }
+    .blocklySvg { background: transparent !important; }
+    /* Hide native Blockly toolbox column — our HTML sidebar drives selection */
+    .blocklyToolboxDiv { display: none !important; }
+    .blocklyFlyoutBackground { fill: var(--daw-surface) !important; fill-opacity: 0.97 !important; }
+    .blocklyFlyoutScrollbar .blocklyScrollbarHandle { fill: var(--daw-border) !important; }
+
+    .sk-error-bar {
+      position: absolute;
+      left: 12px; right: 12px; bottom: 12px;
+      background: var(--red);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-xs);
+      font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+      z-index: 5;
+    }
+
+    /* ── Right channel strip ───────────────────────────────── */
+    .sk-channel {
+      width: 232px;
+      flex-shrink: 0;
+      background: var(--daw-surface);
+      border-left: 1px solid var(--daw-border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sk-channel__section {
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--daw-border-soft);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    .sk-channel__label {
+      font-size: 9.5px;
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--daw-text-mute);
+    }
+
+    /* Segment toggle (instrument selector + sustain) */
+    .sk-seg {
+      display: flex;
+      gap: 0;
+      background: var(--daw-raised);
+      border: 1px solid var(--daw-border);
+      border-radius: var(--radius-md);
+      padding: 2px;
+    }
+    .sk-seg__btn {
+      flex: 1;
+      padding: 5px 6px;
+      background: transparent;
+      border: 0;
+      color: var(--daw-text-dim);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: var(--transition-color);
+    }
+    .sk-seg__btn:hover { color: var(--daw-text); }
+    .sk-seg__btn.is-on {
+      background: var(--gold-soft);
+      color: var(--gold);
+      box-shadow: inset 0 0 0 1px var(--gold-edge);
+    }
+
+    /* Compact keyboard mount */
+    .sk-keyboard-mount {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      /* shrink Piano widget to fit channel */
+      --sk-kw: 13px;
+      --sk-kh: 60px;
+      --sk-bkw: 8px;
+      --sk-bkh: 36px;
+      --sk-mdw: 6px;
+      --sk-bmdw: 5px;
+    }
+    .sk-keyboard-mount #pianoContainer { display: flex; justify-content: flex-start; }
+
+    /* Volume slider with readout */
+    .sk-vol-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sk-vol-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--gold);
+      height: 4px;
+      cursor: pointer;
+      background: transparent;
+    }
+    .sk-vol-row__value {
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-dim);
+      font-variant-numeric: tabular-nums;
+      min-width: 32px;
+      text-align: right;
+    }
+
+    /* Loop pedal — compact channel-strip layout */
+    .sk-lp__btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+    .sk-lp-btn {
+      padding: 5px 6px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      font-size: 11px;
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      text-align: center;
+      transition: var(--transition-color);
+    }
+    .sk-lp-btn:hover:not(:disabled) { color: var(--daw-text); border-color: var(--daw-text-mute); }
+    .sk-lp-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .sk-lp-btn--rec {
+      color: #fff; background: var(--red); border-color: var(--red);
+    }
+    .sk-lp-btn--rec:hover:not(:disabled) { background: #d6534c; }
+    .sk-lp-btn--rec.is-active { animation: sk-blink 0.9s ease-in-out infinite; }
+    .sk-lp-btn--dub.is-active { animation: sk-blink 0.9s ease-in-out infinite; }
+    .sk-lp-btn--play { color: var(--green-bright); border-color: rgba(76, 175, 80, 0.5); }
+    .sk-lp-btn--play:hover:not(:disabled) { background: rgba(76, 175, 80, 0.12); }
+    @keyframes sk-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+    .sk-lp-layers {
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .sk-lp-layer {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px;
+      color: var(--daw-text-mute);
+    }
+    .sk-lp-layer__name {
+      width: 18px;
+      font-weight: var(--font-weight-medium);
+      letter-spacing: 0.04em;
+    }
+    .sk-lp-layer__bar {
+      flex: 1;
+      height: 14px;
+      background: var(--daw-elevated);
+      border-radius: 3px;
+      border: 1px solid var(--daw-border);
+      overflow: hidden;
+      position: relative;
+    }
+    .sk-lp-layer__fill {
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, var(--gold-edge));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.2s ease;
+    }
+    .sk-lp-layer.has-content .sk-lp-layer__fill { transform: scaleX(0.85); }
+    .sk-lp-layer.has-content .sk-lp-layer__name { color: var(--daw-text); }
+    .sk-lp-layer__clear {
+      background: transparent; border: 0;
+      color: var(--daw-text-ghost);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+      transition: color var(--transition-fast);
+    }
+    .sk-lp-layer__clear:hover { color: var(--red); }
+
+    .sk-lp-status {
+      font-size: 10px;
+      color: var(--daw-text-mute);
+      line-height: 1.3;
+    }
+
+    /* Hidden DOM nodes that studio.js still references (preserved for
+       backwards compatibility — kept off-screen but functional) */
+    .sk-hidden {
+      position: absolute !important;
+      width: 1px; height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      left: -9999px;
+    }
+
+    /* Compact canvas inside channel strip */
+    .sk-canvas-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      background: var(--daw-deep);
+      border: 1px solid var(--daw-border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    #skratchCanvas {
+      width: 100%; height: 100%;
+      display: block;
+      image-rendering: auto;
+    }
+
+    /* Footer clear-buttons row */
+    .sk-clear-row {
+      display: flex; gap: 6px;
+    }
+    .sk-clear-btn {
+      flex: 1;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--daw-border);
+      background: transparent;
+      color: var(--daw-text-dim);
+      font-size: 11px;
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: var(--transition-color);
+    }
+    .sk-clear-btn:hover { color: var(--red); border-color: var(--red); }
+
+    /* ── Status bar ────────────────────────────────────────── */
+    .sk-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      padding: 6px var(--space-xl);
+      background: var(--daw-deep);
+      border-top: 1px solid var(--daw-border);
+      flex-shrink: 0;
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-mute);
+    }
+    .sk-status__import {
+      display: flex; align-items: center; gap: 6px;
+      min-width: 0;
+    }
+    .sk-status__import strong {
+      color: var(--gold);
+      font-weight: var(--font-weight-medium);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .sk-status__import-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sk-status__right {
+      display: flex; align-items: center; gap: var(--space-md);
+    }
+    .sk-status__link {
+      color: var(--daw-text-dim);
+      transition: var(--transition-color);
+    }
+    .sk-status__link:hover { color: var(--gold); }
+
+    /* Loop name modal — restyled for dark DAW */
+    .loop-name-modal {
+      background: var(--daw-surface);
+      color: var(--daw-text);
+      border: 1px solid var(--daw-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      min-width: 300px;
+    }
+    .loop-name-modal::backdrop { background: rgba(0, 0, 0, 0.65); }
+    .loop-name-modal__title {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: var(--font-weight-medium);
+      color: var(--gold);
+    }
+    .loop-name-modal__input {
+      display: block; width: 100%;
+      box-sizing: border-box;
+      background: var(--daw-raised);
+      color: var(--daw-text);
+      border: 1px solid var(--daw-border);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      font-size: 13px;
+      font-family: inherit;
+      margin-bottom: 12px;
+    }
+    .loop-name-modal__input:focus { outline: none; border-color: var(--gold-edge); }
+    .loop-name-modal__buttons { display: flex; gap: 8px; justify-content: flex-end; }
+    .loop-name-modal__buttons .sk-clear-btn { flex: 0 0 auto; padding: 6px 14px; }
+    .loop-name-modal__buttons .sk-clear-btn--ok {
+      color: var(--gold); border-color: var(--gold-edge); background: var(--gold-soft);
+    }
+    .loop-name-modal__buttons .sk-clear-btn--ok:hover {
+      background: var(--gold); color: var(--daw-deep);
+    }
+
+    /* ── Responsive collapse ───────────────────────────────── */
+    @media (max-width: 1100px) {
+      .sk-sidebar { width: 138px; }
+      .sk-channel { width: 210px; }
+    }
+    @media (max-width: 900px) {
+      .sk-sidebar { display: none; }
+    }
   </style>
 </head>
 
-<body style="background: #11111b; color: #cdd6f4; overflow: hidden;">
-  <header class="mtt-header" style="background: #181825; border-bottom: 1px solid #3a3a50;">
-    <a href="/" class="mtt-header__logo" style="text-decoration: none;">
-      <span aria-hidden="true">&#9835;</span> Music Theory Games
+<body>
+  <!-- ============ Nav ============ -->
+  <nav class="sl-nav">
+    <a href="/" class="sl-brand">
+      <span class="sl-logo" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 17.5V6.2L19 4v11.3" stroke="#D4A03C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <ellipse cx="7" cy="17.5" rx="2.5" ry="2" fill="#D4A03C"/>
+          <ellipse cx="17" cy="15.3" rx="2.5" ry="2" fill="#D4A03C"/>
+        </svg>
+      </span>
+      <span class="sl-brand__name">SongLab</span>
     </a>
-    <nav class="mtt-header__nav">
-      <a href="/" class="mtt-header__link">Home</a>
-      <a href="#" class="mtt-header__link mtt-header__link--active">Skratch Studio</a>
-      <a href="/skratch-studio/help" class="mtt-header__link" target="_blank" rel="noopener"
-        title="Open help guide in a new tab">&#10067; Help</a>
-    </nav>
-  </header>
+    <div class="sl-nav__links">
+      <a href="/explorer" class="sl-nav__link">Explorer</a>
+      <a href="/harmony" class="sl-nav__link">Ear training</a>
+      <a href="/rhythm" class="sl-nav__link">Rhythm &amp; play</a>
+      <a href="#" class="sl-nav__link sl-nav__link--active">Skratch Studio</a>
+      <a href="/games/chord-walks" class="sl-nav__link">Games</a>
+    </div>
+    <button id="sl-sound-toggle" class="sl-nav__sound" aria-label="Toggle sound" title="Toggle sound">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </button>
+  </nav>
 
-  <!-- First-visit welcome banner -->
-  <div id="skratch-welcome-banner" class="intro-banner" role="note" aria-label="Welcome tip">
-    <span class="intro-banner__icon" aria-hidden="true">&#128161;</span>
-    <span class="intro-banner__text">Build music by snapping blocks together. Drag a Play Note block from the toolbox, wrap it in a Repeat loop, and hit the green play button. Stack blocks to layer sounds.</span>
-    <button class="intro-banner__dismiss" id="skratch-banner-dismiss" aria-label="Dismiss welcome message">&#215;</button>
+  <!-- ============ Transport bar ============ -->
+  <div class="sk-transport">
+    <div class="sk-transport__left">
+      <button id="btnPlay" class="sk-tbtn sk-tbtn--play" title="Play" aria-label="Play">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button id="btnStop" class="sk-tbtn sk-tbtn--stop" title="Stop" aria-label="Stop" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+      </button>
+      <div id="beatIndicator" class="sk-beat-dot" aria-label="Beat indicator"></div>
+
+      <div class="sk-meter">
+        <span class="sk-meter__label">BPM</span>
+        <input id="bpmInput" class="sk-bpm-input" type="number" min="40" max="220" value="120" aria-label="Beats per minute">
+      </div>
+      <div class="sk-meter">
+        <span class="sk-meter__label">Key</span>
+        <span id="sk-key-display" class="sk-meter__value sk-meter__value--gold">C major</span>
+      </div>
+      <div class="sk-meter">
+        <span class="sk-meter__label">Bar</span>
+        <span id="sk-bar-display" class="sk-meter__value">1 / 4</span>
+      </div>
+    </div>
+    <div class="sk-transport__right">
+      <label class="sk-loop-toggle" id="sk-loop-toggle-label" title="Loop playback">
+        <input type="checkbox" id="chkLoop">
+        <span>↻ Loop</span>
+      </label>
+      <button id="btnExportMidi" class="sk-midi-export" title="Export MIDI">↓ MIDI</button>
+    </div>
   </div>
 
-  <main class="studio-layout">
-    <!-- Left: Blockly Workspace -->
-    <div class="studio-left">
-      <div class="blockly-container">
+  <!-- ============ Main row ============ -->
+  <div class="sk-main">
+
+    <!-- ── Sidebar (drives Blockly toolbox) ── -->
+    <aside class="sk-sidebar" id="sk-sidebar" aria-label="Block categories">
+      <div class="sk-sidebar__group">
+        <div class="sk-sidebar__label">Blocks</div>
+        <button class="sk-cat" data-cat-name="🎨 Visuals"><span class="sk-cat__icon">🎨</span>Visuals</button>
+        <button class="sk-cat" data-cat-name="🚀 Motion"><span class="sk-cat__icon">🚀</span>Motion</button>
+        <button class="sk-cat" data-cat-name="🎵 Events"><span class="sk-cat__icon">🎵</span>Events</button>
+        <button class="sk-cat" data-cat-name="🔊 Sound Data"><span class="sk-cat__icon">🔊</span>Sound Data</button>
+        <button class="sk-cat" data-cat-name="🔢 Math"><span class="sk-cat__icon">🔢</span>Math</button>
+        <button class="sk-cat" data-cat-name="🔁 Control"><span class="sk-cat__icon">🔁</span>Control</button>
+      </div>
+      <div class="sk-sidebar__group">
+        <div class="sk-sidebar__label">Instruments</div>
+        <button class="sk-cat" data-cat-name="🥁 Drums"><span class="sk-cat__icon">🥁</span>Drums</button>
+        <button class="sk-cat" data-cat-name="🎸 Bass"><span class="sk-cat__icon">🎸</span>Bass</button>
+        <button class="sk-cat" data-cat-name="🎹 Melody"><span class="sk-cat__icon">🎹</span>Melody</button>
+        <button class="sk-cat" data-cat-name="📋 Song"><span class="sk-cat__icon">📋</span>Song</button>
+      </div>
+      <div class="sk-sidebar__group">
+        <div class="sk-sidebar__label">Theory</div>
+        <button class="sk-cat" data-spawn-block="p_transform"><span class="sk-cat__icon">P</span>P transform</button>
+        <button class="sk-cat" data-spawn-block="l_transform"><span class="sk-cat__icon">L</span>L transform</button>
+        <button class="sk-cat" data-spawn-block="r_transform"><span class="sk-cat__icon">R</span>R transform</button>
+      </div>
+      <div class="sk-sidebar__group" id="sk-sidebar-loops" hidden>
+        <div class="sk-sidebar__label">My Loops</div>
+        <button class="sk-cat" data-cat-name="🎵 My Loops"><span class="sk-cat__icon">💾</span>My Loops</button>
+      </div>
+    </aside>
+
+    <!-- ── Workspace (Blockly) ── -->
+    <div class="sk-workspace">
+      <div class="sk-blockly-host">
         <div id="blocklyDiv"></div>
+        <div id="errorBar" class="sk-error-bar" hidden></div>
       </div>
     </div>
 
-    <!-- Right: Canvas + Controls + Code Preview -->
-    <div class="studio-right">
-      <div class="canvas-panel">
-        <!-- Canvas moved to the bottom of this panel for better visibility of controls -->
-        <div class="studio-controls">
-          <button id="btnPlay" class="btn btn--play" aria-label="Play">&#9654; Play</button>
-          <button id="btnStop" class="btn btn--stop" disabled aria-label="Stop">&#9632; Stop</button>
-          <label class="loop-toggle" title="Loop playback">
-            <input type="checkbox" id="chkLoop">
-            <span class="loop-toggle__label">&#x1F501; Loop</span>
-          </label>
-          <div id="beatIndicator" class="beat-indicator" aria-label="Beat indicator"></div>
-          <select id="canvasSizeSelect" class="starter-select" aria-label="Canvas Size"
-            style="margin-left: auto; margin-right: 8px;">
-            <option value="400">Size: Medium (400)</option>
-            <option value="200">Size: Small (200)</option>
-            <option value="600">Size: Large (600)</option>
-          </select>
-          <select id="starterSelect" class="starter-select" aria-label="Load a starter program" style="margin-left: 0;">
-            <option value="">Load a starter...</option>
-            <optgroup label="Visual">
-              <option value="circles">Circles</option>
-              <option value="rainbow">Rainbow Grid</option>
-              <option value="spiral">Spiral</option>
-              <option value="sound_circles">Sound Circles</option>
-              <option value="note_garden">Note Garden</option>
-              <option value="bounce">Bounce</option>
-            </optgroup>
-            <optgroup label="Music">
-              <option value="first_beat">First Beat</option>
-              <option value="bass_groove">Bass Groove</option>
-              <option value="my_first_song">My First Song</option>
-              <option value="beat_painter">Beat Painter</option>
-            </optgroup>
-            <option value="blank">Blank Canvas</option>
-          </select>
-          <button id="btnClearBlocks" class="btn btn--clear" aria-label="Clear all blocks">Clear Blocks</button>
-          <button id="btnClearCanvas" class="btn btn--clear" aria-label="Clear canvas">Clear Canvas</button>
-          <button id="btnExportMidi" class="btn btn--save-block" aria-label="Export MIDI">↓ MIDI</button>
+    <!-- ── Right channel strip ── -->
+    <aside class="sk-channel" aria-label="Channel strip">
+      <div class="sk-channel__section">
+        <div class="sk-channel__label">Instrument</div>
+        <div class="sk-seg" id="sk-inst-seg">
+          <button class="sk-seg__btn is-on" data-inst="piano">Piano</button>
+          <button class="sk-seg__btn" data-inst="choir_aahs">Choir</button>
+          <button class="sk-seg__btn" data-inst="synth">Synth</button>
         </div>
-        <!-- Audio controls: piano + mic + BPM -->
-        <div class="audio-controls">
-          <div class="audio-controls__row">
-            <button id="btnMic" class="btn btn--mic" aria-label="Toggle microphone">&#127908; Mic Off</button>
-            <div class="bpm-control">
-              <label for="bpmSlider" class="bpm-control__label">BPM</label>
-              <input id="bpmSlider" type="range" min="60" max="180" value="120" class="bpm-control__slider"
-                aria-label="Beats per minute">
-              <span id="bpmValue" class="bpm-control__value">120</span>
-            </div>
-            <div class="volume-control">
-              <label for="volumeSlider" class="bpm-control__label">VOL</label>
-              <input id="volumeSlider" type="range" min="0" max="100" value="75" class="bpm-control__slider"
-                aria-label="Volume">
-              <span id="volumeValue" class="bpm-control__value">75%</span>
-            </div>
-          </div>
-          <div class="piano-row">
-            <select id="soundSelect" class="sound-select" aria-label="Keyboard sound">
-              <option value="piano">Piano</option>
-              <option value="organ">Organ</option>
-              <option value="synth">Synth</option>
-              <option value="choir_aahs">Choir</option>
-              <option value="voice_oohs">Oohs</option>
-            </select>
-            <span id="pianoLoadingIndicator" class="piano-loading">Loading piano…</span>
-            <div id="pianoContainer" class="piano-container"></div>
-            <span id="sustainIndicator" class="sustain-indicator">Sustain: OFF</span>
-          </div>
-          <div class="piano-meta-row">
-            <select id="pianoLabelSelect" class="piano-meta-select" aria-label="Piano key labels"
-              title="Show labels on piano keys">
-              <option value="none">Labels: Off</option>
-              <option value="note">Note Names</option>
-              <option value="solfege">Solfège</option>
-            </select>
-            <button id="btnMarkMode" class="btn btn--mark" title="Click keys to place or remove red dot markers">✎
-              Mark</button>
-            <button id="btnClearMarks" class="btn btn--clear" title="Remove all markers">✕ Clear Marks</button>
-            <button id="btnPopOut" class="btn btn--popout" title="Open keyboard in a separate window">⇱ Pop Out</button>
-          </div>
+        <div class="sk-keyboard-mount">
+          <div id="pianoContainer"></div>
         </div>
-
-        <!-- ── Loop Pedal ── -->
-        <div class="loop-pedal-panel">
-          <div class="loop-pedal__header">
-            <span class="loop-pedal__title">&#127927; Loop Pedal</span>
-            <div class="loop-pedal__header-controls">
-              <select id="loopInputSource" class="loop-input-select" title="Input source for recording">
-                <option value="keyboard">&#9000;&#65039; Keyboard</option>
-                <option value="microphone">&#127908; Microphone</option>
-              </select>
-              <label class="loop-toggle" title="Snap loop length to nearest bar">
-                <input type="checkbox" id="chkQuantize">
-                <span class="loop-toggle__label">Quantize to bar</span>
-              </label>
-            </div>
-          </div>
-          <div class="loop-pedal__controls">
-            <button id="btnLoopRecord" class="btn btn--loop-record">&#9679; Rec [1]</button>
-            <button id="btnLoopStopRec" class="btn btn--loop-stoprec" disabled>&#9632; Stop</button>
-            <button id="btnLoopOverdub" class="btn btn--loop-overdub" disabled>&#8853; Overdub L2 [2]</button>
-            <button id="btnLoopPlay" class="btn btn--loop-play" disabled>&#9654; Play [3]</button>
-            <button id="btnClearL1" class="btn btn--clear" disabled>Clear L1</button>
-            <button id="btnClearL2" class="btn btn--clear" disabled>Clear L2</button>
-            <button id="btnClearL3" class="btn btn--clear" disabled>Clear L3</button>
-            <button id="btnLoopClearAll" class="btn btn--clear" disabled>&#8856; Clear All Loops</button>
-            <button id="btnSaveAsBlock" class="btn btn--save-block" disabled>&#128190; Save as Block</button>
-          </div>
-          <div class="loop-pedal__info">
-            <span id="loopPedalStatus" class="loop-pedal__status">Ready &#8212; press Record [1] to start</span>
-            <span id="loopLengthDisplay" class="loop-pedal__length"></span>
-          </div>
-          <div class="loop-pedal__viz">
-            <canvas id="loopPianoRoll" class="loop-viz-canvas" width="800" height="80"
-              title="Piano roll: time → pitch, colored by layer"></canvas>
-            <canvas id="loopBarViz" class="loop-viz-canvas" width="800" height="72"
-              title="Bar timeline: colored bars per layer (L1/L2/L3)"></canvas>
-          </div>
-        </div>
-
-        <div class="canvas-wrapper canvas-grid-bg" style="margin-top: 16px;">
-          <canvas id="skratchCanvas" width="400" height="400"></canvas>
-        </div>
-        <div id="errorBar" class="error-bar" hidden></div>
+        <span id="pianoLoadingIndicator" class="sk-channel__label" style="color: var(--gold);">Loading piano…</span>
       </div>
 
-      <div class="code-preview">
-        <div class="code-preview__header" id="codePreviewHeader" role="button" tabindex="0" aria-expanded="true"
-          aria-controls="codePreviewBody">
-          <div>
-            <span class="code-preview__title">See the Code</span>
-            <span class="code-preview__subtitle">Real JavaScript — visuals use Canvas API, music uses Tone.js!</span>
+      <div class="sk-channel__section">
+        <div class="sk-channel__label">Volume</div>
+        <div class="sk-vol-row">
+          <input id="volumeSlider" type="range" min="0" max="100" value="75" aria-label="Volume">
+          <span id="volumeValue" class="sk-vol-row__value">75%</span>
+        </div>
+        <div class="sk-channel__label">Sustain</div>
+        <div class="sk-seg" id="sk-sustain-seg">
+          <button class="sk-seg__btn is-on" data-sustain="off">Off</button>
+          <button class="sk-seg__btn" data-sustain="on">On</button>
+        </div>
+        <span id="sustainIndicator" style="display:none;">Sustain: OFF</span>
+      </div>
+
+      <div class="sk-channel__section">
+        <div class="sk-channel__label">Loop Pedal</div>
+        <div class="sk-lp__btns">
+          <button id="btnLoopRecord"  class="sk-lp-btn sk-lp-btn--rec">● Rec</button>
+          <button id="btnLoopStopRec" class="sk-lp-btn" disabled>■ Stop</button>
+          <button id="btnLoopOverdub" class="sk-lp-btn sk-lp-btn--dub" disabled>⊕ Dub</button>
+          <button id="btnLoopPlay"    class="sk-lp-btn sk-lp-btn--play" disabled>▶ Play</button>
+        </div>
+        <div class="sk-lp-layers">
+          <div class="sk-lp-layer" id="sk-layer-1">
+            <span class="sk-lp-layer__name">L1</span>
+            <div class="sk-lp-layer__bar"><div class="sk-lp-layer__fill"></div></div>
+            <button id="btnClearL1" class="sk-lp-layer__clear" title="Clear L1" disabled>✕</button>
           </div>
-          <div class="code-preview__actions">
-            <button id="btnCopy" class="btn--copy" aria-label="Copy code">Copy</button>
-            <span id="codePreviewToggle" class="code-preview__toggle open" aria-hidden="true">&#9660;</span>
+          <div class="sk-lp-layer" id="sk-layer-2">
+            <span class="sk-lp-layer__name">L2</span>
+            <div class="sk-lp-layer__bar"><div class="sk-lp-layer__fill"></div></div>
+            <button id="btnClearL2" class="sk-lp-layer__clear" title="Clear L2" disabled>✕</button>
+          </div>
+          <div class="sk-lp-layer" id="sk-layer-3">
+            <span class="sk-lp-layer__name">L3</span>
+            <div class="sk-lp-layer__bar"><div class="sk-lp-layer__fill"></div></div>
+            <button id="btnClearL3" class="sk-lp-layer__clear" title="Clear L3" disabled>✕</button>
           </div>
         </div>
-        <div class="code-preview__body" id="codePreviewBody">
-          <pre class="code-preview__code" id="codePreviewContent">// Drag blocks to start coding!</pre>
+        <div id="loopPedalStatus" class="sk-lp-status">Press Rec to start a loop</div>
+        <div class="sk-clear-row">
+          <button id="btnLoopClearAll" class="sk-clear-btn" disabled>Clear All</button>
+          <button id="btnSaveAsBlock"  class="sk-clear-btn" disabled>Save</button>
         </div>
       </div>
+
+      <div class="sk-channel__section">
+        <div class="sk-channel__label">Canvas</div>
+        <div class="sk-canvas-wrap">
+          <canvas id="skratchCanvas" width="200" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="sk-channel__section">
+        <div class="sk-clear-row">
+          <button id="btnClearBlocks" class="sk-clear-btn">Clear Blocks</button>
+          <button id="btnClearCanvas" class="sk-clear-btn">Clear Canvas</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ============ Status bar ============ -->
+  <footer class="sk-status">
+    <div class="sk-status__import" id="sk-import-info" hidden>
+      <strong>Imported</strong>
+      <span class="sk-status__import-text" id="sk-import-info-text"></span>
     </div>
-  </main>
+    <div class="sk-status__import" id="sk-status-default">
+      Build music by snapping blocks. Drag from a category, hit play, and stack to layer sounds.
+    </div>
+    <div class="sk-status__right">
+      <a class="sk-status__link" href="/explorer">← Back to Explorer</a>
+      <a class="sk-status__link" href="/skratch-studio" target="_blank" rel="noopener">Open in new tab</a>
+    </div>
+  </footer>
+
+  <!-- ── Hidden legacy controls (preserved for studio.js compatibility) ── -->
+  <div class="sk-hidden" aria-hidden="true">
+    <input id="bpmSlider" type="range" min="40" max="220" value="120">
+    <span id="bpmValue">120</span>
+    <select id="canvasSizeSelect">
+      <option value="200" selected>200</option>
+      <option value="400">400</option>
+      <option value="600">600</option>
+    </select>
+    <select id="starterSelect">
+      <option value="">Load a starter…</option>
+      <option value="circles">Circles</option>
+      <option value="rainbow">Rainbow Grid</option>
+      <option value="spiral">Spiral</option>
+      <option value="sound_circles">Sound Circles</option>
+      <option value="note_garden">Note Garden</option>
+      <option value="bounce">Bounce</option>
+      <option value="first_beat">First Beat</option>
+      <option value="bass_groove">Bass Groove</option>
+      <option value="my_first_song">My First Song</option>
+      <option value="beat_painter">Beat Painter</option>
+      <option value="blank">Blank</option>
+    </select>
+    <button id="btnMic">Mic Off</button>
+    <select id="soundSelect">
+      <option value="piano">Piano</option>
+      <option value="organ">Organ</option>
+      <option value="synth">Synth</option>
+      <option value="choir_aahs">Choir</option>
+      <option value="voice_oohs">Oohs</option>
+    </select>
+    <select id="pianoLabelSelect">
+      <option value="none" selected>Off</option>
+      <option value="note">Note</option>
+      <option value="solfege">Solfège</option>
+    </select>
+    <button id="btnMarkMode">Mark</button>
+    <button id="btnClearMarks">Clear Marks</button>
+    <button id="btnPopOut">Pop Out</button>
+    <select id="loopInputSource">
+      <option value="keyboard" selected>Keyboard</option>
+      <option value="microphone">Microphone</option>
+    </select>
+    <input type="checkbox" id="chkQuantize">
+    <span id="loopLengthDisplay"></span>
+    <canvas id="loopPianoRoll" width="800" height="80"></canvas>
+    <canvas id="loopBarViz"    width="800" height="72"></canvas>
+
+    <!-- Legacy code-preview (still wired by studio.js) -->
+    <div id="codePreviewHeader"><span id="codePreviewToggle" class="open"></span></div>
+    <div id="codePreviewBody"><pre id="codePreviewContent"></pre></div>
+    <button id="btnCopy">Copy</button>
+  </div>
 
   <!-- Loop name modal — replaces browser prompt() for "Save as Block" -->
   <dialog id="loopNameModal" class="loop-name-modal">
-    <p class="loop-name-modal__title">&#128190; Name Your Loop</p>
+    <p class="loop-name-modal__title">💾 Name Your Loop</p>
     <input type="text" id="loopNameInput" class="loop-name-modal__input" maxlength="40" autocomplete="off"
       spellcheck="false" autofocus>
     <div class="loop-name-modal__buttons">
-      <button id="loopNameOk" class="btn btn--save-block">Save</button>
-      <button id="loopNameCancel" class="btn btn--loop-stoprec">Cancel</button>
+      <button id="loopNameOk" class="sk-clear-btn sk-clear-btn--ok">Save</button>
+      <button id="loopNameCancel" class="sk-clear-btn">Cancel</button>
     </div>
   </dialog>
 
-  <script type="module">
-    import { getFeatureFlag, setFeatureFlag } from '/static/shared/user-profile.js';
-    const banner = document.getElementById('skratch-welcome-banner');
-    if (banner) {
-      if (getFeatureFlag('skratch_intro_seen')) {
-        banner.remove();
-      } else {
-        document.getElementById('skratch-banner-dismiss').addEventListener('click', () => {
-          setFeatureFlag('skratch_intro_seen', true);
-          banner.classList.add('intro-banner--gone');
-          banner.addEventListener('transitionend', () => banner.remove(), { once: true });
-        });
+  <!-- ============ Scripts ============ -->
+  <script src="{{ url_for('static', filename='shared/audio-toggle.js') }}"></script>
+
+  <script>
+    // ── Wire nav sound toggle to global AudioToggle ─────────────
+    (function () {
+      const ICON_ON  = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+      const ICON_OFF = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+      const btn = document.getElementById('sl-sound-toggle');
+      const floating = () => document.querySelector('.audio-toggle-btn');
+      function refresh() {
+        const muted = window.AudioToggle ? window.AudioToggle.isMuted() : false;
+        btn.innerHTML = muted ? ICON_OFF : ICON_ON;
+        btn.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+        btn.style.opacity = muted ? '0.55' : '1';
       }
-    }
+      btn.addEventListener('click', () => {
+        const f = floating();
+        if (f) f.click();
+        else refresh();
+      });
+      window.addEventListener('tonnetz:mute-changed', refresh);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', refresh);
+      } else { refresh(); }
+    })();
   </script>
+
   <script type="module">
     import { init } from '/static/skratch-studio/studio.js';
     init();

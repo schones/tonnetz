@@ -522,24 +522,24 @@ export function init() {
   toolboxContainer.innerHTML = combinedToolboxXml;
   document.body.appendChild(toolboxContainer);
 
-  // Create Blockly workspace with dark theme
+  // Create Blockly workspace with SongLab dark DAW theme
   const darkTheme = Blockly.Theme.defineTheme('skratchDark', {
     base: Blockly.Themes.Classic,
     componentStyles: {
-      workspaceBackgroundColour: '#1e1e2e',
-      toolboxBackgroundColour: '#181825',
-      toolboxForegroundColour: '#cdd6f4',
-      flyoutBackgroundColour: '#1e1e2e',
-      flyoutForegroundColour: '#cdd6f4',
-      flyoutOpacity: 0.95,
-      scrollbarColour: '#45475a',
-      insertionMarkerColour: '#cdd6f4',
-      insertionMarkerOpacity: 0.3,
-      scrollbarOpacity: 0.5,
-      cursorColour: '#f5e0dc'
+      workspaceBackgroundColour: 'transparent',
+      toolboxBackgroundColour: '#181714',
+      toolboxForegroundColour: '#EFE9DC',
+      flyoutBackgroundColour: '#181714',
+      flyoutForegroundColour: '#EFE9DC',
+      flyoutOpacity: 0.97,
+      scrollbarColour: '#2A2620',
+      insertionMarkerColour: '#D4A03C',
+      insertionMarkerOpacity: 0.4,
+      scrollbarOpacity: 0.6,
+      cursorColour: '#D4A03C'
     },
     fontStyle: {
-      family: 'system-ui, -apple-system, sans-serif',
+      family: "'Nunito', system-ui, -apple-system, sans-serif",
       size: 12
     }
   });
@@ -550,7 +550,7 @@ export function init() {
     grid: {
       spacing: 25,
       length: 3,
-      colour: '#313244',
+      colour: '#221F1A',
       snap: true
     },
     zoom: {
@@ -583,12 +583,23 @@ export function init() {
   document.getElementById('btnPlay').addEventListener('click', handlePlay);
   document.getElementById('btnStop').addEventListener('click', handleStop);
 
-  // Code preview toggle
+  // Code preview toggle (legacy hidden DOM — kept for parity)
   const previewHeader = document.getElementById('codePreviewHeader');
-  previewHeader.addEventListener('click', toggleCodePreview);
+  if (previewHeader) previewHeader.addEventListener('click', toggleCodePreview);
 
-  // Copy button
-  document.getElementById('btnCopy').addEventListener('click', handleCopy);
+  // Copy button (legacy hidden)
+  const btnCopy = document.getElementById('btnCopy');
+  if (btnCopy) btnCopy.addEventListener('click', handleCopy);
+
+  // ── DAW sidebar drives Blockly toolbox ──────────────────
+  setupSidebarToolbox(workspace);
+
+  // ── Loop toggle visual state (gold pill when checked) ──
+  const loopToggleLabel = document.getElementById('sk-loop-toggle-label');
+  const loopCheckbox = document.getElementById('chkLoop');
+  const syncLoopVisual = () => loopToggleLabel.classList.toggle('is-on', loopCheckbox.checked);
+  loopCheckbox.addEventListener('change', syncLoopVisual);
+  syncLoopVisual();
 
   // Starter program dropdown
   const starterSelect = document.getElementById('starterSelect');
@@ -665,6 +676,19 @@ export function init() {
     console.log('[Skratch import] Block chain complete —', chords.length, 'blocks created');
     generateCode();
     _showToast(`Imported ${chords.length} chord${chords.length !== 1 ? 's' : ''} from Explorer`);
+
+    // Drive the bottom status bar with the import provenance
+    const importInfo = document.getElementById('sk-import-info');
+    const importText = document.getElementById('sk-import-info-text');
+    const defaultMsg = document.getElementById('sk-status-default');
+    if (importInfo && importText) {
+      const songName = (chords[0] && chords[0].songName) ||
+                       sessionStorage.getItem('tonnetz-export-song') ||
+                       'from Explorer';
+      importText.textContent = `${songName} · ${chords.length} chord${chords.length !== 1 ? 's' : ''}`;
+      importInfo.hidden = false;
+      if (defaultMsg) defaultMsg.hidden = true;
+    }
   }
 
   // sessionStorage import moved after workspace load (below) so music_start block exists
@@ -713,6 +737,7 @@ export function init() {
   const pianoContainer = document.getElementById('pianoContainer');
   const sustainIndicator = document.getElementById('sustainIndicator');
   piano = new Piano(pianoContainer, {
+    keyWidth: 14, // compact for the DAW channel strip (~196px wide)
     onNoteOn: (noteName) => {
       audioBridge.noteOn(noteName);
       if (loopPedal) loopPedal.onNoteOn(noteName, document.getElementById('soundSelect').value);
@@ -732,6 +757,14 @@ export function init() {
         if (musicEngine) musicEngine.setSustain(false);
         sustainIndicator.textContent = 'Sustain: OFF';
         sustainIndicator.classList.remove('active');
+      }
+      // Reflect into the channel-strip Sustain segment toggle
+      const seg = document.getElementById('sk-sustain-seg');
+      if (seg) {
+        const want = on ? 'on' : 'off';
+        seg.querySelectorAll('.sk-seg__btn').forEach(b => {
+          b.classList.toggle('is-on', b.dataset.sustain === want);
+        });
       }
     },
     onMarkChange: (note, add) => {
@@ -952,6 +985,66 @@ export function init() {
 
   registerLoopContextMenu();
 
+  // ── Layer indicator polling (mirror loopPedal state into the channel strip) ──
+  const _layerEls = [
+    document.getElementById('sk-layer-1'),
+    document.getElementById('sk-layer-2'),
+    document.getElementById('sk-layer-3'),
+  ];
+  const _recBtn = document.getElementById('btnLoopRecord');
+  const _dubBtn = document.getElementById('btnLoopOverdub');
+  function _refreshLoopUi() {
+    if (!loopPedal) return;
+    for (let i = 0; i < 3; i++) {
+      const hasContent =
+        (loopPedal.layers[i] && loopPedal.layers[i].length > 0) ||
+        (loopPedal._layerAudio && loopPedal._layerAudio[i] !== null);
+      if (_layerEls[i]) _layerEls[i].classList.toggle('has-content', !!hasContent);
+    }
+    if (_recBtn) _recBtn.classList.toggle('is-active', loopPedal.state === 'recording1');
+    if (_dubBtn) _dubBtn.classList.toggle('is-active', loopPedal.state === 'overdubbing');
+  }
+  setInterval(_refreshLoopUi, 250);
+
+  // ── Instrument segment toggle (Piano / Choir / Synth) ──
+  const instSeg = document.getElementById('sk-inst-seg');
+  if (instSeg) {
+    instSeg.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-inst]');
+      if (!btn) return;
+      const value = btn.dataset.inst;
+      instSeg.querySelectorAll('.sk-seg__btn').forEach(b => b.classList.toggle('is-on', b === btn));
+      const sel = document.getElementById('soundSelect');
+      if (sel && sel.value !== value) {
+        sel.value = value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    // Reflect persisted instrument on load
+    const savedInst = localStorage.getItem('skratch-studio-instrument');
+    if (savedInst) {
+      const matchBtn = instSeg.querySelector(`[data-inst="${savedInst}"]`);
+      if (matchBtn) {
+        instSeg.querySelectorAll('.sk-seg__btn').forEach(b => b.classList.toggle('is-on', b === matchBtn));
+      }
+    }
+  }
+
+  // ── Sustain segment toggle (Off / On) ──
+  const sustainSeg = document.getElementById('sk-sustain-seg');
+  if (sustainSeg) {
+    sustainSeg.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-sustain]');
+      if (!btn) return;
+      const on = btn.dataset.sustain === 'on';
+      sustainSeg.querySelectorAll('.sk-seg__btn').forEach(b => b.classList.toggle('is-on', b === btn));
+      if (piano && piano._isSustained !== on) {
+        piano._isSustained = on;
+        piano.onSustainChange(on);
+      }
+    });
+  }
+
   // Clear Blocks button — clears only the Blockly workspace
   document.getElementById('btnClearBlocks').addEventListener('click', () => {
     if (!confirm('Are you sure? This will clear all blocks.')) return;
@@ -991,16 +1084,24 @@ export function init() {
   });
 
   // BPM control — drives both sandbox beat timers and Tone.Transport
+  // The visible control is `bpmInput` in the transport bar; `bpmSlider` is
+  // kept hidden for internal callers (loopPedal, popout sync, MIDI export).
   const bpmSlider = document.getElementById('bpmSlider');
   const bpmValue = document.getElementById('bpmValue');
-  bpmSlider.addEventListener('input', () => {
-    const bpm = parseInt(bpmSlider.value, 10);
-    bpmValue.textContent = bpm;
+  const bpmInput = document.getElementById('bpmInput');
+  function _applyBpm(bpm) {
+    bpm = Math.max(40, Math.min(220, bpm | 0));
+    if (bpmSlider) bpmSlider.value = String(bpm);
+    if (bpmValue)  bpmValue.textContent = String(bpm);
+    if (bpmInput && document.activeElement !== bpmInput) bpmInput.value = String(bpm);
     sandbox.setBpm(bpm);
-    if (musicEngine._started) {
-      musicEngine.setBpm(bpm);
-    }
-  });
+    if (musicEngine._started) musicEngine.setBpm(bpm);
+  }
+  bpmSlider.addEventListener('input', () => _applyBpm(parseInt(bpmSlider.value, 10)));
+  if (bpmInput) {
+    bpmInput.addEventListener('change', () => _applyBpm(parseInt(bpmInput.value, 10) || 120));
+    bpmInput.addEventListener('input',  () => _applyBpm(parseInt(bpmInput.value, 10) || 120));
+  }
 
   // Volume control
   const volumeSlider = document.getElementById('volumeSlider');
@@ -1194,6 +1295,9 @@ function buildMyLoopsToolboxXml() {
 function rebuildToolbox() {
   if (!workspace) return;
   workspace.updateToolbox(buildCombinedToolbox());
+  // Reflect My Loops visibility in the DAW sidebar
+  const myLoops = document.getElementById('sk-sidebar-loops');
+  if (myLoops) myLoops.hidden = loadLoopsFromStorage().length === 0;
 }
 
 function loadSavedLoops() {
@@ -1329,6 +1433,73 @@ function buildCombinedToolbox() {
     '</xml>',
     `  <sep gap="32"></sep>\n${musicXml}\n${myLoopsXml}\n</xml>`
   );
+}
+
+// ── DAW sidebar → Blockly toolbox bridge ───────────────────────────────────
+//
+// The native Blockly toolbox column is hidden via CSS; instead our HTML
+// sidebar in skratch-studio.html drives category selection. Each .sk-cat
+// button either selects a Blockly toolbox category by name (`data-cat-name`)
+// or spawns a single block on the workspace (`data-spawn-block`).
+function setupSidebarToolbox(ws) {
+  const sidebar = document.getElementById('sk-sidebar');
+  if (!sidebar || !ws) return;
+
+  function _findCategory(name) {
+    const tb = ws.getToolbox && ws.getToolbox();
+    if (!tb) return null;
+    const items = tb.getToolboxItems ? tb.getToolboxItems() : [];
+    for (const it of items) {
+      if (it && typeof it.getName === 'function' && it.getName() === name) return it;
+    }
+    return null;
+  }
+
+  function _spawnBlock(type) {
+    if (!ws || !type || !Blockly.Blocks[type]) return;
+    try {
+      const block = ws.newBlock(type);
+      block.initSvg();
+      block.render();
+      // Place near the visible workspace center
+      const metrics = ws.getMetrics();
+      const cx = (metrics.viewLeft + metrics.viewWidth / 2) / ws.scale;
+      const cy = (metrics.viewTop + metrics.viewHeight / 2) / ws.scale;
+      block.moveBy(cx - 60, cy - 20);
+      ws.centerOnBlock(block.id);
+    } catch (err) {
+      console.warn('[sidebar] failed to spawn', type, err);
+    }
+  }
+
+  function _setActive(btn) {
+    sidebar.querySelectorAll('.sk-cat').forEach(b => b.classList.toggle('is-active', b === btn));
+  }
+
+  sidebar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sk-cat');
+    if (!btn) return;
+    if (btn.dataset.spawnBlock) {
+      _spawnBlock(btn.dataset.spawnBlock);
+      _setActive(btn);
+      return;
+    }
+    if (btn.dataset.catName) {
+      const cat = _findCategory(btn.dataset.catName);
+      const tb = ws.getToolbox && ws.getToolbox();
+      if (cat && tb && tb.setSelectedItem) {
+        try { tb.setSelectedItem(cat); } catch (err) { console.warn(err); }
+      }
+      _setActive(btn);
+    }
+  });
+
+  // Reveal "My Loops" group only when there's at least one saved loop
+  const myLoops = document.getElementById('sk-sidebar-loops');
+  if (myLoops) {
+    const loops = loadLoopsFromStorage();
+    myLoops.hidden = loops.length === 0;
+  }
 }
 
 async function handlePlay() {
@@ -1573,9 +1744,9 @@ function scheduleMusicHighlight(blockId, time) {
 function drawCanvasGrid(canvas) {
   if (sandbox) sandbox.stop();
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#1e1e2e';
+  ctx.fillStyle = '#141310';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#2a2a3e';
+  ctx.fillStyle = 'rgba(212, 160, 60, 0.18)';
   for (let x = 0; x < canvas.width; x += 20) {
     for (let y = 0; y < canvas.height; y += 20) {
       ctx.beginPath();
