@@ -32,10 +32,10 @@
       --daw-elevated:    #25221C;
       --daw-border:      #2A2620;
       --daw-border-soft: #221F1A;
-      --daw-text:        #EFE9DC;
-      --daw-text-dim:    #9C9587;
-      --daw-text-mute:   #6A6457;
-      --daw-text-ghost:  #4B463B;
+      --daw-text:        #F2EDE0;
+      --daw-text-dim:    #B5AE9F;
+      --daw-text-mute:   #8A8374;
+      --daw-text-ghost:  #5E584C;
 
       /* Accents — pull gold from tokens for consistency */
       --gold:            var(--accent-gold);
@@ -77,16 +77,16 @@
       --font-main:       var(--font-family-base);
 
       /* ── Component-specific overrides for the dark DAW look ─ */
-      --keyboard-white-key-bg:     #2A2620;
-      --keyboard-black-key-bg:     #0E0B07;
+      --keyboard-white-key-bg:     #E8E2D6;
+      --keyboard-black-key-bg:     #1A1710;
       --keyboard-highlight-primary: var(--q-major-stroke);
       --color-border:              var(--daw-border);
       --color-primary:             var(--q-major-stroke);
 
-      --tonnetz-edge-stroke:       var(--daw-border);
-      --tonnetz-node-fill:         var(--daw-elevated);
-      --tonnetz-node-stroke:       var(--daw-border);
-      --tonnetz-label-color:       var(--daw-text-dim);
+      --tonnetz-edge-stroke:       #3A3630;
+      --tonnetz-node-fill:         #2A2620;
+      --tonnetz-node-stroke:       #3A3630;
+      --tonnetz-label-color:       #8A8374;
       --tonnetz-accent:            var(--gold);
 
       /* Override shared tonnetz quality vars so triangles
@@ -766,6 +766,7 @@
       flex: 1;
       position: relative;
       min-height: 0;
+      background: #1E1C17;
     }
 
     /* ── Walkthrough begin overlay (audio gesture gate) ──────── */
@@ -965,6 +966,43 @@
     .exp-note-controls { display: none; align-items: center; gap: 6px; }
     .exp-note-controls--visible { display: flex; }
 
+    .sl-info-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      color: var(--gold);
+      background: rgba(212, 160, 60, 0.10);
+      border: 1px solid rgba(212, 160, 60, 0.25);
+      font-size: 13px;
+      text-decoration: none;
+      transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+      flex-shrink: 0;
+      margin-left: 4px;
+      cursor: pointer;
+    }
+    .sl-info-pill:hover {
+      color: var(--gold);
+      background: rgba(212, 160, 60, 0.20);
+      border-color: rgba(212, 160, 60, 0.50);
+    }
+    .sl-info-pill__icon {
+      line-height: 1;
+    }
+    .sl-info-pill--label {
+      width: auto;
+      border-radius: 999px;
+      padding: 3px 8px 3px 6px;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: var(--font-weight-medium);
+    }
+    .sl-info-pill--label .sl-info-pill__icon {
+      font-size: 12px;
+    }
+
     /* ── Keyboard panel (compact reference strip) ──────────── */
     .exp-panel--keyboard {
       margin: 0 var(--space-md) 6px;
@@ -987,6 +1025,7 @@
       --keyboard-black-key-h: 63px;
     }
     #exp-keyboard-container .kv-note-label { font-size: var(--font-size-xs); font-weight: 600; }
+    #exp-keyboard-container .kv-key--white .kv-note-label { color: #3A3630; }
     #exp-keyboard-container .kv-common-dot { display: none !important; }
     .sl-key-header {
       display: flex; flex-direction: column; align-items: flex-start;
@@ -1035,6 +1074,9 @@
     }
     #exp-keyboard-container .kv-key--triad {
       transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+    #exp-keyboard-container .kv-key--triad.kv-key--white .kv-note-label {
+      color: #fff;
     }
 
     /* ── Fretboard panel ────────────────────────────────────── */
@@ -1232,10 +1274,18 @@
       <div class="sl-stage">
         <div class="exp-panel exp-panel--tonnetz">
           <div class="exp-panel__head">
-            <span class="exp-panel__label" id="sl-stage-label">Tonnetz Neighborhood</span>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span class="exp-panel__label" id="sl-stage-label">Tonnetz Neighborhood</span>
+              <a class="sl-info-pill sl-info-pill--label" href="/intro/4" target="_blank" rel="noopener" title="What is the Tonnetz?">
+                <span class="sl-info-pill__icon">ⓘ</span> Learn
+              </a>
+            </div>
             <div class="sl-panel-tabs">
               <button class="sl-panel-tab sl-panel-tab--active" id="sl-tab-tonnetz"   type="button" data-stage-view="tonnetz">Tonnetz</button>
               <button class="sl-panel-tab"                      id="sl-tab-wheel"     type="button" data-stage-view="wheel">Chord wheel</button>
+              <a class="sl-info-pill sl-info-pill--label" href="/theory/circle-of-fifths" target="_blank" rel="noopener" title="About the Circle of Fifths">
+                <span class="sl-info-pill__icon">ⓘ</span> Learn
+              </a>
               <button class="sl-panel-tab"                      id="sl-tab-fretboard" type="button" data-stage-view="fretboard">Fretboard</button>
             </div>
           </div>
@@ -1259,6 +1309,9 @@
       <div class="sl-controls">
         <div class="sl-ctrl-group">
           <span class="sl-ctrl-label">Transform</span>
+          <a class="sl-info-pill" href="/intro/5" target="_blank" rel="noopener" title="What are transforms?">
+            <span class="sl-info-pill__icon">ⓘ</span>
+          </a>
           <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-P" title="Parallel">P</button>
           <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-R" title="Relative">R</button>
           <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-L" title="Leading-tone">L</button>
@@ -1276,6 +1329,9 @@
         <div class="sl-divider"></div>
         <div class="sl-ctrl-group">
           <label class="sl-ctrl-label" for="exp-key">Key</label>
+          <a class="sl-info-pill" href="/theory/tonal-centers" target="_blank" rel="noopener" title="About tonal centers">
+            <span class="sl-info-pill__icon">ⓘ</span>
+          </a>
           <select class="sl-select" id="exp-key">
             <option value="0">C</option><option value="1">G</option><option value="2">D</option>
             <option value="3">A</option><option value="4">E</option><option value="5">B</option>
