@@ -1000,6 +1000,29 @@
       padding: var(--space-2xl);
     }
 
+    .rhythm-play {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--gold-edge);
+      background: var(--gold-soft);
+      color: var(--gold);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition-fast), transform var(--transition-fast);
+    }
+    .rhythm-play:hover { background: var(--gold); color: var(--daw-deep); }
+    .rhythm-play:active { transform: scale(0.95); }
+    .rhythm-play--playing { background: var(--gold); color: var(--daw-deep); }
+
+    .rhythm-beat__cell--active {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+
     /* Chord wheel kept in DOM (offscreen) so HarmonyState wiring stays alive */
     .exp-panel--chord-wheel {
       position: absolute;
@@ -1821,6 +1844,12 @@
     function _setStageView(name) {
       if (!STAGE_LABELS[name]) return;
 
+      // Stop rhythm playback when navigating away — no point ticking
+      // a playhead the user can't see.
+      if (name !== 'rhythm' && rhythmEngine.playing) {
+        rhythmEngine.stop();
+      }
+
       // Lazily create a stage-scoped fretboard the first time its tab is shown
       if (name === 'fretboard' && !_stageFretboard) {
         const host = document.getElementById('exp-fretboard-stage');
@@ -1848,9 +1877,17 @@
     });
 
     // ── Rhythm stage renderer ──────────────────────────────────────
+    let currentRhythmData = null;
+
     function renderRhythmStage(rhythm) {
       const container = document.getElementById('exp-rhythm-stage');
       if (!container) return;
+      // If rhythm is changing, stop any in-flight playback so the playhead
+      // doesn't keep ticking against a stale set of cells.
+      if (currentRhythmData !== rhythm) {
+        rhythmEngine.stop();
+      }
+      currentRhythmData = rhythm;
       if (!rhythm) {
         container.innerHTML = '<div class="rhythm-empty">No rhythm analysis for this song yet.</div>';
         return;
@@ -1872,6 +1909,10 @@
             <span class="rhythm-meta__label">Feel</span>
             <span class="rhythm-meta__value rhythm-meta__value--gold">${rhythm.feel}</span>
           </div>
+          <div class="rhythm-meta__divider"></div>
+          <button class="rhythm-play" id="rhythm-play-btn" type="button" title="Play rhythm pattern">
+            <span class="rhythm-play__icon" id="rhythm-play-icon">▶</span>
+          </button>
         </div>`;
 
       const patternHTML = rhythm.pattern.map(p => {
@@ -1896,7 +1937,104 @@
           <span class="rhythm-legend__item"><span class="rhythm-legend__dot rhythm-legend__dot--strum"></span>Muted strum</span>
         </div>
         ${descHTML}`;
+
+      const playBtn  = document.getElementById('rhythm-play-btn');
+      const playIcon = document.getElementById('rhythm-play-icon');
+      if (playBtn) {
+        playBtn.addEventListener('click', async () => {
+          try { await Tone.start(); } catch (_) {}
+          if (rhythmEngine.playing) {
+            rhythmEngine.stop();
+            playIcon.textContent = '▶';
+            playBtn.classList.remove('rhythm-play--playing');
+          } else if (currentRhythmData) {
+            rhythmEngine.start(currentRhythmData.pattern, currentRhythmData.bpm, currentRoot);
+            playIcon.textContent = '■';
+            playBtn.classList.add('rhythm-play--playing');
+          }
+        });
+      }
     }
+
+    // ── Rhythm playback engine ────────────────────────────────────
+    // Lightweight Tone.js rig that drums out the rhythm pattern alongside
+    // whatever chord HarmonyState has loaded. Bass note tracks the current
+    // chord root so the pattern follows progressions.
+    const rhythmEngine = {
+      _synths: null,
+      _sequence: null,
+      _playing: false,
+
+      init() {
+        if (this._synths) return;
+        this._synths = {
+          bass: new Tone.Synth({
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 },
+            volume: -6
+          }).toDestination(),
+          snare: new Tone.NoiseSynth({
+            noise: { type: 'white' },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.05 },
+            volume: -10
+          }).toDestination(),
+          strum: new Tone.NoiseSynth({
+            noise: { type: 'white' },
+            envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 },
+            volume: -16
+          }).toDestination()
+        };
+      },
+
+      start(pattern, bpm, rootNote) {
+        this.init();
+        this.stop();
+
+        Tone.Transport.bpm.value = bpm;
+        const events = pattern.map((step, i) => ({ ...step, _i: i }));
+
+        this._sequence = new Tone.Sequence((time, step) => {
+          if (step.type === 'bass') {
+            this._synths.bass.triggerAttackRelease(rootNote + '2', '8n', time);
+          } else if (step.type === 'snare') {
+            this._synths.snare.triggerAttackRelease('8n', time);
+          } else if (step.type === 'strum') {
+            this._synths.strum.triggerAttackRelease('16n', time);
+          }
+          Tone.Draw.schedule(() => {
+            this._updatePlayhead(step._i);
+          }, time);
+        }, events, '8n');
+
+        this._sequence.loop = true;
+        this._sequence.start(0);
+        Tone.Transport.start();
+        this._playing = true;
+      },
+
+      stop() {
+        if (this._sequence) {
+          this._sequence.stop();
+          this._sequence.dispose();
+          this._sequence = null;
+        }
+        Tone.Transport.stop();
+        this._playing = false;
+        this._updatePlayhead(-1);
+        const playBtn  = document.getElementById('rhythm-play-btn');
+        const playIcon = document.getElementById('rhythm-play-icon');
+        if (playBtn)  playBtn.classList.remove('rhythm-play--playing');
+        if (playIcon) playIcon.textContent = '▶';
+      },
+
+      _updatePlayhead(index) {
+        document.querySelectorAll('.rhythm-beat__cell').forEach((el, i) => {
+          el.classList.toggle('rhythm-beat__cell--active', i === index);
+        });
+      },
+
+      get playing() { return this._playing; }
+    };
 
     // Initial empty state — no walkthrough loaded yet.
     renderRhythmStage(null);
@@ -2317,6 +2455,7 @@
         _lastRoot = null;
         _lastQuality = null;
         chordBubble.clearHistory();
+        rhythmEngine.stop();
         renderRhythmStage(null);
         HarmonyState.setTriad('C', 'major');
         const url = new URL(window.location);
@@ -2330,6 +2469,15 @@
         const focusList = Array.isArray(focus) ? focus : (focus ? [focus] : []);
         for (const f of focusList) {
           if (STAGE_LABELS[f]) { _setStageView(f); break; }
+        }
+        // If the rhythm pattern is currently playing, restart it with the
+        // new chord root so the bass tracks the progression.
+        if (rhythmEngine.playing && currentRhythmData) {
+          rhythmEngine.start(currentRhythmData.pattern, currentRhythmData.bpm, root);
+          const playBtn  = document.getElementById('rhythm-play-btn');
+          const playIcon = document.getElementById('rhythm-play-icon');
+          if (playBtn)  playBtn.classList.add('rhythm-play--playing');
+          if (playIcon) playIcon.textContent = '■';
         }
       },
       onExport() {
