@@ -645,19 +645,20 @@ export function init() {
     startBlock.moveBy(20, 20);
 
     let connection = startBlock.getInput('DO').connection;
-    let timeIndex = 0;
 
-    // Build blocks from imported sequence
-    const beatOptions = ['0:0:0', '0:1:0', '0:2:0', '0:3:0'];
-
-    for (const chord of chords) {
-      const timeValue = beatOptions[Math.floor(timeIndex / 2) % 4] || '0:0:0';
+    // Build blocks from imported sequence — one chord per beat (quarter note),
+    // 4 chords per bar: chord i goes at bar=floor(i/4), beat=i%4
+    for (let i = 0; i < chords.length; i++) {
+      const chord = chords[i];
+      const bar = Math.floor(i / 4);
+      const beat = i % 4;
+      const timeValue = `${bar}:${beat}:0`;
 
       console.log('[Skratch import] Creating play_chord block:', chord.root, chord.quality);
       const newBlock = workspace.newBlock('play_chord');
       newBlock.setFieldValue(chord.root, 'ROOT');
       newBlock.setFieldValue(chord.quality, 'QUALITY');
-      newBlock.setFieldValue('2n', 'DURATION');
+      newBlock.setFieldValue('4n', 'DURATION');
       newBlock.setFieldValue(timeValue, 'TIME');
 
       newBlock.initSvg();
@@ -670,7 +671,6 @@ export function init() {
       }
 
       connection = newBlock.nextConnection;
-      timeIndex += 2;
     }
 
     console.log('[Skratch import] Block chain complete —', chords.length, 'blocks created');
@@ -737,7 +737,7 @@ export function init() {
   const pianoContainer = document.getElementById('pianoContainer');
   const sustainIndicator = document.getElementById('sustainIndicator');
   piano = new Piano(pianoContainer, {
-    keyWidth: 14, // compact for the DAW channel strip (~196px wide)
+    // Sizing handled via CSS variables on .sk-keyboard-mount (full-width primary instrument)
     onNoteOn: (noteName) => {
       audioBridge.noteOn(noteName);
       if (loopPedal) loopPedal.onNoteOn(noteName, document.getElementById('soundSelect').value);
@@ -816,6 +816,8 @@ export function init() {
 
   // Piano label mode selector
   const pianoLabelSelect = document.getElementById('pianoLabelSelect');
+  // Apply the dropdown's initial value (default is "note") so labels render as note names
+  piano.setLabelMode(pianoLabelSelect.value);
   pianoLabelSelect.addEventListener('change', () => {
     piano.setLabelMode(pianoLabelSelect.value);
   });

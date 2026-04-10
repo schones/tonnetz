@@ -667,6 +667,10 @@ const KeyboardView = {
 
     // ── Collect highlight data ─────────────────────────────────
     const highlights = new Map();  // "pc_octave" → { source, color }
+    const singleOctave = !!this._opts.singleOctaveHighlight;
+    const preferredOctave = this._opts.preferredOctave != null
+      ? this._opts.preferredOctave
+      : 4;
 
     if (mode !== 'input') {
       for (const an of (state.activeNotes || [])) {
@@ -677,6 +681,21 @@ const KeyboardView = {
           const k = `${pc}_${an.octave}`;
           if (!highlights.has(k)) {
             highlights.set(k, { source: an.source, color: an.color });
+          }
+        } else if (singleOctave) {
+          // Pick the single key whose octave is closest to preferredOctave
+          let bestKey = null;
+          let bestDist = Infinity;
+          for (const key of this._keys) {
+            if (key.pc !== pc) continue;
+            const d = Math.abs(key.octave - preferredOctave);
+            if (d < bestDist) { bestDist = d; bestKey = key; }
+          }
+          if (bestKey) {
+            const k = `${bestKey.pc}_${bestKey.octave}`;
+            if (!highlights.has(k)) {
+              highlights.set(k, { source: an.source, color: an.color });
+            }
           }
         } else {
           // All other sources (triad, interval, scale): apply to every octave in range

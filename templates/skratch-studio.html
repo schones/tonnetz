@@ -406,20 +406,44 @@
       box-shadow: inset 0 0 0 1px var(--gold-edge);
     }
 
-    /* Playable keyboard mount — sized for click/touch performance */
+    /* Playable keyboard mount — primary instrument, spans full channel width */
     .sk-keyboard-mount {
       width: 100%;
-      overflow-x: auto;
       padding-bottom: 6px;
-      /* Generous Piano widget sizing — this is a primary instrument here */
-      --sk-kw: 32px;
-      --sk-kh: 140px;
-      --sk-bkw: 20px;
-      --sk-bkh: 86px;
-      --sk-mdw: 12px;
-      --sk-bmdw: 9px;
+      /* Generous Piano widget sizing — this is the primary playable instrument */
+      --sk-kw: 64px;
+      --sk-kh: 320px;
+      --sk-bkw: 38px;
+      --sk-bkh: 200px;
+      --sk-bkm: -19px;
+      --sk-mdw: 18px;
+      --sk-bmdw: 14px;
+      --sk-lsz: 15px;
+      --sk-osz: 12px;
+      --sk-mdt: 170px;
+      --sk-bmdt: 60px;
     }
-    .sk-keyboard-mount #pianoContainer { display: flex; justify-content: center; }
+    .sk-keyboard-mount #pianoContainer { display: flex; justify-content: center; width: 100%; }
+    /* Stretch white keys to fill the full panel width while keeping black-key proportions */
+    .sk-keyboard-mount .sk-piano { width: 100%; }
+    .sk-keyboard-mount .sk-piano__key--white {
+      flex: 1 1 0;
+      width: auto;
+      min-width: 44px;
+    }
+    /* Note labels: bigger and more legible (font weight + dark color on white keys) */
+    .sk-keyboard-mount .sk-piano__key--white .sk-piano__label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      bottom: 8px;
+    }
+    .sk-keyboard-mount .sk-piano__key--black .sk-piano__label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #ddd;
+      bottom: 6px;
+    }
 
     /* Volume slider with readout */
     .sk-vol-row {
@@ -882,8 +906,8 @@
       <option value="voice_oohs">Oohs</option>
     </select>
     <select id="pianoLabelSelect">
-      <option value="none" selected>Off</option>
-      <option value="note">Note</option>
+      <option value="none">Off</option>
+      <option value="note" selected>Note</option>
       <option value="solfege">Solfège</option>
     </select>
     <button id="btnMarkMode">Mark</button>

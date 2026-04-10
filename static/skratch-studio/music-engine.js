@@ -157,7 +157,14 @@ export class MusicEngine {
   }
 
   start() {
-    Tone.Transport.start();
+    // Reset the transport to 0 and start with a small lookahead so events
+    // scheduled at exactly position 0 (e.g. the first play_chord at '0:0:0')
+    // are reliably picked up by the scheduler. Without the lookahead, Tone's
+    // tick walker can step past tick 0 before processing it and silently drop
+    // the downbeat — losing the first chord of an imported progression.
+    // Same workaround used in loop-pedal.js.
+    Tone.Transport.position = 0;
+    Tone.Transport.start(Tone.now() + 0.05);
   }
 
   stop() {

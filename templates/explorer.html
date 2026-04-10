@@ -960,21 +960,20 @@
     }
     .exp-panel--keyboard .exp-panel__head { display: none; }
     .exp-panel--keyboard .exp-panel__body {
-      padding: 4px 10px;
+      padding: 8px 12px;
       display: flex;
       flex-direction: row;
-      gap: 12px;
+      gap: 14px;
       align-items: center;
       overflow-x: auto;
-      max-height: 65px;
     }
     #exp-keyboard-container {
-      --keyboard-white-key-w: 22px;
-      --keyboard-white-key-h: 52px;
-      --keyboard-black-key-w: 14px;
-      --keyboard-black-key-h: 32px;
+      --keyboard-white-key-w: 32px;
+      --keyboard-white-key-h: 60px;
+      --keyboard-black-key-w: 20px;
+      --keyboard-black-key-h: 38px;
     }
-    #exp-keyboard-container .kv-note-label { font-size: 8px; }
+    #exp-keyboard-container .kv-note-label { font-size: 11px; font-weight: 600; }
     #exp-keyboard-container .kv-common-dot { display: none !important; }
     .sl-key-header {
       display: flex; flex-direction: column; align-items: flex-start;
@@ -1584,7 +1583,13 @@
     TonnetzNeighborhood.init('exp-tonnetz-container', {
       interactive: true,
       onTriadClick({ root, quality }) {
+        // Always re-trigger audio on click (even if the same chord is already
+        // active). The HarmonyState subscriber dedupes auto-play for unchanged
+        // chords, so we suppress its play and fire the audio directly here.
+        _suppressAutoPlay = true;
         HarmonyState.setTriad(root, quality);
+        _suppressAutoPlay = false;
+        playChord(root, quality).catch(() => {});
       },
       onTransformClick({ type, from }) {
         HarmonyState.setTransform(type, from.root, from.quality);
@@ -1687,6 +1692,8 @@
       showLabels: true,
       mode: 'both',
       noInternalAudio: true,
+      singleOctaveHighlight: true,
+      preferredOctave: 4,
       onNotePlay(noteName, octave) {
         if (noteInputMode) {
           HarmonyState.toggleNote(noteName, octave);
