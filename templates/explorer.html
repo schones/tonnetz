@@ -1818,9 +1818,12 @@
     btnExport.addEventListener('click', () => {
       if (!_sequence.length) return;
       sessionStorage.setItem('tonnetz-export-sequence', JSON.stringify(_sequence));
+      if (currentRhythmData) {
+        sessionStorage.setItem('tonnetz-export-rhythm', JSON.stringify(currentRhythmData));
+      }
       try {
         const bridge = new BroadcastChannel('tonnetz-skratch-bridge');
-        bridge.postMessage({ type: 'import_sequence', chords: _sequence });
+        bridge.postMessage({ type: 'import_sequence', chords: _sequence, rhythm: currentRhythmData || null });
         bridge.close();
       } catch (err) {}
       window.open('/skratchlab', '_blank');
@@ -2610,9 +2613,12 @@
       onExport() {
         if (!_sequence.length) return;
         sessionStorage.setItem('tonnetz-export-sequence', JSON.stringify(_sequence));
+        if (currentRhythmData) {
+          sessionStorage.setItem('tonnetz-export-rhythm', JSON.stringify(currentRhythmData));
+        }
         try {
           const bridge = new BroadcastChannel('tonnetz-skratch-bridge');
-          bridge.postMessage({ type: 'import_sequence', chords: _sequence });
+          bridge.postMessage({ type: 'import_sequence', chords: _sequence, rhythm: currentRhythmData || null });
           bridge.close();
         } catch (err) {}
         window.open('/skratchlab', '_blank');

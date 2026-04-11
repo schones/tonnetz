@@ -699,6 +699,9 @@ export function init() {
     const msg = e.data;
     if (msg.type !== 'import_sequence') return;
     _importSequence(msg.chords);
+    if (msg.rhythm) {
+      window.dispatchEvent(new CustomEvent('skratch-import-rhythm', { detail: msg.rhythm }));
+    }
   };
 
   // Canvas size dropdown

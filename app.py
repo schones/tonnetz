@@ -248,6 +248,11 @@ def explorer():
     return render_template("explorer.html")
 
 
+@app.route("/tutorial")
+def tutorial():
+    return render_template("tutorial.html")
+
+
 @app.route("/chord-wheel-test")
 def chord_wheel_test():
     return render_template("chord-wheel-test.html")

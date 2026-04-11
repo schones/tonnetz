@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Your first exploration — SongLab{% endblock %}
+
+{% block head %}
+<style>
+  .tut {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-2xl);
+  }
+
+  .tut-section {
+    margin-bottom: 3rem;
+  }
+
+  .tut-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+  }
+
+  .tut-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #2D5F8A;
+    color: #FFFFFF;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .tut-heading {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-medium);
+    margin: 0;
+  }
+
+  .tut-text {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: var(--space-md);
+  }
+
+  .tut-callout {
+    border-left: 3px solid var(--accent-gold, #D4A03C);
+    background: var(--bg-raised, #FBF8EF);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--space-md);
+  }
+
+  .tut-link {
+    color: #D4A03C;
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+  }
+
+  .tut-link:hover {
+    text-decoration: underline;
+  }
+
+  .tut-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-md);
+  }
+
+  .tut-card {
+    padding: var(--space-md);
+    border: 1px solid var(--border-color, #D9D2C0);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s;
+  }
+
+  .tut-card:hover {
+    border-color: #2D5F8A;
+  }
+
+  .tut-card__song {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+  }
+
+  .tut-card__desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-top: var(--space-xs);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tut">
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">1</span>
+      <h2 class="tut-heading">Pick a song you know</h2>
+    </div>
+    <p class="tut-text">
+      The home page shows songs organized by audience — Kids, Students, and Musicians.
+      Each card is a guided walkthrough that teaches you something about how that song works.
+      Let's try Norwegian Wood by The Beatles.
+    </p>
+    <div class="tut-callout">
+      Each card shows the song's key and what you'll learn — modes, progressions, rhythm, or voice leading.
+    </div>
+    <a class="tut-link" href="/">Go to home page →</a>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">2</span>
+      <h2 class="tut-heading">Follow the guide</h2>
+    </div>
+    <p class="tut-text">
+      When you open a song, the left sidebar walks you through it step by step. Each step
+      highlights a chord and explains what's happening musically. Use the Next and Back
+      buttons, or click any step to jump around.
+    </p>
+    <div class="tut-callout">
+      The progress bar at the top shows how far through the walkthrough you are.
+      The teaching text at the bottom is the most important part — read it!
+    </div>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">3</span>
+      <h2 class="tut-heading">See harmony in space</h2>
+    </div>
+    <p class="tut-text">
+      The main panel shows the Tonnetz — a map where every chord is a triangle and nearby
+      triangles share notes. When Norwegian Wood moves from G major to F major, watch how
+      close they are on the grid. That closeness is why the move sounds natural.
+    </p>
+    <div class="tut-callout">
+      Tap the ⓘ Learn pill next to "Tonnetz Neighborhood" to read more about how the Tonnetz works.
+    </div>
+    <a class="tut-link" href="/explorer?walkthrough=mixolydian">Try Norwegian Wood →</a>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">4</span>
+      <h2 class="tut-heading">Another way to see it</h2>
+    </div>
+    <p class="tut-text">
+      Click the "Chord wheel" tab to see the same harmony on the Circle of Fifths — the
+      traditional way musicians visualize key relationships. The Tonnetz shows you geometric
+      closeness; the wheel shows you functional relationships.
+    </p>
+    <div class="tut-callout">
+      Tap the ⓘ Learn pill next to the Chord wheel tab to learn about the Circle of Fifths.
+    </div>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">5</span>
+      <h2 class="tut-heading">One note at a time</h2>
+    </div>
+    <p class="tut-text">
+      The P, R, and L buttons in the controls bar are transforms — they flip exactly one
+      note to move from one chord to the next. In Norwegian Wood, the move from G to F
+      isn't a standard key change — it's a modal borrowing. The Tonnetz makes moves like
+      this visible.
+    </p>
+    <div class="tut-callout">
+      Tap ⓘ next to "Transform" to learn what P, R, and L do. These are the building blocks
+      of voice leading — the art of moving between chords as smoothly as possible.
+    </div>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">6</span>
+      <h2 class="tut-heading">Practice what you heard</h2>
+    </div>
+    <p class="tut-text">
+      Each walkthrough step shows "Try this" game pills when there's a relevant exercise.
+      Norwegian Wood's Mixolydian mode connects to the Scale Builder — you can build the
+      Mixolydian scale yourself and hear how it differs from regular major.
+    </p>
+    <div class="tut-callout">
+      Game pills link directly into the game with the right key and mode pre-loaded.
+      You don't have to configure anything.
+    </div>
+    <a class="tut-link" href="/games/scale-builder?mode=mixolydian&root=G">Try Scale Builder →</a>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">7</span>
+      <h2 class="tut-heading">Feel the groove</h2>
+    </div>
+    <p class="tut-text">
+      Click the Rhythm tab to see the song's beat pattern. Norwegian Wood is in 6/8 — six
+      beats per bar instead of the usual eight. That's what gives it the gentle rocking
+      waltz feel. Hit the play button to hear it, and use the tempo slider to slow it down.
+    </p>
+    <div class="tut-callout">
+      Every song has rhythm data — even a standard 4/4 backbeat is worth understanding.
+      The Rhythm tab shows time signature, BPM, feel, and a visual breakdown of the beat.
+    </div>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">8</span>
+      <h2 class="tut-heading">Play along</h2>
+    </div>
+    <p class="tut-text">
+      The keyboard at the bottom isn't just for display — click any key to play notes over
+      the running rhythm. Hold Shift for sustain. Use the Rhythm and Chords volume sliders
+      to balance the mix.
+    </p>
+    <div class="tut-callout">
+      In Chord mode, clicking a white key plays the full chord built on that note.
+      Switch to Note mode to play individual notes — great for picking out melodies.
+    </div>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">9</span>
+      <h2 class="tut-heading">Take it to the lab</h2>
+    </div>
+    <p class="tut-text">
+      Hit the Record button in the bottom bar, click through some chords, then press
+      → SkratchLab. Your chord progression exports as building blocks, and the rhythm
+      pattern pre-loads in the Rhythm Builder grid.
+    </p>
+    <div class="tut-callout">
+      SkratchLab is where you build — drag blocks to create chord progressions, add drum
+      patterns, and experiment with your own arrangements.
+    </div>
+    <a class="tut-link" href="/skratchlab">Open SkratchLab →</a>
+  </section>
+
+  <section class="tut-section">
+    <div class="tut-header">
+      <span class="tut-badge">10</span>
+      <h2 class="tut-heading">Every song teaches something</h2>
+    </div>
+    <p class="tut-text">
+      Norwegian Wood taught you about Mixolydian mode, 6/8 time, and how the Tonnetz
+      reveals hidden connections. Every other walkthrough teaches something different.
+      The more songs you explore, the more patterns you'll start recognizing in everything
+      you hear.
+    </p>
+    <div class="tut-cards">
+      <a class="tut-card" href="/explorer?walkthrough=let_it_go_pop_formula">
+        <div class="tut-card__song">Let It Go</div>
+        <div class="tut-card__desc">The Pop Formula — learn the I-V-vi-IV progression</div>
+      </a>
+      <a class="tut-card" href="/explorer?walkthrough=stand_by_me_doo_wop">
+        <div class="tut-card__song">Stand By Me</div>
+        <div class="tut-card__desc">The Doo-Wop Loop — the progression behind a thousand songs</div>
+      </a>
+      <a class="tut-card" href="/explorer?walkthrough=folsom_train_beat">
+        <div class="tut-card__song">Folsom Prison Blues</div>
+        <div class="tut-card__desc">The Train Beat — rhythm that drives like a locomotive</div>
+      </a>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

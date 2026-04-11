@@ -1372,10 +1372,44 @@
       }
     };
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => RhythmBuilder.init());
-    } else {
+    function _applyImportedRhythm(rhythm) {
+      if (!rhythm || !rhythm.pattern) return;
+      const preset = {};
+      const instMap = { bass: 'kick', snare: 'snare', strum: 'strum' };
+      rhythm.pattern.forEach((p, i) => {
+        const inst = instMap[p.type] || p.type;
+        if (!preset[inst]) preset[inst] = [];
+        preset[inst].push(i);
+      });
+      RhythmBuilder._loadPreset(preset);
+      if (rhythm.bpm) {
+        RhythmBuilder._bpm = rhythm.bpm;
+        const s = document.getElementById('rb-bpm');
+        const v = document.getElementById('rb-bpm-value');
+        if (s) s.value = rhythm.bpm;
+        if (v) v.textContent = rhythm.bpm;
+      }
+    }
+
+    function _initRhythmBuilderWithImport() {
       RhythmBuilder.init();
+      try {
+        const exportedRhythm = sessionStorage.getItem('tonnetz-export-rhythm');
+        if (exportedRhythm) {
+          sessionStorage.removeItem('tonnetz-export-rhythm');
+          _applyImportedRhythm(JSON.parse(exportedRhythm));
+        }
+      } catch (err) { console.error('[Skratch] rhythm import error:', err); }
+    }
+
+    window.addEventListener('skratch-import-rhythm', (e) => {
+      _applyImportedRhythm(e.detail);
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', _initRhythmBuilderWithImport);
+    } else {
+      _initRhythmBuilderWithImport();
     }
   </script>
 </body>
