@@ -166,6 +166,90 @@
         font-size: var(--font-size-xs);
       }
     }
+
+    /* ── Dropdown nav groups ────────────────────────────────── */
+    .sl-nav-dropdown {
+      position: relative;
+    }
+    .sl-nav-dropdown__trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 14px;
+      border-radius: var(--radius-md, 6px);
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: var(--font-size-sm, 0.88rem);
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+    }
+    .sl-nav-dropdown__trigger:hover {
+      color: var(--text-primary);
+      background: var(--bg-raised, #FBF8EF);
+    }
+    .sl-nav-dropdown__arrow {
+      font-size: 0.6em;
+      opacity: 0.5;
+      margin-top: 1px;
+    }
+    .sl-nav-dropdown__menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 0;
+      min-width: 180px;
+      padding: 6px;
+      background: var(--bg-surface, #FFFFFF);
+      border: 1px solid var(--border, #D9D2C0);
+      border-radius: var(--radius-lg, 8px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      z-index: 100;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sl-nav-dropdown:hover .sl-nav-dropdown__menu,
+    .sl-nav-dropdown:focus-within .sl-nav-dropdown__menu {
+      display: flex;
+    }
+    .sl-nav-dropdown__item {
+      display: block;
+      padding: 6px 12px;
+      border-radius: var(--radius-md, 6px);
+      font-size: var(--font-size-sm, 0.88rem);
+      font-weight: 500;
+      color: var(--text-primary);
+      text-decoration: none;
+      transition: background 0.1s, color 0.1s;
+    }
+    .sl-nav-dropdown__item:hover {
+      background: rgba(45, 95, 138, 0.08);
+      color: var(--accent, #2D5F8A);
+    }
+    .sl-nav-dropdown__item--active {
+      color: var(--accent, #2D5F8A);
+      background: rgba(45, 95, 138, 0.08);
+    }
+
+    [data-theme="dark"] .sl-nav-dropdown__menu {
+      background: var(--bg-card, #1C1C24);
+      border-color: var(--border, #2E2E3A);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    [data-theme="dark"] .sl-nav-dropdown__item {
+      color: var(--text-primary, #F2EFE6);
+    }
+    [data-theme="dark"] .sl-nav-dropdown__item:hover {
+      background: rgba(58, 139, 201, 0.12);
+      color: var(--accent, #3A8BC9);
+    }
+    [data-theme="dark"] .sl-nav-dropdown__item--active {
+      background: rgba(58, 139, 201, 0.12);
+      color: var(--accent, #3A8BC9);
+    }
   </style>
 
   {% block head %}{% endblock %}
@@ -185,10 +269,45 @@
     </a>
     <div class="sl-nav__links">
       <a href="/explorer" class="sl-nav__link">Explorer</a>
-      <a href="/harmony" class="sl-nav__link">Ear training</a>
-      <a href="/rhythm" class="sl-nav__link">Rhythm &amp; play</a>
       <a href="/skratchlab" class="sl-nav__link">SkratchLab</a>
-      <a href="/games/chord-walks" class="sl-nav__link">Games</a>
+
+      <div class="sl-nav-dropdown">
+        <button class="sl-nav__link sl-nav-dropdown__trigger">Ear training <span class="sl-nav-dropdown__arrow">▾</span></button>
+        <div class="sl-nav-dropdown__menu">
+          <a href="/harmony" class="sl-nav-dropdown__item">Harmony Trainer</a>
+          <a href="/chord-identification" class="sl-nav-dropdown__item">Chord Spotter</a>
+          <a href="/melody" class="sl-nav-dropdown__item">Melody Match</a>
+          <a href="/games/swing-trainer" class="sl-nav-dropdown__item">Swing Trainer</a>
+        </div>
+      </div>
+
+      <div class="sl-nav-dropdown">
+        <button class="sl-nav__link sl-nav-dropdown__trigger">Rhythm &amp; play <span class="sl-nav-dropdown__arrow">▾</span></button>
+        <div class="sl-nav-dropdown__menu">
+          <a href="/rhythm" class="sl-nav-dropdown__item">Rhythm Lab</a>
+          <a href="/strumming" class="sl-nav-dropdown__item">Strum Patterns</a>
+        </div>
+      </div>
+
+      <div class="sl-nav-dropdown">
+        <button class="sl-nav__link sl-nav-dropdown__trigger">Games <span class="sl-nav-dropdown__arrow">▾</span></button>
+        <div class="sl-nav-dropdown__menu">
+          <a href="/games/scale-builder" class="sl-nav-dropdown__item">Scale Builder</a>
+          <a href="/games/chord-walks" class="sl-nav-dropdown__item">Chord Walks</a>
+        </div>
+      </div>
+
+      <div class="sl-nav-dropdown">
+        <button class="sl-nav__link sl-nav-dropdown__trigger">Learn <span class="sl-nav-dropdown__arrow">▾</span></button>
+        <div class="sl-nav-dropdown__menu">
+          <a href="/intro" class="sl-nav-dropdown__item">Fundamentals</a>
+          <a href="/tutorial" class="sl-nav-dropdown__item">Tutorial</a>
+          <a href="/theory/circle-of-fifths" class="sl-nav-dropdown__item">Circle of Fifths</a>
+          <a href="/theory/tonal-centers" class="sl-nav-dropdown__item">Tonal Centers</a>
+          <a href="/theory/modes" class="sl-nav-dropdown__item">Modes</a>
+          <a href="/theory/chord-progressions" class="sl-nav-dropdown__item">Chord Progressions</a>
+        </div>
+      </div>
     </div>
     <button id="sl-sound-toggle" class="sl-nav__sound" aria-label="Toggle sound" title="Toggle sound">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -213,14 +332,35 @@
     // Highlight the current nav link based on window.location.pathname.
     (function () {
       var path = window.location.pathname;
-      document.querySelectorAll('.sl-nav__link').forEach(function (el) {
+
+      // Top-level flat links (e.g. Explorer).
+      document.querySelectorAll('.sl-nav__links > .sl-nav__link').forEach(function (el) {
         var href = el.getAttribute('href');
         if (!href) return;
-        // Games tab spans every /games/* route, not just its own href.
-        var prefix = href.indexOf('/games/') === 0 ? '/games' : href;
-        if (path === prefix || path.startsWith(prefix + '/')) {
+        if (path === href || path.startsWith(href + '/')) {
           el.classList.add('sl-nav__link--active');
         }
+      });
+
+      // Dropdown items — highlight the item and its parent trigger.
+      document.querySelectorAll('.sl-nav-dropdown__item').forEach(function (item) {
+        var href = item.getAttribute('href');
+        if (!href) return;
+        if (path === href || path.startsWith(href + '/')) {
+          item.classList.add('sl-nav-dropdown__item--active');
+          var parent = item.closest('.sl-nav-dropdown');
+          var trigger = parent && parent.querySelector('.sl-nav-dropdown__trigger');
+          if (trigger) trigger.classList.add('sl-nav__link--active');
+        }
+      });
+
+      // JS hover fallback — ensure dropdowns open reliably even if a
+      // subpixel gap or stacking quirk breaks the CSS :hover chain.
+      document.querySelectorAll('.sl-nav-dropdown').forEach(function (dd) {
+        var menu = dd.querySelector('.sl-nav-dropdown__menu');
+        if (!menu) return;
+        dd.addEventListener('mouseenter', function () { menu.style.display = 'flex'; });
+        dd.addEventListener('mouseleave', function () { menu.style.display = ''; });
       });
     })();
   </script>
