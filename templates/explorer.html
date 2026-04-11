@@ -1671,6 +1671,7 @@
     // ════════════════════════════════════════════════════════════════
     let sampler = null;
     let _audioInitPromise = null;
+    let _sustainActive = false;
     const CHORD_SUSTAIN = 2.5;
     const NOTE_SUSTAIN  = 2.0;
 
@@ -1720,14 +1721,17 @@
 
     async function playChord(root, quality) {
       if (AudioToggle.isMuted()) return;
-      try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      if (!_sustainActive) {
+        try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      }
       await ensureFullAudio();
       if (!sampler) return;
       const voicing = chordVoicing(root, quality);
       if (!voicing.length) return;
       const velocity = 0.55 + Math.random() * 0.3;
       sampler.volume.value = Math.random() * 4 - 2;
-      sampler.triggerAttackRelease(voicing, CHORD_SUSTAIN, Tone.now(), velocity);
+      const dur = _sustainActive ? 8.0 : CHORD_SUSTAIN;
+      sampler.triggerAttackRelease(voicing, dur, Tone.now(), velocity);
     }
 
     function stopAll() {
@@ -2254,6 +2258,21 @@
       else if (e.code === 'Escape') { clearNotes(); }
     });
 
+    // ── Sustain pedal (Shift / CapsLock) ──────────────────────────
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Shift') {
+        _sustainActive = true;
+      } else if (e.key === 'CapsLock') {
+        _sustainActive = !_sustainActive;
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'Shift') {
+        _sustainActive = false;
+        try { if (sampler) sampler.releaseAll(); } catch (_) {}
+      }
+    });
+
     // ════════════════════════════════════════════════════════════════
     // CONTROLS
     // ════════════════════════════════════════════════════════════════
@@ -2611,17 +2630,28 @@
         window.history.replaceState({}, '', url);
         // Step 0's chord may match the currently loaded triad — in which
         // case the HarmonyState subscriber won't auto-play it. Kick off
-        // the first chord explicitly.
+        // the first chord explicitly, after a short delay so the sampler
+        // has time to load.
         const firstStep = wt.steps && wt.steps[0];
         if (firstStep) {
           const parsed = _parseChordName(firstStep.chord);
-          if (parsed) playChord(parsed.root, parsed.quality).catch(() => {});
+          if (parsed) setTimeout(() => playChord(parsed.root, parsed.quality).catch(() => {}), 200);
         }
       },
       playChord(root, quality) { return playChord(root, quality); },
     });
 
     function _startWalkthrough(wt) {
+      // Reset chord-change dedup so the HarmonyState subscriber always
+      // treats the first walkthrough step as a fresh chord.
+      _lastRoot = null;
+      _lastQuality = null;
+      // Walkthroughs always start on the piano sampler, regardless of
+      // what the user last picked.
+      const pianoBtn = document.getElementById('btn-inst-piano');
+      if (pianoBtn && !pianoBtn.classList.contains('sl-btn--gold')) {
+        pianoBtn.click();
+      }
       _wtCapturing = true;
       _sequence = [];
       _updateSequenceUI();
@@ -2663,11 +2693,12 @@
         try { await ensureFullAudio(); } catch (_) {}
         _startWalkthrough(wt);
         // Step 0's chord matches the pre-loaded triad, so the HarmonyState
-        // subscriber won't auto-play it. Trigger the first chord explicitly.
+        // subscriber won't auto-play it. Trigger the first chord explicitly,
+        // after a short delay so the sampler has time to load.
         const firstStep = wt.steps && wt.steps[0];
         if (firstStep) {
           const parsed = _parseChordName(firstStep.chord);
-          if (parsed) playChord(parsed.root, parsed.quality).catch(() => {});
+          if (parsed) setTimeout(() => playChord(parsed.root, parsed.quality).catch(() => {}), 200);
         }
       };
       btn.addEventListener('click', begin);

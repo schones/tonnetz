@@ -571,6 +571,143 @@
       image-rendering: auto;
     }
 
+    /* ── Rhythm Builder ──────────────────────────────────────── */
+    .sk-rhythm-builder {
+      padding: var(--space-md) var(--space-lg);
+    }
+    .sk-rb__presets {
+      margin-bottom: var(--space-sm);
+    }
+    .sk-rb__preset-select {
+      width: 100%;
+      padding: 5px 8px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-elevated);
+      color: var(--daw-text);
+      font-family: inherit;
+      font-size: var(--font-size-xs);
+      cursor: pointer;
+    }
+    .sk-rb__grid {
+      display: grid;
+      grid-template-columns: 48px repeat(8, 1fr);
+      gap: 2px;
+      margin-bottom: var(--space-sm);
+    }
+    .sk-rb__row-label {
+      display: flex;
+      align-items: center;
+      font-size: var(--font-size-2xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text-mute);
+      padding-right: 4px;
+      text-align: right;
+      justify-content: flex-end;
+    }
+    .sk-rb__beat-header {
+      font-size: var(--font-size-2xs);
+      color: var(--daw-text-ghost);
+      text-align: center;
+      padding-bottom: 2px;
+    }
+    .sk-rb__beat-header--down {
+      color: var(--daw-text-dim);
+      font-weight: var(--font-weight-medium);
+    }
+    .sk-rb__cell {
+      height: 26px;
+      border-radius: 3px;
+      border: 1px solid var(--daw-border);
+      background: var(--daw-deep);
+      cursor: pointer;
+      transition: background var(--transition-fast), border-color var(--transition-fast);
+    }
+    .sk-rb__cell:hover {
+      border-color: var(--daw-text-mute);
+    }
+    .sk-rb__cell--on-kick {
+      background: #2D5F8A;
+      border-color: #3A8BC9;
+    }
+    .sk-rb__cell--on-snare {
+      background: var(--gold);
+      border-color: #E0AF4D;
+    }
+    .sk-rb__cell--on-hihat {
+      background: #4A4339;
+      border-color: #6A6457;
+    }
+    .sk-rb__cell--on-strum {
+      background: var(--accent-coral, #E87461);
+      border-color: #F09080;
+    }
+    .sk-rb__cell--active {
+      outline: 2px solid var(--gold);
+      outline-offset: -1px;
+    }
+    .sk-rb__controls {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    .sk-rb__play {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--gold-edge);
+      background: var(--gold-soft);
+      color: var(--gold);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background var(--transition-fast);
+    }
+    .sk-rb__play:hover { background: var(--gold); color: var(--daw-deep); }
+    .sk-rb__play--playing { background: var(--gold); color: var(--daw-deep); }
+    .sk-rb__bpm-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+    .sk-rb__bpm-label {
+      font-size: var(--font-size-2xs);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--daw-text-mute);
+      flex-shrink: 0;
+    }
+    .sk-rb__bpm-slider {
+      flex: 1;
+      accent-color: var(--gold);
+    }
+    .sk-rb__bpm-value {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--daw-text);
+      min-width: 32px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .sk-rb__export {
+      padding: 5px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text-dim);
+      font-size: var(--font-size-2xs);
+      font-weight: var(--font-weight-medium);
+      cursor: pointer;
+      transition: var(--transition-color);
+      white-space: nowrap;
+    }
+    .sk-rb__export:hover { color: var(--gold); border-color: var(--gold-edge); }
+
     /* Footer clear-buttons row */
     .sk-clear-row {
       display: flex; gap: 6px;
@@ -843,6 +980,37 @@
         </div>
       </div>
 
+      <div class="sk-channel__section sk-rhythm-builder">
+        <div class="sk-channel__label">Rhythm builder</div>
+
+        <div class="sk-rb__presets">
+          <select class="sk-rb__preset-select" id="rb-preset">
+            <option value="">— Load preset —</option>
+            <option value="rock">Rock beat</option>
+            <option value="train">Train beat</option>
+            <option value="disco">Disco</option>
+            <option value="hiphop">Hip hop</option>
+            <option value="shuffle">Shuffle</option>
+            <option value="backbeat">Simple backbeat</option>
+            <option value="clear">Clear all</option>
+          </select>
+        </div>
+
+        <div class="sk-rb__grid" id="rb-grid">
+          <!-- JS renders: 4 instrument rows × 8 beat columns -->
+        </div>
+
+        <div class="sk-rb__controls">
+          <button class="sk-rb__play" id="rb-play" type="button" title="Play/stop rhythm">▶</button>
+          <div class="sk-rb__bpm-group">
+            <label class="sk-rb__bpm-label" for="rb-bpm">BPM</label>
+            <input type="range" id="rb-bpm" class="sk-rb__bpm-slider" min="60" max="200" value="120" step="5">
+            <span class="sk-rb__bpm-value" id="rb-bpm-value">120</span>
+          </div>
+          <button class="sk-rb__export" id="rb-export" type="button" title="Convert to blocks">→ Blocks</button>
+        </div>
+      </div>
+
       <div class="sk-channel__section">
         <div class="sk-channel__label">Canvas</div>
         <div class="sk-canvas-wrap">
@@ -970,6 +1138,245 @@
   <script type="module">
     import { init } from '/static/skratch-studio/studio.js';
     init();
+  </script>
+
+  <script>
+    // ── Rhythm Builder ──────────────────────────────────────────
+    const RhythmBuilder = {
+      _grid: {},
+      _playing: false,
+      _sequence: null,
+      _synths: null,
+      _bpm: 120,
+
+      INSTRUMENTS: ['kick', 'snare', 'hihat', 'strum'],
+      BEATS: ['1', '&', '2', '&', '3', '&', '4', '&'],
+
+      PRESETS: {
+        rock: { kick: [0,4], snare: [2,6], hihat: [0,1,2,3,4,5,6,7] },
+        train: { kick: [0,4], snare: [2,6], strum: [1,3,5,7] },
+        disco: { kick: [0,2,4,6], snare: [2,6], hihat: [0,1,2,3,4,5,6,7] },
+        hiphop: { kick: [0,4,5], snare: [2,6], hihat: [1,3,5,7] },
+        shuffle: { kick: [0,4], snare: [2,6], hihat: [0,2,4,6] },
+        backbeat: { kick: [0,4], snare: [2,6] },
+        clear: {},
+      },
+
+      init() {
+        this._renderGrid();
+        this._bindEvents();
+        this._hookMainTransport();
+      },
+
+      _renderGrid() {
+        const container = document.getElementById('rb-grid');
+        if (!container) return;
+
+        let html = '<div class="sk-rb__row-label"></div>';
+        this.BEATS.forEach((b, i) => {
+          const isDown = i % 2 === 0;
+          html += `<div class="sk-rb__beat-header ${isDown ? 'sk-rb__beat-header--down' : ''}">${b}</div>`;
+        });
+
+        this.INSTRUMENTS.forEach(inst => {
+          const label = inst === 'hihat' ? 'Hi-hat' : inst.charAt(0).toUpperCase() + inst.slice(1);
+          html += `<div class="sk-rb__row-label">${label}</div>`;
+          for (let i = 0; i < 8; i++) {
+            const key = `${inst}-${i}`;
+            html += `<div class="sk-rb__cell" data-rb-key="${key}" data-inst="${inst}" data-beat="${i}"></div>`;
+          }
+        });
+
+        container.innerHTML = html;
+      },
+
+      _bindEvents() {
+        const grid = document.getElementById('rb-grid');
+        if (grid) {
+          grid.addEventListener('click', (e) => {
+            const cell = e.target.closest('.sk-rb__cell');
+            if (!cell) return;
+            const key = cell.dataset.rbKey;
+            const inst = cell.dataset.inst;
+            if (this._grid[key]) {
+              delete this._grid[key];
+              cell.className = 'sk-rb__cell';
+            } else {
+              this._grid[key] = true;
+              cell.classList.add(`sk-rb__cell--on-${inst}`);
+            }
+          });
+        }
+
+        const presetSelect = document.getElementById('rb-preset');
+        if (presetSelect) {
+          presetSelect.addEventListener('change', (e) => {
+            const preset = this.PRESETS[e.target.value];
+            if (preset !== undefined) this._loadPreset(preset);
+            e.target.value = '';
+          });
+        }
+
+        const playBtn = document.getElementById('rb-play');
+        if (playBtn) {
+          playBtn.addEventListener('click', async () => {
+            await Tone.start();
+            if (this._playing) {
+              this.stop();
+            } else {
+              // Stop main code playback first to avoid Transport conflicts
+              const mainStop = document.getElementById('btnStop');
+              if (mainStop && !mainStop.disabled) mainStop.click();
+              this.start();
+            }
+          });
+        }
+
+        const bpmSlider = document.getElementById('rb-bpm');
+        const bpmValue = document.getElementById('rb-bpm-value');
+        if (bpmSlider) {
+          bpmSlider.addEventListener('input', (e) => {
+            this._bpm = parseInt(e.target.value);
+            if (bpmValue) bpmValue.textContent = this._bpm;
+            if (this._playing) Tone.Transport.bpm.value = this._bpm;
+          });
+        }
+
+        const exportBtn = document.getElementById('rb-export');
+        if (exportBtn) {
+          exportBtn.addEventListener('click', () => this._exportToBlocks());
+        }
+      },
+
+      _hookMainTransport() {
+        // When the main Run/Play button is clicked, stop rhythm builder first
+        // so Tone.Transport isn't being driven by two owners.
+        const mainPlay = document.getElementById('btnPlay');
+        if (mainPlay) {
+          mainPlay.addEventListener('click', () => {
+            if (this._playing) this.stop();
+          }, true);
+        }
+      },
+
+      _loadPreset(preset) {
+        this._grid = {};
+        document.querySelectorAll('.sk-rb__cell').forEach(cell => {
+          cell.className = 'sk-rb__cell';
+        });
+        for (const [inst, beats] of Object.entries(preset)) {
+          beats.forEach(beat => {
+            const key = `${inst}-${beat}`;
+            this._grid[key] = true;
+            const cell = document.querySelector(`[data-rb-key="${key}"]`);
+            if (cell) cell.classList.add(`sk-rb__cell--on-${inst}`);
+          });
+        }
+      },
+
+      _initSynths() {
+        if (this._synths) return;
+        this._synths = {
+          kick: new Tone.MembraneSynth({ volume: -8 }).toDestination(),
+          snare: new Tone.NoiseSynth({
+            noise: { type: 'white' },
+            envelope: { attack: 0.005, decay: 0.12, sustain: 0, release: 0.05 },
+            volume: -10
+          }).toDestination(),
+          hihat: new Tone.NoiseSynth({
+            noise: { type: 'white' },
+            envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.01 },
+            volume: -14
+          }).toDestination(),
+          strum: new Tone.NoiseSynth({
+            noise: { type: 'pink' },
+            envelope: { attack: 0.002, decay: 0.06, sustain: 0, release: 0.03 },
+            volume: -12
+          }).toDestination(),
+        };
+      },
+
+      start() {
+        this._initSynths();
+        this.stop();
+        Tone.Transport.bpm.value = this._bpm;
+
+        const steps = Array.from({ length: 8 }, (_, i) => i);
+        this._sequence = new Tone.Sequence((time, beatIndex) => {
+          this.INSTRUMENTS.forEach(inst => {
+            if (this._grid[`${inst}-${beatIndex}`]) {
+              if (inst === 'kick') {
+                this._synths.kick.triggerAttackRelease('C1', '8n', time);
+              } else {
+                this._synths[inst].triggerAttackRelease('8n', time);
+              }
+            }
+          });
+          Tone.Draw.schedule(() => this._updatePlayhead(beatIndex), time);
+        }, steps, '8n');
+
+        this._sequence.loop = true;
+        this._sequence.start(0);
+        Tone.Transport.start();
+        this._playing = true;
+        const btn = document.getElementById('rb-play');
+        if (btn) { btn.textContent = '■'; btn.classList.add('sk-rb__play--playing'); }
+      },
+
+      stop() {
+        if (this._sequence) {
+          this._sequence.stop();
+          this._sequence.dispose();
+          this._sequence = null;
+        }
+        if (this._playing) {
+          Tone.Transport.stop();
+        }
+        this._playing = false;
+        this._updatePlayhead(-1);
+        const btn = document.getElementById('rb-play');
+        if (btn) { btn.textContent = '▶'; btn.classList.remove('sk-rb__play--playing'); }
+      },
+
+      _updatePlayhead(index) {
+        document.querySelectorAll('.sk-rb__cell').forEach(cell => {
+          cell.classList.toggle('sk-rb__cell--active', parseInt(cell.dataset.beat) === index);
+        });
+      },
+
+      _exportToBlocks() {
+        const timeMap = ['0:0:0', '0:0:2', '0:1:0', '0:1:2', '0:2:0', '0:2:2', '0:3:0', '0:3:2'];
+        const blockMap = { kick: 'play_kick', snare: 'play_snare', hihat: 'play_hihat' };
+
+        const workspace = Blockly.getMainWorkspace();
+        if (!workspace) return;
+
+        let y = 50;
+        for (const [inst, blockType] of Object.entries(blockMap)) {
+          const beats = [];
+          for (let i = 0; i < 8; i++) {
+            if (this._grid[`${inst}-${i}`]) beats.push(i);
+          }
+          if (beats.length === 0) continue;
+
+          beats.forEach(beat => {
+            const block = workspace.newBlock(blockType);
+            try { block.setFieldValue(timeMap[beat], 'TIME'); } catch (err) {}
+            block.initSvg();
+            block.render();
+            block.moveBy(20, y);
+            y += 50;
+          });
+        }
+        if (typeof workspace.cleanUp === 'function') workspace.cleanUp();
+      }
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => RhythmBuilder.init());
+    } else {
+      RhythmBuilder.init();
+    }
   </script>
 </body>
 

@@ -29,6 +29,22 @@ const WALKTHROUGHS = {
     category: "Voice Leading",
     audience: "musician",
     seeAlso: { label: "Harmony Trainer", href: "/games/chord-walks" },
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 96,
+      feel: "Gentle fingerpick",
+      description: "A soft, steady fingerpicking pattern. The bass walks the descending chromatic line while the upper strings keep a gentle pulse.",
+      pattern: [
+        { beat: "1", label: "bass", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "2", label: "brush",type: "snare" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "3", label: "bass", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "4", label: "brush",type: "snare" },
+        { beat: "&", label: "·",    type: "strum" }
+      ]
+    },
     steps: [
       { chord: "F", function: "tonic",            title: "Start here", body: "F major. Bright, stable. Listen to where the bass note sits.", autoPlay: true },
       { chord: "Em", function: "chromatic bass",  title: "One note drops", body: "The bass slides down just a half step — F to E. The whole mood shifts from major to minor.", autoPlay: true, focus: "keyboard" },
@@ -43,6 +59,22 @@ const WALKTHROUGHS = {
     category: "Transforms",
     audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 134,
+      feel: "Driving strings",
+      description: "Urgent staccato strings drive Eleanor Rigby forward. No drums — the rhythm comes entirely from the bowing pattern.",
+      pattern: [
+        { beat: "1", label: "BOW",  type: "bass" },
+        { beat: "&", label: "bow",  type: "strum" },
+        { beat: "2", label: "BOW",  type: "bass" },
+        { beat: "&", label: "bow",  type: "strum" },
+        { beat: "3", label: "BOW",  type: "bass" },
+        { beat: "&", label: "bow",  type: "strum" },
+        { beat: "4", label: "BOW",  type: "bass" },
+        { beat: "&", label: "bow",  type: "strum" }
+      ]
+    },
     steps: [
       { chord: "Am", function: "tonic (i)",       title: "A minor", body: "Three notes: A, C, E. Watch where they sit on the Tonnetz.", autoPlay: true, focus: "tonnetz" },
       { chord: "C",  function: "relative major",  title: "Now C major", body: "C, E, G. See it? Two of the three notes — C and E — didn't move at all. Only A moved to G.", autoPlay: true, highlightTransform: "R", focus: "tonnetz" },
@@ -56,6 +88,22 @@ const WALKTHROUGHS = {
     category: "Transforms",
     audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 92,
+      feel: "Clean arpeggiation to crunch",
+      description: "Quiet clean guitar arpeggiation in the verse, explosive distorted strums in the chorus. The dynamic contrast IS the song.",
+      pattern: [
+        { beat: "1", label: "bass", type: "bass" },
+        { beat: "&", label: "pick", type: "strum" },
+        { beat: "2", label: "pick", type: "strum" },
+        { beat: "&", label: "pick", type: "strum" },
+        { beat: "3", label: "bass", type: "bass" },
+        { beat: "&", label: "pick", type: "strum" },
+        { beat: "4", label: "SNAP", type: "snare" },
+        { beat: "&", label: "pick", type: "strum" }
+      ]
+    },
     steps: [
       { chord: "G",  function: "tonic",             title: "Home base", body: "G major. Comfortable, stable. This is where the verse starts.", autoPlay: true },
       { chord: "B",  function: "chromatic mediant", title: "The surprise", body: "B major. This is NOT in the key of G — it's a chromatic mediant. Look how far it jumped on the Tonnetz, but it's actually just one flip away. That's why it sounds dramatic but not wrong.", autoPlay: true, highlightTransform: "L", focus: "tonnetz", concept_specifics: ["L_transform", "chromatic_mediant"] },
@@ -69,6 +117,22 @@ const WALKTHROUGHS = {
     song: "Autumn Leaves / Fly Me to the Moon",
     category: "Jazz Harmony",
     audience: "musician",
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 120,
+      feel: "Medium swing",
+      description: "Classic jazz swing — the ride cymbal keeps time with a long-short triplet feel while the bass walks quarter notes.",
+      pattern: [
+        { beat: "1", label: "WALK", type: "bass" },
+        { beat: "a", label: "ting", type: "strum" },
+        { beat: "2", label: "RIDE", type: "snare" },
+        { beat: "a", label: "ting", type: "strum" },
+        { beat: "3", label: "WALK", type: "bass" },
+        { beat: "a", label: "ting", type: "strum" },
+        { beat: "4", label: "RIDE", type: "snare" },
+        { beat: "a", label: "ting", type: "strum" }
+      ]
+    },
     steps: [
       { chord: "Dm", function: "predominant (ii)", title: "The ii chord", body: "D minor in the key of C. It creates gentle tension — a sense of leaning forward.", autoPlay: true },
       { chord: "G",  function: "dominant (V)",     title: "The V chord", body: "G major. The tension builds. Your ear is now really wanting to resolve somewhere. Watch the path on the Tonnetz from Dm to G — it's a clean, short move.", autoPlay: true, focus: "tonnetz" },
@@ -81,6 +145,20 @@ const WALKTHROUGHS = {
     song: "Norwegian Wood — The Beatles",
     category: "Modes & Scales",
     audience: "musician",
+    rhythm: {
+      time_sig: "6/8",
+      bpm: 72,
+      feel: "Waltz feel",
+      description: "Norwegian Wood is in 6/8 — six eighth notes grouped in two sets of three. It gives the song its gentle rocking quality, like a lullaby.",
+      pattern: [
+        { beat: "1", label: "BASS", type: "bass" },
+        { beat: "2", label: "·",    type: "strum" },
+        { beat: "3", label: "·",    type: "strum" },
+        { beat: "4", label: "tap",  type: "snare" },
+        { beat: "5", label: "·",    type: "strum" },
+        { beat: "6", label: "·",    type: "strum" }
+      ]
+    },
     steps: [
       { chord: "G", function: "tonic",          title: "G major", body: "A normal G major chord. The key of G major has an F♯ in it.", autoPlay: true },
       { chord: "F", function: "♭VII (borrowed)",title: "Now add an F natural chord", body: "F major instead of F♯ diminished. That one note — F natural instead of F♯ — is what makes Mixolydian sound different from regular major. Bluesier, earthier.", autoPlay: true },
@@ -93,6 +171,22 @@ const WALKTHROUGHS = {
     song: "Stairway to Heaven — Led Zeppelin",
     category: "Transforms",
     audience: "musician",
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 82,
+      feel: "Arpeggiated ballad",
+      description: "The intro is pure fingerpicked arpeggiation — each chord is spelled out note by note. No drums until much later. The guitar IS the rhythm section.",
+      pattern: [
+        { beat: "1", label: "bass", type: "bass" },
+        { beat: "&", label: "pick", type: "strum" },
+        { beat: "2", label: "pick", type: "strum" },
+        { beat: "&", label: "pick", type: "strum" },
+        { beat: "3", label: "bass", type: "bass" },
+        { beat: "&", label: "pick", type: "strum" },
+        { beat: "4", label: "pick", type: "strum" },
+        { beat: "&", label: "pick", type: "strum" }
+      ]
+    },
     steps: [
       { chord: "Am", function: "tonic (i)",      title: "The opening", body: "A minor. Dark, contemplative. This is where Stairway begins.", autoPlay: true },
       { chord: "A",  function: "parallel major", title: "Flip to major", body: "A major. Same root, completely different feeling — like the sun coming through clouds. On the Tonnetz, this is the P transform: one note moves, the whole mood inverts.", autoPlay: true, highlightTransform: "P", focus: "tonnetz", concept_specifics: ["P_transform", "parallel_major_minor"] },
@@ -106,6 +200,22 @@ const WALKTHROUGHS = {
     song: "In My Life — The Beatles",
     category: "Progressions",
     audience: "musician",
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 103,
+      feel: "Steady pop rock",
+      description: "Clean, steady Beatles pop — drums keep a simple backbeat while the rhythm guitar strums eighth notes. Nothing flashy, everything in service of the melody.",
+      pattern: [
+        { beat: "1", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "2", label: "SNARE",type: "snare" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "3", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "4", label: "SNARE",type: "snare" },
+        { beat: "&", label: "·",    type: "strum" }
+      ]
+    },
     steps: [
       { chord: "C",  function: "tonic (I)",    title: "Start in C", body: "We're home in C major.", autoPlay: true },
       { chord: "G",  function: "dominant (V)", title: "The V chord", body: "G major — the dominant. Your ear has heard this a million times and it KNOWS what comes next. It expects to resolve back to C.", autoPlay: true },
@@ -119,6 +229,22 @@ const WALKTHROUGHS = {
     category: "Modes & Scales",
     audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 98,
+      feel: "Four on the floor",
+      description: "A steady electronic kick on every beat — the pulse that keeps a dance floor breathing. Moby built the whole song over this unwavering heartbeat.",
+      pattern: [
+        { beat: "1", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "2", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "3", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" },
+        { beat: "4", label: "KICK", type: "bass" },
+        { beat: "&", label: "·",    type: "strum" }
+      ]
+    },
     steps: [
       { chord: "Am", function: "tonic (i)",            title: "Start in the dark", body: "A minor. The whole song begins right here, on the most melancholy chord in the key. Hold this feeling.", autoPlay: true },
       { chord: "Em", function: "modal v",              title: "Minor v, not V", body: "E minor instead of E major. That's the trick — there's no leading tone, no dominant pull. The harmony stops trying to resolve and just floats. This is what makes Moby sound so… resigned.", autoPlay: true, focus: "tonnetz", concept_specifics: ["modal_v", "no_leading_tone"] },
@@ -135,6 +261,22 @@ const WALKTHROUGHS = {
     category: "Progressions",
     audience: "musician",
     seeAlso: { label: "Strum Patterns", href: "/games/strum-patterns" },
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 168,
+      feel: "Shuffle",
+      description: "A fast shuffle — long-short, long-short — that drives Chuck Berry's rock and roll forward. Same triplet feel as a slow blues, just cranked up.",
+      pattern: [
+        { beat: "1", label: "LONG", type: "bass" },
+        { beat: "a", label: "short",type: "strum" },
+        { beat: "2", label: "LONG", type: "snare" },
+        { beat: "a", label: "short",type: "strum" },
+        { beat: "3", label: "LONG", type: "bass" },
+        { beat: "a", label: "short",type: "strum" },
+        { beat: "4", label: "LONG", type: "snare" },
+        { beat: "a", label: "short",type: "strum" }
+      ]
+    },
     steps: [
       { chord: "C", function: "tonic (I)",       title: "The I chord", body: "C major. Home base for the blues.", autoPlay: true },
       { chord: "F", function: "subdominant (IV)",title: "The IV chord", body: "F major. Look at the Tonnetz — F is right next to C. One step away.", autoPlay: true, focus: "tonnetz" },
