@@ -145,6 +145,141 @@ function triadNotes(root, quality) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// EXTENDED CHORD TYPES
+// ════════════════════════════════════════════════════════════════════
+//
+// The Tonnetz geometry fundamentally represents triads. Seventh chords,
+// sus chords, and extensions don't form triangles, so we treat the base
+// triad as the harmonic core and layer additional "extension" notes on
+// top. Every chord type records:
+//   - intervals: semitones from root (all notes including extensions)
+//   - symbol:    display suffix ('', 'm', '7', 'maj7', 'sus4', ...)
+//   - name:      human-readable name
+//   - base:      base triad quality for Tonnetz rendering. null for sus
+//                chords, which have no third and therefore no major/minor
+//                base; the Tonnetz represents them as the first 3 notes.
+
+const CHORD_TYPES = {
+  // Triads — mirror _triadIntervals
+  major:       { intervals: [0, 4, 7],         symbol: "",      name: "Major",              base: "major" },
+  minor:       { intervals: [0, 3, 7],         symbol: "m",     name: "Minor",              base: "minor" },
+  diminished:  { intervals: [0, 3, 6],         symbol: "°",     name: "Diminished",         base: "diminished" },
+  augmented:   { intervals: [0, 4, 8],         symbol: "+",     name: "Augmented",          base: "augmented" },
+
+  // Seventh chords
+  dom7:        { intervals: [0, 4, 7, 10],     symbol: "7",     name: "Dominant 7th",       base: "major" },
+  maj7:        { intervals: [0, 4, 7, 11],     symbol: "maj7",  name: "Major 7th",          base: "major" },
+  min7:        { intervals: [0, 3, 7, 10],     symbol: "m7",    name: "Minor 7th",          base: "minor" },
+  dim7:        { intervals: [0, 3, 6, 9],      symbol: "°7",    name: "Diminished 7th",     base: "diminished" },
+  "half-dim7": { intervals: [0, 3, 6, 10],     symbol: "ø7",    name: "Half-diminished 7th",base: "diminished" },
+  minmaj7:     { intervals: [0, 3, 7, 11],     symbol: "mΔ7",   name: "Minor-major 7th",    base: "minor" },
+
+  // Suspended (no third — no major/minor base)
+  sus4:        { intervals: [0, 5, 7],         symbol: "sus4",  name: "Suspended 4th",      base: null },
+  sus2:        { intervals: [0, 2, 7],         symbol: "sus2",  name: "Suspended 2nd",      base: null },
+  "7sus4":     { intervals: [0, 5, 7, 10],     symbol: "7sus4", name: "Dominant 7th sus4",  base: null },
+
+  // Extended (future — defined here so consumers can already reference them)
+  add9:        { intervals: [0, 4, 7, 14],     symbol: "add9",  name: "Add 9",              base: "major" },
+  dom9:        { intervals: [0, 4, 7, 10, 14], symbol: "9",     name: "Dominant 9th",       base: "major" },
+  maj9:        { intervals: [0, 4, 7, 11, 14], symbol: "maj9",  name: "Major 9th",          base: "major" },
+  min9:        { intervals: [0, 3, 7, 10, 14], symbol: "m9",    name: "Minor 9th",          base: "minor" },
+};
+
+function _rootToPC(root) {
+  return typeof root === "number" ? ((root % 12) + 12) % 12 : noteToPC(root);
+}
+
+/**
+ * Return all pitch classes for a chord type.
+ * @param {string|number} root
+ * @param {string} type — key from CHORD_TYPES
+ * @returns {number[]|null}
+ */
+function chordPCs(root, type) {
+  const def = CHORD_TYPES[type];
+  if (!def) return null;
+  const rootPC = _rootToPC(root);
+  if (isNaN(rootPC)) return null;
+  return def.intervals.map(iv => (rootPC + iv) % 12);
+}
+
+/**
+ * Return all note names for a chord type. Uses flat spelling for chords
+ * whose base triad is minor or diminished (same policy as triadNotes).
+ * Sus chords default to sharp spelling.
+ * @param {string|number} root
+ * @param {string} type
+ * @returns {string[]|null}
+ */
+function chordNotes(root, type) {
+  const def = CHORD_TYPES[type];
+  if (!def) return null;
+  const pcs = chordPCs(root, type);
+  if (!pcs) return null;
+  const useFlats = def.base === "minor" || def.base === "diminished";
+  return pcs.map(pc => pcToNote(pc, useFlats));
+}
+
+/**
+ * Extract the base triad from any chord type — the 3-note core that the
+ * Tonnetz renderer uses to draw a triangle.
+ *
+ * For sus chords (base: null), returns quality 'sus' with notes built
+ * from the first 3 intervals, since there is no major/minor third.
+ *
+ * @param {string|number} root
+ * @param {string} type
+ * @returns {{root, quality, notes}|null}
+ */
+function baseTriad(root, type) {
+  const def = CHORD_TYPES[type];
+  if (!def) return null;
+  if (def.base === null) {
+    const rootPC = _rootToPC(root);
+    if (isNaN(rootPC)) return null;
+    const core = def.intervals.slice(0, 3);
+    const notes = core.map(iv => pcToNote((rootPC + iv) % 12));
+    return { root, quality: "sus", notes };
+  }
+  return { root, quality: def.base, notes: triadNotes(root, def.base) };
+}
+
+/**
+ * Return the note names of intervals that extend beyond the base triad
+ * (e.g. the ♭7 of a dom7). Sus chords treat the first 3 intervals as the
+ * core and everything after as extensions.
+ * @param {string|number} root
+ * @param {string} type
+ * @returns {string[]|null}
+ */
+function extensionNotes(root, type) {
+  const def = CHORD_TYPES[type];
+  if (!def) return null;
+  const rootPC = _rootToPC(root);
+  if (isNaN(rootPC)) return null;
+  const coreIntervals = def.base === null
+    ? def.intervals.slice(0, 3)
+    : _triadIntervals[def.base];
+  const coreSet = new Set(coreIntervals);
+  const extIntervals = def.intervals.filter(iv => !coreSet.has(iv));
+  const useFlats = def.base === "minor" || def.base === "diminished";
+  return extIntervals.map(iv => pcToNote((rootPC + iv) % 12, useFlats));
+}
+
+/**
+ * Return the display symbol for a chord (e.g. 'B7', 'Cmaj7', 'Am7').
+ * @param {string|number} root
+ * @param {string} type
+ * @returns {string|null}
+ */
+function chordSymbol(root, type) {
+  const def = CHORD_TYPES[type];
+  if (!def) return null;
+  return String(root) + def.symbol;
+}
+
+// ════════════════════════════════════════════════════════════════════
 // PLR TRANSFORMS
 // ════════════════════════════════════════════════════════════════════
 
@@ -348,6 +483,12 @@ export {
   spellingForKey,
   triadNotes,
   triadPCs,
+  CHORD_TYPES,
+  chordPCs,
+  chordNotes,
+  baseTriad,
+  extensionNotes,
+  chordSymbol,
   TRANSFORMS,
   analyzeTransform,
   getNeighbors,
@@ -366,6 +507,12 @@ if (typeof window !== "undefined") {
     spellingForKey,
     triadNotes,
     triadPCs,
+    CHORD_TYPES,
+    chordPCs,
+    chordNotes,
+    baseTriad,
+    extensionNotes,
+    chordSymbol,
     TRANSFORMS,
     analyzeTransform,
     getNeighbors,
@@ -440,6 +587,32 @@ if (typeof window !== "undefined") {
   // 10. intervalToTonnetzDirection(4) axis = major_third
   assert("intervalToTonnetzDirection(4).axis = major_third",
     intervalToTonnetzDirection(4).axis, "major_third");
+
+  // 11. chordPCs('B','dom7') = [11, 3, 6, 9]
+  assert("chordPCs('B','dom7') = [11,3,6,9]",
+    chordPCs("B", "dom7"), [11, 3, 6, 9]);
+
+  // 12. chordNotes('C','maj7') = [C, E, G, B]
+  assert("chordNotes('C','maj7') = [C, E, G, B]",
+    chordNotes("C", "maj7"), ["C", "E", "G", "B"]);
+
+  // 13. baseTriad('B','dom7') → major with [B, D♯, F♯]
+  assert("baseTriad('B','dom7') quality = major",
+    baseTriad("B", "dom7").quality, "major");
+  assert("baseTriad('B','dom7') notes = [B, D♯, F♯]",
+    baseTriad("B", "dom7").notes, ["B", "D♯", "F♯"]);
+
+  // 14. extensionNotes('B','dom7') = [A]
+  assert("extensionNotes('B','dom7') = [A]",
+    extensionNotes("B", "dom7"), ["A"]);
+
+  // 15. chordSymbol('B','dom7') = 'B7'
+  assert("chordSymbol('B','dom7') = 'B7'",
+    chordSymbol("B", "dom7"), "B7");
+
+  // 16. chordPCs sus4 returns 3 notes (no third)
+  assert("chordPCs('C','sus4').length = 3",
+    chordPCs("C", "sus4").length, 3);
 
   // Summary
   const passed = results.filter(r => r.pass).length;

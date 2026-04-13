@@ -26,6 +26,11 @@ import {
   analyzeTransform,
   intervalBetween,
   noteToPC,
+  CHORD_TYPES,
+  chordNotes,
+  baseTriad,
+  extensionNotes,
+  chordSymbol,
 } from './transforms.js';
 
 // ════════════════════════════════════════════════════════════════════
@@ -37,6 +42,7 @@ function _defaultState() {
     activeTriads: [],
     activeInterval: null,
     activeNotes: [],
+    activeChord: null,
     activeTransform: null,
     tonnetzCenter: null,
     tonnetzDepth: 1,
@@ -165,6 +171,7 @@ const HarmonyState = {
     this.update({
       activeTriads: [triad],
       activeNotes,
+      activeChord: null,
       tonnetzCenter: { root, quality },
       activeTransform: null,
     });
@@ -185,6 +192,94 @@ const HarmonyState = {
 
     this.update({
       activeTriads: [triad],
+      activeNotes,
+      activeChord: null,
+      activeTransform: null,
+      // tonnetzCenter intentionally omitted — preserves the current center
+    });
+  },
+
+  /**
+   * Set a chord with full type info (7ths, sus, extended). The base triad
+   * goes to activeTriads (for Tonnetz rendering), all notes go to
+   * activeNotes with extensions tagged source:'extension', and the full
+   * chord info goes to activeChord (for labels and education).
+   */
+  setChord(root, type, role) {
+    role = role || "primary";
+    const triad = baseTriad(root, type);
+    if (!triad) return;
+    const extNotes = extensionNotes(root, type) || [];
+    const allNotes = chordNotes(root, type) || [];
+
+    const activeTriad = {
+      root: triad.root,
+      quality: triad.quality,
+      notes: triad.notes,
+      role,
+      color: null,
+    };
+
+    const activeNotes = [
+      ...triad.notes.map(n => ({ note: n, octave: 4, source: "chord", color: null })),
+      ...extNotes.map(n => ({ note: n, octave: 4, source: "extension", color: null })),
+    ];
+
+    this.update({
+      activeTriads: [activeTriad],
+      activeChord: {
+        root,
+        type,
+        quality: triad.quality,
+        triadNotes: triad.notes,
+        extensionNotes: extNotes,
+        allNotes,
+        symbol: chordSymbol(root, type),
+        role,
+      },
+      activeNotes,
+      tonnetzCenter: { root: triad.root, quality: triad.quality },
+      activeTransform: null,
+    });
+  },
+
+  /**
+   * Same as setChord but preserves tonnetzCenter — mirrors highlightTriad.
+   * Used by walkthroughs that want to display a chord on the existing
+   * neighborhood without recentering the grid.
+   */
+  highlightChord(root, type, role) {
+    role = role || "primary";
+    const triad = baseTriad(root, type);
+    if (!triad) return;
+    const extNotes = extensionNotes(root, type) || [];
+    const allNotes = chordNotes(root, type) || [];
+
+    const activeTriad = {
+      root: triad.root,
+      quality: triad.quality,
+      notes: triad.notes,
+      role,
+      color: null,
+    };
+
+    const activeNotes = [
+      ...triad.notes.map(n => ({ note: n, octave: 4, source: "chord", color: null })),
+      ...extNotes.map(n => ({ note: n, octave: 4, source: "extension", color: null })),
+    ];
+
+    this.update({
+      activeTriads: [activeTriad],
+      activeChord: {
+        root,
+        type,
+        quality: triad.quality,
+        triadNotes: triad.notes,
+        extensionNotes: extNotes,
+        allNotes,
+        symbol: chordSymbol(root, type),
+        role,
+      },
       activeNotes,
       activeTransform: null,
       // tonnetzCenter intentionally omitted — preserves the current center
@@ -409,12 +504,55 @@ const HarmonyState = {
       commonTones = (chord.notes || []).filter(n => prevPCs.has(noteToPC(n)));
     }
 
+    // Extended-chord path: if the chord object has a chordType, use the
+    // full chord info (base triad + extensions). Otherwise fall back to
+    // the legacy triad-only path so existing walkthroughs keep working.
+    if (chord.chordType && CHORD_TYPES[chord.chordType]) {
+      const triad = baseTriad(chord.root, chord.chordType);
+      const extNotes = extensionNotes(chord.root, chord.chordType) || [];
+      const allNotes = chordNotes(chord.root, chord.chordType) || [];
+
+      const activeNotes = [
+        ...triad.notes.map(n => ({ note: n, octave: 4, source: "chord", color: null })),
+        ...extNotes.map(n => ({ note: n, octave: 4, source: "extension", color: null })),
+      ];
+
+      this.batch(state => {
+        state.progressionState.currentIndex = i;
+        state.activeTriads = [{
+          root: triad.root,
+          quality: triad.quality,
+          notes: triad.notes,
+          role: 'primary',
+          color: null,
+        }];
+        state.activeChord = {
+          root: chord.root,
+          type: chord.chordType,
+          quality: triad.quality,
+          triadNotes: triad.notes,
+          extensionNotes: extNotes,
+          allNotes,
+          symbol: chordSymbol(chord.root, chord.chordType),
+          role: 'primary',
+        };
+        state.activeNotes = activeNotes;
+        state.activeTransform = null;
+        state.activeInterval = null;
+        // Do NOT update tonnetzCenter — grid stays locked on the key tonic
+        state._progressionCommonTones = commonTones;
+        state._progressionEvent = true;
+      });
+      return;
+    }
+
     const notes = triadNotes(chord.root, chord.quality);
     const activeNotes = _notesFromTriad(notes, 'primary');
 
     this.batch(state => {
       state.progressionState.currentIndex = i;
       state.activeTriads = [{ root: chord.root, quality: chord.quality, notes, role: 'primary', color: null }];
+      state.activeChord = null;
       state.activeNotes = activeNotes;
       state.activeTransform = null;
       state.activeInterval = null;
@@ -458,6 +596,7 @@ const HarmonyState = {
       state._progressionEvent = false;
       state.activeTriads = [];
       state.activeNotes = [];
+      state.activeChord = null;
       state.activeTransform = null;
       state.tonnetzCenter = null;
     });
@@ -665,6 +804,45 @@ if (typeof window !== "undefined") {
     s8.activeTriads, []);
   assert("setInterval activeNotes source = interval",
     s8.activeNotes[0].source, "interval");
+
+  // 8b. setChord("B", "dom7") populates activeChord with base triad + extension
+  HarmonyState.reset();
+  HarmonyState.setChord("B", "dom7");
+  const s8b = HarmonyState.get();
+  assert("setChord activeTriads length = 1",
+    s8b.activeTriads.length, 1);
+  assert("setChord base triad quality = major",
+    s8b.activeTriads[0].quality, "major");
+  assert("setChord base triad notes = [B, D♯, F♯]",
+    s8b.activeTriads[0].notes, ["B", "D♯", "F♯"]);
+  assert("setChord activeChord.symbol = B7",
+    s8b.activeChord.symbol, "B7");
+  assert("setChord activeChord.type = dom7",
+    s8b.activeChord.type, "dom7");
+  assert("setChord activeChord.triadNotes = [B, D♯, F♯]",
+    s8b.activeChord.triadNotes, ["B", "D♯", "F♯"]);
+  assert("setChord activeChord.extensionNotes = [A]",
+    s8b.activeChord.extensionNotes, ["A"]);
+  assert("setChord activeChord.allNotes length = 4",
+    s8b.activeChord.allNotes.length, 4);
+  assert("setChord activeNotes length = 4",
+    s8b.activeNotes.length, 4);
+  assert("setChord activeNotes[0].source = chord",
+    s8b.activeNotes[0].source, "chord");
+  assert("setChord activeNotes[3].source = extension",
+    s8b.activeNotes[3].source, "extension");
+  assert("setChord tonnetzCenter = {B, major}",
+    s8b.tonnetzCenter, { root: "B", quality: "major" });
+
+  // 8c. highlightChord preserves tonnetzCenter
+  HarmonyState.reset();
+  HarmonyState.setTriad("C", "major");
+  HarmonyState.highlightChord("B", "dom7");
+  const s8c = HarmonyState.get();
+  assert("highlightChord preserves tonnetzCenter = {C, major}",
+    s8c.tonnetzCenter, { root: "C", quality: "major" });
+  assert("highlightChord activeChord.symbol = B7",
+    s8c.activeChord.symbol, "B7");
 
   // 9. reset() restores default and notifies
   let resetNotified = false;
