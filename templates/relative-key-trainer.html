@@ -2,144 +2,110 @@
 {% block title %}Chord Walks — Tonnetz{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='shared/game-shell.css') }}">
 <!-- Tone.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
 <style>
-  /* ── Page layout ─────────────────────────────────────────── */
-  .rkt-page {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 1rem 1rem 3rem;
-  }
+  /* ── Chord Walks — game-specific only ─────────────────────────
+     Layout, top bar, mode tabs, stats, feedback, and buttons come
+     from shared/game-shell.css. Styles below cover the Tonnetz
+     interaction area, learn-phase scripted content, transform
+     arrow visualizations, and the insight / intro overlays.
+     ──────────────────────────────────────────────────────────── */
 
-  /* ── Top bar ─────────────────────────────────────────────── */
-  .rkt-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.75rem;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  .rkt-title {
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    margin: 0;
-  }
-  .rkt-back-link {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 700;
-  }
-  .rkt-back-link:hover { color: var(--text-primary); }
-
-  /* ── Tier selector ────────────────────────────────────────────── */
+  /* ── Tier selector (custom 4-up tabs with subtitles) ─────── */
   .rkt-tier-tabs {
     display: flex;
     gap: 4px;
     justify-content: center;
-    margin-bottom: 0.4rem;
+    margin-bottom: var(--space-xs);
   }
   .rkt-tier-tab {
     padding: 4px 14px;
-    border-radius: 6px;
-    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border-color);
     background: transparent;
     color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 600;
-    font-family: var(--font-main);
+    font-size: var(--font-size-2xs);
+    font-weight: 700;
+    font-family: var(--font-family-base);
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    transition: background var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast);
   }
   .rkt-tier-tab:hover:not(.rkt-tier-tab--active) {
     border-color: var(--text-secondary);
     color: var(--text-secondary);
   }
   .rkt-tier-tab--active {
-    background: var(--text-muted);
-    color: var(--bg-primary);
-    border-color: var(--text-muted);
+    background: var(--accent-blue);
+    color: #FFFFFF;
+    border-color: var(--accent-blue);
   }
   .rkt-tier-subtitle {
     font-size: 0.75em;
-    opacity: 0.7;
+    opacity: 0.75;
     display: block;
   }
 
-  /* ── Phase tabs ────────────────────────────────────────────── */
-  .rkt-phase-tabs {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-    margin-bottom: 0.35rem;
+  /* ── Phase tab active state: JS toggles rkt-phase-tab--active,
+        so we mirror game-mode-tab--active styling onto it. ──── */
+  .game-mode-tab.rkt-phase-tab--active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: #FFFFFF;
   }
-  .rkt-phase-tab {
-    padding: 7px 22px;
-    border-radius: 8px;
-    border: 2px solid var(--border);
+  .game-mode-tab.rkt-phase-tab:not(.rkt-phase-tab--active) {
     background: transparent;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    font-weight: 700;
-    font-family: var(--font-main);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-  }
-  .rkt-phase-tab:hover:not(.rkt-phase-tab--active) {
-    border-color: #f59e0b;
-  }
-  .rkt-phase-tab--active {
-    background: #f59e0b;
-    color: var(--text-primary);
-    border-color: #f59e0b;
+    border-color: var(--border-color);
+    color: var(--text-muted);
   }
 
-  /* ── Phase hint ────────────────────────────────────────────── */
+  /* ── Phase hint (under the mode tabs) ────────────────────── */
   .rkt-phase-hint {
     text-align: center;
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-lg);
     font-style: italic;
   }
 
-  /* ── Component containers ────────────────────────────────── */
+  /* ── Tonnetz & keyboard containers ───────────────────────── */
   #tonnetz-container {
     width: 100%;
     max-width: 480px;
     height: 360px;
-    margin: 0 auto 1rem;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--bg-card);
+    margin: 0 auto var(--space-lg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-pad);
+    background: var(--bg-surface);
     overflow: hidden;
   }
   #keyboard-container {
     width: 100%;
     max-width: 640px;
-    margin: 0 auto 1rem;
+    margin: 0 auto var(--space-lg);
     overflow-x: auto;
   }
+  #viz-area { position: relative; }
 
-  /* ── Learn phase ─────────────────────────────────────────── */
+  /* ── Learn phase (scripted walkthrough) ──────────────────── */
   .rkt-step-indicator {
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     text-align: right;
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--space-xs);
   }
   .rkt-narration {
-    font-size: 1.15rem;
+    font-size: var(--font-size-lg);
     color: var(--text-primary);
     text-align: center;
     line-height: 1.5;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-lg);
     min-height: 2.5rem;
     transition: opacity 0.25s ease;
   }
@@ -148,31 +114,34 @@
     min-height: 0;
   }
   .rkt-annotation-text {
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
     text-align: center;
     font-style: italic;
-    margin: 0.75rem 0 0;
+    margin: var(--space-md) 0 0;
     line-height: 1.5;
   }
   .rkt-learn-nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 0.75rem;
-    gap: 0.5rem;
+    margin-top: var(--space-md);
+    gap: var(--space-sm);
   }
   .rkt-nav-btn {
     padding: 8px 18px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--border-color);
     background: transparent;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
     font-weight: 700;
-    font-family: var(--font-main);
+    font-family: var(--font-family-base);
     cursor: pointer;
-    transition: color 0.15s, border-color 0.15s, opacity 0.15s;
+    transition: color var(--transition-fast),
+                border-color var(--transition-fast),
+                background var(--transition-fast),
+                opacity var(--transition-fast);
   }
   .rkt-nav-btn:hover:not(:disabled) {
     color: var(--text-primary);
@@ -183,107 +152,89 @@
     cursor: not-allowed;
   }
   .rkt-nav-btn--next {
-    background: #f59e0b;
-    color: var(--text-primary);
-    border-color: #f59e0b;
+    background: var(--accent-blue);
+    color: #FFFFFF;
+    border-color: var(--accent-blue);
   }
   .rkt-nav-btn--next:hover:not(:disabled) {
-    color: var(--text-primary);
-    opacity: 0.9;
+    background: var(--accent-blue-bright);
+    border-color: var(--accent-blue-bright);
+    color: #FFFFFF;
   }
   .rkt-nav-btn--next:disabled {
-    background: #f59e0b;
-    color: var(--text-primary);
-    border-color: #f59e0b;
+    background: var(--accent-blue);
+    color: #FFFFFF;
+    border-color: var(--accent-blue);
     opacity: 0.3;
   }
+  .rkt-nav-btn--ghost {
+    border-style: dashed;
+    opacity: 0.7;
+  }
+  .rkt-nav-btn--ghost:hover:not(:disabled) { opacity: 1; }
 
-  /* ── Practice phase ─────────────────────────────────────────── */
+  /* ── Practice phase ──────────────────────────────────────── */
   .rkt-practice-question {
-    font-size: 1.1rem;
+    font-size: var(--font-size-md);
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-md);
   }
   #practice-answer-buttons {
     display: flex;
     gap: 10px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-md);
   }
   .rkt-practice-actions {
     display: flex;
     gap: 10px;
     justify-content: center;
     align-items: center;
-    margin-bottom: 0.25rem;
-  }
-  .rkt-nav-btn--ghost {
-    border-style: dashed;
-    opacity: 0.7;
-  }
-  .rkt-nav-btn--ghost:hover:not(:disabled) {
-    opacity: 1;
+    margin-bottom: var(--space-xs);
   }
   #practice-next-wrap {
-    margin-top: 0.75rem;
+    margin-top: var(--space-md);
     text-align: center;
-  }
-  .rkt-feedback--practice-incorrect {
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.1);
-  }
-  .rkt-feedback--neutral {
-    color: var(--text-secondary);
-    background: rgba(200, 200, 200, 0.08);
-  }
-  .rkt-practice-stats {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-top: 0.75rem;
   }
   .rkt-practice-prompt {
     text-align: center;
-    margin-top: 0.75rem;
-    font-size: 0.85rem;
+    margin-top: var(--space-md);
+    font-size: var(--font-size-sm);
   }
   .rkt-practice-test-link {
     color: var(--text-secondary);
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
     font-style: italic;
   }
-  .rkt-practice-test-link:hover {
-    color: #f59e0b;
-  }
+  .rkt-practice-test-link:hover { color: var(--accent-blue); }
 
-  /* ── Question / Feedback (Test phase) ──────────────────────── */
+  /* ── Question card (Test phase) ──────────────────────────── */
   .rkt-question-card {
-    background: var(--bg-card);
-    border-radius: 12px;
-    padding: 1.25rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: var(--space-lg);
     text-align: center;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-lg);
   }
   #question-text {
-    font-size: 1.1rem;
+    font-size: var(--font-size-md);
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-md);
   }
   .rkt-round-info {
     display: flex;
     justify-content: space-between;
-    font-size: 0.8rem;
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-sm);
   }
 
-  /* ── Answer buttons ──────────────────────────────────────── */
+  /* ── Answer buttons (ear-training multiple choice) ───────── */
   #answer-buttons {
     display: flex;
     gap: 10px;
@@ -293,83 +244,92 @@
   .rkt-answer-btn {
     min-width: 120px;
     min-height: 48px;
-    padding: 0.6rem 1.5rem;
-    font-size: 1rem;
+    padding: 10px 24px;
+    font-size: var(--font-size-base);
     font-weight: 700;
-    font-family: var(--font-main);
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    background: var(--bg-card);
+    font-family: var(--font-family-base);
+    border: 2px solid var(--border-strong);
+    border-radius: var(--radius-pad);
+    background: var(--bg-surface);
     color: var(--text-primary);
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    transition: border-color var(--transition-fast),
+                background var(--transition-fast),
+                transform 0.1s;
   }
   .rkt-answer-btn:hover:not(:disabled) {
-    border-color: #f59e0b;
+    border-color: var(--accent-blue);
     transform: translateY(-2px);
   }
-  .rkt-answer-btn:active:not(:disabled) {
-    transform: translateY(0);
-  }
+  .rkt-answer-btn:active:not(:disabled) { transform: translateY(0); }
   .rkt-answer-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  /* ── Replay button (Test phase) ─────────────────────────── */
+  /* ── Replay button (Test phase) ──────────────────────────── */
   #btn-replay {
     display: none;
     align-items: center;
     gap: 6px;
-    margin: 0.75rem auto 0;
+    margin: var(--space-md) auto 0;
     padding: 6px 16px;
-    font-size: 0.85rem;
+    font-size: var(--font-size-xs);
     font-weight: 700;
-    font-family: var(--font-main);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    font-family: var(--font-family-base);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    transition: color 0.15s;
+    transition: color var(--transition-fast);
   }
   #btn-replay:hover { color: var(--text-primary); }
 
-  /* ── Feedback ──────────────────────────────────────────────── */
+  /* ── Feedback styling (tests the game-shell feedback look) ── */
   .rkt-feedback {
     min-height: 1.5rem;
-    font-size: 0.95rem;
-    font-weight: 700;
+    font-size: var(--font-size-sm);
+    font-weight: 800;
     text-align: center;
-    margin-top: 0.75rem;
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
-    transition: background 0.2s;
+    margin-top: var(--space-md);
+    border-radius: var(--radius-lg);
+    padding: var(--space-sm) var(--space-md);
+    transition: background var(--transition-base), color var(--transition-base);
   }
   .rkt-feedback--correct {
-    color: var(--text-success);
-    background: rgba(0, 200, 83, 0.1);
+    color: var(--accent-green);
+    background: rgba(76, 175, 80, 0.1);
   }
   .rkt-feedback--incorrect {
-    color: var(--text-error);
-    background: rgba(255, 23, 68, 0.1);
+    color: var(--accent-coral);
+    background: rgba(232, 116, 97, 0.1);
+  }
+  .rkt-feedback--practice-incorrect {
+    color: var(--accent-gold);
+    background: rgba(212, 160, 60, 0.12);
+  }
+  .rkt-feedback--neutral {
+    color: var(--text-secondary);
+    background: rgba(200, 200, 200, 0.08);
   }
 
-  /* ── Results ─────────────────────────────────────────────── */
+  /* ── Results card ────────────────────────────────────────── */
   #results-area {
     display: none;
     text-align: center;
   }
   .rkt-results-card {
-    background: var(--bg-card);
-    border-radius: 12px;
-    padding: 2rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
   }
   #results-score {
-    font-size: 1.8rem;
+    font-size: var(--font-size-2xl);
     font-weight: 800;
-    color: #f59e0b;
-    margin-bottom: 1.25rem;
+    color: var(--accent-blue);
+    margin-bottom: var(--space-lg);
   }
   #results-actions {
     display: flex;
@@ -378,98 +338,123 @@
     flex-wrap: wrap;
   }
 
-  /* ── Shared button styles ──────────────────────────────────── */
+  /* ── Dynamically-created buttons from JS (rkt-btn family) ── */
   .rkt-btn {
-    padding: 0.65rem 1.5rem;
-    font-size: 1rem;
+    padding: 10px 24px;
+    font-size: var(--font-size-base);
     font-weight: 700;
-    font-family: var(--font-main);
-    border: none;
-    border-radius: 8px;
+    font-family: var(--font-family-base);
+    border: 2px solid transparent;
+    border-radius: var(--radius-lg);
     cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
+    transition: background var(--transition-fast),
+                border-color var(--transition-fast),
+                transform 0.1s;
   }
   .rkt-btn:hover { transform: translateY(-2px); }
   .rkt-btn--primary {
-    background: var(--btn-primary-bg);
-    color: var(--btn-primary-text);
+    background: var(--accent-blue);
+    color: #FFFFFF;
+    border-color: var(--accent-blue);
+  }
+  .rkt-btn--primary:hover {
+    background: var(--accent-blue-bright);
+    border-color: var(--accent-blue-bright);
   }
   .rkt-btn--accent {
-    background: #f59e0b;
-    color: var(--text-primary);
+    background: var(--accent-blue);
+    color: #FFFFFF;
+    border-color: var(--accent-blue);
+  }
+  .rkt-btn--accent:hover {
+    background: var(--accent-blue-bright);
+    border-color: var(--accent-blue-bright);
   }
 
-  /* ── Explore button (top bar) ──────────────────────────────── */
+  /* ── Top-bar: Explore toggle + help link ─────────────────── */
   .rkt-top-bar-right {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--space-md);
   }
   .rkt-explore-btn {
     padding: 4px 12px;
-    border-radius: 6px;
-    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border-color);
     background: transparent;
     color: var(--text-secondary);
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     font-weight: 700;
-    font-family: var(--font-main);
+    font-family: var(--font-family-base);
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    transition: background var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast);
   }
   .rkt-explore-btn:hover {
-    border-color: #f59e0b;
-    color: #f59e0b;
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
   }
   .rkt-explore-btn--active {
-    background: #f59e0b;
-    color: var(--text-primary);
-    border-color: #f59e0b;
+    background: var(--accent-blue);
+    color: #FFFFFF;
+    border-color: var(--accent-blue);
   }
+  .rkt-show-intro-link {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .rkt-show-intro-link:hover { color: var(--text-secondary); }
 
-  /* ── Explore mode ────────────────────────────────────────── */
+  /* ── Explore mode: P/R/L transform buttons ───────────────── */
   .rkt-explore-transform-btns {
     display: flex;
     gap: 10px;
     justify-content: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-sm);
   }
   .rkt-transform-btn {
     width: 52px;
     height: 44px;
-    font-size: 1.15rem;
+    font-size: var(--font-size-lg);
     font-weight: 800;
-    font-family: var(--font-main);
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    background: var(--bg-card);
+    font-family: var(--font-family-base);
+    border: 2px solid var(--border-strong);
+    border-radius: var(--radius-pad);
+    background: var(--bg-surface);
     color: var(--text-primary);
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    transition: background var(--transition-fast),
+                border-color var(--transition-fast),
+                transform 0.1s;
   }
   .rkt-transform-btn:hover {
-    border-color: #f59e0b;
-    background: rgba(245, 158, 11, 0.1);
+    border-color: var(--accent-blue);
+    background: rgba(45, 95, 138, 0.08);
     transform: translateY(-2px);
   }
   .rkt-transform-btn:active {
     transform: translateY(0);
-    background: #f59e0b;
-    color: var(--text-primary);
+    background: var(--accent-blue);
+    color: #FFFFFF;
+    border-color: var(--accent-blue);
   }
   .rkt-explore-transform-label {
     text-align: center;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
     min-height: 1.3rem;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
+    margin-bottom: var(--space-sm);
+    font-weight: 700;
   }
 
-  /* ── Breadcrumb trail ────────────────────────────────────── */
+  /* ── Explore breadcrumb trail ────────────────────────────── */
   .rkt-explore-trail-wrap {
     overflow-x: auto;
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-md);
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
   }
@@ -483,43 +468,41 @@
   }
   .rkt-trail-chord {
     padding: 3px 10px;
-    border-radius: 12px;
-    border: 1.5px solid var(--border);
-    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-primary);
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     font-weight: 700;
-    font-family: var(--font-main);
+    font-family: var(--font-family-base);
     cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
     flex-shrink: 0;
   }
-  .rkt-trail-chord:hover {
-    border-color: #f59e0b;
-  }
+  .rkt-trail-chord:hover { border-color: var(--accent-blue); }
   .rkt-trail-chord--active {
-    background: var(--accent, #2D5F8A);
-    border-color: var(--accent, #2D5F8A);
-    color: #fff;
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: #FFFFFF;
   }
   .rkt-trail-arrow {
     color: var(--text-muted);
     font-size: 0.7rem;
-    font-weight: 600;
+    font-weight: 700;
     flex-shrink: 0;
   }
 
-  /* ── Explore controls ────────────────────────────────────── */
+  /* ── Explore controls (depth + back) ─────────────────────── */
   .rkt-explore-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 0.75rem;
-    margin-top: 0.25rem;
+    gap: var(--space-md);
+    margin-top: var(--space-xs);
   }
   .rkt-depth-toggle {
-    font-size: 0.78rem;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
@@ -527,43 +510,41 @@
   }
   .rkt-depth-select {
     padding: 3px 6px;
-    border-radius: 6px;
-    border: 1.5px solid var(--border);
-    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-primary);
-    font-size: 0.78rem;
-    font-weight: 600;
-    font-family: var(--font-main);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    font-family: var(--font-family-base);
     cursor: pointer;
   }
 
   /* ── Chain display (Tier 4) ──────────────────────────────── */
   .rkt-chain-display {
     text-align: center;
-    font-size: 1.3rem;
+    font-size: var(--font-size-lg);
     font-weight: 800;
-    margin-bottom: 0.75rem;
-    padding: 0.6rem 1rem;
-    background: var(--bg-card);
-    border-radius: 10px;
-    border: 1.5px solid var(--border);
+    margin-bottom: var(--space-md);
+    padding: var(--space-sm) var(--space-lg);
+    background: var(--bg-surface);
+    border-radius: var(--radius-pad);
+    border: 1.5px solid var(--border-color);
   }
   #chain-label {
     color: var(--text-muted);
-    font-weight: 600;
-    font-size: 0.9rem;
-    margin-right: 0.5rem;
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+    margin-right: var(--space-sm);
   }
-  #chain-notation {
-    letter-spacing: 0.05em;
-  }
+  #chain-notation { letter-spacing: 0.05em; }
   .rkt-chain-arrow {
     color: var(--text-muted);
     font-weight: 400;
-    margin: 0 0.25rem;
+    margin: 0 var(--space-xs);
   }
   .rkt-chain-letter {
-    color: #f59e0b;
+    color: var(--accent-blue);
     font-weight: 800;
   }
 
@@ -571,171 +552,149 @@
   .rkt-explore-link {
     color: var(--text-secondary);
     text-decoration: none;
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: var(--font-size-sm);
     font-style: italic;
   }
-  .rkt-explore-link:hover {
-    color: #f59e0b;
-  }
+  .rkt-explore-link:hover { color: var(--accent-blue); }
 
-  /* ── Start overlay ─────────────────────────────────────────── */
+  /* ── Start overlay (Tone.js gesture unlock) ──────────────── */
   #start-overlay {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    padding: 3rem 1rem;
+    gap: var(--space-lg);
+    padding: var(--space-2xl) var(--space-lg);
     text-align: center;
     cursor: pointer;
   }
   .rkt-start-icon {
     font-size: 3rem;
     line-height: 1;
+    color: var(--accent-blue);
   }
   .rkt-start-text {
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-size: var(--font-size-lg);
+    font-weight: 800;
     color: var(--text-primary);
   }
   .rkt-start-sub {
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     color: var(--text-muted);
   }
 
-  /* ── Intro screen ─────────────────────────────────────── */
+  /* ── Intro overlay (first-visit orientation) ─────────────── */
   .rkt-intro-overlay {
     display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 2rem 1.5rem;
-    background: var(--bg-card);
-    border-radius: 14px;
-    border: 1.5px solid var(--border);
-    margin-bottom: 1rem;
+    padding: var(--space-2xl) var(--space-lg);
+    background: var(--bg-surface);
+    border-radius: var(--radius-xl);
+    border: 1.5px solid var(--border-color);
+    margin-bottom: var(--space-lg);
   }
   .rkt-intro-title {
-    font-size: 1.3rem;
+    font-size: var(--font-size-xl);
     font-weight: 800;
     color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-sm);
   }
   .rkt-intro-desc {
-    font-size: 0.95rem;
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
     line-height: 1.6;
     max-width: 440px;
-    margin-bottom: 1.25rem;
+    margin-bottom: var(--space-lg);
   }
   .rkt-intro-list {
     text-align: left;
     list-style: none;
     padding: 0;
-    margin: 0 0 1.25rem;
+    margin: 0 0 var(--space-lg);
     max-width: 380px;
   }
   .rkt-intro-list li {
-    font-size: 0.88rem;
+    font-size: var(--font-size-sm);
     color: var(--text-primary);
-    padding: 0.3rem 0;
+    padding: var(--space-xs) 0;
     line-height: 1.4;
   }
   .rkt-intro-list li::before {
     content: "\2022 ";
-    color: #f59e0b;
+    color: var(--accent-blue);
     font-weight: 800;
-    margin-right: 0.4rem;
+    margin-right: var(--space-xs);
   }
   .rkt-intro-prereqs {
-    font-size: 0.8rem;
+    font-size: var(--font-size-xs);
     color: var(--text-muted);
-    margin-bottom: 1.25rem;
+    margin-bottom: var(--space-lg);
     font-style: italic;
   }
   .rkt-intro-start-btn {
-    padding: 0.7rem 2rem;
-    font-size: 1rem;
+    padding: 10px 32px;
+    font-size: var(--font-size-base);
     font-weight: 700;
-    font-family: var(--font-main);
-    background: #f59e0b;
-    color: var(--text-primary);
+    font-family: var(--font-family-base);
+    background: var(--accent-blue);
+    color: #FFFFFF;
     border: none;
-    border-radius: 10px;
+    border-radius: var(--radius-pad);
     cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
+    transition: background var(--transition-fast), transform 0.1s;
   }
   .rkt-intro-start-btn:hover {
     transform: translateY(-2px);
-    opacity: 0.9;
+    background: var(--accent-blue-bright);
   }
 
-  /* ── Show intro link ────────────────────────────────────── */
-  .rkt-show-intro-link {
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .rkt-show-intro-link:hover {
-    color: var(--text-secondary);
-  }
-
-  /* ── Insight bubbles ───────────────────────────────────────── */
-  #viz-area {
-    position: relative;
-  }
+  /* ── Insight bubbles (in-viz coaching popovers) ──────────── */
   .rkt-insight-bubble {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
     z-index: 50;
-    background: var(--bg-card, #fff);
-    color: var(--text-primary, #333);
-    border: 1px solid var(--border, #ddd);
-    border-radius: 12px;
-    padding: 0.75rem 1rem;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: var(--space-md) var(--space-lg);
     max-width: 320px;
     width: 90%;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     animation: rkt-insight-in 0.3s ease-out;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     line-height: 1.45;
   }
   .rkt-insight-heading {
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     font-weight: 700;
-    color: var(--text-secondary, #888);
-    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
   }
-  .rkt-insight-text {
-    margin: 0;
-  }
+  .rkt-insight-text { margin: 0; }
   .rkt-insight-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
   }
   .rkt-insight-thumbsup,
   .rkt-insight-dismiss {
     background: none;
-    border: 1px solid var(--border, #ddd);
-    border-radius: 8px;
-    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xs) var(--space-sm);
     cursor: pointer;
-    font-size: 0.85rem;
-    transition: background 0.15s;
+    font-size: var(--font-size-sm);
+    transition: background var(--transition-fast);
   }
-  .rkt-insight-thumbsup:hover {
-    background: rgba(74, 144, 217, 0.1);
-  }
-  .rkt-insight-dismiss:hover {
-    background: rgba(0, 0, 0, 0.05);
-  }
+  .rkt-insight-thumbsup:hover { background: rgba(45, 95, 138, 0.1); }
+  .rkt-insight-dismiss:hover   { background: rgba(0, 0, 0, 0.05); }
   .rkt-insight-bubble--fadeout {
     opacity: 0;
     transition: opacity 0.3s ease-out;
@@ -748,15 +707,15 @@
 {% endblock %}
 
 {% block content %}
-<div class="rkt-page">
+<main class="game-page">
 
   <!-- Top bar -->
-  <div class="rkt-top-bar">
-    <h1 class="rkt-title">Chord Walks</h1>
+  <div class="game-top-bar">
+    <h1 class="game-title">Chord Walks</h1>
     <div class="rkt-top-bar-right">
       <a href="#" class="rkt-show-intro-link" id="btn-show-intro" title="About this game">?</a>
       <button class="rkt-explore-btn" id="btn-explore">Explore &#9835;</button>
-      <a href="/" class="rkt-back-link">&larr; Back</a>
+      <a href="/" class="game-back-link">&larr; Back</a>
     </div>
   </div>
 
@@ -768,11 +727,11 @@
     <button class="rkt-tier-tab" data-tier="4">Tier 4<span class="rkt-tier-subtitle">Follow the Chain</span></button>
   </div>
 
-  <!-- Phase tabs -->
-  <div class="rkt-phase-tabs">
-    <button class="rkt-phase-tab rkt-phase-tab--active" data-phase="learn">Learn</button>
-    <button class="rkt-phase-tab" data-phase="practice">Practice</button>
-    <button class="rkt-phase-tab" data-phase="test">Test</button>
+  <!-- Phase tabs (Learn / Practice / Test) -->
+  <div class="game-mode-tabs">
+    <button class="game-mode-tab game-mode-tab--active rkt-phase-tab rkt-phase-tab--active" data-phase="learn">Learn</button>
+    <button class="game-mode-tab rkt-phase-tab" data-phase="practice">Practice</button>
+    <button class="game-mode-tab rkt-phase-tab" data-phase="test">Test</button>
   </div>
   <div class="rkt-phase-hint" id="phase-hint">Watch &amp; listen</div>
 
@@ -859,7 +818,7 @@
           <button class="rkt-btn rkt-btn--accent" id="btn-practice-next">Next round &#8594;</button>
         </div>
       </div>
-      <div class="rkt-practice-stats">
+      <div class="game-stats">
         <span id="practice-streak">Streak: 0</span>
         <span id="practice-rounds">Rounds: 0</span>
       </div>
@@ -904,7 +863,7 @@
     </div>
   </div>
 
-</div>
+</main>
 {% endblock %}
 
 {% block scripts %}

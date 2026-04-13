@@ -1,0 +1,457 @@
+/* ============================================================
+   SongLab Game Shell — Shared Layout
+   game-shell.css
+   ============================================================
+   Game-specific layout patterns used across all SongLab games.
+   Works alongside design-tokens.css (theme) and shared/styles.css
+   (base components like .btn, .card, .form-group).
+
+   Usage: add to any game template that extends base.html:
+     <link rel="stylesheet" href="{{ url_for('static', filename='shared/game-shell.css') }}">
+
+   Structure expected:
+     <main class="game-page">
+       <section class="game-screen" id="screen-setup">...</section>
+       <section class="game-screen" id="screen-game" hidden>...</section>
+       <section class="game-screen" id="screen-results" hidden>...</section>
+     </main>
+   ============================================================ */
+
+/* ── Page container ─────────────────────────────────────────── */
+.game-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-md) var(--space-md) var(--space-3xl, 4rem);
+}
+
+/* ── Screen transitions ─────────────────────────────────────── */
+.game-screen {
+  animation: gs-fade-in 0.25s ease-out;
+}
+
+@keyframes gs-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Top bar (title + back link) ────────────────────────────── */
+.game-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg, 1rem);
+  flex-wrap: wrap;
+  gap: var(--space-sm, 0.5rem);
+}
+
+.game-title {
+  font-size: var(--font-size-xl, 1.5rem);
+  font-weight: 800;
+  color: var(--text-primary, #1F1B16);
+  margin: 0;
+}
+
+.game-back-link {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--text-secondary, #4A4339);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.game-back-link:hover {
+  color: var(--text-primary, #1F1B16);
+}
+
+.game-subtitle {
+  width: 100%;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--text-muted, #6B6457);
+  margin-top: calc(-1 * var(--space-sm, 0.5rem));
+}
+
+/* ── Mode tabs (Intro / Practice / Test) ────────────────────── */
+.game-mode-tabs {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: var(--space-lg, 1rem);
+}
+
+.game-mode-tab {
+  padding: 6px 16px;
+  border-radius: var(--radius-md, 6px);
+  border: 1.5px solid var(--border-color, #D9D2C0);
+  background: transparent;
+  color: var(--text-muted, #6B6457);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 700;
+  font-family: var(--font-family-base, 'Nunito', system-ui, sans-serif);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: background var(--transition-fast, 120ms ease),
+              border-color var(--transition-fast, 120ms ease),
+              color var(--transition-fast, 120ms ease);
+}
+
+.game-mode-tab:hover:not(.game-mode-tab--active) {
+  border-color: var(--text-secondary, #4A4339);
+  color: var(--text-secondary, #4A4339);
+}
+
+.game-mode-tab--active {
+  background: var(--accent-blue, #2D5F8A);
+  border-color: var(--accent-blue, #2D5F8A);
+  color: #FFFFFF;
+}
+
+.game-mode-tab--locked {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Setup screen ───────────────────────────────────────────── */
+.game-setup {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.game-setup__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md, 12px);
+  margin-bottom: var(--space-lg, 1rem);
+}
+
+@media (max-width: 480px) {
+  .game-setup__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Full-width item in setup grid (e.g., pattern selector) */
+.game-setup__grid--full {
+  grid-column: 1 / -1;
+}
+
+/* ── Form elements (SongLab-themed overrides) ───────────────── */
+.game-form-label {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 700;
+  color: var(--text-muted, #6B6457);
+  margin-bottom: var(--space-xs, 4px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.game-form-select,
+.game-form-input {
+  padding: 8px 12px;
+  border: 2px solid var(--border-strong, #BFB6A0);
+  border-radius: var(--radius-lg, 8px);
+  background: var(--bg-surface, #FFFFFF);
+  color: var(--text-primary, #1F1B16);
+  font-family: var(--font-family-base, 'Nunito', system-ui, sans-serif);
+  font-size: var(--font-size-base, 1rem);
+  transition: border-color var(--transition-fast, 120ms ease);
+}
+
+.game-form-select:focus,
+.game-form-input:focus {
+  outline: none;
+  border-color: var(--accent-blue, #2D5F8A);
+}
+
+/* ── Stats bar ──────────────────────────────────────────────── */
+.game-stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xl, 24px);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-lg, 1rem);
+}
+
+.game-stat {
+  text-align: center;
+}
+
+.game-stat__value {
+  font-size: var(--font-size-2xl, 2rem);
+  font-weight: 800;
+  color: var(--accent-blue, #2D5F8A);
+  line-height: 1;
+}
+
+.game-stat__value--gold {
+  color: var(--accent-gold, #D4A03C);
+}
+
+.game-stat__value--coral {
+  color: var(--accent-coral, #E87461);
+}
+
+.game-stat__value--green {
+  color: var(--accent-green, #4CAF50);
+}
+
+.game-stat__label {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--text-muted, #6B6457);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: var(--space-xs, 4px);
+}
+
+/* ── Difficulty badge (shown during adaptive play) ──────────── */
+.game-diff-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--font-size-2xs, 0.65rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--bg-deep, #F1ECE0);
+  color: var(--text-secondary, #4A4339);
+}
+
+/* ── Feedback toast ─────────────────────────────────────────── */
+.game-feedback {
+  min-height: 2em;
+  font-size: var(--font-size-lg, 1.25rem);
+  font-weight: 800;
+  text-align: center;
+  margin: var(--space-md, 12px) 0;
+  transition: color var(--transition-fast, 120ms ease);
+}
+
+.game-feedback--success {
+  color: var(--accent-green, #4CAF50);
+}
+
+.game-feedback--miss {
+  color: var(--accent-coral, #E87461);
+}
+
+.game-feedback--info {
+  color: var(--accent-blue, #2D5F8A);
+}
+
+/* ── Pill toggle group (instrument, voice type, etc.) ───────── */
+.game-pill-group {
+  display: flex;
+  gap: 4px;
+}
+
+.game-pill-group__label {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 700;
+  color: var(--text-muted, #6B6457);
+  margin-bottom: var(--space-xs, 4px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.game-pill {
+  padding: 6px 16px;
+  border-radius: var(--radius-md, 6px);
+  border: 1.5px solid var(--border-color, #D9D2C0);
+  background: transparent;
+  color: var(--text-muted, #6B6457);
+  font-family: var(--font-family-base, 'Nunito', system-ui, sans-serif);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast, 120ms ease);
+}
+
+.game-pill:hover:not(.game-pill--active):not(:disabled) {
+  border-color: var(--text-secondary, #4A4339);
+  color: var(--text-secondary, #4A4339);
+}
+
+.game-pill--active {
+  background: var(--accent-blue, #2D5F8A);
+  border-color: var(--accent-blue, #2D5F8A);
+  color: #FFFFFF;
+}
+
+.game-pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.game-pill--loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ── Button row (centered, flexible gap) ────────────────────── */
+.game-btn-row {
+  display: flex;
+  gap: var(--space-md, 12px);
+  justify-content: center;
+  margin-top: var(--space-lg, 1rem);
+}
+
+/* SongLab-themed button overrides (use alongside .btn from shared/styles.css) */
+.game-btn--primary {
+  background: var(--accent-blue, #2D5F8A);
+  color: #FFFFFF;
+  border-color: var(--accent-blue, #2D5F8A);
+}
+
+.game-btn--primary:hover:not(:disabled) {
+  background: var(--accent-blue-bright, #3A8BC9);
+  border-color: var(--accent-blue-bright, #3A8BC9);
+}
+
+.game-btn--success {
+  background: var(--accent-green, #4CAF50);
+  color: #FFFFFF;
+  border-color: var(--accent-green, #4CAF50);
+}
+
+.game-btn--danger {
+  background: var(--accent-red, #C62828);
+  color: #FFFFFF;
+  border-color: var(--accent-red, #C62828);
+}
+
+.game-btn--secondary {
+  background: transparent;
+  color: var(--text-secondary, #4A4339);
+  border-color: var(--border-color, #D9D2C0);
+}
+
+.game-btn--secondary:hover:not(:disabled) {
+  border-color: var(--text-secondary, #4A4339);
+  color: var(--text-primary, #1F1B16);
+}
+
+/* ── Results screen ─────────────────────────────────────────── */
+.game-results {
+  max-width: 500px;
+  margin: var(--space-xl, 24px) auto;
+  text-align: center;
+}
+
+.game-results__title {
+  font-size: var(--font-size-2xl, 2rem);
+  font-weight: 800;
+  margin-bottom: var(--space-xl, 24px);
+}
+
+/* ── Score display (results screen) ─────────────────────────── */
+.game-score-display {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xl, 24px);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-xl, 24px);
+}
+
+.game-score-display__item {
+  text-align: center;
+}
+
+.game-score-display__value {
+  font-size: var(--font-size-3xl, 2.5rem);
+  font-weight: 800;
+  color: var(--accent-blue, #2D5F8A);
+  line-height: 1;
+}
+
+.game-score-display__label {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--text-muted, #6B6457);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: var(--space-xs, 4px);
+}
+
+/* ── Session insights (future competency graph feedback) ────── */
+.game-insights {
+  background: var(--bg-deep, #F1ECE0);
+  border-radius: var(--radius-lg, 8px);
+  padding: var(--space-lg, 1rem);
+  margin-bottom: var(--space-xl, 24px);
+  text-align: left;
+}
+
+.game-insights__title {
+  font-size: var(--font-size-base, 1rem);
+  font-weight: 800;
+  color: var(--text-primary, #1F1B16);
+  margin-bottom: var(--space-sm, 8px);
+}
+
+.game-insights__row {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--text-secondary, #4A4339);
+  margin-bottom: var(--space-xs, 4px);
+  line-height: 1.6;
+}
+
+.game-insights__hint {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--text-muted, #6B6457);
+  font-style: italic;
+  margin-top: var(--space-sm, 8px);
+}
+
+/* ── Song connection callout ────────────────────────────────── */
+.game-song-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm, 8px);
+  padding: var(--space-md, 12px);
+  background: var(--bg-deep, #F1ECE0);
+  border-radius: var(--radius-md, 6px);
+  border-left: 3px solid var(--accent-gold, #D4A03C);
+  margin: var(--space-md, 12px) 0;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--text-secondary, #4A4339);
+}
+
+.game-song-tip__icon {
+  flex-shrink: 0;
+  font-size: var(--font-size-lg, 1.25rem);
+}
+
+.game-song-tip a {
+  color: var(--accent-blue, #2D5F8A);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.game-song-tip a:hover {
+  text-decoration: underline;
+}
+
+/* ── Info panel (practice mode context) ──────────────────────── */
+.game-info-panel {
+  background: var(--bg-deep, #F1ECE0);
+  border-radius: var(--radius-lg, 8px);
+  padding: var(--space-md, 12px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xs, 4px);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--text-secondary, #4A4339);
+  margin: var(--space-md, 12px) 0;
+}
+
+/* ── Utility: text alignment ────────────────────────────────── */
+.game-text-center { text-align: center; }
+.game-text-left   { text-align: left; }
+
+/* ── Utility: spacing ───────────────────────────────────────── */
+.game-mt-sm  { margin-top: var(--space-sm, 8px); }
+.game-mt-md  { margin-top: var(--space-md, 12px); }
+.game-mt-lg  { margin-top: var(--space-lg, 1rem); }
+.game-mt-xl  { margin-top: var(--space-xl, 24px); }
+.game-mb-sm  { margin-bottom: var(--space-sm, 8px); }
+.game-mb-md  { margin-bottom: var(--space-md, 12px); }
+.game-mb-lg  { margin-bottom: var(--space-lg, 1rem); }
+.game-mb-xl  { margin-bottom: var(--space-xl, 24px); }

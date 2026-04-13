@@ -2,123 +2,30 @@
 {% block title %}Harmony Training — Tonnetz{% endblock %}
 
 {% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='shared/game-shell.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
-        /* Combine tonnetz dark theme with harmony layout */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        /* ── Harmony Trainer — game-specific only ── */
+        #screen-game { text-align: center; }
 
-        .container {
-            width: 100%;
-            max-width: 640px;
-            padding: 0 1rem;
-        }
-
-        .card {
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.25rem;
-            text-align: center;
-        }
-
-        /* ── Input styling from Tonnetz ── */
-        .form-input,
-        .form-select {
-            padding: 0.55rem 0.75rem;
-            border: 2px solid var(--border-input);
-            border-radius: 8px;
-            background: var(--bg-input);
-            color: var(--text-primary);
-            font-size: 1rem;
-        }
-
-        /* ── Setup screen ── */
-        .harmony-setup {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 1rem 0;
-        }
-
-        .harmony-setup__grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            text-align: left;
-        }
-
-        .form-label {
-            margin-bottom: 0.5rem;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        /* ── Game screen ── */
-        .harmony-game {
-            max-width: 620px;
-            margin: 0 auto;
-            text-align: center;
-        }
-
-        .stats-bar {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-            margin-bottom: 1.5rem;
-        }
-
-        .stat__value {
-            font-size: 2rem;
-            font-weight: 800;
-            color: var(--text-info);
-            line-height: 1;
-        }
-
-        .stat__label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-top: 0.25rem;
-        }
-
-        .controls-row {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-        }
-
+        /* ── Test prompt ── */
         .test-prompt {
-            font-size: 1.2rem;
+            font-size: var(--font-size-lg);
             color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            font-weight: bold;
+            margin-bottom: var(--space-lg);
+            font-weight: 800;
         }
 
         .test-prompt__interval {
-            color: var(--text-highlight);
-            font-size: 2rem;
+            color: var(--accent-blue);
+            font-size: var(--font-size-2xl);
             display: block;
-            margin-top: 0.25rem;
+            margin-top: var(--space-xs);
         }
 
-        /* ── Tuner ── */
+        /* ── Tuner (SVG gauge) ── */
         .tuner-container {
-            margin: 0 auto 1.5rem;
+            margin: 0 auto var(--space-lg);
             position: relative;
         }
 
@@ -133,189 +40,62 @@
             font-size: 2.5rem;
             font-weight: 800;
             color: var(--text-primary);
-            margin-top: 0.25rem;
+            margin-top: var(--space-xs);
         }
 
         .tuner-detail {
-            font-size: 0.9rem;
+            font-size: var(--font-size-sm);
             color: var(--text-muted);
         }
 
-        /* ── Play buttons ── */
-        .play-buttons {
+        /* ── Practice controls row (root/interval selectors) ── */
+        .controls-row {
             display: flex;
-            gap: 1rem;
+            gap: var(--space-md);
             justify-content: center;
-            margin: 1.5rem 0;
+            margin-bottom: var(--space-lg);
             flex-wrap: wrap;
         }
 
-        /* ── Practice info panel ── */
-        .practice-info {
-            background: rgba(108, 92, 231, 0.1);
-            border: 1px solid rgba(108, 92, 231, 0.2);
-            border-radius: 8px;
-            padding: 1rem 1.5rem;
-            margin: 1rem auto;
-            max-width: 420px;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
-            text-align: left;
-        }
-
-        /* ── Feedback ── */
-        .feedback {
-            min-height: 1.8em;
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin: 0.5rem 0;
-        }
-
-        .feedback--success {
-            color: var(--text-success);
-        }
-
-        .feedback--miss {
-            color: var(--text-error);
-        }
-
-        /* ── Buttons ── */
-        .btn {
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: opacity 0.15s, transform 0.1s;
-        }
-
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn--primary {
-            background: var(--accent);
-            color: var(--btn-primary-text);
-        }
-
-        .btn--success {
-            background: #00c853;
-            color: var(--btn-primary-text);
-        }
-
-        .btn--danger {
-            background: #d50000;
-            color: var(--btn-primary-text);
-        }
-
-        .btn--secondary {
-            background: var(--border);
-            color: var(--text-primary);
-        }
-
-        .btn--large {
-            font-size: 1.2rem;
-            padding: 1rem 2rem;
-        }
-
-        /* ── Results ── */
-        .harmony-results {
-            max-width: 500px;
-            margin: 2rem auto;
-        }
-
-        /* ── Instrument toggle ─────────────────────────────────── */
+        /* ── Instrument + voice-type toggle rows ── */
         .instrument-toggle {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
+            gap: var(--space-sm);
             flex-wrap: wrap;
-            margin-bottom: 1rem;
+            margin-bottom: var(--space-md);
         }
 
         .inst-label {
-            font-size: 0.85rem;
+            font-size: var(--font-size-xs);
             color: var(--text-muted);
             white-space: nowrap;
         }
 
-        .inst-group {
-            display: flex;
-            border: 2px solid var(--border-input);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .inst-btn {
-            padding: 0.375rem 1rem;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-            transition: background 0.15s, color 0.15s;
-            line-height: 1.5;
-        }
-
-        .inst-btn + .inst-btn {
-            border-left: 2px solid var(--border-input);
-        }
-
-        .inst-btn:hover:not(:disabled):not(.inst-btn--active) {
-            background: var(--bg-input);
-            color: var(--text-primary);
-        }
-
-        .inst-btn--active {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .inst-btn--loading {
-            opacity: 0.65;
-            cursor: wait;
-        }
-
-        .inst-btn--error {
-            color: var(--text-error, #f44336);
-        }
-
-        .inst-btn:disabled {
-            cursor: not-allowed;
-        }
-
         .inst-status {
-            font-size: 0.8rem;
+            font-size: var(--font-size-xs);
             color: var(--text-muted);
         }
 
-        /* ── Voice type sub-selector ───────────────────────────── */
         .voice-type-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-            margin-top: -0.5rem;
-            margin-bottom: 1rem;
+            gap: var(--space-sm);
+            margin-top: calc(-1 * var(--space-sm));
+            margin-bottom: var(--space-md);
         }
 
-        /* Slightly smaller buttons inside the voice-type row */
-        .voice-type-row .inst-btn {
-            padding: 0.25rem 0.75rem;
-            font-size: 0.8rem;
+        /* Slightly smaller pills inside the voice-type row */
+        .voice-type-row .game-pill {
+            padding: 4px 12px;
+            font-size: 0.7rem;
+        }
+
+        /* Error state for instrument pill (load failure) */
+        .game-pill--error {
+            color: var(--accent-red);
         }
 
         /* ── Tonnetz pop-out panel ──────────────────────────────── */
@@ -332,24 +112,24 @@
             align-items: center;
             gap: 0.35em;
             padding: 0.35rem 0.85rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            border: 1px solid var(--border, #444);
-            border-radius: 6px;
-            background: var(--bg-card);
+            font-size: var(--font-size-xs);
+            font-weight: 700;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface);
             color: var(--text-primary);
             cursor: pointer;
-            transition: background 0.15s, border-color 0.15s;
+            transition: background var(--transition-fast), border-color var(--transition-fast);
         }
 
         .tonnetz-toggle-btn:hover {
-            background: var(--bg-hover, #313244);
-            border-color: var(--accent, #2D5F8A);
+            background: var(--bg-deep);
+            border-color: var(--accent-blue);
         }
 
         .tonnetz-toggle-btn[aria-expanded="true"] {
-            border-color: var(--accent, #2D5F8A);
-            color: var(--accent, #2D5F8A);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
         }
 
         .tonnetz-panel-wrap {
@@ -366,10 +146,10 @@
         }
 
         .tonnetz-panel {
-            background: var(--bg-card);
-            border: 1px solid var(--border, #444);
-            border-radius: 10px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
             margin: 0 auto 0.75rem;
             max-width: 380px;
             overflow: hidden;
@@ -379,13 +159,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.4rem 0.75rem;
-            border-bottom: 1px solid var(--border, #333);
-            gap: 0.5rem;
+            padding: var(--space-xs) var(--space-md);
+            border-bottom: 1px solid var(--border-color);
+            gap: var(--space-sm);
         }
 
         .tonnetz-panel-title {
-            font-size: 0.75rem;
+            font-size: var(--font-size-xs);
             font-weight: 700;
             color: var(--text-muted);
             text-transform: uppercase;
@@ -396,20 +176,20 @@
         .tonnetz-depth-ctrl {
             display: flex;
             align-items: center;
-            gap: 0.3rem;
-            font-size: 0.75rem;
+            gap: var(--space-xs);
+            font-size: var(--font-size-xs);
             color: var(--text-muted);
         }
 
         .tonnetz-depth-btn {
             width: 20px;
             height: 20px;
-            border: 1px solid var(--border, #444);
-            border-radius: 4px;
-            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface);
             color: var(--text-primary);
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: var(--font-size-sm);
             line-height: 1;
             display: flex;
             align-items: center;
@@ -419,8 +199,8 @@
         }
 
         .tonnetz-depth-btn:hover:not(:disabled) {
-            border-color: var(--accent, #2D5F8A);
-            color: var(--accent, #2D5F8A);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
         }
 
         .tonnetz-depth-btn:disabled {
@@ -441,14 +221,14 @@
 {% endblock %}
 
 {% block content %}
-    <main class="container">
+    <main class="container game-page">
         <!-- ===== Setup Screen ===== -->
-        <section id="screen-setup">
-            <div class="harmony-setup card">
+        <section id="screen-setup" class="game-screen">
+            <div class="game-setup card">
                 <h1 style="margin-top:0">Harmony Training</h1>
-                <p style="color:var(--text-muted); margin-bottom:1.5rem">Sing or play intervals with real-time pitch feedback.</p>
+                <p style="color:var(--text-muted); margin-bottom:var(--space-lg)">Sing or play intervals with real-time pitch feedback.</p>
 
-                <div class="harmony-setup__grid">
+                <div class="game-setup__grid">
                     <div class="form-group">
                         <label class="form-label" for="input-name">Your Name</label>
                         <input type="text" id="input-name" class="form-input" value="Player" maxlength="30">
@@ -475,51 +255,51 @@
                     </div>
                 </div>
 
-                <div class="instrument-toggle" style="margin-bottom:1rem">
+                <div class="instrument-toggle">
                     <span class="inst-label" id="inst-group-label">Prompt sound</span>
-                    <div class="inst-group" role="group" aria-labelledby="inst-group-label">
-                        <button class="inst-btn inst-btn--active" data-inst="piano"
+                    <div class="game-pill-group" role="group" aria-labelledby="inst-group-label">
+                        <button class="game-pill game-pill--active" data-inst="piano"
                                 id="setup-inst-piano" aria-pressed="true">Piano</button>
-                        <button class="inst-btn" data-inst="guitar"
+                        <button class="game-pill" data-inst="guitar"
                                 id="setup-inst-guitar" aria-pressed="false">Guitar</button>
-                        <button class="inst-btn" data-inst="voice"
+                        <button class="game-pill" data-inst="voice"
                                 id="setup-inst-voice" aria-pressed="false">Voice</button>
                     </div>
                     <span class="inst-status" id="inst-status" aria-live="polite" hidden></span>
                 </div>
                 <div class="voice-type-row" id="setup-voice-type-row" hidden>
                     <span class="inst-label">Type:</span>
-                    <div class="inst-group" role="group" aria-label="Voice type">
-                        <button class="inst-btn inst-btn--active" data-vtype="choir_aahs"
+                    <div class="game-pill-group" role="group" aria-label="Voice type">
+                        <button class="game-pill game-pill--active" data-vtype="choir_aahs"
                                 aria-pressed="true">Choir</button>
-                        <button class="inst-btn" data-vtype="voice_oohs"
+                        <button class="game-pill" data-vtype="voice_oohs"
                                 aria-pressed="false">Oohs</button>
                     </div>
                 </div>
 
-                <button id="btn-start" class="btn btn--primary btn--large" style="width:100%">Start Playing</button>
+                <button id="btn-start" class="btn game-btn--primary btn--large" style="width:100%">Start Playing</button>
             </div>
         </section>
 
         <!-- ===== Game Screen ===== -->
-        <section id="screen-game" hidden>
-            <div class="harmony-game card" id="tonnetz-container">
-                <div class="stats-bar" id="game-controls-bar">
-                    <div class="stat">
-                        <div class="stat__value" id="stat-score">0</div>
-                        <div class="stat__label">Score</div>
+        <section id="screen-game" class="game-screen" hidden>
+            <div class="card" id="tonnetz-container">
+                <div class="game-stats" id="game-controls-bar">
+                    <div class="game-stat">
+                        <div class="game-stat__value" id="stat-score">0</div>
+                        <div class="game-stat__label">Score</div>
                     </div>
-                    <div class="stat">
-                        <div class="stat__value" id="stat-streak">0</div>
-                        <div class="stat__label">Streak</div>
+                    <div class="game-stat">
+                        <div class="game-stat__value" id="stat-streak">0</div>
+                        <div class="game-stat__label">Streak</div>
                     </div>
-                    <div class="stat" id="stat-q-wrap" hidden>
-                        <div class="stat__value" id="stat-question">1/10</div>
-                        <div class="stat__label">Question</div>
+                    <div class="game-stat" id="stat-q-wrap" hidden>
+                        <div class="game-stat__value" id="stat-question">1/10</div>
+                        <div class="game-stat__label">Question</div>
                     </div>
-                    <div class="stat" id="stat-countdown-wrap" hidden>
-                        <div class="stat__value" id="stat-countdown" style="color:var(--text-accent-warm);">15</div>
-                        <div class="stat__label">Seconds</div>
+                    <div class="game-stat" id="stat-countdown-wrap" hidden>
+                        <div class="game-stat__value" id="stat-countdown" style="color:var(--accent-coral);">15</div>
+                        <div class="game-stat__label">Seconds</div>
                     </div>
                 </div>
 
@@ -549,76 +329,76 @@
                 </div>
 
                 <!-- Play buttons (practice only) -->
-                <div class="play-buttons" id="play-buttons">
-                    <button id="btn-play-root" class="btn btn--secondary">Play Root</button>
-                    <button id="btn-play-target" class="btn btn--secondary">Play Target</button>
-                    <button id="btn-play-both" class="btn btn--primary">Play Both</button>
+                <div class="game-btn-row" id="play-buttons">
+                    <button id="btn-play-root" class="btn game-btn--secondary">Play Root</button>
+                    <button id="btn-play-target" class="btn game-btn--secondary">Play Target</button>
+                    <button id="btn-play-both" class="btn game-btn--primary">Play Both</button>
                 </div>
 
                 <!-- Instrument selector — always visible in game -->
                 <div class="instrument-toggle">
                     <span class="inst-label">Sound:</span>
-                    <div class="inst-group" role="group" aria-label="Prompt sound">
-                        <button class="inst-btn inst-btn--active" data-inst="piano"
+                    <div class="game-pill-group" role="group" aria-label="Prompt sound">
+                        <button class="game-pill game-pill--active" data-inst="piano"
                                 id="game-inst-piano" aria-pressed="true">Piano</button>
-                        <button class="inst-btn" data-inst="guitar"
+                        <button class="game-pill" data-inst="guitar"
                                 id="game-inst-guitar" aria-pressed="false">Guitar</button>
-                        <button class="inst-btn" data-inst="voice"
+                        <button class="game-pill" data-inst="voice"
                                 id="game-inst-voice" aria-pressed="false">Voice</button>
                     </div>
                 </div>
                 <div class="voice-type-row" id="game-voice-type-row" hidden>
                     <span class="inst-label">Type:</span>
-                    <div class="inst-group" role="group" aria-label="Voice type">
-                        <button class="inst-btn inst-btn--active" data-vtype="choir_aahs"
+                    <div class="game-pill-group" role="group" aria-label="Voice type">
+                        <button class="game-pill game-pill--active" data-vtype="choir_aahs"
                                 aria-pressed="true">Choir</button>
-                        <button class="inst-btn" data-vtype="voice_oohs"
+                        <button class="game-pill" data-vtype="voice_oohs"
                                 aria-pressed="false">Oohs</button>
                     </div>
                 </div>
 
 
                 <!-- Practice info panel -->
-                <div class="practice-info" id="practice-info">
+                <div class="game-info-panel" id="practice-info">
                     <div>Root: <strong id="info-root">C4</strong></div>
                     <div>Target: <strong id="info-target">G4</strong></div>
                     <div>Interval: <strong id="info-interval">Perfect 5th</strong></div>
                     <div>Semitones: <strong id="info-semitones">7</strong></div>
                 </div>
 
-                <div id="feedback" class="feedback" aria-live="polite"></div>
+                <div id="feedback" class="game-feedback" aria-live="polite"></div>
 
-                <div style="display:flex; gap:1rem; justify-content:center; margin-top:1.5rem">
-                    <button id="btn-listen" class="btn btn--success btn--large">Start Listening</button>
-                    <button id="btn-skip" class="btn btn--secondary" hidden>Skip</button>
-                    <button id="btn-quit" class="btn btn--secondary">Quit</button>
+                <div class="game-btn-row">
+                    <button id="btn-listen" class="btn game-btn--success btn--large">Start Listening</button>
+                    <button id="btn-skip" class="btn game-btn--secondary" hidden>Skip</button>
+                    <button id="btn-quit" class="btn game-btn--secondary">Quit</button>
                 </div>
             </div>
         </section>
 
         <!-- ===== Results Screen ===== -->
-        <section id="screen-results" hidden>
-            <div class="harmony-results card">
-                <h2 style="font-size: 2rem; margin-bottom: 2rem;">Test Complete!</h2>
+        <section id="screen-results" class="game-screen" hidden>
+            <div class="game-results card">
+                <h2 class="game-results__title">Test Complete!</h2>
 
-                <div class="stats-bar">
-                    <div class="stat">
-                        <div class="stat__value" id="result-score">0</div>
-                        <div class="stat__label">Score</div>
+                <div class="game-stats">
+                    <div class="game-stat">
+                        <div class="game-stat__value" id="result-score">0</div>
+                        <div class="game-stat__label">Score</div>
                     </div>
-                    <div class="stat">
-                        <div class="stat__value" id="result-correct">0/10</div>
-                        <div class="stat__label">Correct</div>
+                    <div class="game-stat">
+                        <div class="game-stat__value" id="result-correct">0/10</div>
+                        <div class="game-stat__label">Correct</div>
                     </div>
-                    <div class="stat">
-                        <div class="stat__value" id="result-streak">0</div>
-                        <div class="stat__label">Best Streak</div>
+                    <div class="game-stat">
+                        <div class="game-stat__value" id="result-streak">0</div>
+                        <div class="game-stat__label">Best Streak</div>
                     </div>
                 </div>
 
-                <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
-                    <button id="btn-again" class="btn btn--primary btn--large">Play Again</button>
-                    <a href="/" class="btn btn--secondary btn--large"
+                <div class="game-btn-row game-mt-xl">
+                    <button id="btn-again" class="btn game-btn--primary btn--large">Play Again</button>
+                    <a href="/" class="btn game-btn--secondary btn--large"
                         style="text-decoration:none; display:flex; align-items:center;">Home</a>
                 </div>
             </div>
@@ -939,7 +719,7 @@
             fb.textContent = reason === 'time' ? `⏱ Time's up! Target was ${target}`
                 : reason === 'wrong' ? `✗ Wrong note held — target was ${target}`
                     : `Skipped — target was ${target}`;
-            fb.className = 'feedback feedback--miss';
+            fb.className = 'game-feedback game-feedback--miss';
             updateStats();
             setTimeout(showResults, 1500);
         }
@@ -947,7 +727,7 @@
         function nextTestQuestion() {
             if (state.testIndex >= TEST_TOTAL && !state.survivalMode) {
                 state.survivalMode = true;
-                $('stat-question').parentElement.querySelector('.stat__label').textContent = 'Survival';
+                $('stat-question').parentElement.querySelector('.game-stat__label').textContent = 'Survival';
             }
 
             const intervals = getTestIntervals(getEffectiveDifficulty());
@@ -995,7 +775,7 @@
 
                 state.listening = true;
                 $('btn-listen').textContent = 'Stop Listening';
-                $('btn-listen').classList.replace('btn--success', 'btn--danger');
+                $('btn-listen').classList.replace('game-btn--success', 'game-btn--danger');
             } catch (err) {
                 $('feedback').textContent = 'Error starting mic: ' + err.message;
             }
@@ -1011,7 +791,7 @@
             if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
 
             $('btn-listen').textContent = 'Start Listening';
-            $('btn-listen').classList.replace('btn--danger', 'btn--success');
+            $('btn-listen').classList.replace('game-btn--danger', 'game-btn--success');
             updateTuner(null);
             $('tuner-note').textContent = '--';
             $('tuner-detail').textContent = 'Waiting for input...';
@@ -1133,7 +913,7 @@
 
             const fb = $('feedback');
             fb.textContent = `+${points} points!`;
-            fb.className = 'feedback feedback--success';
+            fb.className = 'game-feedback game-feedback--success';
 
             if (state.mode === 'practice') {
                 updateStats();
@@ -1281,7 +1061,7 @@
 
         document.querySelectorAll('[data-inst="piano"]').forEach(btn => {
           const on = activeInst === 'piano';
-          btn.classList.toggle('inst-btn--active', on);
+          btn.classList.toggle('game-pill--active', on);
           btn.setAttribute('aria-pressed', String(on));
           btn.disabled = loading;
         });
@@ -1290,9 +1070,9 @@
           const guitarLoading = activeInst === 'guitar' && loading;
           const guitarError   = activeInst === 'guitar' && error;
           const on = activeInst === 'guitar' && !error;
-          btn.classList.toggle('inst-btn--active',  on);
-          btn.classList.toggle('inst-btn--loading',  guitarLoading);
-          btn.classList.toggle('inst-btn--error',    guitarError);
+          btn.classList.toggle('game-pill--active',  on);
+          btn.classList.toggle('game-pill--loading',  guitarLoading);
+          btn.classList.toggle('game-pill--error',    guitarError);
           btn.setAttribute('aria-pressed', String(on));
           btn.disabled = loading;
           btn.textContent = guitarLoading ? 'Guitar\u2026' : 'Guitar';
@@ -1302,9 +1082,9 @@
           const voiceLoading = activeInst === 'voice' && loading;
           const voiceError   = activeInst === 'voice' && error;
           const on = activeInst === 'voice' && !error;
-          btn.classList.toggle('inst-btn--active',  on);
-          btn.classList.toggle('inst-btn--loading',  voiceLoading);
-          btn.classList.toggle('inst-btn--error',    voiceError);
+          btn.classList.toggle('game-pill--active',  on);
+          btn.classList.toggle('game-pill--loading',  voiceLoading);
+          btn.classList.toggle('game-pill--error',    voiceError);
           btn.setAttribute('aria-pressed', String(on));
           btn.disabled = loading;
           btn.textContent = voiceLoading ? 'Voice\u2026' : 'Voice';
@@ -1347,8 +1127,8 @@
           const sfName    = btn.dataset.vtype;
           const isActive  = sfName === activeType;
           const isLoading = isActive && loading;
-          btn.classList.toggle('inst-btn--active',  isActive && !loading);
-          btn.classList.toggle('inst-btn--loading', isLoading);
+          btn.classList.toggle('game-pill--active',  isActive && !loading);
+          btn.classList.toggle('game-pill--loading', isLoading);
           btn.setAttribute('aria-pressed', String(isActive));
           btn.disabled = loading;
           // Show a spinner ellipsis on the active button while it loads

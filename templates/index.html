@@ -1,541 +1,391 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
+{% extends "base.html" %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SongLab — Harmony has a shape. Explore it.</title>
+{% block title %}SongLab — Harmony has a shape. Explore it.{% endblock %}
 
-  <!-- Google Fonts: Nunito -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800&display=swap" rel="stylesheet">
+{% block theme %}light{% endblock %}
 
-  <!-- SongLab design tokens -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+{% block head %}
+<style>
+  /* ============================================================
+     SongLab Landing Page
+     Warm light theme — pulls from design-tokens.css
+     ============================================================ */
+  :root {
+    /* Local alias so the page background can be referenced semantically */
+    --bg-page: var(--bg-base);
 
-  <style>
-    /* ============================================================
-       SongLab Landing Page
-       Warm light theme — pulls from design-tokens.css
-       ============================================================ */
-    :root {
-      /* Local alias so the page background can be referenced semantically */
-      --bg-page: var(--bg-base);
+    /* Song pad palette (cycled across the grid) */
+    --pad-blue:   #2D5F8A;
+    --pad-gold:   #D4A03C;
+    --pad-coral:  #E87461;
+    --pad-green:  #6B8F71;
+    --pad-purple: #7B6BA5;
+    --pad-teal:   #5B8A9A;
+    --pad-brown:  #C4956A;
+    --pad-plum:   #5E3D6E;
+    --pad-gray:   #8C8576;
+  }
 
-      /* Song pad palette (cycled across the grid) */
-      --pad-blue:   #2D5F8A;
-      --pad-gold:   #D4A03C;
-      --pad-coral:  #E87461;
-      --pad-green:  #6B8F71;
-      --pad-purple: #7B6BA5;
-      --pad-teal:   #5B8A9A;
-      --pad-brown:  #C4956A;
-      --pad-plum:   #5E3D6E;
-      --pad-gray:   #8C8576;
-    }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-    }
+  /* ── Tagline ────────────────────────────────────────────── */
+  .sl-tagline {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: var(--space-2xl) var(--space-xl) var(--space-lg);
+    text-align: center;
+  }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-    }
+  .sl-tagline__title {
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0 0 var(--space-md);
+  }
 
-    body {
-      background: var(--bg-page);
-      color: var(--text-primary);
-      font-family: var(--font-family-base);
-      font-weight: var(--font-weight-regular);
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      line-height: 1.5;
-    }
+  .sl-tagline__sub {
+    font-size: var(--font-size-md);
+    color: var(--text-tertiary);
+    margin: 0;
+    line-height: 1.55;
+  }
 
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
+  .sl-tutorial-link {
+    display: inline-block;
+    margin-top: var(--space-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--accent-gold, #D4A03C);
+    text-decoration: none;
+  }
+  .sl-tutorial-link:hover { text-decoration: underline; }
 
-    /* ── Nav ────────────────────────────────────────────────── */
-    .sl-nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-lg);
-      padding: var(--space-md) var(--space-2xl);
-      background: var(--bg-surface);
-      border-bottom: 1px solid var(--border-subtle);
-    }
+  /* ── Audience selector ──────────────────────────────────── */
+  .sl-audience {
+    text-align: center;
+    padding: var(--space-lg) var(--space-2xl) 0;
+  }
+  .sl-audience__tabs {
+    display: inline-flex;
+    gap: var(--space-xs);
+    padding: 4px;
+    background: var(--bg-deep);
+    border-radius: 999px;
+  }
+  .sl-audience__tab {
+    padding: 8px 24px;
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sl-audience__tab:hover { color: var(--text-primary); }
+  .sl-audience__tab--active {
+    background: var(--accent-blue);
+    color: #fff;
+  }
+  .sl-audience__desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-top: var(--space-md);
+  }
 
-    .sl-brand {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      flex-shrink: 0;
-    }
+  /* ── Section scaffolding ────────────────────────────────── */
+  .sl-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-xl);
+  }
 
-    .sl-logo {
-      width: 38px;
-      height: 38px;
-      border-radius: var(--radius-lg);
-      background: var(--accent-blue);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      box-shadow: 0 2px 6px rgba(45, 95, 138, 0.25);
-    }
+  .sl-section__label {
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    margin: 0 0 var(--space-md);
+  }
 
-    .sl-logo svg {
-      display: block;
-    }
+  .sl-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-lg);
+  }
 
-    .sl-brand__name {
-      font-family: var(--font-family-display);
-      font-size: var(--font-size-lg);
-      font-weight: var(--font-weight-medium);
-      color: var(--text-primary);
-      letter-spacing: -0.01em;
-    }
+  .sl-grid--hero {
+    grid-template-columns: repeat(2, 1fr);
+    margin-bottom: var(--space-lg);
+  }
 
-    .sl-nav__links {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      flex-wrap: wrap;
-    }
+  .sl-grid--small {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-    .sl-nav__link {
-      padding: 6px 14px;
-      border-radius: var(--radius-md);
-      font-size: var(--font-size-sm);
-      font-weight: var(--font-weight-medium);
-      color: var(--text-secondary);
-      transition: var(--transition-color);
-    }
+  /* ── Song Pads ──────────────────────────────────────────── */
+  .sl-pad {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 132px;
+    padding: var(--space-lg);
+    border-radius: var(--radius-pad);
+    color: #FFFFFF;
+    background: var(--pad-color, var(--pad-blue));
+    background-image: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--pad-color, var(--pad-blue)) 100%, transparent) 0%,
+      color-mix(in srgb, var(--pad-color, var(--pad-blue)) 78%, #000 22%) 100%
+    );
+    box-shadow:
+      0 1px 2px rgba(31, 27, 22, 0.06),
+      0 6px 14px rgba(31, 27, 22, 0.10);
+    transition: transform var(--transition-fast), box-shadow var(--transition-base);
+    overflow: hidden;
+  }
 
-    .sl-nav__link:hover {
-      color: var(--accent-blue);
-      background: var(--bg-raised);
-    }
+  .sl-pad:hover {
+    transform: scale(1.02);
+    box-shadow:
+      0 2px 4px rgba(31, 27, 22, 0.08),
+      0 10px 22px rgba(31, 27, 22, 0.16);
+  }
 
-    .sl-nav__sound {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-surface);
-      color: var(--text-secondary);
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: var(--transition-color);
-    }
+  .sl-pad:active {
+    transform: scale(0.98);
+  }
 
-    .sl-nav__sound:hover {
-      color: var(--accent-blue);
-      border-color: var(--border-color);
-    }
+  .sl-pad__key {
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-md);
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #FFFFFF;
+    backdrop-filter: blur(2px);
+  }
 
-    /* ── Tagline ────────────────────────────────────────────── */
-    .sl-tagline {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: var(--space-2xl) var(--space-xl) var(--space-lg);
-      text-align: center;
-    }
+  .sl-pad__title {
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.25;
+    letter-spacing: -0.005em;
+    margin: 0 0 2px;
+  }
 
-    .sl-tagline__title {
-      font-family: var(--font-family-display);
-      font-size: var(--font-size-3xl);
-      font-weight: var(--font-weight-medium);
-      color: var(--text-primary);
-      letter-spacing: -0.02em;
-      line-height: 1.1;
-      margin: 0 0 var(--space-md);
-    }
+  .sl-pad__artist {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-regular);
+    color: rgba(255, 255, 255, 0.82);
+    margin: 0;
+  }
 
-    .sl-tagline__sub {
-      font-size: var(--font-size-md);
-      color: var(--text-tertiary);
-      margin: 0;
-      line-height: 1.55;
-    }
+  .sl-pad__badge {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-medium);
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 0.02em;
+  }
 
-    .sl-tutorial-link {
-      display: inline-block;
-      margin-top: var(--space-md);
-      font-size: var(--font-size-sm);
-      font-weight: var(--font-weight-medium);
-      color: var(--accent-gold, #D4A03C);
-      text-decoration: none;
-    }
-    .sl-tutorial-link:hover { text-decoration: underline; }
+  /* Reserve room for the bottom badge so it doesn't collide with the artist line */
+  .sl-pad { padding-bottom: calc(var(--space-lg) + 18px); }
 
-    /* ── Audience selector ──────────────────────────────────── */
-    .sl-audience {
-      text-align: center;
-      padding: var(--space-lg) var(--space-2xl) 0;
-    }
-    .sl-audience__tabs {
-      display: inline-flex;
-      gap: var(--space-xs);
-      padding: 4px;
-      background: var(--bg-deep);
-      border-radius: 999px;
-    }
-    .sl-audience__tab {
-      padding: 8px 24px;
-      border-radius: 999px;
-      border: none;
-      background: transparent;
-      color: var(--text-secondary);
-      font-family: var(--font-family-base);
-      font-size: var(--font-size-sm);
-      font-weight: var(--font-weight-medium);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .sl-audience__tab:hover { color: var(--text-primary); }
-    .sl-audience__tab--active {
-      background: var(--accent-blue);
-      color: #fff;
-    }
-    .sl-audience__desc {
-      font-size: var(--font-size-sm);
-      color: var(--text-secondary);
-      margin-top: var(--space-md);
-    }
+  .sl-pad--browse {
+    --pad-color: var(--pad-gray);
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
 
-    /* ── Section scaffolding ────────────────────────────────── */
-    .sl-section {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: var(--space-xl) var(--space-xl);
-    }
+  .sl-pad--browse .sl-pad__title {
+    font-size: var(--font-size-base);
+  }
 
-    .sl-section__label {
-      font-family: var(--font-family-display);
-      font-size: var(--font-size-xs);
-      font-weight: var(--font-weight-medium);
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--text-muted);
-      margin: 0 0 var(--space-md);
-    }
+  .sl-pad--browse .sl-pad__artist {
+    font-size: var(--font-size-xs);
+    color: rgba(255, 255, 255, 0.75);
+  }
 
+  /* ── Tool / Game cards ──────────────────────────────────── */
+  .sl-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-lg);
+    background: var(--bg-surface);
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 1px 2px rgba(31, 27, 22, 0.04);
+    transition: transform var(--transition-fast), box-shadow var(--transition-base), border-color var(--transition-base);
+  }
+
+  .sl-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(31, 27, 22, 0.08);
+    border-color: var(--border-strong);
+  }
+
+  .sl-card__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--bg-raised);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    margin-bottom: var(--space-xs);
+  }
+
+  .sl-card__title {
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.005em;
+  }
+
+  .sl-card__desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ── Hero tool cards (Explorer + SkratchLab) ───────── */
+  .sl-card--hero {
+    position: relative;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-xl);
+    min-height: 200px;
+    padding: var(--space-2xl);
+    overflow: hidden;
+  }
+
+  .sl-card--hero .sl-card__art {
+    flex-shrink: 0;
+    width: 110px;
+    height: 110px;
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-raised);
+    color: var(--accent-blue);
+  }
+
+  .sl-card--hero.sl-card--skratch .sl-card__art {
+    color: var(--pad-coral);
+  }
+
+  .sl-card--hero .sl-card__copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+
+  .sl-card--hero .sl-card__title {
+    font-size: var(--font-size-xl);
+    letter-spacing: -0.01em;
+  }
+
+  .sl-card--hero .sl-card__desc {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+  }
+
+  .sl-card--compact {
+    padding: var(--space-md) var(--space-lg);
+    gap: var(--space-xs);
+  }
+
+  .sl-card--compact .sl-card__icon {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 2px;
+  }
+
+  .sl-card--compact .sl-card__title {
+    font-size: var(--font-size-sm);
+  }
+
+  .sl-card--compact .sl-card__desc {
+    font-size: var(--font-size-xs);
+  }
+
+  /* ── Footer ─────────────────────────────────────────────── */
+  .sl-footer {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: var(--space-2xl) var(--space-xl) var(--space-2xl);
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+  }
+
+  /* ── Responsive ─────────────────────────────────────────── */
+  @media (max-width: 900px) {
     .sl-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .sl-section { padding: var(--space-lg) var(--space-lg); }
+  }
+
+  @media (max-width: 720px) {
+    .sl-grid--hero {
+      grid-template-columns: 1fr;
+    }
+    .sl-card--hero {
+      min-height: 0;
+      padding: var(--space-xl);
       gap: var(--space-lg);
     }
-
-    .sl-grid--hero {
-      grid-template-columns: repeat(2, 1fr);
-      margin-bottom: var(--space-lg);
-    }
-
-    .sl-grid--small {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    /* ── Song Pads ──────────────────────────────────────────── */
-    .sl-pad {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      min-height: 132px;
-      padding: var(--space-lg);
-      border-radius: var(--radius-pad);
-      color: #FFFFFF;
-      background: var(--pad-color, var(--pad-blue));
-      background-image: linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--pad-color, var(--pad-blue)) 100%, transparent) 0%,
-        color-mix(in srgb, var(--pad-color, var(--pad-blue)) 78%, #000 22%) 100%
-      );
-      box-shadow:
-        0 1px 2px rgba(31, 27, 22, 0.06),
-        0 6px 14px rgba(31, 27, 22, 0.10);
-      transition: transform var(--transition-fast), box-shadow var(--transition-base);
-      overflow: hidden;
-    }
-
-    .sl-pad:hover {
-      transform: scale(1.02);
-      box-shadow:
-        0 2px 4px rgba(31, 27, 22, 0.08),
-        0 10px 22px rgba(31, 27, 22, 0.16);
-    }
-
-    .sl-pad:active {
-      transform: scale(0.98);
-    }
-
-    .sl-pad__key {
-      position: absolute;
-      top: var(--space-md);
-      right: var(--space-md);
-      font-family: var(--font-family-display);
-      font-size: var(--font-size-xs);
-      font-weight: var(--font-weight-medium);
-      letter-spacing: 0.04em;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.18);
-      color: #FFFFFF;
-      backdrop-filter: blur(2px);
-    }
-
-    .sl-pad__title {
-      font-family: var(--font-family-display);
-      font-size: var(--font-size-md);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.25;
-      letter-spacing: -0.005em;
-      margin: 0 0 2px;
-    }
-
-    .sl-pad__artist {
-      font-size: var(--font-size-sm);
-      font-weight: var(--font-weight-regular);
-      color: rgba(255, 255, 255, 0.82);
-      margin: 0;
-    }
-
-    .sl-pad__badge {
-      position: absolute;
-      bottom: 8px;
-      left: 10px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: var(--font-size-2xs);
-      font-weight: var(--font-weight-medium);
-      background: rgba(255, 255, 255, 0.15);
-      color: rgba(255, 255, 255, 0.85);
-      letter-spacing: 0.02em;
-    }
-
-    /* Reserve room for the bottom badge so it doesn't collide with the artist line */
-    .sl-pad { padding-bottom: calc(var(--space-lg) + 18px); }
-
-    .sl-pad--browse {
-      --pad-color: var(--pad-gray);
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-    }
-
-    .sl-pad--browse .sl-pad__title {
-      font-size: var(--font-size-base);
-    }
-
-    .sl-pad--browse .sl-pad__artist {
-      font-size: var(--font-size-xs);
-      color: rgba(255, 255, 255, 0.75);
-    }
-
-    /* ── Tool / Game cards ──────────────────────────────────── */
-    .sl-card {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-      padding: var(--space-lg);
-      background: var(--bg-surface);
-      border: 0.5px solid var(--border-color);
-      border-radius: var(--radius-xl);
-      box-shadow: 0 1px 2px rgba(31, 27, 22, 0.04);
-      transition: transform var(--transition-fast), box-shadow var(--transition-base), border-color var(--transition-base);
-    }
-
-    .sl-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(31, 27, 22, 0.08);
-      border-color: var(--border-strong);
-    }
-
-    .sl-card__icon {
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-md);
-      background: var(--bg-raised);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-tertiary);
-      flex-shrink: 0;
-      margin-bottom: var(--space-xs);
-    }
-
-    .sl-card__title {
-      font-family: var(--font-family-display);
-      font-size: var(--font-size-base);
-      font-weight: var(--font-weight-medium);
-      color: var(--text-primary);
-      margin: 0;
-      letter-spacing: -0.005em;
-    }
-
-    .sl-card__desc {
-      font-size: var(--font-size-sm);
-      color: var(--text-tertiary);
-      margin: 0;
-      line-height: 1.5;
-    }
-
-    /* ── Hero tool cards (Explorer + SkratchLab) ───────── */
-    .sl-card--hero {
-      position: relative;
-      flex-direction: row;
-      align-items: center;
-      gap: var(--space-xl);
-      min-height: 200px;
-      padding: var(--space-2xl);
-      overflow: hidden;
-    }
-
     .sl-card--hero .sl-card__art {
-      flex-shrink: 0;
-      width: 110px;
-      height: 110px;
-      border-radius: var(--radius-xl);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg-raised);
-      color: var(--accent-blue);
+      width: 80px;
+      height: 80px;
     }
+  }
 
-    .sl-card--hero.sl-card--skratch .sl-card__art {
-      color: var(--pad-coral);
+  @media (max-width: 540px) {
+    .sl-grid {
+      grid-template-columns: 1fr;
     }
-
-    .sl-card--hero .sl-card__copy {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
-      min-width: 0;
+    .sl-tagline {
+      padding: var(--space-xl) var(--space-lg) var(--space-sm);
     }
+  }
+</style>
+{% endblock %}
 
-    .sl-card--hero .sl-card__title {
-      font-size: var(--font-size-xl);
-      letter-spacing: -0.01em;
-    }
-
-    .sl-card--hero .sl-card__desc {
-      font-size: var(--font-size-base);
-      color: var(--text-secondary);
-    }
-
-    .sl-card--compact {
-      padding: var(--space-md) var(--space-lg);
-      gap: var(--space-xs);
-    }
-
-    .sl-card--compact .sl-card__icon {
-      width: 30px;
-      height: 30px;
-      margin-bottom: 2px;
-    }
-
-    .sl-card--compact .sl-card__title {
-      font-size: var(--font-size-sm);
-    }
-
-    .sl-card--compact .sl-card__desc {
-      font-size: var(--font-size-xs);
-    }
-
-    /* ── Footer ─────────────────────────────────────────────── */
-    .sl-footer {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: var(--space-2xl) var(--space-xl) var(--space-2xl);
-      text-align: center;
-      font-size: var(--font-size-sm);
-      color: var(--text-muted);
-    }
-
-    /* ── Responsive ─────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      .sl-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .sl-section { padding: var(--space-lg) var(--space-lg); }
-      .sl-nav { padding: var(--space-sm) var(--space-lg); }
-    }
-
-    @media (max-width: 720px) {
-      .sl-grid--hero {
-        grid-template-columns: 1fr;
-      }
-      .sl-card--hero {
-        min-height: 0;
-        padding: var(--space-xl);
-        gap: var(--space-lg);
-      }
-      .sl-card--hero .sl-card__art {
-        width: 80px;
-        height: 80px;
-      }
-    }
-
-    @media (max-width: 540px) {
-      .sl-grid {
-        grid-template-columns: 1fr;
-      }
-      .sl-nav__links {
-        gap: 0;
-      }
-      .sl-nav__link {
-        padding: 4px 8px;
-        font-size: var(--font-size-xs);
-      }
-      .sl-tagline {
-        padding: var(--space-xl) var(--space-lg) var(--space-sm);
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <!-- ===== Nav ===== -->
-  <nav class="sl-nav">
-    <a href="/" class="sl-brand">
-      <span class="sl-logo" aria-hidden="true">
-        <!-- Gold music note on blue rounded square -->
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 17.5V6.2L19 4v11.3" stroke="#D4A03C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <ellipse cx="7" cy="17.5" rx="2.5" ry="2" fill="#D4A03C"/>
-          <ellipse cx="17" cy="15.3" rx="2.5" ry="2" fill="#D4A03C"/>
-        </svg>
-      </span>
-      <span class="sl-brand__name">SongLab</span>
-    </a>
-    <div class="sl-nav__links">
-      <a href="/explorer" class="sl-nav__link">Explorer</a>
-      <a href="/harmony" class="sl-nav__link">Ear training</a>
-      <a href="/rhythm" class="sl-nav__link">Rhythm &amp; play</a>
-      <a href="/skratchlab" class="sl-nav__link">SkratchLab</a>
-      <a href="/games/chord-walks" class="sl-nav__link">Games</a>
-    </div>
-    <button id="sl-sound-toggle" class="sl-nav__sound" aria-label="Toggle sound" title="Toggle sound">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-      </svg>
-    </button>
-  </nav>
-
+{% block content %}
   <!-- ===== Tagline ===== -->
   <header class="sl-tagline">
     <h1 class="sl-tagline__title">Harmony has a shape. Explore it.</h1>
@@ -702,117 +552,78 @@
   <footer class="sl-footer">
     SongLab · Built for musicians, by a musician
   </footer>
+{% endblock %}
 
-  <!-- Hide the global floating audio toggle on the landing page —
-       we surface it inside the nav instead. -->
-  <style>.audio-toggle-btn { display: none !important; }</style>
+{% block scripts %}
+<script>
+  // MIDI-pad song grid filtered by audience.
+  // Keys must match entries in static/shared/walkthroughs.js.
+  (function () {
+    const LANDING_SONGS = [
+      // Kids
+      { key: 'let_it_go_pop_formula',   song: 'Let It Go',                 artist: 'Frozen',        keyLabel: 'A♭ major',    audience: 'kids',     badge: 'Progression',  color: 'blue'   },
+      { key: 'friend_in_me_shuffle',    song: "You've Got a Friend in Me", artist: 'Toy Story',     keyLabel: 'C major',     audience: 'kids',     badge: 'Rhythm',       color: 'gold'   },
 
-  <!-- Global audio mute/unmute toggle (script auto-inits AudioToggle on window) -->
-  <script src="{{ url_for('static', filename='shared/audio-toggle.js') }}"></script>
+      // Students
+      { key: 'stand_by_me_doo_wop',     song: 'Stand By Me',               artist: 'Ben E. King',   keyLabel: 'A major',     audience: 'student',  badge: 'Progression',  color: 'teal'   },
+      { key: 'lean_on_me_gospel',       song: 'Lean on Me',                artist: 'Bill Withers',  keyLabel: 'C major',     audience: 'student',  badge: 'Progression',  color: 'coral'  },
 
-  <script>
-    // Wire the in-nav sound button to the global AudioToggle.
-    (function () {
-      const ICON_ON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
-      const ICON_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
-      const btn = document.getElementById('sl-sound-toggle');
-      const floating = () => document.querySelector('.audio-toggle-btn');
+      // Musicians
+      { key: 'yesterday_voice_leading', song: 'Yesterday',                 artist: 'The Beatles',   keyLabel: 'F major',     audience: 'musician', badge: 'Voice Leading', color: 'blue'  },
+      { key: 'am_c_relationship',       song: 'Eleanor Rigby',             artist: 'The Beatles',   keyLabel: 'E minor',     audience: 'musician', badge: 'Transforms',    color: 'green' },
+      { key: 'creep_progression',       song: 'Creep',                     artist: 'Radiohead',     keyLabel: 'G major',     audience: 'musician', badge: 'Transforms',    color: 'coral' },
+      { key: 'stairway_P_transform',    song: 'Stairway to Heaven',        artist: 'Led Zeppelin',  keyLabel: 'A minor',     audience: 'musician', badge: 'Transforms',    color: 'purple'},
+      { key: 'ii_V_I',                  song: 'Autumn Leaves',             artist: 'Jazz Standard', keyLabel: 'C major',     audience: 'musician', badge: 'Jazz',          color: 'gold'  },
+      { key: 'mixolydian',              song: 'Norwegian Wood',            artist: 'The Beatles',   keyLabel: 'E mixolydian',audience: 'musician', badge: 'Modes',         color: 'plum'  },
+      { key: 'deceptive_cadence',       song: 'In My Life',                artist: 'The Beatles',   keyLabel: 'A major',     audience: 'musician', badge: 'Progression',   color: 'teal'  },
+      { key: 'folsom_train_beat',       song: 'Folsom Prison Blues',       artist: 'Johnny Cash',   keyLabel: 'E major',     audience: 'musician', badge: 'Rhythm',        color: 'brown' },
+      { key: 'twelve_bar_blues',        song: 'Johnny B. Goode',           artist: 'Chuck Berry',   keyLabel: 'B♭ major',    audience: 'musician', badge: 'Blues',         color: 'gray'  },
+      { key: 'why_does_my_heart_moby',  song: 'Why Does My Heart Feel So Bad?', artist: 'Moby',    keyLabel: 'A minor',     audience: 'musician', badge: 'Progression',   color: 'plum'  },
+    ];
 
-      function refresh() {
-        const muted = window.AudioToggle ? window.AudioToggle.isMuted() : false;
-        btn.innerHTML = muted ? ICON_OFF : ICON_ON;
-        btn.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
-        btn.title = muted ? 'Sound off — click to unmute' : 'Sound on — click to mute';
-        btn.style.opacity = muted ? '0.55' : '1';
-      }
+    const AUDIENCE_DESCS = {
+      kids:     'Fun songs you already know — learn what makes them work.',
+      student:  'Classic songs every musician should understand.',
+      musician: 'Deep dives into harmony, voice leading, and rhythm.',
+    };
 
-      btn.addEventListener('click', () => {
-        const f = floating();
-        if (f) f.click();
-        else refresh();
+    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+
+    function renderAudienceSongs(audience) {
+      const grid = document.getElementById('song-pad-grid');
+      const desc = document.getElementById('audience-desc');
+      if (!grid || !desc) return;
+      desc.textContent = AUDIENCE_DESCS[audience] || '';
+
+      const filtered = LANDING_SONGS.filter((s) => s.audience === audience);
+      const cards = filtered.map((s) => `
+        <a class="sl-pad" style="--pad-color: var(--pad-${s.color});" href="/explorer?walkthrough=${encodeURIComponent(s.key)}">
+          <span class="sl-pad__key">${escapeHtml(s.keyLabel)}</span>
+          <h3 class="sl-pad__title">${escapeHtml(s.song)}</h3>
+          <p class="sl-pad__artist">${escapeHtml(s.artist)}</p>
+          <span class="sl-pad__badge">${escapeHtml(s.badge)}</span>
+        </a>
+      `).join('');
+      const browse = `
+        <a class="sl-pad sl-pad--browse" href="/explorer">
+          <h3 class="sl-pad__title">Browse all songs →</h3>
+          <p class="sl-pad__artist">More walkthroughs</p>
+        </a>
+      `;
+      grid.innerHTML = cards + browse;
+    }
+
+    document.querySelectorAll('.sl-audience__tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.sl-audience__tab').forEach((t) => t.classList.remove('sl-audience__tab--active'));
+        tab.classList.add('sl-audience__tab--active');
+        renderAudienceSongs(tab.dataset.audience);
       });
+    });
 
-      window.addEventListener('tonnetz:mute-changed', refresh);
-      // Initial paint (defer so audio-toggle.js has loaded)
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', refresh);
-      } else {
-        refresh();
-      }
-    })();
-  </script>
-
-  <script>
-    // MIDI-pad song grid filtered by audience.
-    // Keys must match entries in static/shared/walkthroughs.js.
-    (function () {
-      const LANDING_SONGS = [
-        // Kids
-        { key: 'let_it_go_pop_formula',   song: 'Let It Go',                 artist: 'Frozen',        keyLabel: 'A♭ major',    audience: 'kids',     badge: 'Progression',  color: 'blue'   },
-        { key: 'friend_in_me_shuffle',    song: "You've Got a Friend in Me", artist: 'Toy Story',     keyLabel: 'C major',     audience: 'kids',     badge: 'Rhythm',       color: 'gold'   },
-
-        // Students
-        { key: 'stand_by_me_doo_wop',     song: 'Stand By Me',               artist: 'Ben E. King',   keyLabel: 'A major',     audience: 'student',  badge: 'Progression',  color: 'teal'   },
-        { key: 'lean_on_me_gospel',       song: 'Lean on Me',                artist: 'Bill Withers',  keyLabel: 'C major',     audience: 'student',  badge: 'Progression',  color: 'coral'  },
-
-        // Musicians
-        { key: 'yesterday_voice_leading', song: 'Yesterday',                 artist: 'The Beatles',   keyLabel: 'F major',     audience: 'musician', badge: 'Voice Leading', color: 'blue'  },
-        { key: 'am_c_relationship',       song: 'Eleanor Rigby',             artist: 'The Beatles',   keyLabel: 'E minor',     audience: 'musician', badge: 'Transforms',    color: 'green' },
-        { key: 'creep_progression',       song: 'Creep',                     artist: 'Radiohead',     keyLabel: 'G major',     audience: 'musician', badge: 'Transforms',    color: 'coral' },
-        { key: 'stairway_P_transform',    song: 'Stairway to Heaven',        artist: 'Led Zeppelin',  keyLabel: 'A minor',     audience: 'musician', badge: 'Transforms',    color: 'purple'},
-        { key: 'ii_V_I',                  song: 'Autumn Leaves',             artist: 'Jazz Standard', keyLabel: 'C major',     audience: 'musician', badge: 'Jazz',          color: 'gold'  },
-        { key: 'mixolydian',              song: 'Norwegian Wood',            artist: 'The Beatles',   keyLabel: 'E mixolydian',audience: 'musician', badge: 'Modes',         color: 'plum'  },
-        { key: 'deceptive_cadence',       song: 'In My Life',                artist: 'The Beatles',   keyLabel: 'A major',     audience: 'musician', badge: 'Progression',   color: 'teal'  },
-        { key: 'folsom_train_beat',       song: 'Folsom Prison Blues',       artist: 'Johnny Cash',   keyLabel: 'E major',     audience: 'musician', badge: 'Rhythm',        color: 'brown' },
-        { key: 'twelve_bar_blues',        song: 'Johnny B. Goode',           artist: 'Chuck Berry',   keyLabel: 'B♭ major',    audience: 'musician', badge: 'Blues',         color: 'gray'  },
-        { key: 'why_does_my_heart_moby',  song: 'Why Does My Heart Feel So Bad?', artist: 'Moby',    keyLabel: 'A minor',     audience: 'musician', badge: 'Progression',   color: 'plum'  },
-      ];
-
-      const AUDIENCE_DESCS = {
-        kids:     'Fun songs you already know — learn what makes them work.',
-        student:  'Classic songs every musician should understand.',
-        musician: 'Deep dives into harmony, voice leading, and rhythm.',
-      };
-
-      const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      }[c]));
-
-      function renderAudienceSongs(audience) {
-        const grid = document.getElementById('song-pad-grid');
-        const desc = document.getElementById('audience-desc');
-        if (!grid || !desc) return;
-        desc.textContent = AUDIENCE_DESCS[audience] || '';
-
-        const filtered = LANDING_SONGS.filter((s) => s.audience === audience);
-        const cards = filtered.map((s) => `
-          <a class="sl-pad" style="--pad-color: var(--pad-${s.color});" href="/explorer?walkthrough=${encodeURIComponent(s.key)}">
-            <span class="sl-pad__key">${escapeHtml(s.keyLabel)}</span>
-            <h3 class="sl-pad__title">${escapeHtml(s.song)}</h3>
-            <p class="sl-pad__artist">${escapeHtml(s.artist)}</p>
-            <span class="sl-pad__badge">${escapeHtml(s.badge)}</span>
-          </a>
-        `).join('');
-        const browse = `
-          <a class="sl-pad sl-pad--browse" href="/explorer">
-            <h3 class="sl-pad__title">Browse all songs →</h3>
-            <p class="sl-pad__artist">More walkthroughs</p>
-          </a>
-        `;
-        grid.innerHTML = cards + browse;
-      }
-
-      document.querySelectorAll('.sl-audience__tab').forEach((tab) => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.sl-audience__tab').forEach((t) => t.classList.remove('sl-audience__tab--active'));
-          tab.classList.add('sl-audience__tab--active');
-          renderAudienceSongs(tab.dataset.audience);
-        });
-      });
-
-      renderAudienceSongs('kids');
-    })();
-  </script>
-</body>
-
-</html>
+    renderAudienceSongs('kids');
+  })();
+</script>
+{% endblock %}

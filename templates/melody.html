@@ -2,77 +2,29 @@
 {% block title %}Melody Echo — Tonnetz{% endblock %}
 
 {% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='shared/game-shell.css') }}">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <style>
-    /* ── Setup screen ── */
-    .melody-setup {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: var(--space-xl) 0 var(--space-3xl);
-    }
-
-    .melody-setup__grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-lg);
-    }
-
-    @media (max-width: 480px) {
-      .melody-setup__grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* ── Game screen ── */
-    .melody-game {
-      max-width: 700px;
-      margin: 0 auto;
-      padding: var(--space-lg) 0 var(--space-3xl);
+    /* ── Phase prompt (game-specific) ── */
+    .melody-phase {
+      font-size: var(--font-size-lg);
+      color: var(--text-secondary);
+      margin-bottom: var(--space-md);
+      font-weight: 700;
+      min-height: 1.6em;
       text-align: center;
     }
 
-    .stats-bar {
-      display: flex;
-      justify-content: center;
-      gap: var(--space-xl);
-      flex-wrap: wrap;
-      margin-bottom: var(--space-lg);
-    }
-
-    .stat__value {
-      font-size: var(--font-size-2xl);
-      font-weight: var(--font-weight-extra-bold);
-      color: var(--color-primary);
-      line-height: 1;
-    }
-
-    .stat__label {
-      font-size: var(--font-size-xs);
-      color: var(--color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-top: var(--space-xs);
-    }
-
-    /* ── Phase prompt ── */
-    .melody-phase {
-      font-size: var(--font-size-lg);
-      color: var(--color-text-light);
-      margin-bottom: var(--space-md);
-      font-weight: var(--font-weight-bold);
-      min-height: 1.6em;
-    }
-
     .melody-phase--listen {
-      color: var(--color-primary);
+      color: var(--accent-blue);
     }
 
     .melody-phase--sing {
-      color: var(--color-accent-dark);
+      color: var(--accent-gold);
     }
 
     .melody-phase--done {
-      color: var(--color-success);
+      color: var(--accent-green);
     }
 
     /* ── Note boxes ── */
@@ -86,136 +38,140 @@
 
     .melody-note {
       width: 84px;
-      border: 3px solid var(--color-border);
+      border: 3px solid var(--border-color);
       border-radius: var(--radius-md);
       padding: var(--space-md) var(--space-sm);
       text-align: center;
       transition: all var(--transition-base);
-      background: var(--color-bg-card);
+      background: var(--bg-surface);
     }
 
     .melody-note__number {
       font-size: var(--font-size-xs);
-      color: var(--color-text-muted);
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.1em;
     }
 
     .melody-note__display {
       font-size: var(--font-size-lg);
-      font-weight: var(--font-weight-extra-bold);
+      font-weight: 800;
       min-height: 1.5em;
-      color: var(--color-text);
+      color: var(--text-primary);
       margin-top: var(--space-xs);
     }
 
     .melody-note__sub {
       font-size: var(--font-size-xs);
-      color: var(--color-text-muted);
+      color: var(--text-muted);
       min-height: 1.2em;
       margin-top: 2px;
     }
 
     .melody-note--playing {
-      border-color: var(--color-primary);
-      background: rgba(108, 92, 231, 0.08);
-      box-shadow: var(--shadow-glow-primary);
+      border-color: var(--accent-blue);
+      background: rgba(45, 95, 138, 0.08);
+      box-shadow: 0 0 12px rgba(45, 95, 138, 0.25);
     }
 
     .melody-note--active {
-      border-color: var(--color-accent-dark);
-      background: rgba(253, 203, 110, 0.1);
+      border-color: var(--accent-gold);
+      background: rgba(212, 160, 60, 0.12);
       animation: pulse-glow 1.5s ease infinite;
     }
 
     .melody-note--locked {
-      border-color: var(--color-primary-light);
-      background: rgba(162, 155, 254, 0.08);
+      border-color: var(--accent-blue-bright);
+      background: rgba(58, 139, 201, 0.08);
     }
 
     .melody-note--correct {
-      border-color: var(--color-success);
-      background: rgba(0, 184, 148, 0.1);
+      border-color: var(--accent-green);
+      background: rgba(76, 175, 80, 0.12);
     }
 
     .melody-note--correct .melody-note__display {
-      color: var(--color-success);
+      color: var(--accent-green);
     }
 
     .melody-note--close {
-      border-color: var(--color-warning);
-      background: rgba(253, 203, 110, 0.1);
+      border-color: var(--accent-gold);
+      background: rgba(212, 160, 60, 0.12);
     }
 
     .melody-note--close .melody-note__display {
-      color: var(--color-accent-dark);
+      color: var(--accent-gold);
     }
 
     .melody-note--wrong {
-      border-color: var(--color-error);
-      background: rgba(214, 48, 49, 0.08);
+      border-color: var(--accent-coral);
+      background: rgba(232, 116, 97, 0.10);
     }
 
     .melody-note--wrong .melody-note__display {
-      color: var(--color-error);
+      color: var(--accent-coral);
     }
 
     .melody-note--skipped {
-      border-color: var(--color-text-muted);
+      border-color: var(--text-muted);
       opacity: 0.5;
     }
 
     /* ── Live pitch indicator ── */
     .melody-live {
       margin: var(--space-md) 0;
+      text-align: center;
     }
 
     .melody-live__note {
       font-size: var(--font-size-2xl);
-      font-weight: var(--font-weight-extra-bold);
-      color: var(--color-text);
+      font-weight: 800;
+      color: var(--text-primary);
     }
 
     .melody-live__detail {
       font-size: var(--font-size-sm);
-      color: var(--color-text-muted);
+      color: var(--text-muted);
     }
 
-    /* ── Buttons ── */
-    .melody-buttons {
-      display: flex;
-      gap: var(--space-md);
-      justify-content: center;
-      margin-top: var(--space-lg);
-      flex-wrap: wrap;
+    /* ── AI feedback ── */
+    .ai-feedback {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: var(--space-md) var(--space-lg);
+      margin: var(--space-lg) 0;
+      font-size: var(--font-size-sm);
+      color: var(--text-primary);
+      text-align: left;
+      line-height: 1.6;
     }
 
-    /* ── Feedback ── */
-    .feedback {
-      min-height: 1.8em;
-      font-size: var(--font-size-lg);
-      font-weight: var(--font-weight-bold);
+    .ai-feedback__title {
+      font-weight: 800;
+      color: var(--accent-blue);
+      margin-bottom: var(--space-xs);
+    }
+
+    .ai-feedback--loading {
+      text-align: center;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* ── Unlock notification ── */
+    .unlock-banner {
+      background: rgba(58, 139, 201, 0.10);
+      border: 2px solid var(--accent-blue-bright);
+      border-radius: var(--radius-md);
+      padding: var(--space-sm) var(--space-md);
       margin: var(--space-sm) 0;
+      font-weight: 800;
+      color: var(--accent-blue);
+      text-align: center;
     }
 
-    .feedback--success {
-      color: var(--color-success);
-    }
-
-    .feedback--miss {
-      color: var(--color-error);
-    }
-
-    .feedback--partial {
-      color: var(--color-accent-dark);
-    }
-
-    /* ── Results ── */
-    .melody-results {
-      max-width: 500px;
-      margin: var(--space-xl) auto;
-    }
-
+    /* ── Name entry (results) ── */
     .name-entry {
       margin: var(--space-lg) 0;
       display: flex;
@@ -226,60 +182,24 @@
     }
 
     .name-entry__label {
-      color: var(--color-accent-dark);
-      font-weight: var(--font-weight-bold);
-    }
-
-    /* ── AI feedback ── */
-    .ai-feedback {
-      background: rgba(0, 206, 201, 0.08);
-      border: 1px solid rgba(0, 206, 201, 0.2);
-      border-radius: var(--radius-md);
-      padding: var(--space-md) var(--space-lg);
-      margin: var(--space-lg) 0;
-      font-size: var(--font-size-sm);
-      color: var(--color-text);
-      text-align: left;
-      line-height: var(--line-height-base);
-    }
-
-    .ai-feedback__title {
-      font-weight: var(--font-weight-bold);
-      color: var(--color-secondary-dark);
-      margin-bottom: var(--space-xs);
-    }
-
-    .ai-feedback--loading {
-      text-align: center;
-      color: var(--color-text-muted);
-      font-style: italic;
-    }
-
-    /* ── Unlock notification ── */
-    .unlock-banner {
-      background: rgba(108, 92, 231, 0.1);
-      border: 2px solid var(--color-primary-light);
-      border-radius: var(--radius-md);
-      padding: var(--space-sm) var(--space-md);
-      margin: var(--space-sm) 0;
-      font-weight: var(--font-weight-bold);
-      color: var(--color-primary);
+      color: var(--accent-gold);
+      font-weight: 800;
     }
   </style>
 {% endblock %}
 
 {% block content %}
-  <main class="container">
+  <main class="game-page">
     <!-- ===== Setup Screen ===== -->
-    <section id="screen-setup">
-      <div class="melody-setup">
+    <section class="game-screen" id="screen-setup">
+      <div class="game-setup">
         <h1 class="text-center mb-md">Melody Echo</h1>
-        <p class="text-center mb-lg" style="color: var(--color-text-light)">
+        <p class="text-center mb-lg" style="color: var(--text-secondary)">
           Listen to a short melody, then sing it back note by note.
           Unlock longer melodies as you improve!
         </p>
 
-        <div class="melody-setup__grid">
+        <div class="game-setup__grid">
           <div class="form-group">
             <label class="form-label" for="input-name">Your Name</label>
             <input type="text" id="input-name" class="form-input" value="Player" maxlength="30">
@@ -311,7 +231,7 @@
         </div>
 
         <div class="text-center mt-xl">
-          <button id="btn-start" class="btn btn--primary btn--large">Start Playing</button>
+          <button id="btn-start" class="btn game-btn--primary btn--large">Start Playing</button>
         </div>
 
         <div class="mt-xl">
@@ -324,55 +244,53 @@
     </section>
 
     <!-- ===== Game Screen ===== -->
-    <section id="screen-game" hidden>
-      <div class="melody-game">
-        <div class="stats-bar">
-          <div class="stat">
-            <div class="stat__value" id="stat-score">0</div>
-            <div class="stat__label">Score</div>
-          </div>
-          <div class="stat">
-            <div class="stat__value" id="stat-streak">0</div>
-            <div class="stat__label">Streak</div>
-          </div>
-          <div class="stat" id="stat-q-wrap" hidden>
-            <div class="stat__value" id="stat-question">1/10</div>
-            <div class="stat__label">Melody</div>
-          </div>
-          <div class="stat">
-            <div class="stat__value" id="stat-accuracy">0%</div>
-            <div class="stat__label">Accuracy</div>
-          </div>
+    <section class="game-screen" id="screen-game" hidden>
+      <div class="game-stats">
+        <div class="game-stat">
+          <div class="game-stat__value" id="stat-score">0</div>
+          <div class="game-stat__label">Score</div>
         </div>
-
-        <div class="melody-phase" id="phase-text">Get ready...</div>
-
-        <!-- Note boxes -->
-        <div class="melody-notes" id="melody-notes"></div>
-
-        <!-- Live pitch display -->
-        <div class="melody-live" id="melody-live" hidden>
-          <div class="melody-live__note" id="live-note">--</div>
-          <div class="melody-live__detail" id="live-detail">Listening...</div>
-          <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: var(--space-xs);">
-            Press <strong>Space</strong> to skip a note
-          </div>
+        <div class="game-stat">
+          <div class="game-stat__value" id="stat-streak">0</div>
+          <div class="game-stat__label">Streak</div>
         </div>
-
-        <div id="feedback" class="feedback" aria-live="polite"></div>
-        <div id="unlock-banner" hidden></div>
-
-        <div class="melody-buttons">
-          <button id="btn-replay" class="btn btn--secondary" hidden>Replay Melody</button>
-          <button id="btn-next" class="btn btn--success" hidden>Next Melody</button>
-          <button id="btn-quit" class="btn btn--secondary btn--small">Quit</button>
+        <div class="game-stat" id="stat-q-wrap" hidden>
+          <div class="game-stat__value" id="stat-question">1/10</div>
+          <div class="game-stat__label">Melody</div>
         </div>
+        <div class="game-stat">
+          <div class="game-stat__value" id="stat-accuracy">0%</div>
+          <div class="game-stat__label">Accuracy</div>
+        </div>
+      </div>
+
+      <div class="melody-phase" id="phase-text">Get ready...</div>
+
+      <!-- Note boxes -->
+      <div class="melody-notes" id="melody-notes"></div>
+
+      <!-- Live pitch display -->
+      <div class="melody-live" id="melody-live" hidden>
+        <div class="melody-live__note" id="live-note">--</div>
+        <div class="melody-live__detail" id="live-detail">Listening...</div>
+        <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: var(--space-xs);">
+          Press <strong>Space</strong> to skip a note
+        </div>
+      </div>
+
+      <div id="feedback" class="game-feedback" aria-live="polite"></div>
+      <div id="unlock-banner" hidden></div>
+
+      <div class="game-btn-row">
+        <button id="btn-replay" class="btn btn--secondary" hidden>Replay Melody</button>
+        <button id="btn-next" class="btn btn--success" hidden>Next Melody</button>
+        <button id="btn-quit" class="btn btn--secondary btn--small">Quit</button>
       </div>
     </section>
 
     <!-- ===== Results Screen ===== -->
-    <section id="screen-results" hidden>
-      <div class="melody-results card">
+    <section class="game-screen" id="screen-results" hidden>
+      <div class="game-results card">
         <h2 class="text-center mb-lg">Test Complete!</h2>
         <div class="score-display mb-lg">
           <div class="score-display__item">
@@ -398,7 +316,7 @@
         <div id="name-entry-wrap" class="name-entry" hidden>
           <span class="name-entry__label">&#127881; Top 5! Enter name:</span>
           <input type="text" id="result-name" class="form-input" maxlength="30" style="width:150px">
-          <button id="btn-save-score" class="btn btn--primary btn--small">Save</button>
+          <button id="btn-save-score" class="btn game-btn--primary btn--small">Save</button>
         </div>
 
         <div class="mt-lg">
@@ -409,7 +327,7 @@
         </div>
 
         <div class="text-center mt-xl">
-          <button id="btn-again" class="btn btn--primary btn--large">Play Again</button>
+          <button id="btn-again" class="btn game-btn--primary btn--large">Play Again</button>
           <a href="/" class="btn btn--secondary btn--large" style="margin-left:var(--space-md)">Home</a>
         </div>
       </div>
@@ -618,7 +536,7 @@
       $('btn-next').hidden = true;
       $('melody-live').hidden = true;
       $('feedback').textContent = '';
-      $('feedback').className = 'feedback';
+      $('feedback').className = 'game-feedback';
       $('unlock-banner').hidden = true;
 
       for (let i = 0; i < state.melody.length; i++) {
@@ -890,13 +808,13 @@
 
       if (perfect) {
         $('feedback').textContent = `+${melodyScore} points`;
-        $('feedback').className = 'feedback feedback--success animate-pop';
+        $('feedback').className = 'game-feedback game-feedback--success animate-pop';
       } else if (correctCount > 0) {
         $('feedback').textContent = `${correctCount}/${state.melody.length} correct — +${melodyScore}`;
-        $('feedback').className = 'feedback feedback--partial';
+        $('feedback').className = 'game-feedback game-feedback--info';
       } else {
         $('feedback').textContent = 'Keep trying — listen and match each note!';
-        $('feedback').className = 'feedback feedback--miss';
+        $('feedback').className = 'game-feedback game-feedback--miss';
       }
 
       // Buttons
@@ -951,7 +869,7 @@
 
       createNoteBoxes();
       $('feedback').textContent = '';
-      $('feedback').className = 'feedback';
+      $('feedback').className = 'game-feedback';
       $('unlock-banner').hidden = true;
       updateStats();
 
@@ -988,7 +906,7 @@
         await startPitchDetection(onPitch);
       } catch (err) {
         $('feedback').textContent = 'Microphone access required: ' + err.message;
-        $('feedback').className = 'feedback feedback--miss';
+        $('feedback').className = 'game-feedback game-feedback--miss';
         return;
       }
 

@@ -2,22 +2,23 @@
 {% block title %}Rhythm Training — Tonnetz{% endblock %}
 
 {% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='shared/game-shell.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='rhythm/styles.css') }}">
 {% endblock %}
 
 {% block content %}
   <main class="container">
     <!-- ===== Setup Screen ===== -->
-    <section id="screen-setup" class="rhythm-screen">
-      <div class="rhythm-setup">
+    <section id="screen-setup" class="game-screen">
+      <div class="game-setup">
         <h1 class="text-center mb-lg">Rhythm Training</h1>
-        <p class="text-center mb-lg" style="color: var(--color-text-light);">
+        <p class="text-center mb-lg" style="color: var(--text-secondary);">
           Clap along to the beat! Use your microphone or tap the spacebar to stay in rhythm.
         </p>
 
-        <div class="rhythm-setup__grid">
+        <div class="game-setup__grid">
           <!-- Player Name -->
-          <div class="form-group">
+          <div class="form-group game-setup__grid--full">
             <label class="form-label" for="player-name">Your Name</label>
             <input type="text" id="player-name" class="form-input" placeholder="Enter your name" maxlength="30"
               value="Player">
@@ -75,7 +76,7 @@
 
           <!-- Tap-In -->
           <div class="form-group rhythm-tap-row">
-            <button id="btn-tap-in" class="btn btn--secondary" type="button">
+            <button id="btn-tap-in" class="btn game-btn--secondary" type="button">
               Tap Tempo
             </button>
             <span id="tap-feedback" class="rhythm-tap-feedback">Tap the button rhythmically to set tempo</span>
@@ -83,7 +84,7 @@
         </div>
 
         <div class="text-center mt-xl">
-          <button id="btn-start" class="btn btn--primary btn--large">
+          <button id="btn-start" class="btn game-btn--primary btn--large">
             Start Playing
           </button>
         </div>
@@ -99,7 +100,7 @@
     </section>
 
     <!-- ===== Game Screen ===== -->
-    <section id="screen-game" class="rhythm-screen" hidden>
+    <section id="screen-game" class="game-screen" hidden>
       <div class="rhythm-game">
         <!-- Beat Light -->
         <div class="rhythm-beat-light-wrap">
@@ -112,22 +113,22 @@
         </div>
 
         <!-- Stats -->
-        <div class="rhythm-stats" role="status" aria-live="polite">
-          <div class="rhythm-stat">
-            <div class="rhythm-stat__value" id="stat-streak">0</div>
-            <div class="rhythm-stat__label">Streak</div>
+        <div class="game-stats" role="status" aria-live="polite">
+          <div class="game-stat">
+            <div class="game-stat__value" id="stat-streak">0</div>
+            <div class="game-stat__label">Streak</div>
           </div>
-          <div class="rhythm-stat">
-            <div class="rhythm-stat__value" id="stat-accuracy">100%</div>
-            <div class="rhythm-stat__label">Accuracy</div>
+          <div class="game-stat">
+            <div class="game-stat__value" id="stat-accuracy">100%</div>
+            <div class="game-stat__label">Accuracy</div>
           </div>
-          <div class="rhythm-stat">
-            <div class="rhythm-stat__value" id="stat-beats">0</div>
-            <div class="rhythm-stat__label">Beats</div>
+          <div class="game-stat">
+            <div class="game-stat__value" id="stat-beats">0</div>
+            <div class="game-stat__label">Beats</div>
           </div>
-          <div class="rhythm-stat">
-            <div class="rhythm-stat__value" id="stat-bpm">90</div>
-            <div class="rhythm-stat__label">BPM</div>
+          <div class="game-stat">
+            <div class="game-stat__value" id="stat-bpm">90</div>
+            <div class="game-stat__label">BPM</div>
           </div>
         </div>
 
@@ -138,7 +139,7 @@
 
         <!-- Controls -->
         <div class="rhythm-controls">
-          <button id="btn-stop" class="btn btn--danger">
+          <button id="btn-stop" class="btn game-btn--danger">
             Stop
           </button>
         </div>
@@ -146,26 +147,26 @@
     </section>
 
     <!-- ===== Results Screen ===== -->
-    <section id="screen-results" class="rhythm-screen" hidden>
+    <section id="screen-results" class="game-screen" hidden>
       <div class="rhythm-results card">
         <h2 class="text-center mb-md">Results</h2>
 
-        <div class="score-display mb-lg">
-          <div class="score-display__item">
-            <div class="score-display__value" id="result-score">0</div>
-            <div class="score-display__label">Score</div>
+        <div class="game-score-display mb-lg">
+          <div class="game-score-display__item">
+            <div class="game-score-display__value" id="result-score">0</div>
+            <div class="game-score-display__label">Score</div>
           </div>
-          <div class="score-display__item">
-            <div class="score-display__value" id="result-accuracy">0%</div>
-            <div class="score-display__label">Accuracy</div>
+          <div class="game-score-display__item">
+            <div class="game-score-display__value" id="result-accuracy">0%</div>
+            <div class="game-score-display__label">Accuracy</div>
           </div>
-          <div class="score-display__item">
-            <div class="score-display__value" id="result-streak">0</div>
-            <div class="score-display__label">Best Streak</div>
+          <div class="game-score-display__item">
+            <div class="game-score-display__value" id="result-streak">0</div>
+            <div class="game-score-display__label">Best Streak</div>
           </div>
-          <div class="score-display__item">
-            <div class="score-display__value" id="result-beats">0/0</div>
-            <div class="score-display__label">Beats Hit</div>
+          <div class="game-score-display__item">
+            <div class="game-score-display__value" id="result-beats">0/0</div>
+            <div class="game-score-display__label">Beats Hit</div>
           </div>
         </div>
 
@@ -177,10 +178,10 @@
         </div>
 
         <div class="text-center">
-          <button id="btn-play-again" class="btn btn--primary btn--large">
+          <button id="btn-play-again" class="btn game-btn--primary btn--large">
             Play Again
           </button>
-          <a href="/" class="btn btn--secondary btn--large" style="margin-left: var(--space-md);">
+          <a href="/" class="btn game-btn--secondary btn--large" style="margin-left: var(--space-md);">
             Home
           </a>
         </div>

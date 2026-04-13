@@ -2,102 +2,26 @@
 {% block title %}Scale Builder — Tonnetz{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='shared/game-shell.css') }}">
 <!-- Tone.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
 <style>
-  /* ── Page layout ─────────────────────────────────────────── */
-  .sb-page {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 1rem 1rem 3rem;
-  }
-
-  /* ── Top bar ─────────────────────────────────────────────── */
-  .sb-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.75rem;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  .sb-title {
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    margin: 0;
-  }
-  .sb-back-link {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 700;
-  }
-  .sb-back-link:hover { color: var(--text-primary); }
-
-  /* ── Stage tabs ──────────────────────────────────────────── */
-  .sb-stage-tabs {
-    display: flex;
-    gap: 4px;
-    justify-content: center;
-    margin-bottom: 0.4rem;
-  }
-  .sb-stage-tab {
-    padding: 4px 14px;
-    border-radius: 6px;
-    border: 1.5px solid var(--border);
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 600;
-    font-family: var(--font-main);
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-  }
-  .sb-stage-tab:hover:not(.sb-stage-tab--active) {
-    border-color: var(--text-secondary);
-    color: var(--text-secondary);
-  }
-  .sb-stage-tab--active {
-    background: var(--text-muted);
-    color: var(--bg-primary);
-    border-color: var(--text-muted);
-  }
+  /* Stage-tab subtitle span (inside .game-mode-tab) */
   .sb-stage-subtitle {
     font-size: 0.75em;
     opacity: 0.7;
     display: block;
   }
 
-  /* ── Mode tabs ───────────────────────────────────────────── */
-  .sb-mode-tabs {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-    margin-bottom: 0.5rem;
-  }
-  .sb-mode-tab {
-    padding: 7px 22px;
-    border-radius: 8px;
-    border: 2px solid var(--border);
-    background: transparent;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    font-weight: 700;
-    font-family: var(--font-main);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-  }
-  .sb-mode-tab:hover:not(.sb-mode-tab--active) {
-    border-color: #10b981;
-  }
-  .sb-mode-tab--active {
-    background: #10b981;
-    color: #fff;
-    border-color: #10b981;
+  /* JS toggles sb-*-active on stage/mode tabs; alias to game-mode-tab--active visual */
+  .game-mode-tabs .sb-stage-tab--active,
+  .game-mode-tabs .sb-mode-tab--active,
+  .game-mode-tabs .sb-stage-tab--active:hover,
+  .game-mode-tabs .sb-mode-tab--active:hover {
+    background: var(--accent-blue, #2D5F8A);
+    border-color: var(--accent-blue, #2D5F8A);
+    color: #FFFFFF;
   }
 
   /* ── Refresher banner ────────────────────────────────────── */
@@ -314,7 +238,7 @@
     min-height: 1.2rem;
   }
 
-  /* ── Buttons ─────────────────────────────────────────────── */
+  /* ── Action button layout ───────────────────────────────── */
   .sb-actions { margin-top: 0.75rem; }
   .sb-nav {
     display: flex;
@@ -323,39 +247,6 @@
     gap: 0.5rem;
     flex-wrap: wrap;
   }
-  .sb-btn {
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 700;
-    font-family: var(--font-main);
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-  }
-  .sb-btn:hover:not(:disabled) { transform: translateY(-2px); }
-  .sb-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-  .sb-btn--primary {
-    background: #10b981;
-    color: #fff;
-    border: 2px solid #10b981;
-  }
-  .sb-btn--primary:hover:not(:disabled) { opacity: 0.9; }
-  .sb-btn--outline {
-    background: transparent;
-    color: var(--text-secondary);
-    border: 1px solid var(--border);
-  }
-  .sb-btn--outline:hover:not(:disabled) {
-    color: var(--text-primary);
-    border-color: var(--text-primary);
-  }
-  .sb-btn--ghost {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1px dashed var(--border);
-    opacity: 0.7;
-  }
-  .sb-btn--ghost:hover:not(:disabled) { opacity: 1; }
 
   /* ── Results ─────────────────────────────────────────────── */
   #results-area { display: none; text-align: center; }
@@ -380,16 +271,6 @@
     gap: 10px;
     justify-content: center;
     flex-wrap: wrap;
-  }
-
-  /* ── Practice stats ──────────────────────────────────────── */
-  .sb-practice-stats {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-top: 0.75rem;
   }
 
   /* ── Custom keyboard highlights ──────────────────────────── */
@@ -533,27 +414,27 @@
 {% endblock %}
 
 {% block content %}
-<div class="sb-page">
+<div class="sb-page game-page">
 
   <!-- Top bar -->
-  <div class="sb-top-bar">
-    <h1 class="sb-title">Scale Builder</h1>
-    <a href="/" class="sb-back-link">&larr; Back</a>
+  <div class="game-top-bar">
+    <h1 class="game-title">Scale Builder</h1>
+    <a href="/" class="game-back-link">&larr; Back</a>
   </div>
 
-  <!-- Stage tabs -->
-  <div class="sb-stage-tabs">
-    <button class="sb-stage-tab sb-stage-tab--active" data-stage="1">Stage 1<span class="sb-stage-subtitle">Major Scale</span></button>
-    <button class="sb-stage-tab" data-stage="2">Stage 2<span class="sb-stage-subtitle">Tetrachords &amp; Fourths</span></button>
-    <button class="sb-stage-tab" data-stage="3">Stage 3<span class="sb-stage-subtitle">Key Chain</span></button>
-    <button class="sb-stage-tab" data-stage="4">Stage 4<span class="sb-stage-subtitle">Relatives</span></button>
+  <!-- Stage tabs (level 1: which stage) -->
+  <div class="game-mode-tabs">
+    <button class="sb-stage-tab sb-stage-tab--active game-mode-tab" data-stage="1">Stage 1<span class="sb-stage-subtitle">Major Scale</span></button>
+    <button class="sb-stage-tab game-mode-tab" data-stage="2">Stage 2<span class="sb-stage-subtitle">Tetrachords &amp; Fourths</span></button>
+    <button class="sb-stage-tab game-mode-tab" data-stage="3">Stage 3<span class="sb-stage-subtitle">Key Chain</span></button>
+    <button class="sb-stage-tab game-mode-tab" data-stage="4">Stage 4<span class="sb-stage-subtitle">Relatives</span></button>
   </div>
 
-  <!-- Mode tabs -->
-  <div class="sb-mode-tabs">
-    <button class="sb-mode-tab sb-mode-tab--active" data-mode="intro">Intro</button>
-    <button class="sb-mode-tab" data-mode="practice">Practice</button>
-    <button class="sb-mode-tab" data-mode="test">Test</button>
+  <!-- Mode tabs (level 2: intro/practice/test within stage) -->
+  <div class="game-mode-tabs">
+    <button class="sb-mode-tab sb-mode-tab--active game-mode-tab" data-mode="intro">Intro</button>
+    <button class="sb-mode-tab game-mode-tab" data-mode="practice">Practice</button>
+    <button class="sb-mode-tab game-mode-tab" data-mode="test">Test</button>
   </div>
 
   <!-- Refresher banner -->
@@ -611,26 +492,26 @@
     <div class="sb-actions">
       <!-- Intro navigation -->
       <div class="sb-nav" id="intro-nav">
-        <button class="sb-btn sb-btn--outline" id="btn-back" disabled>&larr; Back</button>
-        <button class="sb-btn sb-btn--ghost" id="btn-skip">Skip to Practice</button>
-        <button class="sb-btn sb-btn--primary" id="btn-next" disabled>Next &rarr;</button>
+        <button class="btn game-btn--secondary" id="btn-back" disabled>&larr; Back</button>
+        <button class="btn game-btn--secondary" id="btn-skip">Skip to Practice</button>
+        <button class="btn game-btn--primary" id="btn-next" disabled>Next &rarr;</button>
       </div>
 
       <!-- Practice navigation -->
       <div class="sb-nav" id="practice-nav" style="display: none;">
-        <button class="sb-btn sb-btn--ghost" id="btn-hint">&#128161; Hint</button>
-        <button class="sb-btn sb-btn--outline" id="btn-play-scale">&#9654; Play Scale</button>
-        <button class="sb-btn sb-btn--primary" id="btn-next-round" style="display: none;">Next &rarr;</button>
+        <button class="btn game-btn--secondary" id="btn-hint">&#128161; Hint</button>
+        <button class="btn game-btn--secondary" id="btn-play-scale">&#9654; Play Scale</button>
+        <button class="btn game-btn--primary" id="btn-next-round" style="display: none;">Next &rarr;</button>
       </div>
 
       <!-- Replay intro (shown in practice/test) -->
       <div class="sb-nav" id="replay-nav" style="display: none;">
-        <button class="sb-btn sb-btn--ghost" id="btn-replay-intro">&#8635; Replay Intro</button>
+        <button class="btn game-btn--secondary" id="btn-replay-intro">&#8635; Replay Intro</button>
       </div>
     </div>
 
     <!-- ── Practice stats ────────────────────────────────── -->
-    <div class="sb-practice-stats" id="practice-stats" style="display: none;">
+    <div class="game-stats" id="practice-stats" style="display: none;">
       <span id="practice-streak">Streak: 0</span>
       <span id="practice-rounds">Rounds: 0</span>
     </div>
@@ -641,8 +522,8 @@
         <div class="sb-results-score" id="results-score"></div>
         <div class="sb-results-msg" id="results-msg"></div>
         <div class="sb-results-actions">
-          <button class="sb-btn sb-btn--primary" id="btn-retry">Try Again</button>
-          <button class="sb-btn sb-btn--outline" id="btn-next-stage">Next Stage &rarr;</button>
+          <button class="btn game-btn--primary" id="btn-retry">Try Again</button>
+          <button class="btn game-btn--secondary" id="btn-next-stage">Next Stage &rarr;</button>
         </div>
       </div>
     </div>

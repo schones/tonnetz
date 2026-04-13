@@ -2,32 +2,14 @@
 {% block title %}Guitar Strumming — Tonnetz{% endblock %}
 
 {% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='shared/game-shell.css') }}">
   <style>
     /* ============================================================
-       Guitar Strumming Game — Styles
+       Guitar Strumming Game — Game-specific styles
+       (layout/shell styles live in shared/game-shell.css)
        ============================================================ */
 
-    .strum-screen {
-      padding: var(--space-xl) 0 var(--space-3xl);
-      animation: fade-in 0.3s ease-out;
-    }
-
-    /* --- Setup Screen --- */
-    .strum-setup {
-      max-width: 640px;
-      margin: 0 auto;
-    }
-
-    .strum-setup__grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-md);
-    }
-
-    .strum-setup__grid .form-group:first-child {
-      grid-column: 1 / -1;
-    }
-
+    /* --- Pattern Preview --- */
     .strum-pattern-preview {
       grid-column: 1 / -1;
       background: var(--color-bg);
@@ -87,7 +69,7 @@
       flex-wrap: wrap;
     }
 
-    .strum-tempo-row .form-label {
+    .strum-tempo-row .game-form-label {
       flex-basis: 100%;
     }
 
@@ -250,38 +232,6 @@
       transition: background-color 0.05s ease, box-shadow 0.05s ease;
     }
 
-    /* --- Stats Bar --- */
-    .strum-stats {
-      display: flex;
-      justify-content: center;
-      gap: var(--space-xl);
-      flex-wrap: wrap;
-      background: var(--color-bg-card);
-      border-radius: var(--radius-lg);
-      padding: var(--space-md) var(--space-xl);
-      box-shadow: var(--shadow-sm);
-      margin-bottom: var(--space-md);
-    }
-
-    .strum-stat {
-      text-align: center;
-    }
-
-    .strum-stat__value {
-      font-size: var(--font-size-2xl);
-      font-weight: var(--font-weight-extra-bold);
-      color: var(--color-primary);
-      line-height: 1;
-    }
-
-    .strum-stat__label {
-      font-size: var(--font-size-xs);
-      color: var(--color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-top: var(--space-xs);
-    }
-
     /* --- Loop Summary (practice mode) --- */
     .strum-loop-summary {
       background: rgba(108, 92, 231, 0.06);
@@ -295,15 +245,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-
-    /* --- Game Controls --- */
-    .strum-controls {
-      display: flex;
-      justify-content: center;
-      gap: var(--space-md);
-      align-items: center;
-      flex-wrap: wrap;
     }
 
     .strum-hint {
@@ -436,19 +377,6 @@
 
     /* --- Responsive --- */
     @media (max-width: 480px) {
-      .strum-setup__grid {
-        grid-template-columns: 1fr;
-      }
-
-      .strum-stats {
-        gap: var(--space-md);
-        padding: var(--space-sm) var(--space-md);
-      }
-
-      .strum-stat__value {
-        font-size: var(--font-size-xl);
-      }
-
       .strum-tempo-row {
         flex-direction: column;
         align-items: stretch;
@@ -471,33 +399,33 @@
 {% endblock %}
 
 {% block content %}
-  <main class="container">
+  <main class="game-page">
     <!-- ===== Setup Screen ===== -->
-    <section id="screen-setup" class="strum-screen">
-      <div class="strum-setup">
+    <section id="screen-setup" class="game-screen">
+      <div class="game-setup">
         <h1 class="text-center mb-lg">Guitar Strumming</h1>
-        <p class="text-center mb-lg" style="color: var(--color-text-light);">
+        <p class="text-center mb-lg" style="color: var(--text-secondary);">
           Play along to strumming patterns! Use your microphone or tap the spacebar to match the rhythm.
         </p>
 
-        <div class="strum-setup__grid">
+        <div class="game-setup__grid">
           <!-- Player Name -->
-          <div class="form-group">
-            <label class="form-label" for="player-name">Your Name</label>
+          <div class="form-group game-setup__grid--full">
+            <label class="game-form-label" for="player-name">Your Name</label>
             <input type="text" id="player-name" class="form-input" placeholder="Enter your name" maxlength="30"
               value="Player">
           </div>
 
           <!-- Pattern -->
-          <div class="form-group">
-            <label class="form-label" for="pattern-select">Pattern</label>
-            <select id="pattern-select" class="form-select"></select>
+          <div class="form-group game-setup__grid--full">
+            <label class="game-form-label" for="pattern-select">Pattern</label>
+            <select id="pattern-select" class="game-form-select"></select>
           </div>
 
           <!-- Mode -->
           <div class="form-group">
-            <label class="form-label" for="game-mode">Mode</label>
-            <select id="game-mode" class="form-select">
+            <label class="game-form-label" for="game-mode">Mode</label>
+            <select id="game-mode" class="game-form-select">
               <option value="practice">Practice (loops)</option>
               <option value="test">Test (4 measures)</option>
             </select>
@@ -505,8 +433,8 @@
 
           <!-- Difficulty -->
           <div class="form-group">
-            <label class="form-label" for="difficulty">Difficulty</label>
-            <select id="difficulty" class="form-select">
+            <label class="game-form-label" for="difficulty">Difficulty</label>
+            <select id="difficulty" class="game-form-select">
               <option value="easy">Easy (&plusmn;100ms)</option>
               <option value="medium" selected>Medium (&plusmn;60ms)</option>
               <option value="hard">Hard (&plusmn;30ms)</option>
@@ -522,7 +450,7 @@
 
           <!-- Tempo -->
           <div class="form-group strum-tempo-row">
-            <label class="form-label">Tempo (BPM)</label>
+            <label class="game-form-label">Tempo (BPM)</label>
             <input type="range" id="bpm-slider" class="strum-bpm-slider" min="40" max="160" value="80"
               aria-label="Tempo slider">
             <span id="bpm-value" class="strum-bpm-display">80</span>
@@ -532,7 +460,7 @@
 
           <!-- Tap-In -->
           <div class="form-group strum-tap-row">
-            <button id="btn-tap-in" class="btn btn--secondary" type="button">
+            <button id="btn-tap-in" class="btn game-btn--secondary" type="button">
               Tap Tempo
             </button>
             <span id="tap-feedback" class="strum-tap-feedback">Tap the button or press space 4+ times to set
@@ -541,29 +469,29 @@
 
           <!-- Timing Offset -->
           <div class="form-group strum-tap-row">
-            <label class="form-label" style="margin: 0;">Timing Offset</label>
+            <label class="game-form-label" style="margin: 0;">Timing Offset</label>
             <input type="range" id="timing-offset-slider" min="-100" max="100" value="0" step="5"
               style="flex: 1; min-width: 120px;" aria-label="Timing offset in milliseconds">
             <span id="timing-offset-value"
-              style="min-width: 4em; text-align: center; font-weight: var(--font-weight-bold);">0ms</span>
+              style="min-width: 4em; text-align: center; font-weight: 700;">0ms</span>
             <span class="strum-tap-feedback">Shift if strums feel early (−) or late (+)</span>
           </div>
 
           <!-- Audible Click Option -->
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label"
+          <div class="form-group game-setup__grid--full">
+            <label class="game-form-label"
               style="display: flex; align-items: center; gap: var(--space-sm); cursor: pointer;">
               <input type="checkbox" id="gameplay-click" aria-label="Audible click during gameplay">
               Audible click during gameplay
-              <span style="font-size: var(--font-size-xs); color: var(--color-text-muted);">
+              <span style="font-size: var(--font-size-xs); color: var(--text-muted);">
                 (off by default — mic can pick up the click)
               </span>
             </label>
           </div>
         </div>
 
-        <div class="text-center mt-xl">
-          <button id="btn-start" class="btn btn--primary btn--large">
+        <div class="game-btn-row">
+          <button id="btn-start" class="btn game-btn--primary btn--large">
             Start Playing
           </button>
         </div>
@@ -579,7 +507,7 @@
     </section>
 
     <!-- ===== Game Screen ===== -->
-    <section id="screen-game" class="strum-screen" hidden>
+    <section id="screen-game" class="game-screen" hidden>
       <div class="strum-game">
         <!-- Beat Light -->
         <div class="strum-beat-light-wrap">
@@ -605,22 +533,22 @@
         </div>
 
         <!-- Stats -->
-        <div class="strum-stats" role="status" aria-live="polite">
-          <div class="strum-stat">
-            <div class="strum-stat__value" id="stat-streak">0</div>
-            <div class="strum-stat__label">Streak</div>
+        <div class="game-stats" role="status" aria-live="polite">
+          <div class="game-stat">
+            <div class="game-stat__value" id="stat-streak">0</div>
+            <div class="game-stat__label">Streak</div>
           </div>
-          <div class="strum-stat">
-            <div class="strum-stat__value" id="stat-accuracy">—</div>
-            <div class="strum-stat__label">Accuracy</div>
+          <div class="game-stat">
+            <div class="game-stat__value" id="stat-accuracy">—</div>
+            <div class="game-stat__label">Accuracy</div>
           </div>
-          <div class="strum-stat">
-            <div class="strum-stat__value" id="stat-measure">0</div>
-            <div class="strum-stat__label">Measure</div>
+          <div class="game-stat">
+            <div class="game-stat__value" id="stat-measure">0</div>
+            <div class="game-stat__label">Measure</div>
           </div>
-          <div class="strum-stat">
-            <div class="strum-stat__value" id="stat-bpm">80</div>
-            <div class="strum-stat__label">BPM</div>
+          <div class="game-stat">
+            <div class="game-stat__value" id="stat-bpm">80</div>
+            <div class="game-stat__label">BPM</div>
           </div>
         </div>
 
@@ -635,14 +563,14 @@
         </p>
 
         <!-- Controls -->
-        <div class="strum-controls">
-          <button id="btn-slow-down" class="btn btn--secondary btn--small" type="button">
+        <div class="game-btn-row">
+          <button id="btn-slow-down" class="btn game-btn--secondary btn--small" type="button">
             Slow Down (-10 BPM)
           </button>
-          <button id="btn-toggle-click" class="btn btn--secondary btn--small" type="button">
+          <button id="btn-toggle-click" class="btn game-btn--secondary btn--small" type="button">
             &#x1f507; Click: Off
           </button>
-          <button id="btn-stop" class="btn btn--danger">
+          <button id="btn-stop" class="btn game-btn--danger">
             Stop
           </button>
         </div>
@@ -674,10 +602,10 @@
             </div>
             <div class="strum-practice-summary__timing" id="psum-timing"></div>
             <div class="strum-practice-summary__buttons">
-              <button id="btn-psum-restart" class="btn btn--primary btn--large">
+              <button id="btn-psum-restart" class="btn game-btn--primary btn--large">
                 Play Again
               </button>
-              <button id="btn-psum-setup" class="btn btn--secondary btn--large">
+              <button id="btn-psum-setup" class="btn game-btn--secondary btn--large">
                 Back to Setup
               </button>
             </div>
@@ -687,26 +615,26 @@
     </section>
 
     <!-- ===== Results Screen ===== -->
-    <section id="screen-results" class="strum-screen" hidden>
+    <section id="screen-results" class="game-screen" hidden>
       <div class="strum-results card">
         <h2 class="text-center mb-md">Results</h2>
 
-        <div class="score-display mb-lg">
-          <div class="score-display__item">
-            <div class="score-display__value" id="result-score">0</div>
-            <div class="score-display__label">Score</div>
+        <div class="game-score-display mb-lg">
+          <div class="game-score-display__item">
+            <div class="game-score-display__value" id="result-score">0</div>
+            <div class="game-score-display__label">Score</div>
           </div>
-          <div class="score-display__item">
-            <div class="score-display__value" id="result-accuracy">0%</div>
-            <div class="score-display__label">Accuracy</div>
+          <div class="game-score-display__item">
+            <div class="game-score-display__value" id="result-accuracy">0%</div>
+            <div class="game-score-display__label">Accuracy</div>
           </div>
-          <div class="score-display__item">
-            <div class="score-display__value" id="result-streak">0</div>
-            <div class="score-display__label">Best Streak</div>
+          <div class="game-score-display__item">
+            <div class="game-score-display__value" id="result-streak">0</div>
+            <div class="game-score-display__label">Best Streak</div>
           </div>
-          <div class="score-display__item">
-            <div class="score-display__value" id="result-hits">0/0</div>
-            <div class="score-display__label">Strums Hit</div>
+          <div class="game-score-display__item">
+            <div class="game-score-display__value" id="result-hits">0/0</div>
+            <div class="game-score-display__label">Strums Hit</div>
           </div>
         </div>
 
@@ -729,11 +657,11 @@
           <div id="results-leaderboard" class="leaderboard"></div>
         </div>
 
-        <div class="text-center">
-          <button id="btn-play-again" class="btn btn--primary btn--large">
+        <div class="game-btn-row">
+          <button id="btn-play-again" class="btn game-btn--primary btn--large">
             Play Again
           </button>
-          <button id="btn-results-setup" class="btn btn--secondary btn--large" style="margin-left: var(--space-md);">
+          <button id="btn-results-setup" class="btn game-btn--secondary btn--large">
             Back to Setup
           </button>
         </div>
