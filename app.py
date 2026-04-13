@@ -285,7 +285,7 @@ def intro_hub():
 
 @app.route("/intro/<int:n>")
 def intro_chapter(n):
-    if n < 1 or n > 5:
+    if n < 1 or n > 6:
         return redirect("/intro")
     return render_template("intro/chapter.html", chapter=n)
 

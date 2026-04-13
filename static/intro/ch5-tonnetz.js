@@ -1,5 +1,5 @@
 /**
- * ch4-tonnetz.js — Chapter 4: Meet the Tonnetz
+ * ch5-tonnetz.js — Chapter 5: Meet the Tonnetz
  * ==============================================
  * Rebuilt on shared Explorer components (TonnetzNeighborhood, KeyboardView,
  * ChordWheel) driven by HarmonyState.  Uses the acts/scrollytelling format:
@@ -40,7 +40,7 @@ import { noteToPC }
 // ════════════════════════════════════════════════════════════════════
 
 export const chapterMeta = {
-  number: 4,
+  number: 5,
   title: 'Meet the Tonnetz',
   tone: 'playful',
   description: 'A visual map that reveals hidden connections between chords.',
@@ -50,17 +50,17 @@ export const chapterMeta = {
 // CSS
 // ════════════════════════════════════════════════════════════════════
 
-const CH4_CSS = /* css */ `
+const CH5_CSS = /* css */ `
 
 /* ── Sticky override — Explorer panels need more vertical room ── */
 
-.intro-act:has(.ch4-panels) .intro-act__sticky {
+.intro-act:has(.ch5-panels) .intro-act__sticky {
   max-height: 65vh;
 }
 
 /* ── Panel shell (matches explorer.html pattern) ──────────── */
 
-.ch4-panels {
+.ch5-panels {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -68,13 +68,13 @@ const CH4_CSS = /* css */ `
   max-width: 800px;
 }
 
-.ch4-top-row {
+.ch5-top-row {
   display: flex;
   gap: 0.5rem;
   align-items: stretch;
 }
 
-.ch4-panel {
+.ch5-panel {
   border: 1px solid var(--border, #dfe6e9);
   border-radius: 12px;
   background: var(--bg-card, #fff);
@@ -82,16 +82,16 @@ const CH4_CSS = /* css */ `
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-.ch4-panel--hidden {
+.ch5-panel--hidden {
   display: none;
 }
 
-.ch4-panel--entering {
+.ch5-panel--entering {
   opacity: 0;
   transform: translateY(12px);
 }
 
-.ch4-panel-header {
+.ch5-panel-header {
   padding: 0.3rem 0.8rem;
   font-size: 0.65rem;
   font-weight: 700;
@@ -103,18 +103,18 @@ const CH4_CSS = /* css */ `
 
 /* ── Tonnetz panel ───────────────────────────────────────── */
 
-.ch4-panel--tonnetz {
+.ch5-panel--tonnetz {
   flex: 1 1 0;
   min-width: 0;
 }
 
-.ch4-panel--tonnetz .ch4-panel-body {
+.ch5-panel--tonnetz .ch5-panel-body {
   height: 340px;
   padding: 0;
   position: relative;
 }
 
-#ch4-tonnetz-container {
+#ch5-tonnetz-container {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -123,12 +123,12 @@ const CH4_CSS = /* css */ `
 
 /* ── Chord wheel panel ───────────────────────────────────── */
 
-.ch4-panel--wheel {
+.ch5-panel--wheel {
   flex: 0 0 auto;
   width: 260px;
 }
 
-.ch4-panel--wheel .ch4-panel-body {
+.ch5-panel--wheel .ch5-panel-body {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,22 +137,22 @@ const CH4_CSS = /* css */ `
   box-sizing: border-box;
 }
 
-#ch4-wheel-container {
+#ch5-wheel-container {
   width: 240px;
   height: 240px;
   overflow: visible;
 }
 
-#ch4-wheel-container .cw-label {
+#ch5-wheel-container .cw-label {
   font-size: 11px;
 }
-#ch4-wheel-container .cw-roman {
+#ch5-wheel-container .cw-roman {
   font-size: 8px;
 }
 
 /* ── Keyboard panel ──────────────────────────────────────── */
 
-.ch4-panel--keyboard .ch4-panel-body {
+.ch5-panel--keyboard .ch5-panel-body {
   display: flex;
   justify-content: flex-start;
   align-items: center;
@@ -162,7 +162,7 @@ const CH4_CSS = /* css */ `
 
 /* ── Info badge ──────────────────────────────────────────── */
 
-.ch4-info-badge {
+.ch5-info-badge {
   text-align: center;
   font-size: 0.88rem;
   font-weight: 700;
@@ -175,20 +175,20 @@ const CH4_CSS = /* css */ `
 /* ── Responsive ──────────────────────────────────────────── */
 
 @media (max-width: 700px) {
-  .ch4-top-row {
+  .ch5-top-row {
     flex-direction: column;
   }
-  .ch4-panel--wheel {
+  .ch5-panel--wheel {
     width: 100%;
   }
-  .ch4-panel--wheel .ch4-panel-body {
+  .ch5-panel--wheel .ch5-panel-body {
     height: 260px;
   }
-  #ch4-wheel-container {
+  #ch5-wheel-container {
     width: 220px;
     height: 220px;
   }
-  .ch4-panel--tonnetz .ch4-panel-body {
+  .ch5-panel--tonnetz .ch5-panel-body {
     height: 280px;
   }
 }
@@ -196,10 +196,10 @@ const CH4_CSS = /* css */ `
 
 function _injectCSS() {
   injectSharedCSS();
-  if (document.getElementById('ch4-styles')) return;
+  if (document.getElementById('ch5-styles')) return;
   const el = document.createElement('style');
-  el.id = 'ch4-styles';
-  el.textContent = CH4_CSS;
+  el.id = 'ch5-styles';
+  el.textContent = CH5_CSS;
   document.head.appendChild(el);
 }
 
@@ -256,7 +256,7 @@ function _initTonnetz() {
   if (_tonnetzInited) return;
   _tonnetzInited = true;
 
-  TonnetzNeighborhood.init('ch4-tonnetz-container', {
+  TonnetzNeighborhood.init('ch5-tonnetz-container', {
     interactive: true,
     async onTriadClick({ root, quality }) {
       await _enableAudio();
@@ -281,7 +281,7 @@ async function _initKeyboard() {
   // KeyboardView._ensurePiano() needs window.Tone — ensure it's loaded first
   await ensureSampler();
 
-  KeyboardView.init('ch4-keyboard-container', {
+  KeyboardView.init('ch5-keyboard-container', {
     showLabels: true,
     mode: 'both',
     noInternalAudio: true,
@@ -302,7 +302,7 @@ async function _initKeyboard() {
 function _initWheel() {
   if (_wheelInited) return;
   _wheelInited = true;
-  _wheel = new ChordWheel('#ch4-wheel-container', { initialKey: 0 });
+  _wheel = new ChordWheel('#ch5-wheel-container', { initialKey: 0 });
 }
 
 /** Guess chord quality for a note given current key context. */
@@ -322,13 +322,13 @@ function _guessQuality(pc, keyIdx) {
 // ════════════════════════════════════════════════════════════════════
 
 function _revealPanel(panel) {
-  if (!panel || !panel.classList.contains('ch4-panel--hidden')) return;
-  panel.classList.remove('ch4-panel--hidden');
-  panel.classList.add('ch4-panel--entering');
+  if (!panel || !panel.classList.contains('ch5-panel--hidden')) return;
+  panel.classList.remove('ch5-panel--hidden');
+  panel.classList.add('ch5-panel--entering');
   // Trigger reflow then remove entering class for animation
   panel.offsetHeight; // eslint-disable-line no-unused-expressions
   requestAnimationFrame(() => {
-    panel.classList.remove('ch4-panel--entering');
+    panel.classList.remove('ch5-panel--entering');
   });
 }
 
@@ -372,10 +372,10 @@ registerCleanup(() => {
 // ════════════════════════════════════════════════════════════════════
 
 export const sections = [
-  { id: 'ch4-notes-have-neighbors' },
-  { id: 'ch4-triangles-are-chords' },
-  { id: 'ch4-keyboard-connection' },
-  { id: 'ch4-chords-in-context' },
+  { id: 'ch5-notes-have-neighbors' },
+  { id: 'ch5-triangles-are-chords' },
+  { id: 'ch5-keyboard-connection' },
+  { id: 'ch5-chords-in-context' },
 ];
 
 // ════════════════════════════════════════════════════════════════════
@@ -390,36 +390,36 @@ export const acts = [
       _injectCSS();
 
       const panels = document.createElement('div');
-      panels.className = 'ch4-panels';
+      panels.className = 'ch5-panels';
 
       // Info badge
       _infoBadge = document.createElement('div');
-      _infoBadge.className = 'ch4-info-badge';
+      _infoBadge.className = 'ch5-info-badge';
       _infoBadge.textContent = 'Click notes and chords on the grid';
       panels.appendChild(_infoBadge);
 
       // Top row: Tonnetz (+ Chord Wheel, initially hidden)
       const topRow = document.createElement('div');
-      topRow.className = 'ch4-top-row';
+      topRow.className = 'ch5-top-row';
 
       // Tonnetz panel
       _tonnetzPanel = document.createElement('div');
-      _tonnetzPanel.className = 'ch4-panel ch4-panel--tonnetz';
+      _tonnetzPanel.className = 'ch5-panel ch5-panel--tonnetz';
       _tonnetzPanel.innerHTML = `
-        <div class="ch4-panel-header">Tonnetz</div>
-        <div class="ch4-panel-body">
-          <div id="ch4-tonnetz-container"></div>
+        <div class="ch5-panel-header">Tonnetz</div>
+        <div class="ch5-panel-body">
+          <div id="ch5-tonnetz-container"></div>
         </div>
       `;
       topRow.appendChild(_tonnetzPanel);
 
       // Chord Wheel panel (hidden initially)
       _wheelPanel = document.createElement('div');
-      _wheelPanel.className = 'ch4-panel ch4-panel--wheel ch4-panel--hidden';
+      _wheelPanel.className = 'ch5-panel ch5-panel--wheel ch5-panel--hidden';
       _wheelPanel.innerHTML = `
-        <div class="ch4-panel-header">Chord Wheel</div>
-        <div class="ch4-panel-body">
-          <div id="ch4-wheel-container"></div>
+        <div class="ch5-panel-header">Chord Wheel</div>
+        <div class="ch5-panel-body">
+          <div id="ch5-wheel-container"></div>
         </div>
       `;
       topRow.appendChild(_wheelPanel);
@@ -428,11 +428,11 @@ export const acts = [
 
       // Keyboard panel (hidden initially)
       _keyboardPanel = document.createElement('div');
-      _keyboardPanel.className = 'ch4-panel ch4-panel--keyboard ch4-panel--hidden';
+      _keyboardPanel.className = 'ch5-panel ch5-panel--keyboard ch5-panel--hidden';
       _keyboardPanel.innerHTML = `
-        <div class="ch4-panel-header">Keyboard</div>
-        <div class="ch4-panel-body">
-          <div id="ch4-keyboard-container"></div>
+        <div class="ch5-panel-header">Keyboard</div>
+        <div class="ch5-panel-body">
+          <div id="ch5-keyboard-container"></div>
         </div>
       `;
       panels.appendChild(_keyboardPanel);
@@ -446,7 +446,7 @@ export const acts = [
     steps: [
       // ── 4.1: Notes Have Neighbors ──────────────────────────────
       {
-        id: 'ch4-notes-have-neighbors',
+        id: 'ch5-notes-have-neighbors',
         narration:
           'Every note on this grid is connected to its neighbors by a musical interval. ' +
           'Click C, then click G — that\'s a perfect fifth. See how they\'re connected? ' +
@@ -467,7 +467,7 @@ export const acts = [
 
       // ── 4.2: Triangles Are Chords ─────────────────────────────
       {
-        id: 'ch4-triangles-are-chords',
+        id: 'ch5-triangles-are-chords',
         narration:
           'See the triangle formed by C, E, and G? That\'s a C major chord. ' +
           'Every upward triangle is a major chord. Every downward triangle is minor. ' +
@@ -484,7 +484,7 @@ export const acts = [
 
       // ── 4.3: The Keyboard Connection ──────────────────────────
       {
-        id: 'ch4-keyboard-connection',
+        id: 'ch5-keyboard-connection',
         narration:
           'The same notes you see on the grid are also on this keyboard. ' +
           'Click the C major triangle on the Tonnetz — the keyboard highlights C, E, and G. ' +
@@ -503,7 +503,7 @@ export const acts = [
 
       // ── 4.4: Chords in Context ────────────────────────────────
       {
-        id: 'ch4-chords-in-context',
+        id: 'ch5-chords-in-context',
         narration:
           'This wheel shows how chords relate to a key. ' +
           'You\'re in the key of C — the highlighted chords are the ones that "belong" here. ' +

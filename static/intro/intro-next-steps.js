@@ -34,7 +34,7 @@ const NEXT_STEPS = {
   },
   3: {
     links: [
-      { category: 'Continue', label: 'Chapter 4: Meet the Tonnetz',     desc: 'A visual map that reveals hidden connections between chords.', url: '/intro/4'                       },
+      { category: 'Continue', label: 'Chapter 4: Beyond Triads',         desc: 'Sevenths, sus chords, and the extensions that give songs their flavor.', url: '/intro/4'                  },
       { category: 'Try',      label: 'Harmony Trainer',                 desc: 'Sing intervals with pitch feedback.',                         url: '/harmony'                       },
       { category: 'Explore',  label: 'Tonal Centers',                   desc: 'How keys organize music.',                                    url: '/theory/tonal-centers'          },
       { category: 'Explore',  label: 'Chord Progressions',              desc: 'Why I–IV–V–I sounds right.',                                  url: '/theory/chord-progressions'     },
@@ -42,13 +42,20 @@ const NEXT_STEPS = {
   },
   4: {
     links: [
-      { category: 'Continue', label: 'Chapter 5: Transforms',           desc: 'PLR operations: the elegant moves that connect every chord.', url: '/intro/5'                      },
+      { category: 'Continue', label: 'Chapter 5: Meet the Tonnetz',     desc: 'A visual map that reveals hidden connections between chords.', url: '/intro/5'                       },
+      { category: 'Try',      label: 'Harmony Trainer',                 desc: 'Sing intervals with pitch feedback.',                         url: '/harmony'                       },
+      { category: 'Explore',  label: 'Chord Progressions',              desc: 'Why I–IV–V–I sounds right.',                                  url: '/theory/chord-progressions'     },
+    ],
+  },
+  5: {
+    links: [
+      { category: 'Continue', label: 'Chapter 6: Transforms',           desc: 'PLR operations: the elegant moves that connect every chord.', url: '/intro/6'                      },
       { category: 'Open',     label: 'Tonnetz Explorer',                desc: 'The full three-panel playground.',                           url: '/explorer'                     },
       { category: 'Try',      label: 'Chord Walks',                     desc: 'Navigate transforms on the grid.',                           url: '/games/chord-walks'   },
       { category: 'Explore',  label: 'Modes',                           desc: 'Seven flavors of the major scale.',                          url: '/theory/modes'                 },
     ],
   },
-  5: {
+  6: {
     graduation: true,
     links: [
       { category: 'Open',    label: 'Tonnetz Explorer',      desc: 'The full three-panel playground.',    url: '/explorer'                   },
@@ -283,7 +290,7 @@ function _buildCard(chapterNum) {
 /**
  * Build the What's Next card and insert it before the chapter footer.
  * No-ops if the card is already mounted or no config exists for this chapter.
- * @param {number} chapterNum  1–5
+ * @param {number} chapterNum  1–6
  */
 export function mountNextSteps(chapterNum) {
   if (_card || document.getElementById('intro-next-steps-card')) return;

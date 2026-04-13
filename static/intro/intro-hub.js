@@ -7,12 +7,12 @@
 import { IntroCore } from '/static/intro/intro-core.js';
 
 // Total sections per chapter (kept in sync with chapter JS files)
-const CHAPTER_TOTALS = { 1: 4, 2: 3, 3: 4, 4: 4, 5: 3 };
+const CHAPTER_TOTALS = { 1: 4, 2: 3, 3: 4, 4: 5, 5: 4, 6: 3 };
 
 document.addEventListener('DOMContentLoaded', () => {
   const progress = IntroCore.getProgress();
 
-  for (let n = 1; n <= 5; n++) {
+  for (let n = 1; n <= 6; n++) {
     const card = document.querySelector(`.intro-chapter-card[data-chapter="${n}"]`);
     const fill = document.querySelector(`[data-progress-fill="${n}"]`);
     const label = document.querySelector(`[data-progress-label="${n}"]`);
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function _findResumeChapter(progress) {
   if (!progress) return 1;
-  for (let n = 1; n <= 5; n++) {
+  for (let n = 1; n <= 6; n++) {
     const ch = progress.chapters?.[n];
     if (!ch?.completed) return n;
   }

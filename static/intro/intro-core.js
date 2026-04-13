@@ -22,8 +22,9 @@ const CHAPTER_MODULES = {
   1: '/static/intro/ch1-sound.js',
   2: '/static/intro/ch2-scales.js',
   3: '/static/intro/ch3-chords.js',
-  4: '/static/intro/ch4-tonnetz.js',
-  5: '/static/intro/ch5-transforms.js',
+  4: '/static/intro/ch4-beyond-triads.js',
+  5: '/static/intro/ch5-tonnetz.js',
+  6: '/static/intro/ch6-transforms.js',
 };
 
 // ── IntroCore ──────────────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ export const IntroCore = {
 
   /**
    * Load a chapter, render its sections, and wire the scroll observer.
-   * @param {number} chapterNum  1–5
+   * @param {number} chapterNum  1–6
    */
   async init(chapterNum) {
     const modulePath = CHAPTER_MODULES[chapterNum];
