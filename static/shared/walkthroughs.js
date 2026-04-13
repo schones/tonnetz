@@ -466,6 +466,34 @@ const WALKTHROUGHS = {
       { chord: "G", function: "dominant (V)", title: "The resolve", body: "G major — the V. It pulls back to C. Lean on Me uses almost the same three chords as Folsom Prison Blues (I-IV-V), but the slow gospel piano makes it feel completely different. Same skeleton, different soul.", autoPlay: true, concept_specifics: ["I_IV_V"] }
     ]
   },
+
+  vienna_chromatic_mediant: {
+    title: "Vienna's Chromatic Heartache",
+    song: "Vienna — Billy Joel",
+    category: "Voice Leading",
+    audience: "musician",
+    seeAlso: { label: "Voice Leading", href: "/games/chord-walks" },
+    rhythm: {
+      time_sig: "3/4",
+      bpm: 96,
+      feel: "Gentle piano waltz",
+      description: "A gentle piano waltz. The left hand drops a bass note on beat 1, the right hand answers with chords on beats 2 and 3. ONE-two-three, ONE-two-three — the sway that gives Vienna its aching forward motion.",
+      pattern: [
+        { beat: "1", label: "BASS",  type: "bass" },
+        { beat: "2", label: "chord", type: "strum" },
+        { beat: "3", label: "chord", type: "strum" }
+      ],
+      concept_specifics: ["waltz"]
+    },
+    steps: [
+      { chord: "C",  function: "tonic (I)",              title: "Home base",                 body: "Bright C major in 3/4 time — a waltz. ONE-two-three, ONE-two-three. Let the lilt settle in before the harmony starts to move.", autoPlay: true },
+      { chord: "E",  function: "chromatic mediant (III)",title: "The chromatic mediant",     body: "C major to E major — no shared notes in the triad, maximum color shift. Listen to the bass walk from C down to B to G♯. Watch how dramatic that jump is on the Tonnetz.", autoPlay: true, focus: "tonnetz", concept_specifics: ["chromatic_mediant"] },
+      { chord: "Am", function: "relative minor (vi)",    title: "The resolution",            body: "E major pulls into A minor — the relative minor. Two notes change, one stays. It's an L then P chain — lean, then parallel — and it feels like the harmony finally exhales.", autoPlay: true, highlightTransform: "L", concept_specifics: ["LP_chain", "relative_major_minor"] },
+      { chord: "F",  function: "subdominant (IV)",       title: "Familiar ground",           body: "F major. The IV chord softens the mood before the cycle repeats. After the drama of the chromatic mediant, this is the safest chord in the room.", autoPlay: true },
+      { chord: "C",  function: "tonic, 1st inversion",   title: "Back to C — with G in the bass", body: "C/G. The bass has been walking down the whole time: C — B — A — G. That chromatic descent is what gives Vienna its aching quality. Watch the bass note on the keyboard.", autoPlay: true, focus: "keyboard", concept_specifics: ["chromatic_bass", "voice_leading"] },
+      { chord: "G",  function: "dominant (V)",           title: "Tension before resolution", body: "The V chord. Tension before resolution. The whole progression is a lesson in how chromatic bass movement creates emotional pull — six chords, but your ear feels like it's been pulled through every one of them.", autoPlay: true }
+    ]
+  },
 };
 
 export { WALKTHROUGHS };

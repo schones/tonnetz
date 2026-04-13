@@ -213,6 +213,9 @@
 
   /* Reserve room for the bottom badge so it doesn't collide with the artist line */
   .sl-pad { padding-bottom: calc(var(--space-lg) + 18px); }
+  /* Reserve room for the top-right key badge so long titles don't collide */
+  .sl-pad { padding-top: calc(var(--space-lg) + 20px); }
+  .sl-pad__title { padding-right: 70px; }
 
   .sl-pad--browse {
     --pad-color: var(--pad-gray);

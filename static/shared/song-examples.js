@@ -1887,6 +1887,27 @@ const SONG_EXAMPLES = [
     era_tags: ["classic", "boomer", "universal"],
     demo: null,
     preference_tags: ["soul", "gospel", "classic", "singalong", "community"]
+  },
+  {
+    id: "vienna_chromatic_mediant",
+    concept_ids: ["chord_progressions", "voice_leading"],
+    concept_specifics: ["chromatic_mediant", "chromatic_bass", "waltz"],
+    game_ids: ["chord_walks"],
+    song: "Vienna",
+    artist: "Billy Joel",
+    year: 1977,
+    genre_tags: ["pop", "piano", "classic"],
+    key: "C major",
+    tempo: 96,
+    insight: {
+      playful: "Vienna is a waltz — ONE-two-three, ONE-two-three — and partway through it slips in a chord that sounds like it jumped in from a completely different song. That shock-color chord, plus a bass line that quietly sneaks down step by step, is why the song feels so aching.",
+      musician: "Vienna is in C major and 3/4 time. The verse moves C → E → Am → F → C/G → G, pairing a C-to-E chromatic mediant (no common triad tones, maximum color shift) with a descending bass line (C–B–A–G) threaded underneath. The chromatic mediant lands the emotional punch; the walking bass gives it the inevitability. The waltz meter makes every step feel like a gentle pull instead of a shove.",
+      theorist: "The progression exploits two devices at once: III used as a chromatic mediant of I (no common tones, functioning as an L+P chain on the neo-Riemannian net — maximum hexatonic distance), and a chromatic descending bass (1–7–6–5) that reframes otherwise-stable diatonic harmonies as passing sonorities. The 3/4 meter amplifies the lyrical pull of the bass motion, and the C/G first inversion keeps the bass on the chromatic track rather than leaping to a root."
+    },
+    min_age: 10,
+    era_tags: ["classic", "boomer", "genx"],
+    demo: null,
+    preference_tags: ["piano", "classic", "emotional"]
   }
 ];
 
