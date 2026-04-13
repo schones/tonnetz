@@ -335,13 +335,6 @@ const CH4_CSS = /* css */ `
   padding: 28px 4px 4px;
   overflow: visible;
 }
-
-/* Ch4 keyboards — fill the 900px interactive container */
-.ch4-kb-wrap .intro-kb {
-  --intro-kb-ww: 40px;
-  --intro-kb-bw: 24px;
-  --intro-kb-h: 130px;
-}
 `;
 
 function _injectCSS() {

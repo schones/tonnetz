@@ -29,16 +29,16 @@
   --font-family-base:      'Nunito', system-ui, -apple-system, sans-serif;
   --font-family-display:   'Nunito', system-ui, -apple-system, sans-serif;
 
-  --font-size-2xs:         clamp(0.60rem, 0.57rem + 0.15vw, 0.66rem);
-  --font-size-xs:          clamp(0.70rem, 0.66rem + 0.20vw, 0.78rem);
-  --font-size-sm:          clamp(0.80rem, 0.76rem + 0.20vw, 0.88rem);
-  --font-size-base:        clamp(0.92rem, 0.88rem + 0.25vw, 1.02rem);
-  --font-size-md:          clamp(1.00rem, 0.95rem + 0.30vw, 1.12rem);
-  --font-size-lg:          clamp(1.15rem, 1.08rem + 0.40vw, 1.32rem);
-  --font-size-xl:          clamp(1.40rem, 1.28rem + 0.60vw, 1.65rem);
-  --font-size-2xl:         clamp(1.75rem, 1.55rem + 1.00vw, 2.20rem);
-  --font-size-3xl:         clamp(2.20rem, 1.85rem + 1.75vw, 3.10rem);
-  --font-size-4xl:         clamp(2.80rem, 2.20rem + 3.00vw, 4.40rem);
+  --font-size-2xs:         clamp(0.80rem, 0.75rem + 0.20vw, 0.90rem);
+  --font-size-xs:          clamp(0.90rem, 0.85rem + 0.25vw, 1.00rem);
+  --font-size-sm:          clamp(1.00rem, 0.95rem + 0.25vw, 1.10rem);
+  --font-size-base:        clamp(1.10rem, 1.05rem + 0.30vw, 1.25rem);
+  --font-size-md:          clamp(1.25rem, 1.18rem + 0.35vw, 1.40rem);
+  --font-size-lg:          clamp(1.45rem, 1.35rem + 0.50vw, 1.65rem);
+  --font-size-xl:          clamp(1.75rem, 1.60rem + 0.75vw, 2.10rem);
+  --font-size-2xl:         clamp(2.20rem, 1.95rem + 1.25vw, 2.80rem);
+  --font-size-3xl:         clamp(2.80rem, 2.35rem + 2.25vw, 4.00rem);
+  --font-size-4xl:         clamp(3.50rem, 2.75rem + 3.75vw, 5.50rem);
 
   /* Two-weight scale only */
   --font-weight-regular:   400;

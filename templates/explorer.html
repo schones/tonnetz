@@ -95,20 +95,6 @@
       --tn-minor-fill:             var(--q-minor-stroke);
     }
 
-    /* Explorer font scale — 2x base sizes for readability.
-       Scoped to .sl-explorer so the global design tokens (used by
-       games, landing, intro, etc.) stay untouched. Tonnetz SVG node
-       labels are sized in SVG coordinate space, not via these vars,
-       so they remain unaffected. */
-    .sl-explorer {
-      --font-size-2xs: 1.25rem;
-      --font-size-xs:  1.5rem;
-      --font-size-sm:  1.75rem;
-      --font-size-md:  2rem;
-      --font-size-lg:  2.5rem;
-      --font-size-xl:  3rem;
-    }
-
     /* ── Tonnetz chord-change visuals ───────────────────────────────
      * Match the chord-progressions page energy: active chord lights
      * up cleanly (brief fade-in, no continuous pulse) and the previous

@@ -27,7 +27,7 @@
 
 .intro-back-link {
   font-family: var(--font-main);
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-secondary);
   text-decoration: none;
@@ -48,7 +48,7 @@
 
 .intro-chapter__eyebrow {
   font-family: var(--font-main);
-  font-size: 0.65rem;
+  font-size: 1rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -57,7 +57,7 @@
 
 .intro-chapter__title {
   font-family: var(--font-main);
-  font-size: 1rem;
+  font-size: 2rem;
   font-weight: 800;
   color: var(--text-primary);
   margin: 0;
@@ -91,7 +91,7 @@
 .intro-chapter[data-tone="formal"]   .intro-chapter__progress-fill { background: #38bdf8; }
 
 .intro-chapter__progress-label {
-  font-size: 0.72rem;
+  font-size: 1rem;
   color: var(--text-muted);
   font-weight: 600;
   white-space: nowrap;
@@ -125,8 +125,8 @@
 /* ── Narration text ─────────────────────────────────────── */
 
 .intro-narration {
-  font-size: 1.1rem;
-  line-height: 1.65;
+  font-size: 1.35rem;
+  line-height: 1.7;
   color: var(--text-primary);
   max-width: 800px;
   width: 100%;
@@ -134,9 +134,17 @@
 }
 
 /* Tone-specific narration sizing */
-.intro-chapter[data-tone="playful"]  .intro-narration { font-size: 1.2rem; }
-.intro-chapter[data-tone="moderate"] .intro-narration { font-size: 1.1rem; }
-.intro-chapter[data-tone="formal"]   .intro-narration { font-size: 1rem; }
+.intro-chapter[data-tone="playful"]  .intro-narration { font-size: 1.5rem; }
+.intro-chapter[data-tone="moderate"] .intro-narration { font-size: 1.4rem; }
+.intro-chapter[data-tone="formal"]   .intro-narration { font-size: 1.3rem; }
+
+/* Wider keyboards for all Fundamentals chapters */
+.intro-section .intro-kb,
+.intro-interactive .intro-kb {
+  --intro-kb-ww: 40px;
+  --intro-kb-bw: 24px;
+  --intro-kb-h: 130px;
+}
 
 /* ── Interactive component placeholder ──────────────────── */
 
@@ -181,11 +189,11 @@
   border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
   border-radius: 10px;
   padding: 0.9rem 1.1rem;
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   font-style: italic;
   color: var(--text-secondary);
   margin-bottom: 1.5rem;
-  line-height: 1.5;
+  line-height: 1.6;
   opacity: 0;
   transition: opacity 0.4s ease 0.6s;
 }
@@ -218,7 +226,7 @@
   text-decoration: none;
   color: var(--text-primary);
   font-family: var(--font-main);
-  font-size: 0.88rem;
+  font-size: 1.15rem;
   font-weight: 700;
   transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
   margin-top: 0.5rem;

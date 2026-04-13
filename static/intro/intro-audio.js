@@ -339,12 +339,11 @@ const SHARED_CSS = /* css */ `
 /* ── Keyboard scroll wrapper ──────────────────────────────── */
 .intro-kb-scroll {
   width: 100%;
-  max-width: 540px;
-  overflow-x: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 28px 4px 4px;
+  overflow: visible;
 }
 
 /* ── A4 pulse animation ─────────────────────────────────── */

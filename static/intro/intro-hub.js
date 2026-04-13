@@ -53,19 +53,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Highlight "resume" chapter — the first incomplete one
-  const resumeChapter = _findResumeChapter(progress);
-  if (resumeChapter) {
-    const card = document.querySelector(`.intro-chapter-card[data-chapter="${resumeChapter}"]`);
-    if (card) card.style.setProperty('box-shadow', '0 0 0 2px var(--tone-accent)');
-  }
 });
-
-function _findResumeChapter(progress) {
-  if (!progress) return 1;
-  for (let n = 1; n <= 6; n++) {
-    const ch = progress.chapters?.[n];
-    if (!ch?.completed) return n;
-  }
-  return null; // all complete
-}
