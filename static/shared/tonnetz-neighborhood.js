@@ -193,6 +193,41 @@ const TONNETZ_CSS = /* css */ `
   dominant-baseline: central;
 }
 
+/* ── Extension nodes (7ths, 9ths, etc.) ────────────────────
+ * Rendered as additional highlighted nodes connected to the
+ * primary triad via a dashed link. Same color family as the
+ * triad but at reduced opacity and a slightly smaller radius,
+ * so the triangle itself remains the visually dominant shape.
+ */
+.tn-node--extension circle {
+  fill: var(--tonnetz-accent, var(--accent, #6c63ff));
+  stroke: var(--tonnetz-accent, var(--accent, #6c63ff));
+  fill-opacity: 0.5;
+  stroke-opacity: 0.7;
+  animation: tn-ext-pulse 1.4s ease-in-out infinite;
+}
+.tn-node--extension .tn-node-label {
+  fill: #fff;
+  opacity: 0.9;
+}
+.tn-ext-link {
+  stroke: var(--tonnetz-accent, var(--accent, #6c63ff));
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  opacity: 0.4;
+  fill: none;
+  pointer-events: none;
+}
+
+@keyframes tn-ext-pulse {
+  0%, 100% { fill-opacity: 0.45; stroke-opacity: 0.65; }
+  50%      { fill-opacity: 0.75; stroke-opacity: 0.95; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tn-node--extension circle { animation: none; }
+}
+
 /* ── Common-tone / moving-tone markers ────────────────────── */
 
 .tn-common-dot {
@@ -702,6 +737,59 @@ function _renderAll(svg, neighborhood, state, opts) {
     roleMap.set(`${noteToPC(t.root)}_${t.quality}`, t.role);
   }
 
+  // ── Extension nodes (7ths, 9ths, sus extensions, etc.) ────────
+  // When activeChord carries extensionNotes, pick the grid node
+  // nearest the primary triad's centroid for each extension PC, and
+  // record a dashed link from that node to the nearest triad node.
+  const extensionNodeKeys = new Set();  // "q,r" of extension nodes
+  const extensionLinks = [];            // {from:{x,y}, to:{x,y}}
+  const activeChord = state.activeChord;
+  if (activeChord
+      && Array.isArray(activeChord.extensionNotes)
+      && activeChord.extensionNotes.length > 0
+      && (state.activeTriads || []).length > 0) {
+    const primary = state.activeTriads.find(t => t.role === 'primary');
+    if (primary) {
+      // Locate the primary triad's lattice nodes.
+      const rpc = noteToPC(primary.root);
+      let primaryNodes = null;
+      for (const [, nt] of triads) {
+        if (noteToPC(nt.root) === rpc && nt.quality === primary.quality) {
+          primaryNodes = nt.nodes.map(n => ({ ...n, svg: toSVG(n.q, n.r) }));
+          break;
+        }
+      }
+      if (primaryNodes) {
+        const cx = (primaryNodes[0].svg.x + primaryNodes[1].svg.x + primaryNodes[2].svg.x) / 3;
+        const cy = (primaryNodes[0].svg.y + primaryNodes[1].svg.y + primaryNodes[2].svg.y) / 3;
+        const triadPCSet = new Set(primaryNodes.map(n => n.pc));
+        for (const en of activeChord.extensionNotes) {
+          const epc = noteToPC(en);
+          if (isNaN(epc) || triadPCSet.has(epc)) continue;
+          // Pick the grid node with this PC closest to the triad centroid.
+          let bestKey = null, bestPos = null, bestDist = Infinity;
+          for (const [nk, node] of nodes) {
+            if (node.pc !== epc) continue;
+            const p = toSVG(node.q, node.r);
+            const d = Math.hypot(p.x - cx, p.y - cy);
+            if (d < bestDist) { bestDist = d; bestKey = nk; bestPos = p; }
+          }
+          if (!bestKey) continue;
+          extensionNodeKeys.add(bestKey);
+          // Find the nearest triad node for the dashed connector.
+          let linkFrom = null, linkDist = Infinity;
+          for (const tn of primaryNodes) {
+            const d = Math.hypot(tn.svg.x - bestPos.x, tn.svg.y - bestPos.y);
+            if (d < linkDist) { linkDist = d; linkFrom = tn.svg; }
+          }
+          if (linkFrom) {
+            extensionLinks.push({ from: linkFrom, to: bestPos });
+          }
+        }
+      }
+    }
+  }
+
   // Rendering mode
   const hasTriads   = (state.activeTriads || []).length > 0;
   const hasInterval = state.activeInterval != null;
@@ -880,6 +968,20 @@ function _renderAll(svg, neighborhood, state, opts) {
     if (an.color) noteColorMap.set(an.note, an.color);
   }
 
+  // Dashed connectors from triad nodes to extension nodes — drawn
+  // before the node layer so circles render on top of the lines.
+  if (extensionLinks.length > 0) {
+    const gExt = _svgEl('g', { class: 'tonnetz-ext-links' });
+    for (const link of extensionLinks) {
+      gExt.appendChild(_svgEl('line', {
+        x1: link.from.x, y1: link.from.y,
+        x2: link.to.x,   y2: link.to.y,
+        class: 'tn-ext-link',
+      }));
+    }
+    gScene.appendChild(gExt);
+  }
+
   const gNodes = _svgEl('g', { class: 'tonnetz-nodes' });
   for (const [, node] of nodes) {
     const pos        = toSVG(node.q, node.r);
@@ -889,14 +991,16 @@ function _renderAll(svg, neighborhood, state, opts) {
     const isGhost    = ghostPCs.has(node.pc) && !isActive;
     const isInterval = intervalPCs.has(node.pc) && edgeMode;
     const isMovingTo = isActive && _movingToPC >= 0 && node.pc === _movingToPC;
+    const isExtension = !isActive && extensionNodeKeys.has(nk);
 
     let cls = 'tn-node';
-    if      (isActive)   cls += ' tn-node--active';
-    else if (isGhost)    cls += ' tn-node--ghost';
-    else if (isInterval) cls += ' tn-node--interval';
+    if      (isActive)    cls += ' tn-node--active';
+    else if (isExtension) cls += ' tn-node--extension';
+    else if (isGhost)     cls += ' tn-node--ghost';
+    else if (isInterval)  cls += ' tn-node--interval';
     if (isMovingTo) cls += ' tn-node--moving-tone';
 
-    const r = isMovingTo ? NODE_R + 5 : NODE_R;
+    const r = isMovingTo ? NODE_R + 5 : (isExtension ? NODE_R - 4 : NODE_R);
     const attrs = { class: cls, 'data-pc': node.pc, 'data-note': node.note };
     // Mark compact-cluster nodes so ChordBubbleRenderer can query them.
     if (compactKeys && isActive) attrs['data-compact'] = '1';
@@ -1032,9 +1136,19 @@ function _renderAll(svg, neighborhood, state, opts) {
             ly = minY - NODE_R - 16;
           }
 
-          const text = t.role === 'ghost'
-            ? `${t.root} ${t.quality} (from)`
-            : `${t.root} ${t.quality}`;
+          // Prefer activeChord.symbol for the primary label so 7ths,
+          // sus, and other chord types render with their full name
+          // (e.g. "E7" instead of "E major").
+          let text;
+          if (t.role === 'ghost') {
+            text = `${t.root} ${t.quality} (from)`;
+          } else if (t.role === 'primary'
+                     && state.activeChord
+                     && state.activeChord.symbol) {
+            text = state.activeChord.symbol;
+          } else {
+            text = `${t.root} ${t.quality}`;
+          }
           labelInfos.push({ x: cx, y: ly, text, role: t.role });
           break;
         }

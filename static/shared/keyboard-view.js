@@ -38,6 +38,19 @@ const BLACK_PCS = new Set([1, 3, 6, 8, 10]); // C#, D#, F#, G#, A#
 /** Ordered pitch classes within one octave (C=0 … B=11). */
 const OCTAVE_PCS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
+/**
+ * Interval-role labels for extension notes, keyed by semitone offset
+ * from the chord root (mod 12). Used to annotate extension keys like
+ * the ♭7 of a dom7 chord. Triad degrees (0, 3, 4, 7) are intentionally
+ * omitted — extensions are, by definition, not in the base triad.
+ */
+const EXT_INTERVAL_LABELS = {
+  1: '♭9', 2: '9',  3: '♯9',
+  5: '11', 6: '♯11',
+  8: '♭13', 9: '13',
+  10: '♭7', 11: '7',
+};
+
 /** Salamander sample mapping (same URLs as Skratch Studio AudioBridge). */
 const SALAMANDER_BASE = 'https://tonejs.github.io/audio/salamander/';
 const SAMPLER_URLS = {
@@ -195,6 +208,28 @@ const KV_CSS = /* css */ `
   box-shadow: inset 0 0 0 3px var(--color-primary, #6c5ce7);
 }
 
+/* ── Extension notes (7ths, 9ths, etc.) ──────────────────────
+ * Ring-only outline — same color family as the triad highlight,
+ * but fill stays the key's natural background so the extension
+ * reads as "part of the chord, but layered on top of the triad".
+ */
+.kv-key--extension.kv-key--white {
+  background: rgba(212, 160, 60, 0.12);
+  box-shadow: inset 0 0 0 3px var(--gold, #D4A03C);
+}
+.kv-key--extension.kv-key--black {
+  background: var(--keyboard-black-key-bg, #1a1a2e);
+  box-shadow: inset 0 0 0 3px var(--gold, #D4A03C);
+}
+.kv-key--extension.kv-key--white .kv-note-label {
+  color: var(--gold, #D4A03C);
+  font-weight: 700;
+}
+.kv-key--extension.kv-key--black .kv-note-label {
+  color: var(--gold, #D4A03C);
+  font-weight: 700;
+}
+
 /* ── Ghost key (moving tone old position) ────────────────── */
 
 .kv-key--ghost.kv-key--white {
@@ -255,7 +290,7 @@ const KV_CSS = /* css */ `
   bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: var(--font-size-2xs, 10px);
   font-weight: 600;
   pointer-events: none;
   line-height: 1;
@@ -712,6 +747,24 @@ const KeyboardView = {
       }
     }
 
+    // ── Extension interval labels (e.g. "♭7") ──────────────────
+    // When activeChord carries extensionNotes, build a pc → role-label
+    // map so we can swap the note name on extension keys for its
+    // interval role ("♭7", "9", etc.).
+    const extLabels = new Map();  // pc → label string
+    if (state.activeChord && state.activeChord.extensionNotes && state.activeChord.extensionNotes.length > 0) {
+      const rootPC = noteToPC(state.activeChord.root);
+      if (!isNaN(rootPC)) {
+        for (const en of state.activeChord.extensionNotes) {
+          const pc = noteToPC(en);
+          if (isNaN(pc)) continue;
+          const ivl = (pc - rootPC + 12) % 12;
+          const lbl = EXT_INTERVAL_LABELS[ivl];
+          if (lbl) extLabels.set(pc, lbl);
+        }
+      }
+    }
+
     // ── Common tones & moving tone ─────────────────────────────
     const commonTonePCs = new Set();
     const movingFrom = new Set();  // PC of ghost position
@@ -749,15 +802,20 @@ const KeyboardView = {
       // Reset highlight classes
       el.classList.remove(
         'kv-key--triad', 'kv-key--interval', 'kv-key--scale', 'kv-key--user',
+        'kv-key--extension', 'kv-key--chord',
         'kv-key--ghost', 'kv-key--moving', 'kv-key--common-tone',
         'kv-key--prog-common-tone',
       );
 
-      // Source highlight
+      // Source highlight — setChord tags its base-triad notes with
+      // source:'chord' and extension notes with source:'extension'. The
+      // 'chord' source reuses the existing triad-fill style so both
+      // setTriad() and setChord() render the core triad identically.
       const hk = `${key.pc}_${key.octave}`;
       const hl = highlights.get(hk);
       if (hl) {
-        el.classList.add(`kv-key--${hl.source}`);
+        const klass = hl.source === 'chord' ? 'triad' : hl.source;
+        el.classList.add(`kv-key--${klass}`);
       }
 
       // Ghost (old moving-tone position)
@@ -777,10 +835,17 @@ const KeyboardView = {
         el.classList.add('kv-key--prog-common-tone');
       }
 
-      // Note label
+      // Note label — extension keys show their interval role ("♭7",
+      // "9", etc.) instead of the note name when space allows.
       const label = el.querySelector('.kv-note-label');
       if (label) {
         label.style.display = showNames ? '' : 'none';
+        const isExtKey = hl && hl.source === 'extension' && extLabels.has(key.pc);
+        if (isExtKey) {
+          label.textContent = extLabels.get(key.pc);
+        } else if (label.textContent !== key.noteName) {
+          label.textContent = key.noteName;
+        }
       }
     }
 
@@ -788,9 +853,16 @@ const KeyboardView = {
     if (this._infoLabelEl) {
       let text = '';
       if (ann.showChordLabel && (state.activeTriads || []).length > 0) {
-        const primary = state.activeTriads.find(t => t.role === 'primary');
-        if (primary) {
-          text = `${primary.root} ${primary.quality}`;
+        // Prefer activeChord.symbol when present — it carries the full
+        // chord type suffix (B7, Cmaj7, Fsus4, etc.). Fall back to the
+        // triad label when only setTriad() was used.
+        if (state.activeChord && state.activeChord.symbol) {
+          text = state.activeChord.symbol;
+        } else {
+          const primary = state.activeTriads.find(t => t.role === 'primary');
+          if (primary) {
+            text = `${primary.root} ${primary.quality}`;
+          }
         }
       }
       if (state.activeInterval && state.activeInterval.label) {

@@ -1889,6 +1889,69 @@ const SONG_EXAMPLES = [
     preference_tags: ["soul", "gospel", "classic", "singalong", "community"]
   },
   {
+    id: "bridge_over_troubled_water",
+    concept_ids: ["chord_progressions", "voice_leading"],
+    concept_specifics: ["diminished", "passing_chord", "chromatic_bass", "borrowed_chord", "gospel"],
+    game_ids: ["chord_spotter", "chord_walks"],
+    song: "Bridge Over Troubled Water",
+    artist: "Simon & Garfunkel",
+    year: 1970,
+    genre_tags: ["folk", "gospel", "pop"],
+    key: "C major",
+    tempo: 82,
+    insight: {
+      playful: "Bridge Over Troubled Water sounds like a church hymn — big chords, slow piano. But hiding between the regular chords are these little 'squeezy' chords called diminished chords. They're what make the chorus feel so lifted.",
+      musician: "The chorus of Bridge Over Troubled Water threads two diminished passing chords into a C major progression (F → F♯° → C, then C → G♯° → Am). Each diminished chord is a chromatic half-step bridge between diatonic chords. The chorus also ends on a borrowed iv (Fm), pulling E♭ from parallel minor for the final emotional drop.",
+      theorist: "Paul Simon deploys ♯iv° and ♯v° as textbook chromatic passing chords, using fully-diminished seventh voicings whose three half-step leading tones lock onto the next chord's root, third, and fifth. The ♭vi/iv borrowed chord (Fm) at the cadence introduces ♭6̂, creating a Picardy-adjacent modal mixture that colors the plagal approach to I."
+    },
+    min_age: 10,
+    era_tags: ["classic", "boomer"],
+    demo: null,
+    preference_tags: ["gospel", "piano", "emotional", "classic", "folk"]
+  },
+  {
+    id: "oh_darling_augmented",
+    concept_ids: ["chord_progressions", "voice_leading"],
+    concept_specifics: ["augmented", "chromatic_voice_leading", "doo_wop", "V7_resolution"],
+    game_ids: ["chord_spotter", "chord_walks"],
+    song: "Oh! Darling",
+    artist: "The Beatles",
+    year: 1969,
+    genre_tags: ["rock", "doo_wop", "blues"],
+    key: "E major",
+    tempo: 58,
+    insight: {
+      playful: "Oh! Darling bounces in slow triplets — LONG-short, LONG-short — like an old-school doo-wop song. Listen for a chord that sounds like it's stretching upward before landing somewhere happy. That stretchy chord is an augmented chord, and it's doing all the work.",
+      musician: "Oh! Darling is a 12/8 doo-wop ballad in E. McCartney opens the verse with E → E+ → A, pushing the fifth (B) chromatically up to B♯/C so it voice-leads into the third of A major (C♯). The turnaround adds F♯m and B7 to close the loop with a classic dominant pull back to E.",
+      theorist: "The I → I+ → IV move is a textbook augmented passing chord: raising 5̂ by a semitone converts a major triad into a symmetric augmented triad, whose ♯5 becomes the leading tone to the third of IV. Paired with a 12/8 triplet subdivision and a ii → V7 → I close, the progression marries blues cadence to doo-wop voice leading."
+    },
+    min_age: 8,
+    era_tags: ["classic", "boomer"],
+    demo: null,
+    preference_tags: ["beatles", "doo_wop", "rock", "classic", "piano"]
+  },
+  {
+    id: "life_on_mars_augmented",
+    concept_ids: ["chord_progressions", "voice_leading", "modulation"],
+    concept_specifics: ["augmented", "chromatic_voice_leading", "modulation", "art_rock"],
+    game_ids: ["chord_spotter", "chord_walks"],
+    song: "Life on Mars?",
+    artist: "David Bowie",
+    year: 1971,
+    genre_tags: ["art_rock", "glam_rock", "piano"],
+    key: "F major",
+    tempo: 68,
+    insight: {
+      playful: "Life on Mars sounds like a journey — the chords keep climbing and wandering into new places. The trick? Bowie uses augmented chords like stepping stones: each one gives the harmony a little shove into a different neighborhood.",
+      musician: "Life on Mars? starts in F major and uses augmented chords as pivot points: C+ pushes into Fm (minor resolution via the raised fifth), A+ launches into B♭m, and later an F♯+ connects chorus chords via chromatic voice leading. The song models how augmented triads can function as passing chords in multiple directions, not just I → IV.",
+      theorist: "Bowie's harmony exploits the inversional symmetry of the augmented triad — every note can function as a leading tone to the next chord's third or root. The song cycles through tonally distant regions (F major, F minor, B♭ minor, back to F) using augmented-triad pivots rather than traditional dominant preparation, producing the song's characteristic sense of gravitational drift."
+    },
+    min_age: 12,
+    era_tags: ["classic", "boomer", "genx"],
+    demo: null,
+    preference_tags: ["bowie", "art_rock", "glam", "piano", "classic", "emotional"]
+  },
+  {
     id: "vienna_chromatic_mediant",
     concept_ids: ["chord_progressions", "voice_leading"],
     concept_specifics: ["chromatic_mediant", "chromatic_bass", "waltz"],
