@@ -1,6 +1,6 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-13
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md`
@@ -15,16 +15,36 @@ SongLab `dev` branch is feature-rich and approaching user testing readiness. Pha
 Full game audit completed April 11 — two game types identified (Performance and Learning), adaptive engine standardized (Pattern B with independent axes), ResultDetail schema designed for competency graph. Build plan updated to v4 with MIDI input pulled forward from Phase F, SkratchLab lightweight DAW vision captured, and fast path to Competency Graph identified (B → B.5 → E5).
 
 **Next priorities:**
-1. Game visual unification — extract `game-shell.css`, all games extend base.html, design tokens everywhere (Phase A+)
-2. MIDI input module — `midi-input.js` (Web MIDI API → HarmonyState), Launchkey 49 target (Phase A+)
-3. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
-4. Multi-chord glow worm paths on Tonnetz (voice leading visualization)
-5. game-flow.js extraction — Pattern B adaptive, independent axes, ResultDetail logging
-6. Swing Trainer production 500 error fix + extend base.html
+1. Fundamentals Chapter: "Beyond Triads" — 7ths, sus, diminished, augmented with real-song walkthrough links
+2. Verify dim/aug rendering in new walkthroughs (Bridge Over Troubled Water, Oh! Darling, Life on Mars)
+3. Audit remaining walkthroughs for chordType opportunities
+4. Flexible Explorer panel sizing (user-draggable splitters)
+5. MIDI input module — midi-input.js (Web MIDI API → HarmonyState), Launchkey 49 target
+6. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
 7. User testing prep (15-20 participants)
-8. Walkthrough backlog: Vienna (Billy Joel), Take Five (5/4), Superstition (syncopation)
 
 **Completed this cycle (April 9-12):**
+
+Project rename (April 13): Tonnetz → SongLab across GitHub, Railway, CLAUDE.md, README.md, doc filenames, cross-references. Music theory "Tonnetz" references preserved.
+Extended chord support (April 13):
+
+CHORD_TYPES dictionary in transforms.js: triads, 7ths (dom7/maj7/min7/dim7/half-dim7/minmaj7), sus (sus2/sus4/7sus4), extended (add9/dom9/maj9/min9)
+chordPCs, chordNotes, baseTriad, extensionNotes, chordSymbol utility functions
+HarmonyState: activeChord field, setChord(), highlightChord(), chordType-aware setProgressionIndex()
+Keyboard extension rendering: gold ring highlights, interval labels (♭7, 7, etc.)
+Tonnetz extension nodes: glowing nodes + dashed connectors for notes beyond the triad
+Chord labels: activeChord.symbol preferred ("B7", "Cmaj7") across Explorer + Tonnetz
+Folsom Prison, Johnny B. Goode, ii-V-I, Lean On Me walkthroughs updated with chordType
+Explorer font sizes doubled via scoped CSS overrides, panel proportions rebalanced
+
+
+Three new walkthroughs (April 13):
+
+Bridge Over Troubled Water (diminished passing chords, musician)
+Oh! Darling (augmented passing chord, student)
+Life on Mars? (advanced augmented connectors, musician)
+All with rhythm data, song-examples.js entries, landing page grid placement
+
 
 - **Game visual unification (Phase A+.1/A+.2)**: game-shell.css extracted, all 8 games migrated, index.html converted to extend base.html, Swing Trainer converted to Jinja2 template, ~500 lines duplicate CSS removed, all legacy color vars → design tokens
 
@@ -76,6 +96,8 @@ Full game audit completed April 11 — two game types identified (Performance an
 
 ## What's Working
 
+
+
 ### Tonnetz Explorer ✅ fully restyled
 - DAW-style dark theme at `/explorer`: transport controls, song info bar, walkthrough sidebar
 - Tabbed panel area: Tonnetz / Chord Wheel / Fretboard / **Rhythm** (all wired and synchronized via HarmonyState)
@@ -105,6 +127,10 @@ Full game audit completed April 11 — two game types identified (Performance an
 - "You'll also hear this in..." related songs from song-examples.js
 - Panel focus: steps can dim non-relevant panels or auto-switch to Rhythm tab
 - Walkthroughs auto-capture progression for export to SkratchLab
+- Update walkthrough count from 14 to 17 walkthroughs
+- Add to audience list:
+- Musicians: ...existing list..., Bridge Over Troubled Water (diminished passing), Life on Mars? (augmented connectors)
+- Students: ...existing list..., Oh! Darling (augmented intro)
 
 ### SkratchLab ✅ renamed + Rhythm Builder
 - `/skratchlab` route (renamed from `/skratch-studio`)
@@ -139,7 +165,7 @@ Full game audit completed April 11 — two game types identified (Performance an
 - Real piano keyboard proportions as default
 
 ### Song Examples Database
-- **81 entries** in song-examples.js (v1.1 + rhythm additions)
+- **84 entries** in song-examples.js (v1.1 + rhythm additions)
 - Rhythm concept_specifics: train_beat, shuffle, syncopation, odd_meter, backbeat
 - Swing feel entries with swing_ratio field
 - Consumed by: walkthroughs, game deep-links, "also hear this in" related songs
@@ -215,6 +241,7 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 - Mobile/responsive not tested — deferred to post-MVP
 - SkratchLab: "Clear All" button clears blocks but not canvas — needs canvas reset
 - Full list: `docs/KNOWN-ISSUES.md`
+- Verify diminished/augmented triad rendering through setChord() path in new walkthroughs (should work — dim/aug are base triads with no extensions)
 
 ---
 
@@ -233,7 +260,7 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 | `docs/auth-architecture.md` | Supabase auth, profile migration, security checklist |
 | `docs/KNOWN-ISSUES.md` | Tracked bugs and fixes |
 | `docs/claude-code-preferences.md` | Claude Code workflow conventions |
-
+| `docs/extended-chords-spec.md` | Extended chord type system — CHORD_TYPES, data model, visual rendering, Fundamentals chapter notes |
 ---
 
 ## Update Protocol
