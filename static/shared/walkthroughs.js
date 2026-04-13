@@ -134,9 +134,9 @@ const WALKTHROUGHS = {
       ]
     },
     steps: [
-      { chord: "Dm", function: "predominant (ii)", title: "The ii chord", body: "D minor in the key of C. It creates gentle tension — a sense of leaning forward.", autoPlay: true },
-      { chord: "G",  function: "dominant (V)",     title: "The V chord", body: "G major. The tension builds. Your ear is now really wanting to resolve somewhere. Watch the path on the Tonnetz from Dm to G — it's a clean, short move.", autoPlay: true, focus: "tonnetz" },
-      { chord: "C",  function: "tonic (I)",        title: "Home", body: "C major. That's the resolution — the I chord. The most satisfying arrival in all of harmony. ii→V→I is everywhere in jazz because this path just feels inevitable.", autoPlay: true, concept_specifics: ["ii_V_I", "jazz_harmony"] },
+      { chord: "Dm", chordType: "min7", function: "predominant (ii7)", title: "The ii7 chord", body: "D minor 7 in the key of C — D, F, A, C. The added 7th (that high C) gives it a gentle, smoky quality. Every ii→V→I in jazz starts here.", autoPlay: true },
+      { chord: "G",  chordType: "dom7", function: "dominant (V7)",     title: "The V7 chord", body: "G dominant 7 — G, B, D, F. The 7th (F) creates a tritone with the 3rd (B) that wants to resolve. That tension is why V7 pulls so hard toward I. Watch the path on the Tonnetz from Dm7 to G7 — it's a clean, short move.", autoPlay: true, focus: "tonnetz" },
+      { chord: "C",  chordType: "maj7", function: "tonic (Imaj7)",     title: "Home — Cmaj7", body: "C major 7 — C, E, G, B. That dreamy, floating quality is the major 7th. ii7→V7→Imaj7 is everywhere in jazz because the chain of 7ths makes each resolution feel inevitable AND luxurious.", autoPlay: true, concept_specifics: ["ii_V_I", "jazz_harmony"] },
     ]
   },
 
@@ -278,10 +278,10 @@ const WALKTHROUGHS = {
       ]
     },
     steps: [
-      { chord: "C", function: "tonic (I)",       title: "The I chord", body: "C major. Home base for the blues.", autoPlay: true },
-      { chord: "F", function: "subdominant (IV)",title: "The IV chord", body: "F major. Look at the Tonnetz — F is right next to C. One step away.", autoPlay: true, focus: "tonnetz" },
-      { chord: "G", function: "dominant (V)",    title: "The V chord", body: "G major. Also right next to C, on the other side. I, IV, and V form a tight triangle on the grid — the three closest major chords to each other.", autoPlay: true, focus: "tonnetz" },
-      { chord: "C", function: "back to tonic",   title: "That's the whole blues", body: "From Johnny B. Goode to Hound Dog to a thousand songs you know — it's these three neighbors taking turns. The simplest path through harmonic space, and it never gets old.", autoPlay: true, concept_specifics: ["twelve_bar_blues", "I_IV_V"] },
+      { chord: "C", chordType: "dom7", function: "tonic (I7)",        title: "The I7 chord", body: "C dominant 7 — C, E, G, B♭. Home base for the blues, but with that flat 7th baked in. In blues, even the I chord is a dom7 — that's what gives it its grit.", autoPlay: true },
+      { chord: "F", chordType: "dom7", function: "subdominant (IV7)", title: "The IV7 chord", body: "F dominant 7 — F, A, C, E♭. Look at the Tonnetz — F is right next to C. One step away, and the 7th (E♭) just adds another layer of blues tension.", autoPlay: true, focus: "tonnetz" },
+      { chord: "G", chordType: "dom7", function: "dominant (V7)",     title: "The V7 chord", body: "G dominant 7 — G, B, D, F. Also right next to C, on the other side. I7, IV7, and V7 form a tight triangle on the grid — the three closest major chords, all dripping with flat sevenths.", autoPlay: true, focus: "tonnetz" },
+      { chord: "C", chordType: "dom7", function: "back to tonic (I7)",title: "That's the whole blues", body: "From Johnny B. Goode to Hound Dog to a thousand songs you know — it's these three dom7 neighbors taking turns. The simplest path through harmonic space, and it never gets old.", autoPlay: true, concept_specifics: ["twelve_bar_blues", "I_IV_V"] },
     ]
   },
 
@@ -310,41 +310,46 @@ const WALKTHROUGHS = {
     steps: [
       {
         chord: "E",
-        function: "tonic (I)",
+        chordType: "dom7",
+        function: "tonic (I7)",
         title: "The one chord",
-        body: "E major. Home base. But before you focus on the chord — listen to the rhythm. BOOM-chk-SNAP-chk, BOOM-chk-SNAP-chk. That's the train beat. The bass hits on 1 and 3, a snare or brush on 2 and 4, and muted guitar strums fill every upbeat.",
+        body: "E dominant 7 — E, G♯, B, D. Home base, but with that flat 7th (D) already giving it a bluesy edge. Before you focus on the chord, listen to the rhythm. BOOM-chk-SNAP-chk, BOOM-chk-SNAP-chk. That's the train beat. The bass hits on 1 and 3, a snare or brush on 2 and 4, and muted guitar strums fill every upbeat.",
         autoPlay: true,
         concept_specifics: ["train_beat", "I_IV_V"]
       },
       {
         chord: "A",
-        function: "subdominant (IV)",
-        title: "The IV chord arrives",
-        body: "A major — the IV chord. The chord changes but the rhythm never breaks. BOOM-chk-SNAP-chk keeps rolling. That's what makes the train beat feel like a train — the groove is a constant engine underneath the harmony.",
+        chordType: "dom7",
+        function: "subdominant (IV7)",
+        title: "The IV7 chord arrives",
+        body: "A dominant 7 — A, C♯, E, G. The chord changes but the rhythm never breaks. Even the IV chord is a dom7 here — that flat 7th is the whole sound of the blues. BOOM-chk-SNAP-chk keeps rolling.",
         autoPlay: true,
         concept_specifics: ["I_IV_V"]
       },
       {
         chord: "E",
-        function: "back to I",
+        chordType: "dom7",
+        function: "back to I7",
         title: "Back home",
-        body: "E major again. In a 12-bar blues, you spend most of your time on the I chord. The train beat makes even this static harmony feel like it's moving forward.",
+        body: "E7 again. In a 12-bar blues, you spend most of your time on the I chord. The train beat makes even this static harmony feel like it's moving forward.",
         autoPlay: true,
         concept_specifics: ["twelve_bar_blues"]
       },
       {
         chord: "B",
-        function: "dominant (V)",
+        chordType: "dom7",
+        function: "dominant (V7)",
         title: "The turnaround",
-        body: "B major — the V chord. This is the tension point that pulls you back to E. In Folsom Prison Blues, this is where the verse peaks before resolving. Three chords, one relentless rhythm — that's all you need.",
+        body: "B dominant 7 — B, D♯, F♯, A. The V7 chord. This is the tension point that pulls you back to E. The tritone between D♯ and A inside B7 is what creates that itch to resolve. Three dom7 chords, one relentless rhythm — that's all you need.",
         autoPlay: true,
         concept_specifics: ["I_IV_V", "twelve_bar_blues"]
       },
       {
         chord: "E",
-        function: "resolution (I)",
-        title: "I-IV-V and the train beat",
-        body: "The whole song is three chords — E, A, B — over a train beat that never stops. Johnny Cash didn't need complexity. The BOOM-chk-SNAP-chk pattern IS the song. You'll hear the same engine driving Ring of Fire, Mama Tried, Cry Cry Cry, and hundreds of country songs.",
+        chordType: "dom7",
+        function: "resolution (I7)",
+        title: "I7-IV7-V7 and the train beat",
+        body: "The whole song is three dom7 chords — E7, A7, B7 — over a train beat that never stops. Johnny Cash didn't need complexity. The BOOM-chk-SNAP-chk pattern IS the song. You'll hear the same engine driving Ring of Fire, Mama Tried, Cry Cry Cry, and hundreds of country songs.",
         autoPlay: true,
         concept_specifics: ["train_beat", "I_IV_V", "twelve_bar_blues"]
       }
@@ -460,10 +465,112 @@ const WALKTHROUGHS = {
       ]
     },
     steps: [
-      { chord: "C", function: "tonic (I)", title: "Simple and strong", body: "C major. The piano walks up the scale — C, D, E, F — while the right hand lays down chords. Bill Withers was a factory worker who wrote one of the most-covered songs in history. No fancy theory, just truth.", autoPlay: true, concept_specifics: ["I_IV_V"] },
+      { chord: "C", chordType: "maj7", function: "tonic (Imaj7)", title: "Simple and strong", body: "Cmaj7 — C, E, G, B. The piano walks up the scale — C, D, E, F — while the right hand lays down chords with that gospel maj7 shimmer on top. Bill Withers was a factory worker who wrote one of the most-covered songs in history. No fancy theory, just truth.", autoPlay: true, concept_specifics: ["I_IV_V"] },
       { chord: "F", function: "subdominant (IV)", title: "The IV chord", body: "F major. I→IV is the most common chord move in all of music. In gospel, the IV chord is where the choir lifts. It feels like the room gets bigger.", autoPlay: true, concept_specifics: ["I_IV_V"] },
-      { chord: "C", function: "back to I", title: "Back to earth", body: "C major again. The whole song barely leaves home. That's the power of simplicity — three chords and a walking bass line, and everyone in the room is singing along.", autoPlay: true },
+      { chord: "C", chordType: "maj7", function: "back to Imaj7", title: "Back to earth", body: "Cmaj7 again. The whole song barely leaves home. That's the power of simplicity — three chords and a walking bass line, and everyone in the room is singing along.", autoPlay: true },
       { chord: "G", function: "dominant (V)", title: "The resolve", body: "G major — the V. It pulls back to C. Lean on Me uses almost the same three chords as Folsom Prison Blues (I-IV-V), but the slow gospel piano makes it feel completely different. Same skeleton, different soul.", autoPlay: true, concept_specifics: ["I_IV_V"] }
+    ]
+  },
+
+  bridge_over_troubled_water: {
+    title: "The Diminished Passing Chord",
+    song: "Bridge Over Troubled Water — Simon & Garfunkel",
+    category: "Voice Leading",
+    audience: "musician",
+    seeAlso: { label: "Chord Spotter", href: "/games/chord-spotter" },
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 82,
+      feel: "Gospel ballad",
+      description: "Piano arpeggios over a slow gospel pulse. The left hand walks bass notes on 1 and 3 while the right hand rolls chords. The feel builds across verses — sparse at first, full orchestra by the end.",
+      pattern: [
+        { beat: "1", label: "BASS", type: "bass" },
+        { beat: "&", label: "arp",  type: "strum" },
+        { beat: "2", label: "arp",  type: "strum" },
+        { beat: "&", label: "arp",  type: "strum" },
+        { beat: "3", label: "BASS", type: "bass" },
+        { beat: "&", label: "arp",  type: "strum" },
+        { beat: "4", label: "arp",  type: "strum" },
+        { beat: "&", label: "arp",  type: "strum" }
+      ]
+    },
+    steps: [
+      { chord: "C",  function: "tonic (I)",          title: "Home base",                   body: "C major. The verse builds gently on plagal cadences — IV to I, like a hymn. Simon wrote it to sound like a spiritual. But it's the chorus where the harmony gets interesting.", autoPlay: true },
+      { chord: "F",  function: "subdominant (IV)",   title: "The IV chord lifts",          body: "F major — 'Like a bridge...' The plagal IV chord is the foundation of this whole song. Every resolution comes back through F to C. But watch what happens between F and the next C.", autoPlay: true },
+      { chord: "F#", chordType: "diminished", function: "passing (♯iv°)", title: "The chromatic passing chord", body: "F♯ diminished — this lands on the word 'over.' The bass walks chromatically: F → F♯ → G (which is the root of the next chord's inversion). This is what diminished chords do best — they connect two diatonic chords with a half-step movement that feels inevitable. You barely notice it, but you'd miss it if it were gone.", autoPlay: true, concept_specifics: ["diminished", "chromatic_bass", "passing_chord"] },
+      { chord: "C",  function: "tonic (I)",          title: "Resolution",                   body: "Back to C — 'troubled water.' The diminished chord resolved upward by half step in the bass. That F→F♯→G bass line is one of the most common uses of diminished chords in all of popular music.", autoPlay: true },
+      { chord: "G#", chordType: "diminished", function: "passing (♯v°)", title: "Another diminished — same trick", body: "G♯ diminished — on 'I will.' Same technique: the bass walks G♯→A to connect to A minor. Two diminished passing chords in one chorus, both doing the same job — chromatic half-step connections between diatonic chords.", autoPlay: true, concept_specifics: ["diminished", "chromatic_bass", "passing_chord"] },
+      { chord: "Am", function: "submediant (vi)",    title: "The minor arrival",            body: "A minor — 'lay me down.' The vi chord adds weight and emotion after the diminished approach. Notice how different this feels from just jumping straight from C to Am.", autoPlay: true },
+      { chord: "Fm", function: "borrowed iv",        title: "The borrowed minor",           body: "F minor — borrowed from C minor. This is the final emotional punch: the major IV chord from earlier now returns as minor. That E♭ darkens everything. The whole chorus is a masterclass in chromatic voice leading.", autoPlay: true, concept_specifics: ["borrowed_chord"] }
+    ]
+  },
+
+  oh_darling_augmented: {
+    title: "The Augmented Passing Chord",
+    song: "Oh! Darling — The Beatles",
+    category: "Voice Leading",
+    audience: "student",
+    seeAlso: { label: "Chord Spotter", href: "/games/chord-spotter" },
+    rhythm: {
+      time_sig: "12/8",
+      bpm: 58,
+      feel: "Slow doo-wop triplet",
+      description: "A 12/8 doo-wop shuffle — every beat divides into three. The piano pounds triplet chords while the bass locks onto the root on each downbeat. McCartney's vocal rides on top of the heavy shuffle feel.",
+      pattern: [
+        { beat: "1", label: "BASS",  type: "bass" },
+        { beat: "a", label: "·",     type: "strum" },
+        { beat: "&", label: "chord", type: "strum" },
+        { beat: "2", label: "BASS",  type: "bass" },
+        { beat: "a", label: "·",     type: "strum" },
+        { beat: "&", label: "chord", type: "strum" },
+        { beat: "3", label: "BASS",  type: "bass" },
+        { beat: "a", label: "·",     type: "strum" },
+        { beat: "&", label: "chord", type: "strum" },
+        { beat: "4", label: "BASS",  type: "bass" },
+        { beat: "a", label: "·",     type: "strum" },
+        { beat: "&", label: "chord", type: "strum" }
+      ]
+    },
+    steps: [
+      { chord: "E",   function: "tonic (I)",                  title: "Home",                 body: "E major — 'Oh! Darling.' A straight major chord. But listen to what happens to the B (the fifth) as the chord changes.", autoPlay: true },
+      { chord: "E",   chordType: "augmented", function: "I+", title: "One note rises",       body: "E augmented. Only one note changed — the B rose to B♯ (C). That's all an augmented chord is: a major chord with the fifth raised by one half step. It creates an upward pull, a sense that the harmony is reaching for something.", autoPlay: true, concept_specifics: ["augmented", "chromatic_voice_leading"] },
+      { chord: "A",   function: "subdominant (IV)",           title: "The resolution",       body: "A major. The B♯ resolved up to C♯ — the third of A major. That chromatic walk (B → B♯ → C♯) is the engine. The augmented chord was a bridge between I and IV, just like diminished chords bridge other pairs. One note, moving by half steps, connecting two stable chords.", autoPlay: true },
+      { chord: "F#m", function: "submediant (ii)",            title: "The minor turn",       body: "F♯ minor. McCartney keeps the progression moving into darker territory. After the brightness of the augmented push, the minor chord adds weight.", autoPlay: true },
+      { chord: "B",   chordType: "dom7", function: "dominant (V7)", title: "The turnaround", body: "B7 — the dominant seventh, pulling hard back to E. Between the augmented chord pushing up and the dominant seventh pulling home, every chord in this progression has a job. Nothing is decoration. The Beatles understood that chromatic movement — even just one note — transforms everything around it.", autoPlay: true, concept_specifics: ["dom7", "V_I_resolution"] }
+    ]
+  },
+
+  life_on_mars_augmented: {
+    title: "Augmented Chords as Chromatic Connectors",
+    song: "Life on Mars? — David Bowie",
+    category: "Voice Leading",
+    audience: "musician",
+    seeAlso: { label: "Chord Walks", href: "/harmony" },
+    rhythm: {
+      time_sig: "4/4",
+      bpm: 68,
+      feel: "Art rock piano ballad",
+      description: "Rick Wakeman's piano drives the rhythm with rolling arpeggios that build in intensity. The left hand walks a chromatic bassline while the right hand fills with sustained chords. Drums enter in the chorus with a heavy, almost orchestral feel.",
+      pattern: [
+        { beat: "1", label: "BASS",  type: "bass" },
+        { beat: "&", label: "roll",  type: "strum" },
+        { beat: "2", label: "chord", type: "strum" },
+        { beat: "&", label: "roll",  type: "strum" },
+        { beat: "3", label: "BASS",  type: "bass" },
+        { beat: "&", label: "roll",  type: "strum" },
+        { beat: "4", label: "chord", type: "snare" },
+        { beat: "&", label: "roll",  type: "strum" }
+      ]
+    },
+    steps: [
+      { chord: "F",   function: "tonic (I)",                         title: "The verse foundation",  body: "F major. The verse of Life on Mars uses a descending chromatic bassline — F, E, E♭, D — under changing chords. It's sophisticated but controlled. The real harmonic fireworks come in the pre-chorus.", autoPlay: true },
+      { chord: "C",   chordType: "augmented", function: "V+",        title: "The augmented dominant", body: "C augmented — 'But the film is a saddening bore.' The augmented chord raises the fifth of C (G) up to G♯. This creates an upward pull — G♯ wants to resolve to A♭, which is the root of the next chord's key area. Where a dominant 7th pulls you home, an augmented chord pushes you somewhere unexpected.", autoPlay: true, concept_specifics: ["augmented", "chromatic_voice_leading"] },
+      { chord: "Fm",  function: "i (temporary)",                     title: "The minor resolution",   body: "F minor. The C augmented chord resolved here — the G♯ moved to A♭, which is the minor third of F minor. The augmented chord acted like a dominant pushing into a minor key. Bowie keeps destabilizing your sense of key center.", autoPlay: true },
+      { chord: "A",   chordType: "augmented", function: "chromatic connector", title: "Another augmented push", body: "A augmented — 'It's about to be writ again.' Same trick, different chord. The raised fifth (E♯/F) pushes upward into B♭ minor. Bowie uses augmented chords like stepping stones, each one launching you into an unexpected key.", autoPlay: true, concept_specifics: ["augmented", "chromatic_voice_leading"] },
+      { chord: "Bbm", function: "temporary tonic",                   title: "Arriving somewhere new", body: "B♭ minor. Each augmented chord has pushed us further from home — F major feels like a distant memory. This is what makes Life on Mars feel like a journey. The harmony literally travels.", autoPlay: true },
+      { chord: "Bb",  function: "IV (chorus)",                       title: "The chorus arrives",    body: "B♭ major — 'Sailors, fighting in the dance hall.' The chorus explodes into the subdominant. After all that chromatic wandering, a plain major chord feels like a revelation.", autoPlay: true },
+      { chord: "F#",  chordType: "augmented", function: "chromatic passing", title: "Even the chorus has one", body: "F♯ augmented — 'Oh man!' Even in the chorus, Bowie can't resist. This augmented chord connects Gm to F via chromatic voice leading. The raised fifth of F♯ (C♯/D♭) drops to C, landing on F major. Augmented chords work in both directions — Bowie understood this intuitively.", autoPlay: true, concept_specifics: ["augmented", "chromatic_voice_leading"] },
+      { chord: "F",   function: "return to I",                       title: "Full circle — almost",  body: "F major. We're 'home' — but after everything Bowie put us through, home doesn't feel the same. That's the power of chromatic harmony. The augmented chords didn't just add color — they changed our relationship to the tonic.", autoPlay: true }
     ]
   },
 

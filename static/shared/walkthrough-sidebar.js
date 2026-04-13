@@ -22,6 +22,7 @@
  */
 
 import { HarmonyState } from './harmony-state.js';
+import { CHORD_TYPES } from './transforms.js';
 import SONG_EXAMPLES from './song-examples.js';
 import { WALKTHROUGHS } from './walkthroughs.js';
 
@@ -118,6 +119,13 @@ function parseChordName(name) {
 function prettyChord(name) {
   if (!name) return '';
   return name.replace(/#/g, '♯').replace(/b(?=\d|$|m|7)/g, '♭');
+}
+
+/** Step label combining chord root with chordType suffix (e.g. "B7", "Cmaj7"). */
+function stepChordLabel(step) {
+  const base = prettyChord(step.chord || '');
+  const def = step.chordType ? CHORD_TYPES[step.chordType] : null;
+  return def ? `${base}${def.symbol}` : base;
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -385,7 +393,7 @@ class WalkthroughSidebar {
       row.innerHTML = `
         <span class="wts-step__badge">${i + 1}</span>
         <span class="wts-step__body">
-          <span class="wts-step__chord">${prettyChord(step.chord || '')}</span>
+          <span class="wts-step__chord">${stepChordLabel(step)}</span>
           <span class="wts-step__fn">${step.function || step.title || ''}</span>
         </span>
         <span class="wts-step__check" aria-hidden="true">✓</span>
@@ -517,6 +525,7 @@ class WalkthroughSidebar {
       this._onStep({
         root: parsed.root,
         quality: parsed.quality,
+        chordType: step.chordType || null,
         transform: step.highlightTransform || null,
         focus: step.focus || null,
       });
@@ -532,6 +541,8 @@ class WalkthroughSidebar {
         this._prevChord.root,
         this._prevChord.quality
       );
+    } else if (step.chordType) {
+      HarmonyState.highlightChord(parsed.root, step.chordType);
     } else {
       HarmonyState.highlightTriad(parsed.root, parsed.quality);
     }

@@ -504,10 +504,13 @@ class ChordBubbleRenderer {
     this._group.appendChild(sharpGroup);
 
     if (resolved) {
-      const maxY = Math.max(...positions.map(p => p.y));
-      const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
-      this._drawLabel(cx, maxY + 34, resolved.name, color);
-      this._updateExternalLabel(resolved.name);
+      // The Tonnetz renderer owns the on-canvas chord label
+      // (tonnetz-neighborhood.js § CHORD LABELS). We only update the
+      // external DOM badge here to avoid a doubled label.
+      const labelText = state.activeChord && state.activeChord.symbol
+        ? state.activeChord.symbol
+        : resolved.name;
+      this._updateExternalLabel(labelText);
     }
   }
 
@@ -678,17 +681,7 @@ class ChordBubbleRenderer {
     this._group.appendChild(glowGroup);
     this._group.appendChild(sharpGroup);
 
-    // Label below the active chord
-    const pcs = [...new Set(sortedNotes.map(n => n.pc))];
-    const resolved = resolveChord(pcs);
-    if (resolved && positions.length) {
-      const maxY = Math.max(...positions.map(p => p.y));
-      const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
-      const label = chord.romanNumeral
-        ? `${resolved.name} (${chord.romanNumeral})`
-        : resolved.name;
-      this._drawLabel(cx, maxY + 34, label, color);
-    }
+    // Chord label is drawn by tonnetz-neighborhood.js; nothing to do here.
   }
 
   /**
@@ -727,41 +720,6 @@ class ChordBubbleRenderer {
     }
 
     this._group.appendChild(g);
-  }
-
-  /**
-   * Draw a compact chord-name badge just below the lowest chord tone node.
-   */
-  _drawLabel(cx, ly, text, color) {
-    const PAD = 6;
-    const estW = text.length * 8 + PAD * 2;
-    const estH = 20;
-
-    const bg = _el('rect', {
-      x: cx - estW / 2,
-      y: ly - estH / 2,
-      width: estW,
-      height: estH,
-      rx: '5',
-      fill: color,
-      'fill-opacity': '0.85',
-    });
-
-    const lbl = _el('text', {
-      x: cx,
-      y: ly,
-      'text-anchor': 'middle',
-      'dominant-baseline': 'central',
-      'font-size': '12',
-      'font-weight': '700',
-      'font-family': 'system-ui, -apple-system, sans-serif',
-      fill: '#fff',
-      class: 'tn-chord-bubble-label',
-    });
-    lbl.textContent = text;
-
-    this._group.appendChild(bg);
-    this._group.appendChild(lbl);
   }
 
   /**

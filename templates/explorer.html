@@ -95,6 +95,20 @@
       --tn-minor-fill:             var(--q-minor-stroke);
     }
 
+    /* Explorer font scale — 2x base sizes for readability.
+       Scoped to .sl-explorer so the global design tokens (used by
+       games, landing, intro, etc.) stay untouched. Tonnetz SVG node
+       labels are sized in SVG coordinate space, not via these vars,
+       so they remain unaffected. */
+    .sl-explorer {
+      --font-size-2xs: 1.25rem;
+      --font-size-xs:  1.5rem;
+      --font-size-sm:  1.75rem;
+      --font-size-md:  2rem;
+      --font-size-lg:  2.5rem;
+      --font-size-xl:  3rem;
+    }
+
     /* ── Tonnetz chord-change visuals ───────────────────────────────
      * Match the chord-progressions page energy: active chord lights
      * up cleanly (brief fade-in, no continuous pulse) and the previous
@@ -353,7 +367,7 @@
 
     /* ── Walkthrough sidebar ───────────────────────────────── */
     .wts {
-      width: 300px;
+      width: 400px;
       flex-shrink: 0;
       background: var(--daw-surface);
       border-right: 1px solid var(--daw-border);
@@ -450,14 +464,14 @@
     .wts__title {
       padding: var(--space-md) var(--space-lg) 2px;
       font-family: var(--font-family-display);
-      font-size: var(--font-size-md);
+      font-size: var(--font-size-lg);
       font-weight: var(--font-weight-medium);
       color: var(--daw-text);
       line-height: 1.25;
     }
     .wts__song {
       padding: 0 var(--space-lg) var(--space-sm);
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       color: var(--daw-text-mute);
       font-style: italic;
     }
@@ -504,13 +518,13 @@
     }
     .wts-step__chord {
       font-family: var(--font-family-display);
-      font-size: var(--font-size-base);
-      font-weight: var(--font-weight-medium);
+      font-size: var(--font-size-md);
+      font-weight: 700;
       color: inherit;
       line-height: 1.15;
     }
     .wts-step__fn {
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       color: var(--daw-text-mute);
       letter-spacing: 0.02em;
       line-height: 1.2;
@@ -591,9 +605,9 @@
     .wts__note {
       padding: var(--space-md) var(--space-lg);
       border-top: 1px solid var(--daw-border-soft);
-      font-size: var(--font-size-base);
+      font-size: var(--font-size-sm);
       color: var(--daw-text);
-      line-height: 1.6;
+      line-height: 1.5;
       max-height: 42vh;
       overflow-y: auto;
     }
@@ -629,7 +643,7 @@
       border: 1px solid var(--daw-border);
       background: var(--daw-raised);
       color: var(--daw-text-dim);
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       font-weight: var(--font-weight-medium);
       text-decoration: none;
       transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
@@ -641,7 +655,7 @@
       color: var(--gold);
     }
     .wts-game-pill__icon {
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       line-height: 1;
     }
 
@@ -704,7 +718,7 @@
 
     /* ── Tonnetz panel header (with view tabs) ─────────────── */
     .sl-stage {
-      flex: 1 1 auto;
+      flex: 1 1 0;
       display: flex;
       flex-direction: column;
       min-height: 280px;
@@ -734,7 +748,7 @@
       flex-shrink: 0;
     }
     .exp-panel__label {
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       font-weight: var(--font-weight-medium);
       text-transform: uppercase;
       letter-spacing: 0.12em;
@@ -748,7 +762,7 @@
       border: 1px solid transparent;
       background: transparent;
       color: var(--daw-text-mute);
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       font-weight: var(--font-weight-medium);
       cursor: pointer;
       transition: var(--transition-color);
@@ -1081,7 +1095,7 @@
       display: flex; align-items: center; gap: 4px;
     }
     .sl-ctrl-label {
-      font-size: var(--font-size-2xs);
+      font-size: var(--font-size-sm);
       font-weight: var(--font-weight-medium);
       text-transform: uppercase;
       letter-spacing: 0.09em;
@@ -1106,7 +1120,7 @@
       border: 1px solid var(--daw-border);
       background: var(--daw-raised);
       color: var(--daw-text-dim);
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       font-weight: var(--font-weight-medium);
       cursor: pointer;
       line-height: 1.3;
@@ -1127,14 +1141,14 @@
       border: 1px solid var(--daw-border);
       background: var(--daw-raised);
       color: var(--daw-text);
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       font-weight: var(--font-weight-medium);
       font-family: inherit;
       cursor: pointer;
     }
     .sl-arp-label {
       display: flex; align-items: center; gap: 4px;
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
       color: var(--daw-text-dim);
       cursor: pointer;
       user-select: none;
@@ -1196,12 +1210,12 @@
       overflow-x: auto;
     }
     #exp-keyboard-container {
-      --keyboard-white-key-w: 38px;
-      --keyboard-white-key-h: 120px;
-      --keyboard-black-key-w: 18px;
-      --keyboard-black-key-h: 76px;
+      --keyboard-white-key-w: 44px;
+      --keyboard-white-key-h: 180px;
+      --keyboard-black-key-w: 22px;
+      --keyboard-black-key-h: 115px;
     }
-    #exp-keyboard-container .kv-note-label { font-size: var(--font-size-xs); font-weight: 600; }
+    #exp-keyboard-container .kv-note-label { font-size: var(--font-size-sm); font-weight: 700; }
     #exp-keyboard-container .kv-key--white .kv-note-label { color: #3A3630; }
     #exp-keyboard-container .kv-common-dot { display: none !important; }
     .sl-key-header {
@@ -1213,7 +1227,7 @@
     }
     .sl-key-chord {
       font-family: var(--font-family-display);
-      font-size: var(--font-size-sm);
+      font-size: var(--font-size-md);
       font-weight: var(--font-weight-medium);
       color: var(--q-major-text);
       transition: color 0.3s ease;
@@ -1222,7 +1236,7 @@
     .sl-key-chord[data-quality="dominant"] { color: var(--q-dom-text); }
 
     .sl-key-notes {
-      font-size: var(--font-size-2xs);
+      font-size: var(--font-size-xs);
       color: var(--q-major-text);
       opacity: 0.72;
       letter-spacing: 0.04em;
@@ -1356,7 +1370,7 @@
   </style>
 </head>
 
-<body>
+<body class="sl-explorer">
   <!-- ============ Nav ============ -->
   <nav class="sl-nav">
     <a href="/" class="sl-brand">
@@ -1794,8 +1808,8 @@
       btnClearSeq.hidden  = !has || active;
     }
 
-    function _pushChord(root, quality, transform) {
-      _sequence.push({ root, quality, transform: transform || null });
+    function _pushChord(root, quality, transform, chordType) {
+      _sequence.push({ root, quality, transform: transform || null, chordType: chordType || null });
       _updateSequenceUI();
     }
     function _resetSequence() {
@@ -2402,9 +2416,17 @@
       if (primary) {
         currentRoot    = primary.root;
         currentQuality = primary.quality;
-        const qualLabel = primary.quality === 'major' ? 'major' : 'minor';
-        chordLabelEl.textContent = `${primary.root} ${qualLabel}`;
-        notesLabelEl.textContent = _formatNotes(triadNotes(primary.root, primary.quality));
+        // Prefer activeChord.symbol when set — it carries 7th/sus/ext
+        // suffixes that triad-only labels can't reconstruct. Fall back
+        // to the "root quality" form for plain triads.
+        if (state.activeChord && state.activeChord.symbol) {
+          chordLabelEl.textContent = state.activeChord.symbol;
+          notesLabelEl.textContent = _formatNotes(state.activeChord.allNotes || triadNotes(primary.root, primary.quality));
+        } else {
+          const qualLabel = primary.quality === 'major' ? 'major' : 'minor';
+          chordLabelEl.textContent = `${primary.root} ${qualLabel}`;
+          notesLabelEl.textContent = _formatNotes(triadNotes(primary.root, primary.quality));
+        }
         _applyQualityAttribute(primary.quality);
 
         // Keep the rhythm engine's bass tracking the current chord. A
@@ -2595,8 +2617,8 @@
         url.searchParams.delete('walkthrough');
         window.history.replaceState({}, '', url);
       },
-      onStep({ root, quality, transform, focus }) {
-        if (_wtCapturing) _pushChord(root, quality, transform);
+      onStep({ root, quality, chordType, transform, focus }) {
+        if (_wtCapturing) _pushChord(root, quality, transform, chordType);
         // Auto-switch the stage view if the step's focus targets a stage tab
         // (e.g. focus: "rhythm" pops the rhythm tab on its arrival).
         const focusList = Array.isArray(focus) ? focus : (focus ? [focus] : []);
@@ -2668,7 +2690,15 @@
       songArtistEl.textContent = artist || wt.title || '';
       exitBtn.hidden = false;
       renderRhythmStage(wt.rhythm || null);
+      // Suppress the HarmonyState subscriber's auto-play for the initial
+      // step. _lastRoot was nulled above, so the subscriber would otherwise
+      // treat step 0 as a fresh chord change and fire playChord — and the
+      // caller (onSelectSong / begin overlay) also explicitly plays the
+      // first chord after a short delay for sampler warm-up. Without this
+      // flag the opening chord sounds twice in quick succession.
+      _suppressAutoPlay = true;
       _wtSidebar.start(wt);
+      _suppressAutoPlay = false;
     }
 
     // ── Begin overlay (audio gesture gate for walkthroughs) ───────
