@@ -1,27 +1,42 @@
-# Tonnetz Project Status
+# SongLab Project Status
 
-**Last updated:** 2026-04-10
+**Last updated:** 2026-04-12
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
-**Active roadmap:** `docs/songlab-redesign-plan.md` + `docs/tonnetz-next-build-plan.md`
+**Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md`
 **Platform name:** SongLab · SkratchLab (rebrand complete)
 
 ---
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich and approaching user testing readiness. Explorer has rhythm analysis, info pills, audience-segmented walkthroughs, and a tutorial page. SkratchLab renamed, restyled, and has an interactive Rhythm Builder. Base.html restyled — all game/theory pages inherit the SongLab design system. Landing page has audience tabs (Kids/Students/Musicians) with filtered MIDI pad song grid. Dropdown nav restored with full access to all games, theory, and fundamentals pages.
+SongLab `dev` branch is feature-rich and approaching user testing readiness. Phase A complete. Explorer has rhythm analysis, info pills, audience-segmented walkthroughs, and a tutorial page. SkratchLab renamed, restyled, and has an interactive Rhythm Builder. Base.html restyled — all game/theory pages inherit the SongLab design system. Landing page has audience tabs (Kids/Students/Musicians) with filtered MIDI pad song grid. Dropdown nav restored with full access to all games, theory, and fundamentals pages.
+
+Full game audit completed April 11 — two game types identified (Performance and Learning), adaptive engine standardized (Pattern B with independent axes), ResultDetail schema designed for competency graph. Build plan updated to v4 with MIDI input pulled forward from Phase F, SkratchLab lightweight DAW vision captured, and fast path to Competency Graph identified (B → B.5 → E5).
 
 **Next priorities:**
-1. Multi-chord glow worm paths on Tonnetz (voice leading visualization — top priority feature)
-2. More rhythm walkthroughs: Take Five (5/4), Superstition (syncopation)
-3. SkratchLab rhythm builder improvements (more presets, strum block export)
-4. User testing prep (15-20 participants)
-5. Swing Trainer production 500 error fix
-6. End-to-end testing: verify all walkthroughs, game deep-links, rhythm export
+1. Game visual unification — extract `game-shell.css`, all games extend base.html, design tokens everywhere (Phase A+)
+2. MIDI input module — `midi-input.js` (Web MIDI API → HarmonyState), Launchkey 49 target (Phase A+)
+3. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
+4. Multi-chord glow worm paths on Tonnetz (voice leading visualization)
+5. game-flow.js extraction — Pattern B adaptive, independent axes, ResultDetail logging
+6. Swing Trainer production 500 error fix + extend base.html
+7. User testing prep (15-20 participants)
+8. Walkthrough backlog: Vienna (Billy Joel), Take Five (5/4), Superstition (syncopation)
 
-**Completed this cycle (April 9-10):**
+**Completed this cycle (April 9-12):**
 
+- **Game audit & build plan update (April 11-12)**:
+  - Full audit of all 8 games: Harmony Trainer, Strum Patterns, Swing Trainer, Melody Match, Chord Spotter, Rhythm Lab, Scale Builder, Relative Key Trainer
+  - Two game types identified: Performance (no Learn mode, difficulty axes) and Learning (stage-based, Intro/Practice/Test)
+  - Adaptive engine standardized on Pattern B (promote after N correct, demote after N wrong) with independent axes per game
+  - ResultDetail schema designed for competency graph (per-game detail shapes)
+  - MIDI input pulled forward from Phase F to Phase A+ (new `midi-input.js` shared module)
+  - SkratchLab lightweight DAW vision captured (song presets, chord loops, melody play-over)
+  - Two new games designed: Voice Leading Detective (B7), Polyrhythm Trainer (B8)
+  - Vienna (Billy Joel) walkthrough planned
+  - Build plan updated to v4: new Phase A+, fast path to Competency Graph (B → B.5 → E5), updated session budget
+  - Created `docs/game-engine-spec.md`
 - **SkratchLab rebrand**: Skratch Studio → SkratchLab (user-facing text + URL paths /skratchlab)
 - **Explorer visual polish**:
   - Keyboard: cream white keys (#E8E2D6), real piano proportions, scalable via CSS overrides
@@ -170,21 +185,25 @@ SongLab `dev` branch is feature-rich and approaching user testing readiness. Exp
 
 ## Not Started
 
-See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
+See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 
+- **Phase A+:** Game visual unification (`game-shell.css` extraction, all games extend base.html) + MIDI input module (`midi-input.js`, pulled forward from Phase F)
 - **Multi-chord glow worm paths** — visualize chord progressions/transitions with simultaneous paths showing voice leading (notes that stay vs. move)
-- **Phase B:** Extract `game-flow.js`, new games (Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation)
-- **Phase B.5:** Auth & Persistence — Supabase auth, profile migration
+- **SkratchLab lightweight DAW** — song presets, chord loops + rhythm, melody play-over, instrument selection (parallel to Phase B)
+- **Phase B:** Extract `game-flow.js` (Pattern B adaptive, independent axes, ResultDetail schema), new games (Voice Leading Detective, Polyrhythm Trainer, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation)
+- **Phase B.5:** Auth & Persistence — Supabase auth, profile migration, ResultDetail → Supabase
+- **Phase E5:** Competency Graph — fast path (B → B.5 → E5), cross-game skill tracking
 - **Phase C:** Curriculum paths, path runner UI, Tonnetz curriculum map
 - **Phase D:** Differentiated experiences by user level
-- **Phase E:** AI-powered feedback
-- **Phase F:** Puzzle Paths, MIDI input, Voicing Explorer advanced, social features
+- **Phase E1–E4:** Per-game AI-powered feedback
+- **Phase F:** Puzzle Paths, NoteInputProvider full abstraction, Voicing Explorer advanced, social features
 
 ---
 
 ## Known Issues
 
 - **Swing Trainer 500 on production** — route returning server error, needs investigation before deploy
+- **Swing Trainer doesn't extend base.html** — standalone HTML file, gets no SongLab nav or design system
 - **Railway cold start** — ~15s first load after inactivity (hobby tier), warn testers
 - Swing Trainer: dial slightly finicky past midpoint
 - Swing Trainer: song-examples.js swing_ratio field not yet consumed by game
@@ -200,14 +219,14 @@ See `docs/tonnetz-next-build-plan.md` for the full phased roadmap:
 
 | Doc | Purpose |
 |---|---|
-| `docs/songlab-redesign-plan.md` | **Active roadmap** — SongLab rebrand & redesign plan with CSS tokens |
-| `docs/tonnetz-next-phase-plan.md` | Walkthroughs, song packs, copyright, aesthetics roadmap |
+| `docs/songlab-build-plan.md` | **Active roadmap** (v4) — Phases A–F + A+ + B.5, dependency graph, session budget |
+| `docs/game-engine-spec.md` | **Game audit** — per-game analysis, adaptive axes, ResultDetail schemas, new game designs |
+| `docs/design-system-reference.md` | CSS tokens, color palette, typography — design system reference |
 | `docs/visual-engine-spec.md` | Generative art engine spec (Tonnetz-driven, post-launch) |
-| `docs/tonnetz-next-build-plan.md` | Post-MVP build plan (Phases A–F + B.5, Song Examples DB) |
 | `docs/tonnetz-explorer-spec.md` | Explorer design, panel specs, canonical orientation |
 | `docs/voicing-explorer-spec.md` | Voicing Explorer — chord shapes, glow worm paths, projections |
 | `docs/tonnetz-content-architecture.md` | Content model, topic schema, lens system |
-| `docs/game-flow-pattern.md` | Learn → Practice → Test pattern |
+| `docs/game-flow-pattern.md` | Learn → Practice → Test pattern (to be updated with audit findings) |
 | `docs/auth-architecture.md` | Supabase auth, profile migration, security checklist |
 | `docs/KNOWN-ISSUES.md` | Tracked bugs and fixes |
 | `docs/claude-code-preferences.md` | Claude Code workflow conventions |

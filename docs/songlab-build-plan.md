@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-12  
 **Status:** Active roadmap  
-**Context:** Platform rebranded as SongLab. Phase A complete. Explorer fully restyled with DAW dark theme, rhythm tab, walkthrough sidebar, info pills, game deep-linking. 14 walkthroughs with audience tracks and rhythm data. SkratchLab renamed and promoted to top-level nav with Rhythm Builder. Landing page redesigned with audience tabs. 81 song examples. Base.html restyled to SongLab warm palette. Approaching user testing readiness. Game audit completed April 11 (see `docs/game-audit-plan.md`). This document scopes the full post-MVP roadmap.
+**Context:** Platform rebranded as SongLab. Phase A complete. Explorer fully restyled with DAW dark theme, rhythm tab, walkthrough sidebar, info pills, game deep-linking. 14 walkthroughs with audience tracks and rhythm data. SkratchLab renamed and promoted to top-level nav with Rhythm Builder. Landing page redesigned with audience tabs. 81 song examples. Base.html restyled to SongLab warm palette. Approaching user testing readiness. Game audit completed April 11 (see `docs/game-engine-spec.md`). This document scopes the full post-MVP roadmap.
 
 ---
 
@@ -75,7 +75,7 @@ Pulled forward from Phase F3. The full `NoteInputProvider` abstraction (unifying
 
 ### Phase B: Game Library + Game Engine Extraction
 
-**Goal:** Extract the shared game engine, unify adaptive difficulty, expand the game library with new game types. Two categories of games identified (see `game-audit-plan.md`):
+**Goal:** Extract the shared game engine, unify adaptive difficulty, expand the game library with new game types. Two categories of games identified (see `game-engine-spec.md`):
 - **Performance games** (training precision): No Learn mode needed, difficulty axes control tolerance/pool. Harmony Trainer, Strum Patterns, Swing Trainer, Melody Match, Chord Spotter, Rhythm Lab.
 - **Learning games** (teaching concepts): Stage-based with Intro/Practice/Test per stage. Scale Builder, Relative Key Trainer.
 
@@ -92,7 +92,7 @@ Promote after N consecutive correct, demote after N consecutive wrong. Each game
 - Melody Match: interval complexity + melody length + replay limit
 
 *ResultDetail logging (competency-graph-ready schema):*  
-Every game logs structured results through game-flow.js. Common envelope: `{ gameId, timestamp, mode, difficulty, duration, correct, detail: {...} }`. Game-specific detail shapes designed for future competency graph aggregation (see `game-audit-plan.md` for per-game schemas). Stored in localStorage until Phase B.5, then piped to Supabase.
+Every game logs structured results through game-flow.js. Common envelope: `{ gameId, timestamp, mode, difficulty, duration, correct, detail: {...} }`. Game-specific detail shapes designed for future competency graph aggregation (see `game-engine-spec.md` for per-game schemas). Stored in localStorage until Phase B.5, then piped to Supabase.
 
 *Song connections:*  
 All games surface "Hear it in a song" callouts where song-examples DB has relevant entries. Links to Explorer walkthroughs from game context. Closes the loop: game → song → walkthrough → game.
@@ -348,6 +348,56 @@ AI feedback references the song database in personalized recommendations. See Ph
 
 **Scales/Modes:** Simpsons theme (Lydian), Get Lucky / Norwegian Wood (Mixolydian), So What (Dorian), White Rabbit (Phrygian)
 
+### Walkthrough Scaling Strategy
+
+14 hand-curated walkthroughs shipped. 81 songs in database. Scaling plan:
+- **Batch 1 (manual):** ✅ 14 flagship walkthroughs with rich annotations, rhythm data, audience tags
+- **Batch 2 (semi-auto):** Build a walkthrough generator — given a song's chord array, auto-generate walkthrough steps with generic annotations. Hand-tune for featured songs.
+- **Ongoing:** New songs added to `song-examples.js` automatically get basic walkthroughs
+
+**Walkthrough backlog:** Vienna (Billy Joel — chromatic mediant, bass voice leading), Take Five (5/4 odd meter), Superstition (syncopation)
+
+### Song Packs Architecture (ships with Phase C or later)
+
+Free core of songs/games/tools available to everyone, plus add-on packs that unlock additional content. Packs are curated collections with pedagogical framing, difficulty progression, and genre-specific annotations.
+
+**Pack structure:**
+```
+/static/packs/
+  core.json          ← free, ships with platform (~12-15 songs)
+  classic-rock.json
+  jazz-standards.json
+  americana.json
+  kids-songs.json
+  pop-hits.json
+```
+
+Each pack is a JSON file with song entries, a learning path order, and milestones. Pack loader in JS merges pack songs into the `song-examples.js` registry. Supabase (Phase B.5) stores which packs a user has access to.
+
+**Monetization:** Free tier = core pack + all tools/Explorer/games. Paid packs = $3-5 each or $15/year for all. Teachers get bulk/classroom pricing. Free tier is the distribution engine — never paywall the tools.
+
+**Kids pack:** Simpler visual language, songs kids know, game-first entry, shorter walkthroughs (3-4 chords), eighth-note mascot as guide. Nursery rhymes and public domain songs are safe. Disney/modern movie songs require licensing — avoid unless licensed.
+
+### Copyright Considerations
+
+**What's safe:**
+- Chord progressions: not copyrightable in the US (*Skidmore v. Led Zeppelin*, 2020)
+- Functional analysis: teaching "this song uses I-V-vi-IV" is factual/educational
+- Song titles: generally not copyrightable (trademark can arise with distinctive titles)
+- Your original annotations and walkthrough text: 100% yours
+- Salamander piano playing chord progressions: fine (generated audio, not sampled recordings)
+
+**What needs caution:**
+- Lyrics: never include, not even one line
+- Melody transcription: stick to chords only
+- Specific arrangements: transcribing a specific guitar voicing from a recording approaches arrangement copyright
+- Album art, artist photos: don't include
+- "Play along" features synced to recordings: avoid
+
+**Safe framing pattern per song:** title + artist (factual reference), key + tempo (factual), chord progression in symbols (not copyrightable), original walkthrough annotations, link to listen on Spotify/Apple Music.
+
+**IP attorney consult planned before commercializing paid packs.**
+
 ---
 
 ## Dependency Graph
@@ -423,7 +473,7 @@ These are ideas that didn't make the Phase B cut but are worth revisiting:
 
 ## Open Design Questions
 
-1. **Learn → scaffold → quiz framework:** ~~Should this be extracted as a shared component before building more games?~~ **Resolved:** Extract `game-flow.js` at the start of Phase B. Game audit (April 11) established two game types: Performance (no Learn mode, difficulty axes) and Learning (stage-based, Intro/Practice/Test). Pattern B adaptive as standard. Independent axes per game. See `game-audit-plan.md`.
+1. **Learn → scaffold → quiz framework:** ~~Should this be extracted as a shared component before building more games?~~ **Resolved:** Extract `game-flow.js` at the start of Phase B. Game audit (April 11) established two game types: Performance (no Learn mode, difficulty axes) and Learning (stage-based, Intro/Practice/Test). Pattern B adaptive as standard. Independent axes per game. See `game-engine-spec.md`.
 
 2. **Tonnetz as navigation:** How literal should this be? Full spatial map with fog of war, or a simpler node graph that uses Tonnetz aesthetics? The full spatial version is more distinctive but harder to build and potentially confusing for beginners.
 
@@ -475,9 +525,8 @@ These are ideas that didn't make the Phase B cut but are worth revisiting:
 
 | Doc | Purpose |
 |---|---|
-| `docs/game-audit-plan.md` | **Game audit** — per-game analysis, adaptive axes, ResultDetail schemas, new games |
-| `docs/songlab-redesign-plan.md` | SongLab rebrand & redesign plan with CSS tokens |
-| `docs/tonnetz-next-phase-plan.md` | Walkthroughs, song packs, copyright, aesthetics roadmap |
+| `docs/game-engine-spec.md` | **Game audit** — per-game analysis, adaptive axes, ResultDetail schemas, new games |
+| `docs/design-system-reference.md` | CSS tokens, color palette, typography — design system reference |
 | `docs/visual-engine-spec.md` | Generative art engine spec (Tonnetz-driven, post-launch) |
 | `docs/tonnetz-explorer-spec.md` | Explorer design, panel specs, canonical orientation |
 | `docs/voicing-explorer-spec.md` | Voicing Explorer — chord shapes, glow worm paths, projections |

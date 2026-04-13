@@ -4,6 +4,69 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-12 — Game Audit, Build Plan v4, MIDI & SkratchLab Vision
+
+**Game audit (full platform review)**
+
+- Audited all 8 games one by one: code structure, difficulty mechanics, adaptive implementation, styling consistency
+- Classified games into two types:
+  - **Performance** (training precision, no Learn mode): Harmony Trainer, Strum Patterns, Swing Trainer, Melody Match, Chord Spotter, Rhythm Lab
+  - **Learning** (teaching concepts, stage-based with Intro/Practice/Test): Scale Builder, Relative Key Trainer
+- Found two different adaptive algorithms in use: Pattern A (punishing — one miss demotes) in Harmony Trainer/Melody Match/Strum Patterns, Pattern B (better — configurable thresholds) in Chord Spotter only
+- Standardized on Pattern B with independent axes per game (e.g., Harmony Trainer: interval pool + pitch tolerance as separate axes that promote/demote independently)
+- Designed ResultDetail schema for all games — competency-graph-ready from day one
+- Identified per-game adaptive axes and song connection opportunities
+- Swing Trainer doesn't extend base.html (standalone HTML file) — needs fix
+- Created `docs/game-engine-spec.md` with full per-game detail
+
+**New game designs**
+
+- **Voice Leading Detective**: Find minimal voice movement between chords. Three levels (single P/L/R transform → chained transforms → real progressions). The "so what?" moment for neo-Riemannian theory. Depends on multi-chord glow worm paths. Pro extension: explore alternative voicings for musicality.
+- **Polyrhythm Trainer**: Two independent rhythm layers (2:3, 3:4, Linus and Lucy dotted quarter pattern). Three levels (tap one layer → both → real songs at tempo). Inspired by playing Vince Guaraldi.
+
+**Build plan updated to v4**
+
+- Phase A marked fully complete
+- New Phase A+: game visual unification (game-shell.css extraction) + MIDI input (pulled forward from Phase F)
+- MIDI input as shared `midi-input.js` module (Web MIDI API → HarmonyState, Launchkey 49 target)
+- SkratchLab lightweight DAW vision captured: song presets with auto chord loops + rhythm, melody play-over, instrument selection — creative play for kids/casual users
+- Fast path to Competency Graph identified: A+ → B → B.5 → E5 (skipping C/D), ~10-16 sessions, ~1 week at current pace
+- Voice Leading Detective and Polyrhythm Trainer added to Phase B
+- Vienna (Billy Joel) added to walkthrough backlog
+- Session budget updated to reflect actual pace
+- Dependency graph redrawn
+
+**Decisions**
+
+- Don't build interim session-level feedback system — go straight to Competency Graph via fast path
+- Design ResultDetail schema now so all game logging is graph-ready from day one
+- Store results in localStorage until B.5, then pipe to Supabase
+- Game visual unification has zero dependencies — do it first (Phase A+)
+- MIDI input is a single-session win that immediately improves Explorer + SkratchLab
+- Chord Spotter is the starting point for game-flow.js extraction (already closest to target pattern)
+- Rhythm Lab is a beginner gateway to Strum Patterns, not a standalone game
+- Scale Builder is the template for learning game structure in game-flow.js
+- Song connections ("Hear it in a song") should be added to all games where song-examples DB has relevant entries
+
+**Doc consolidation**
+
+- `tonnetz-next-build-plan.md` → **`songlab-build-plan.md`** (renamed, updated to v4)
+- `game-audit-plan.md` → **`game-engine-spec.md`** (renamed — it's a spec, not an audit)
+- `songlab-redesign-plan.md` → **`design-system-reference.md`** (renamed — it's a reference, not a plan)
+- `tonnetz-next-phase-plan.md` → **archived** to `docs/archive/` (unique content folded into songlab-build-plan.md: walkthrough scaling, song packs architecture, copyright considerations)
+- `game-flow-pattern.md` → kept for now, archive after game-flow.js extraction
+- All cross-references updated across STATUS.md, SESSION_LOG.md, build plan, game engine spec
+
+**Next session priorities**
+
+1. Game shell CSS extraction + visual unification (Phase A+)
+2. MIDI input module
+3. SkratchLab lightweight DAW
+4. Multi-chord glow worm paths
+5. game-flow.js extraction
+
+---
+
 ## 2026-04-10 — Explorer Polish, Rhythm Analysis, Audience Tracks, SkratchLab Rhythm Builder, Tutorial
 
 **Layout & visual polish**
@@ -144,8 +207,8 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 **Planning docs added** (`docs/`)
 
-- `songlab-redesign-plan.md` — full implementation plan with CSS tokens
-- `tonnetz-next-phase-plan.md` — walkthroughs, song packs, copyright, aesthetics
+- `design-system-reference.md` — full implementation plan with CSS tokens
+- `tonnetz-next-phase-plan.md` — walkthroughs, song packs, copyright, aesthetics (archived April 12 — content folded into `songlab-build-plan.md`)
 - `visual-engine-spec.md` — generative art engine driven by Tonnetz geometry (post-launch)
 
 **Decisions**
