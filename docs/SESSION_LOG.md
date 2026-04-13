@@ -4,75 +4,76 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
-## 2026-04-13 — Extended Chord Support, Rename, New Walkthroughs
-Focus: Extended chord type system (7ths, diminished, augmented, sus), project rename Tonnetz → SongLab, three new walkthroughs, Explorer visual polish.
-Project rename: Tonnetz → SongLab
+## 2026-04-13 — Extended Chord Support, Beyond Triads Chapter, New Walkthroughs, Global Font Scale
 
-GitHub repo renamed schones/tonnetz → schones/songlab
-Railway service renamed
-CLAUDE.md rewritten with SongLab branding, updated doc references
-README.md completely rewritten — describes current platform (Explorer, SkratchLab, Games, Fundamentals)
-Doc files renamed: tonnetz-content-architecture.md → content-architecture.md, tonnetz-explorer-spec.md → explorer-spec.md, tonnetz-keyboard-component.md → keyboard-component-spec.md, tonnetz-redesign-spec.md → redesign-spec.md
-Cross-references updated in STATUS.md, songlab-build-plan.md, voicing-explorer-spec.md, game-flow-pattern.md, claude-code-preferences.md
-Music theory concept references to "Tonnetz" left unchanged (correct usage)
+**Focus:** Extended chord type system, project rename, three new walkthroughs (diminished + augmented), Fundamentals Chapter 4 "Beyond Triads," global typography overhaul.
 
-Extended chord support (new feature)
+### Project rename: Tonnetz → SongLab
+- GitHub repo renamed `schones/tonnetz` → `schones/songlab`; Railway service renamed
+- CLAUDE.md rewritten with SongLab branding, updated doc references
+- README.md completely rewritten — describes current platform
+- Doc files renamed: `tonnetz-content-architecture.md` → `content-architecture.md`, `tonnetz-explorer-spec.md` → `explorer-spec.md`, `tonnetz-keyboard-component.md` → `keyboard-component-spec.md`, `tonnetz-redesign-spec.md` → `redesign-spec.md`
+- Cross-references updated across all active docs
+- Music theory "Tonnetz" references preserved (correct usage)
 
-transforms.js: Added CHORD_TYPES dictionary (triads, 7ths, sus, extended), chordPCs(), chordNotes(), baseTriad(), extensionNotes(), chordSymbol(). All exported via ES modules + window.Transforms. 6 self-tests added.
-harmony-state.js: Added activeChord state field, setChord(root, type, role), highlightChord(root, type, role). setProgressionIndex() branches on chord.chordType (falls back to triad path). clearProgression() and setTriad()/highlightTriad() clear activeChord. 28 tests passing.
-Design principle: Triads stay the core; extensions are an additive layer. Tonnetz triangles unchanged; extension notes shown as extra glowing nodes with dashed connectors.
-Spec doc: docs/extended-chords-spec.md created
+### Extended chord support (new feature)
+- **transforms.js:** `CHORD_TYPES` dictionary (triads, 7ths, sus, extended), `chordPCs()`, `chordNotes()`, `baseTriad()`, `extensionNotes()`, `chordSymbol()`. All exported. 6 self-tests.
+- **harmony-state.js:** `activeChord` field, `setChord()`, `highlightChord()`. `setProgressionIndex()` branches on `chordType`. `setTriad()`/`highlightTriad()` clear `activeChord` to prevent stale labels. 28 tests passing.
+- **Design principle:** Triads stay the core; extensions are an additive layer. Tonnetz triangles unchanged; extension notes shown as extra glowing nodes with dashed connectors.
+- **Spec doc:** `docs/extended-chords-spec.md`
 
-Walkthrough data updates
+### Walkthrough data updates
+- **Folsom Prison Blues:** all 5 steps → `chordType: "dom7"`, labels updated (I7/IV7/V7)
+- **Johnny B. Goode:** dom7 treatment on C/F/G
+- **ii-V-I Jazz:** Dm→min7, G→dom7, C→maj7
+- **Lean On Me:** Cmaj7 on C-chord steps
 
-Folsom Prison Blues: All 5 steps → chordType: "dom7", labels updated (I7/IV7/V7)
-Johnny B. Goode: dom7 treatment on C/F/G
-ii-V-I Jazz: Dm→min7, G→dom7, C→maj7
-Lean On Me: Cmaj7 on C-chord steps
+### Three new walkthroughs
+- **Bridge Over Troubled Water** (musician) — 7 steps, diminished passing chords (F♯°, G♯°), borrowed iv (Fm), gospel ballad 82 BPM
+- **Oh! Darling** (student) — 5 steps, E→E+→A augmented passing chord, B7 turnaround, 12/8 doo-wop 58 BPM
+- **Life on Mars?** (musician) — 8 steps, three augmented connectors (C+, A+, F♯+), art rock 68 BPM
+- All added to song-examples.js; Oh! Darling on Students tab, Bridge/Mars on Musicians tab
 
-Three new walkthroughs
+### Visual rendering — Explorer
+- **Keyboard:** Extension notes render with gold ring highlight (`.kv-key--extension`, #D4A03C), interval labels (♭7, 7, etc.)
+- **Tonnetz:** Extension nodes as smaller glowing nodes with dashed connector lines
+- **Chord labels:** `activeChord.symbol` preferred ("B7", "Cmaj7") across Explorer + Tonnetz
+- **Fixes:** Duplicate chord label on Tonnetz resolved; stale `activeChord` when switching walkthroughs fixed
+- **Explorer panel polish:** Sidebar width 300→400px, keyboard keys enlarged, panel flex rebalanced
 
-Bridge Over Troubled Water (musician) — 7 steps, diminished passing chords (F♯°, G♯°), borrowed iv (Fm), gospel ballad 82 BPM. Teaches chromatic bass movement via diminished chords.
-Oh! Darling (student) — 5 steps, E→E+→A augmented passing chord, B7 dominant turnaround, 12/8 doo-wop 58 BPM. Simplest augmented chord example.
-Life on Mars? (musician) — 8 steps, three augmented chromatic connectors (C+, A+, F♯+), art rock ballad 68 BPM. Advanced augmented chord usage with key destabilization.
-All three added to song-examples.js with concept_specifics
-Oh! Darling on landing page Students tab; Bridge and Life on Mars on Musicians tab
+### Fundamentals Chapter 4: "Beyond Triads" (new)
+- **5 interactive sections:** Adding the Seventh (root selector + type toggle with gold extension highlights), The Tritone (step-through demo with coral tritone spotlight and resolution animation, root selector), Diminished & Augmented (four triad types with color-coded highlights), Suspended Chords (sus4/sus2 with resolve animations), Hearing Them in Songs (song card jukebox with animated chord sequences)
+- Chapters renumbered: Meet the Tonnetz → Ch5, Transforms → Ch6
+- Hub page, app.py routing, chapter navigation, intro-hub.js all updated for 6 chapters
+- 3-octave keyboards (C3–B5) sized to fill wider containers without scrolling
 
-Visual rendering
+### Global typography overhaul
+- **design-tokens.css:** Entire font scale increased ~40% (base was 0.92–1.02rem, now 1.10–1.25rem). All pages benefit.
+- **Explorer:** Removed scoped 2x font override (no longer needed with larger global scale)
+- **Fundamentals:** intro.css widened sections (1000px), interactives (900px), narration (800px). Chapter narration bumped to 1.35–1.5rem. Hub fonts increased.
+- **Fundamentals keyboards:** Global key size overrides in intro.css (40px white, 24px black, 130px height) for all chapters
 
-Keyboard (keyboard-view.js): Extension notes render with .kv-key--extension class (ring outline in gold #D4A03C), interval labels (♭7, 7, etc.) from EXT_INTERVAL_LABELS map
-Tonnetz (tonnetz-neighborhood.js): Extension nodes rendered as smaller glowing nodes (accent color, 0.45→0.75 opacity pulse) with dashed connector lines to nearest triad node
-Chord labels: chord-bubble-renderer.js and Explorer both prefer activeChord.symbol ("B7", "Cmaj7") over triad-derived labels
-Duplicate label fix: Resolved doubled chord label on Tonnetz (two renderers writing to same position)
-Stale activeChord fix: setTriad()/highlightTriad() now clear activeChord to null
+### Bug fixes
+- Walkthrough opening chord double-play suppressed
+- Stale `activeChord` when switching walkthroughs
+- Duplicate Tonnetz chord label
+- Keyboard scroll removed (broken), replaced with wider layout + 3-octave range
 
-Explorer visual polish
+### Decisions
+- Diminished/augmented on Tonnetz: rendered as standard triangles (they ARE triads). Extension nodes only for 4+ note chords.
+- Real songs in educational content: chord progressions not copyrightable. Safe for analysis. IP attorney consult still planned before commercializing song packs.
+- Oh! Darling as student-level augmented intro; Life on Mars as musician-level. Pedagogical arc: simple → complex.
+- Enharmonic sharp/flat toggle for Fundamentals: deferred to backlog. Students don't need it yet; Explorer handles spelling via key context.
+- Global font scale fix preferred over per-page overrides for consistency.
+- Flexible Explorer panel sizing deferred — default proportions adjusted instead.
 
-Walkthrough sidebar width increased (300px → 400px)
-Keyboard key sizes increased (white 120→180px, black 76→115px)
-Font sizes doubled throughout Explorer via scoped CSS variable overrides (.sl-explorer)
-Tonnetz SVG node labels unaffected (sized in SVG coordinate space)
-Panel area flex rebalanced (sl-stage flex: 1 1 0 with min-height floor)
-
-Bug fixes
-
-Walkthrough opening chord double-play suppressed (init audio flag)
-Stale activeChord when switching between extended and plain-triad walkthroughs
-
-Decisions
-
-Diminished/augmented on Tonnetz: rendered as standard triangles (they ARE triads). Extension nodes only for 4+ note chords.
-Real songs in educational content: chord progressions are not copyrightable; song titles/artist names are factual. Safe for analysis and reference. Consult IP attorney before commercializing song packs.
-Oh! Darling as student-level augmented intro; Life on Mars as musician-level. Pedagogical arc: simple → complex.
-Flexible panel sizing deferred — default proportions adjusted instead.
-
-Next priorities
-
-Fundamentals Chapter: "Beyond Triads" (7ths, sus, dim, aug — with real-song references linking to walkthroughs)
-Verify diminished/augmented rendering in new walkthroughs (setChord with dim/aug triads)
-Audit remaining walkthroughs for chordType opportunities
-Flexible Explorer panel sizing (user-draggable splitters)
-MIDI input module (unchanged from priority stack)
+### Next priorities
+1. Audit remaining walkthroughs for chordType opportunities
+2. Verify dim/aug rendering in Bridge Over Troubled Water, Oh! Darling, Life on Mars
+3. Enharmonic toggle (backlog — Fundamentals + Explorer preference)
+4. Flexible Explorer panel sizing (user-draggable splitters)
+5. MIDI input module
+6. User testing prep
 
 
 ## 2026-04-12 — Game Audit, Build Plan v4, MIDI & SkratchLab Vision

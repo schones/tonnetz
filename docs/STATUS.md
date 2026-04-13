@@ -15,35 +15,45 @@ SongLab `dev` branch is feature-rich and approaching user testing readiness. Pha
 Full game audit completed April 11 — two game types identified (Performance and Learning), adaptive engine standardized (Pattern B with independent axes), ResultDetail schema designed for competency graph. Build plan updated to v4 with MIDI input pulled forward from Phase F, SkratchLab lightweight DAW vision captured, and fast path to Competency Graph identified (B → B.5 → E5).
 
 **Next priorities:**
-1. Fundamentals Chapter: "Beyond Triads" — 7ths, sus, diminished, augmented with real-song walkthrough links
-2. Verify dim/aug rendering in new walkthroughs (Bridge Over Troubled Water, Oh! Darling, Life on Mars)
-3. Audit remaining walkthroughs for chordType opportunities
+1. Verify dim/aug rendering in new walkthroughs (Bridge Over Troubled Water, Oh! Darling, Life on Mars)
+2. Audit remaining walkthroughs for chordType opportunities
+3. Enharmonic sharp/flat toggle (backlog — Fundamentals + Explorer preference)
 4. Flexible Explorer panel sizing (user-draggable splitters)
-5. MIDI input module — midi-input.js (Web MIDI API → HarmonyState), Launchkey 49 target
+5. MIDI input module — `midi-input.js` (Web MIDI API → HarmonyState), Launchkey 49 target
 6. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
 7. User testing prep (15-20 participants)
 
-**Completed this cycle (April 9-12):**
+**Completed this cycle (April 9-13):**
 
-Project rename (April 13): Tonnetz → SongLab across GitHub, Railway, CLAUDE.md, README.md, doc filenames, cross-references. Music theory "Tonnetz" references preserved.
-Extended chord support (April 13):
+- **Project rename (April 13):** Tonnetz → SongLab across GitHub, Railway, CLAUDE.md, README.md, doc filenames, cross-references. Music theory "Tonnetz" references preserved.
 
-CHORD_TYPES dictionary in transforms.js: triads, 7ths (dom7/maj7/min7/dim7/half-dim7/minmaj7), sus (sus2/sus4/7sus4), extended (add9/dom9/maj9/min9)
-chordPCs, chordNotes, baseTriad, extensionNotes, chordSymbol utility functions
-HarmonyState: activeChord field, setChord(), highlightChord(), chordType-aware setProgressionIndex()
-Keyboard extension rendering: gold ring highlights, interval labels (♭7, 7, etc.)
-Tonnetz extension nodes: glowing nodes + dashed connectors for notes beyond the triad
-Chord labels: activeChord.symbol preferred ("B7", "Cmaj7") across Explorer + Tonnetz
-Folsom Prison, Johnny B. Goode, ii-V-I, Lean On Me walkthroughs updated with chordType
-Explorer font sizes doubled via scoped CSS overrides, panel proportions rebalanced
+- **Extended chord support (April 13):**
+  - `CHORD_TYPES` dictionary in transforms.js: triads, 7ths (dom7/maj7/min7/dim7/half-dim7/minmaj7), sus (sus2/sus4/7sus4), extended (add9/dom9/maj9/min9)
+  - `chordPCs`, `chordNotes`, `baseTriad`, `extensionNotes`, `chordSymbol` utility functions
+  - HarmonyState: `activeChord` field, `setChord()`, `highlightChord()`, chordType-aware `setProgressionIndex()`
+  - Keyboard extension rendering: gold ring highlights, interval labels (♭7, 7, etc.)
+  - Tonnetz extension nodes: glowing nodes + dashed connectors for notes beyond the triad
+  - Chord labels: `activeChord.symbol` preferred ("B7", "Cmaj7") across Explorer + Tonnetz
+  - Folsom Prison, Johnny B. Goode, ii-V-I, Lean On Me walkthroughs updated with chordType
 
+- **Three new walkthroughs (April 13):**
+  - Bridge Over Troubled Water (diminished passing chords, musician)
+  - Oh! Darling (augmented passing chord, student)
+  - Life on Mars? (advanced augmented connectors, musician)
+  - All with rhythm data, song-examples.js entries, landing page grid placement
 
-Three new walkthroughs (April 13):
+- **Fundamentals Chapter 4: "Beyond Triads" (April 13):**
+  - 5 interactive sections: Adding the Seventh, The Tritone, Diminished & Augmented, Suspended Chords, Hearing Them in Songs
+  - Root selectors, type toggles, gold extension highlights, coral tritone spotlight, resolution animations, song card jukebox
+  - Chapters renumbered: Meet the Tonnetz → Ch5, Transforms → Ch6
+  - Hub page, routing, intro-hub.js updated for 6 chapters
+  - 3-octave keyboards sized to fill wider containers
 
-Bridge Over Troubled Water (diminished passing chords, musician)
-Oh! Darling (augmented passing chord, student)
-Life on Mars? (advanced augmented connectors, musician)
-All with rhythm data, song-examples.js entries, landing page grid placement
+- **Global typography overhaul (April 13):**
+  - design-tokens.css font scale increased ~40% across all sizes
+  - Explorer scoped 2x font override removed (no longer needed)
+  - Fundamentals layout widened: sections 1000px, interactives 900px, narration 800px
+  - Fundamentals keyboards: global size overrides in intro.css for all chapters
 
 
 - **Game visual unification (Phase A+.1/A+.2)**: game-shell.css extracted, all 8 games migrated, index.html converted to extend base.html, Swing Trainer converted to Jinja2 template, ~500 lines duplicate CSS removed, all legacy color vars → design tokens
@@ -114,12 +124,13 @@ All with rhythm data, song-examples.js entries, landing page grid placement
 - Deep-linking via URL params: ?root=, ?quality=, ?progression=, ?walkthrough=
 - Record-and-export bridge to SkratchLab (sessionStorage + window.open) — includes rhythm data
 
-### Guided Walkthrough System ✅ with rhythm + audience tracks
+### Guided Walkthrough System ✅ with rhythm + audience tracks + extended chords
 - Walkthrough sidebar in Explorer driven by `static/shared/walkthroughs.js`
-- **14 walkthroughs** across 3 audiences:
+- **17 walkthroughs** across 3 audiences:
   - Kids: Let It Go (pop formula), You've Got a Friend in Me (shuffle feel)
-  - Students: Stand By Me (doo-wop loop), Lean on Me (gospel piano)
-  - Musicians: Yesterday, Eleanor Rigby, Creep, ii-V-I jazz, Norwegian Wood (Mixolydian), Stairway (P transform), In My Life (deceptive cadence), Johnny B. Goode (twelve-bar blues), Why Does My Heart (Moby), Folsom Prison Blues (train beat)
+  - Students: Stand By Me (doo-wop loop), Lean on Me (gospel piano, Cmaj7), Oh! Darling (augmented passing chord)
+  - Musicians: Yesterday, Eleanor Rigby, Creep, ii-V-I jazz (min7/dom7/maj7), Norwegian Wood (Mixolydian), Stairway (P transform), In My Life (deceptive cadence), Johnny B. Goode (twelve-bar blues, dom7), Folsom Prison Blues (train beat, dom7), Why Does My Heart (Moby), Bridge Over Troubled Water (diminished passing chords), Life on Mars? (augmented connectors)
+- Extended chord types: `chordType` field on steps drives `highlightChord()` path, showing full chord symbols (B7, Cmaj7, F♯°, E+) on Tonnetz and keyboard
 - All walkthroughs have rhythm data (time sig, BPM, feel, beat pattern)
 - Categories: Voice Leading, Transforms, Jazz Harmony, Modes & Scales, Progressions, Rhythm & Feel
 - Each step: chord state via HarmonyState, auto-play, conversational explanation, harmonic function label
@@ -127,10 +138,6 @@ All with rhythm data, song-examples.js entries, landing page grid placement
 - "You'll also hear this in..." related songs from song-examples.js
 - Panel focus: steps can dim non-relevant panels or auto-switch to Rhythm tab
 - Walkthroughs auto-capture progression for export to SkratchLab
-- Update walkthrough count from 14 to 17 walkthroughs
-- Add to audience list:
-- Musicians: ...existing list..., Bridge Over Troubled Water (diminished passing), Life on Mars? (augmented connectors)
-- Students: ...existing list..., Oh! Darling (augmented intro)
 
 ### SkratchLab ✅ renamed + Rhythm Builder
 - `/skratchlab` route (renamed from `/skratch-studio`)
@@ -158,14 +165,14 @@ All with rhythm data, song-examples.js entries, landing page grid placement
 - Feature callout boxes, "Try it" links with deep-link params
 
 ### Design System ✅ complete
-- `static/css/design-tokens.css` — light/dark theme tokens including --font-size-2xs
+- `static/css/design-tokens.css` — light/dark theme tokens, **global font scale increased ~40% (April 13)**
 - Explorer and SkratchLab fully on dark DAW token set
 - Base.html warm palette cascades to all game/theory/intro pages
 - All hardcoded pixel font sizes replaced with design tokens
 - Real piano keyboard proportions as default
 
 ### Song Examples Database
-- **84 entries** in song-examples.js (v1.1 + rhythm additions)
+- **84 entries** in song-examples.js (v1.1 + rhythm + extended chord additions)
 - Rhythm concept_specifics: train_beat, shuffle, syncopation, odd_meter, backbeat
 - Swing feel entries with swing_ratio field
 - Consumed by: walkthroughs, game deep-links, "also hear this in" related songs
@@ -187,16 +194,18 @@ All with rhythm data, song-examples.js entries, landing page grid placement
 - Keyboard/Fretboard/Both toggle on Explorer
 
 ### Shared Components
-- `transforms.js` — PLR math, pitch utilities, interval utilities
-- `harmony-state.js` — pub/sub state model
-- `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring
-- `keyboard-view.js` — real piano proportions, highlight layer, click interaction
+- `transforms.js` — PLR math, pitch utilities, interval utilities, **CHORD_TYPES**, chordPCs/chordNotes/baseTriad/extensionNotes/chordSymbol
+- `harmony-state.js` — pub/sub state model, **setChord/highlightChord** for extended chord types
+- `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring, **extension node rendering**
+- `keyboard-view.js` — real piano proportions, highlight layer, click interaction, **extension ring highlights**
 - `chord-wheel.js` — dual-ring circle of fifths
-- `song-examples.js` — 81 curated real-song references
-- `walkthroughs.js` — 14 guided Explorer walkthroughs with rhythm data, audience tags, category labels
+- `song-examples.js` — 84 curated real-song references
+- `walkthroughs.js` — 17 guided Explorer walkthroughs with rhythm data, audience tags, category labels, extended chord types
 
-### Intro Module
-- 5 chapters (Sound & Notes, Intervals & Scales, Chords & Progressions, Meet the Tonnetz, Transforms)
+### Intro Module ✅ 6 chapters
+- 6 chapters: Sound & Notes, Intervals & Scales, Chords & Progressions, **Beyond Triads** (new), Meet the Tonnetz, Transforms
+- Beyond Triads: 5 interactive sections with root selectors, type toggles, tritone demo, song card jukebox
+- 3-octave keyboards sized to fill wider containers, global key size overrides
 - End-of-chapter "What's Next" cards
 
 ### Games & Tools
@@ -242,6 +251,7 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 - SkratchLab: "Clear All" button clears blocks but not canvas — needs canvas reset
 - Full list: `docs/KNOWN-ISSUES.md`
 - Verify diminished/augmented triad rendering through setChord() path in new walkthroughs (should work — dim/aug are base triads with no extensions)
+- **Backlog:** Enharmonic sharp/flat toggle for Fundamentals keyboards (deferred — students don't need it; Explorer handles spelling via key context)
 
 ---
 
