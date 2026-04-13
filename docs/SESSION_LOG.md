@@ -59,11 +59,21 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 **Next session priorities**
 
-1. Game shell CSS extraction + visual unification (Phase A+)
-2. MIDI input module
-3. SkratchLab lightweight DAW
-4. Multi-chord glow worm paths
-5. game-flow.js extraction
+1. MIDI input module
+2. SkratchLab lightweight DAW
+3. Multi-chord glow worm paths
+4. game-flow.js extraction
+
+**Evening implementation sprint (Phase A+.1 / A+.2)**
+
+- Extracted `static/shared/game-shell.css` — shared layout for all games (setup/stats/feedback/results/pills/song tips)
+- Migrated all 8 games to game-shell.css: Chord Spotter, Melody Match, Scale Builder, Harmony Trainer, Strum Patterns, Relative Key Trainer, Rhythm Lab, Swing Trainer
+- Converted `index.html` to extend base.html — unified nav with dropdowns, single source of truth
+- Converted Swing Trainer from standalone HTML to Jinja2 template extending base.html
+- ~500 lines of duplicate inline CSS removed
+- All legacy color vars replaced with SongLab design tokens
+- Swing Trainer production 500 error likely fixed (now uses url_for for assets)
+- JS class-name aliases used for Scale Builder and Relative Key Trainer where JS hard-codes selectors — clean up during game-flow.js extraction
 
 ---
 
