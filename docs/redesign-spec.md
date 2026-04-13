@@ -1,4 +1,4 @@
-# Tonnetz Redesign Spec — Landing Page & Information Architecture
+# SongLab Redesign Spec — Landing Page & Information Architecture
 
 **Date:** April 6, 2026
 **Status:** Ready to build

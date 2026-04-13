@@ -1,18 +1,21 @@
-# Tonnetz — Claude Code Context
+# SongLab — Claude Code Context
 
 ## Before every task
 1. Read `docs/STATUS.md` — single source of truth for project state
 2. Read the relevant spec doc for your task (see STATUS.md for links)
 
 ## Reference docs
-- `docs/tonnetz-build-plan.md` — phased build plan with task prompts
-- `docs/tonnetz-content-architecture.md` — content model and topic schema
-- `docs/tonnetz-keyboard-component.md` — shared component spec (RKT tasks)
-- `docs/puzzle-paths-spec.md` — Puzzle Paths game concept
+- `docs/songlab-build-plan.md` — phased build plan (v4) with task prompts
+- `docs/content-architecture.md` — content model and topic schema
+- `docs/keyboard-component-spec.md` — shared keyboard component spec
+- `docs/explorer-spec.md` — Explorer panel design and canonical orientation
+- `docs/game-engine-spec.md` — game audit, adaptive engine, ResultDetail schemas
+- `docs/design-system-reference.md` — CSS tokens, color palette, typography
 
 ## Rules
 - Never run git add, commit, or push — Dustin manages git himself
 - Shared JS modules: `static/shared/`
-- Skratch Studio code: `static/skratch-studio/`
+- SkratchLab code: `static/skratch-studio/`
+- Games: `static/games/` + `templates/games/`
 - Test locally: `python3 app.py` → http://127.0.0.1:5000
-- Dev branch: `education-layer` · Production: `main` (Railway)
+- Dev branch: `dev` · Production: `main` (Railway)

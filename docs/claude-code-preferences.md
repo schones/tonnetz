@@ -1,4 +1,4 @@
-# Claude Code Preferences — Tonnetz Music Theory Games
+# Claude Code Preferences — SongLab
 
 ## Git
 - **I manage all git operations myself.** Never include `git add`, `git commit`, `git push`, or commit messages in prompts or scripts.

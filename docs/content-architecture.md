@@ -1,4 +1,4 @@
-# Tonnetz Content Architecture & Data Schema
+# SongLab Content Architecture & Data Schema
 
 **Version:** 0.2 (Post-review revision)
 **Date:** 2026-03-13

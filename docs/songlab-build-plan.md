@@ -528,9 +528,9 @@ These are ideas that didn't make the Phase B cut but are worth revisiting:
 | `docs/game-engine-spec.md` | **Game audit** — per-game analysis, adaptive axes, ResultDetail schemas, new games |
 | `docs/design-system-reference.md` | CSS tokens, color palette, typography — design system reference |
 | `docs/visual-engine-spec.md` | Generative art engine spec (Tonnetz-driven, post-launch) |
-| `docs/tonnetz-explorer-spec.md` | Explorer design, panel specs, canonical orientation |
+| `docs/explorer-spec.md` | Explorer design, panel specs, canonical orientation |
 | `docs/voicing-explorer-spec.md` | Voicing Explorer — chord shapes, glow worm paths, projections |
-| `docs/tonnetz-content-architecture.md` | Content model, topic schema, lens system |
+| `docs/content-architecture.md` | Content model, topic schema, lens system |
 | `docs/game-flow-pattern.md` | Learn → Practice → Test pattern (to be updated with audit findings) |
 | `docs/auth-architecture.md` | Supabase auth, profile migration, security checklist |
 | `docs/KNOWN-ISSUES.md` | Tracked bugs and fixes |

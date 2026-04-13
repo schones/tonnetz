@@ -3,9 +3,9 @@
 **Version:** 0.1 (Initial design)  
 **Date:** 2026-03-14  
 **Purpose:** Define the architecture for a linked Tonnetz neighborhood view and piano keyboard component, initially built for the Relative Major/Minor game but designed for extraction and reuse across the platform.  
-**Context:** This doc sits alongside `tonnetz-content-architecture.md` and `tonnetz-next-build-plan.md`. It defines a new reusable component layer that will be consumed by games and visualizations.
+**Context:** This doc sits alongside `content-architecture.md` and `tonnetz-next-build-plan.md`. It defines a new reusable component layer that will be consumed by games and visualizations.
 
-> **⚠️ Partially superseded (2026-03-30):** Architecture sections (§1–8) remain the reference for HarmonyState API, animation queue, and component patterns. Implementation sequence (§10) is superseded by `tonnetz-next-build-plan.md` v3 and `game-flow-pattern.md`. Orientation in §3.1 has been corrected below to match the canonical orientation defined in `tonnetz-explorer-spec.md`. The Explorer now has three panels (Tonnetz, Chord Wheel, Keyboard), not four — the Note Wheel was consolidated into the Chord Wheel.
+> **⚠️ Partially superseded (2026-03-30):** Architecture sections (§1–8) remain the reference for HarmonyState API, animation queue, and component patterns. Implementation sequence (§10) is superseded by `tonnetz-next-build-plan.md` v3 and `game-flow-pattern.md`. Orientation in §3.1 has been corrected below to match the canonical orientation defined in `explorer-spec.md`. The Explorer now has three panels (Tonnetz, Chord Wheel, Keyboard), not four — the Note Wheel was consolidated into the Chord Wheel.
 
 ---
 

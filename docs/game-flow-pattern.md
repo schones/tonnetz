@@ -3,7 +3,7 @@
 **Version:** 0.1 (Initial design)
 **Date:** 2026-03-17
 **Purpose:** Define a consistent three-phase game flow pattern shared across all Tonnetz recognition games. This replaces the current ad-hoc "level" system with a pedagogically grounded structure.
-**Context:** Sits alongside `tonnetz-content-architecture.md` and `tonnetz-keyboard-component.md`. The first game to implement this pattern is the Relative Key Trainer.
+**Context:** Sits alongside `content-architecture.md` and `keyboard-component-spec.md`. The first game to implement this pattern is the Relative Key Trainer.
 
 ---
 
@@ -399,7 +399,7 @@ real_world_examples: {
 
 ## 10. Implementation Sequence
 
-Replaces tasks 10.6-10.10 from the original `tonnetz-keyboard-component.md`:
+Replaces tasks 10.6-10.10 from the original `keyboard-component-spec.md`:
 
 | Task | Description | Sessions |
 |------|-------------|----------|

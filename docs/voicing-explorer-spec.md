@@ -234,4 +234,4 @@ This feature connects naturally to theory topics in the curriculum:
 ---
 
 *Spec version: 0.3 — Updated with implementation status, composable panel architecture, glow worm visualization, resolved design decisions*  
-*Related specs: tonnetz-explorer-spec.md, tonnetz-next-build-plan.md, tonnetz-content-architecture.md, game-flow-pattern.md*
+*Related specs: explorer-spec.md, tonnetz-next-build-plan.md, content-architecture.md, game-flow-pattern.md*
