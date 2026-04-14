@@ -11,7 +11,7 @@
  *   - explorer.html             → chord badge display
  *
  * Exports:
- *   resolveChord(pitchClasses)  → ChordResult | null
+ *   resolveChord(pitchClasses, preferredRootPC?)  → ChordResult | null
  */
 
 // ════════════════════════════════════════════════════════════════════
@@ -59,7 +59,11 @@ const INTERVAL_NAMES = [
 /**
  * Resolve a set of pitch classes to a chord name.
  *
- * @param {number[]} pitchClasses  Array of integers 0–11 (duplicates OK).
+ * @param {number[]} pitchClasses    Array of integers 0–11 (duplicates OK).
+ * @param {number}   [preferredRootPC] Optional key-context pitch class 0–11.
+ *                                     For symmetrical chords (aug, dim7) where
+ *                                     multiple roots are valid, prefer the
+ *                                     candidate whose root matches this pc.
  * @returns {ChordResult|null}
  *
  * @typedef {Object} ChordResult
@@ -70,38 +74,61 @@ const INTERVAL_NAMES = [
  * @property {boolean}      recognized – True if a standard chord was found
  * @property {number[]}     pcs        – Deduplicated, sorted pitch classes used
  */
-function resolveChord(pitchClasses) {
+function resolveChord(pitchClasses, preferredRootPC) {
   // Deduplicate and normalize
   const pcs = [...new Set(pitchClasses.map(pc => ((pc % 12) + 12) % 12))];
   pcs.sort((a, b) => a - b);
 
   if (pcs.length < 2) return null;
 
-  // ── Try each chord type, each possible root ──────────────────────
-  // Sort chord types by priority then by interval count (prefer triads over seventh chords)
+  // ── Collect all valid (root, chordType) matches ──────────────────
+  // Group by priority tier so a preferredRoot can't promote a lower-
+  // priority match (e.g. dom7) over a higher-priority one (e.g. triad).
   const sorted = [...CHORD_TYPES].sort((a, b) => a.priority - b.priority);
+  const byPriority = new Map();
 
   for (const chord of sorted) {
     if (chord.intervals.length !== pcs.length) continue;
 
     for (const root of pcs) {
-      // Normalize intervals relative to this root, sorted ascending
       const intervals = pcs
         .map(pc => (pc - root + 12) % 12)
         .sort((a, b) => a - b);
 
       if (_arrEqual(intervals, chord.intervals)) {
-        const rootName = NOTE_NAMES[root];
-        return {
-          root:       rootName,
-          quality:    chord.quality,
-          symbol:     chord.symbol,
-          name:       rootName + chord.symbol,
-          recognized: true,
-          pcs,
-        };
+        if (!byPriority.has(chord.priority)) byPriority.set(chord.priority, []);
+        byPriority.get(chord.priority).push({ root, chord });
       }
     }
+  }
+
+  if (byPriority.size > 0) {
+    const bestPriority = Math.min(...byPriority.keys());
+    const candidates = byPriority.get(bestPriority);
+
+    let pick = candidates[0];
+    if (preferredRootPC != null) {
+      const scaleIntervals = [0, 2, 4, 5, 7, 9, 11];
+      const scalePCs = new Set(scaleIntervals.map(i => (preferredRootPC + i) % 12));
+
+      const diatonic = candidates.filter(c => scalePCs.has(c.root));
+
+      if (diatonic.length > 0) {
+        const tonic = diatonic.find(c => c.root === preferredRootPC);
+        const dominant = diatonic.find(c => c.root === (preferredRootPC + 7) % 12);
+        pick = tonic || dominant || diatonic[0];
+      }
+    }
+
+    const rootName = NOTE_NAMES[pick.root];
+    return {
+      root:       rootName,
+      quality:    pick.chord.quality,
+      symbol:     pick.chord.symbol,
+      name:       rootName + pick.chord.symbol,
+      recognized: true,
+      pcs,
+    };
   }
 
   // ── No match — return interval description ───────────────────────
