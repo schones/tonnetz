@@ -1207,6 +1207,7 @@
       gap: 14px;
       align-items: center;
       overflow-x: auto;
+      position: relative;
     }
     #exp-keyboard-container {
       --keyboard-white-key-w: 44px;
@@ -1218,11 +1219,19 @@
     #exp-keyboard-container .kv-key--white .kv-note-label { color: #3A3630; }
     #exp-keyboard-container .kv-common-dot { display: none !important; }
     .sl-key-header {
+      position: absolute;
+      top: 6px;
+      left: 12px;
+      z-index: 10;
       display: flex; flex-direction: column; align-items: flex-start;
       gap: 1px;
-      flex-shrink: 0;
-      min-width: 72px;
       line-height: 1.15;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(20, 19, 16, 0.78);
+      backdrop-filter: blur(2px);
+      pointer-events: none;
+      max-width: calc(100% - 24px);
     }
     .sl-key-chord {
       font-family: var(--font-family-display);
@@ -3117,39 +3126,126 @@
     // ════════════════════════════════════════════════════════════════
     // MIDI INPUT — Launchkey 49 (and any Web MIDI device)
     // ════════════════════════════════════════════════════════════════
-    (async function initMIDI() {
-      if (!window.MIDIInput && !MIDIInput) return;
+    (async function _initMIDI() {
+      if (typeof MIDIInput === 'undefined') return;
       try {
         await MIDIInput.init();
         if (MIDIInput.isConnected) {
-          console.log('[explorer] MIDI:', MIDIInput.activeDevice?.name);
+          console.log('[explorer] MIDI connected:', MIDIInput.activeDevice?.name);
         }
       } catch (e) {
-        console.warn('[explorer] MIDI init:', e);
+        console.warn('[explorer] MIDI init failed:', e);
         return;
       }
 
-      function midiToNoteStr(note) {
-        const pc = ((note % 12) + 12) % 12;
-        const oct = Math.floor(note / 12) - 1;
-        return NOTE_NAMES[pc].replace(/♯/g, '#') + oct;
-      }
-
-      MIDIInput.onNoteOn(async (note, velocity) => {
+      // noteOn → play audio AND update HarmonyState
+      MIDIInput.onNoteOn(async (note, velocity, channel) => {
         await ensureFullAudio();
         if (!sampler) return;
-        sampler.triggerAttack(midiToNoteStr(note), Tone.now(), velocity / 127);
+
+        // Play through sampler
+        const pc = note % 12;
+        const oct = Math.floor(note / 12) - 1;
+        const noteName = NOTE_NAMES[pc];
+        const ascii = noteName.replace(/♯/g, '#').replace(/♭/g, 'b');
+        const noteStr = ascii + oct;
+        sampler.triggerAttack(noteStr, Tone.now(), velocity / 127);
+
+        // Update HarmonyState with currently held notes
+        _updateMIDIChordState();
       });
 
-      MIDIInput.onNoteOff((note) => {
-        try { if (sampler) sampler.triggerRelease(midiToNoteStr(note)); } catch (_) {}
+      MIDIInput.onNoteOff((note, channel) => {
+        const pc = note % 12;
+        const oct = Math.floor(note / 12) - 1;
+        const noteName = NOTE_NAMES[pc];
+        const ascii = noteName.replace(/♯/g, '#').replace(/♭/g, 'b');
+        try { if (sampler) sampler.triggerRelease(ascii + oct); } catch (_) {}
+
+        // Update chord state after note release
+        _updateMIDIChordState();
       });
 
-      MIDIInput.onCC((cc, value) => {
+      MIDIInput.onCC((cc, value, channel) => {
         if (cc >= 21 && cc <= 28) {
           console.log(`[MIDI] Knob ${cc - 20}: ${value}`);
         }
       });
+
+      function _updateMIDIChordState() {
+        const held = MIDIInput.activeNotes;
+        if (!held || held.size === 0) {
+          // All notes released — clear state
+          HarmonyState.update({
+            activeNotes: [],
+            activeTriads: [],
+            activeChord: null,
+            activeTransform: null,
+          });
+          return;
+        }
+
+        // Build activeNotes for HarmonyState (keyboard + Tonnetz need these)
+        const midiNotes = [...held].sort((a, b) => a - b);
+        const activeNotes = midiNotes.map(m => ({
+          note: NOTE_NAMES[m % 12],
+          octave: Math.floor(m / 12) - 1,
+          source: 'user',
+          color: null,
+        }));
+
+        // Try chord detection if 3+ notes. chord-resolver and transforms.js
+        // use different quality name conventions, so map before dispatching.
+        // Unmapped qualities (augmaj7, aug7, 7sus4…) fall through to the
+        // individual-note path below.
+        if (midiNotes.length >= 3) {
+          const pcs = midiNotes.map(m => m % 12);
+          const resolved = resolveChord(pcs);
+
+          if (resolved && resolved.recognized && resolved.root && resolved.quality) {
+            const TRIAD_QUALITY_MAP = {
+              major: 'major',
+              minor: 'minor',
+              dim:   'diminished',
+              aug:   'augmented',
+            };
+            const CHORD_TYPE_MAP = {
+              dom7:    'dom7',
+              maj7:    'maj7',
+              min7:    'min7',
+              dim7:    'dim7',
+              hdim7:   'half-dim7',
+              minmaj7: 'minmaj7',
+              sus2:    'sus2',
+              sus4:    'sus4',
+            };
+            const q = resolved.quality;
+            try {
+              if (CHORD_TYPE_MAP[q]) {
+                HarmonyState.setChord(resolved.root, CHORD_TYPE_MAP[q]);
+                return;
+              }
+              if (TRIAD_QUALITY_MAP[q]) {
+                HarmonyState.setTriad(resolved.root, TRIAD_QUALITY_MAP[q]);
+                return;
+              }
+            } catch (err) {
+              // Downstream consumers (transforms.js / tonnetz-neighborhood.js)
+              // can throw on voicings they don't support. Degrade to per-note
+              // highlights instead of crashing the MIDI handler.
+              console.warn('[MIDI] Chord state update failed, falling back to note highlights:', err.message);
+            }
+          }
+        }
+
+        // No recognized chord — just show the individual notes
+        HarmonyState.update({
+          activeNotes,
+          activeTriads: [],
+          activeChord: null,
+          activeTransform: null,
+        });
+      }
     })();
 
     // ════════════════════════════════════════════════════════════════
