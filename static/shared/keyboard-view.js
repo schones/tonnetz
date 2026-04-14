@@ -396,6 +396,29 @@ const _instState = {
 
 let _activeInst = 'piano';
 
+let _sharedAnalyser = null;
+let _analyserToDestination = false;
+
+function _ensureAnalyser() {
+  if (_sharedAnalyser) return _sharedAnalyser;
+  if (typeof Tone === 'undefined') return null;
+  _sharedAnalyser = new Tone.Analyser('fft', 4096);
+  return _sharedAnalyser;
+}
+
+function _connectVolumeToOutput(vol) {
+  const analyser = _ensureAnalyser();
+  if (analyser) {
+    vol.connect(analyser);
+    if (!_analyserToDestination) {
+      analyser.toDestination();
+      _analyserToDestination = true;
+    }
+  } else {
+    vol.toDestination();
+  }
+}
+
 // ── Active sampler lookup ──────────────────────────────────────────
 
 /** Return the currently active Tone.Sampler, or fall back to piano, or null. */
@@ -419,7 +442,8 @@ function _ensurePiano() {
   }
   inst.state = 'loading';
   inst._promise = new Promise((resolve, reject) => {
-    inst.volume = new Tone.Volume(-6).toDestination();
+    inst.volume = new Tone.Volume(-6);
+    _connectVolumeToOutput(inst.volume);
     inst.sampler = new Tone.Sampler({
       urls: SAMPLER_URLS,
       baseUrl: SALAMANDER_BASE,
@@ -469,7 +493,8 @@ async function _loadSoundfontSampler(sfName) {
   }
 
   return new Promise((resolve, reject) => {
-    const vol = new Tone.Volume(-6).toDestination();
+    const vol = new Tone.Volume(-6);
+    _connectVolumeToOutput(vol);
     const s = new Tone.Sampler({
       urls,
       release: 1.2,
@@ -909,6 +934,16 @@ const KeyboardView = {
   /** Return the name of the currently active instrument ('piano', 'guitar', or 'voice'). */
   getInstrument() {
     return _activeInst;
+  },
+
+  /**
+   * Return a shared Tone.Analyser (FFT, 4096) connected in-line between the
+   * instrument volume nodes and the destination. Spectrum visualizers can tap
+   * this to read live frequency-domain data from whichever instrument is
+   * currently playing. Returns null if Tone.js is unavailable.
+   */
+  getAnalyser() {
+    return _ensureAnalyser();
   },
 
   /**
