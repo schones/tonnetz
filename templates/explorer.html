@@ -1134,6 +1134,12 @@
     }
     .sl-btn--gold:hover:not(:disabled) { background: var(--gold); color: var(--daw-deep); }
     .sl-btn--prl { min-width: 26px; text-align: center; padding: 3px 6px; }
+    .sl-lock-badge {
+      font-size: 12px;
+      color: var(--gold);
+      margin-left: 8px;
+      opacity: 0.8;
+    }
     .sl-select {
       padding: 3px 6px;
       border-radius: var(--radius-sm);
@@ -1253,6 +1259,29 @@
     }
     .sl-key-notes[data-quality="minor"]    { color: var(--q-minor-text); }
     .sl-key-notes[data-quality="dominant"] { color: var(--q-dom-text); }
+
+    /* Keyboard size picker — compact overlay in top-right of keyboard panel */
+    .sl-kb-size-picker {
+      position: absolute;
+      top: 6px;
+      right: 12px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: rgba(20, 19, 16, 0.78);
+      backdrop-filter: blur(2px);
+    }
+    .sl-kb-size-picker .sl-ctrl-label {
+      font-size: var(--font-size-xs);
+    }
+    .sl-kb-size-picker .sl-btn {
+      padding: 2px 6px;
+      font-size: var(--font-size-xs);
+      min-width: 26px;
+    }
 
     /* Dynamic keyboard highlight color driven by chord quality */
     #exp-keyboard-container[data-chord-quality="minor"] {
@@ -1476,6 +1505,7 @@
           <div class="exp-panel__head">
             <div style="display: flex; align-items: center; gap: 4px;">
               <span class="exp-panel__label" id="sl-stage-label">Tonnetz Neighborhood</span>
+              <span id="sl-lock-indicator" class="sl-lock-badge" hidden></span>
               <a class="sl-info-pill sl-info-pill--label" href="/intro/5" target="_blank" rel="noopener" title="What is the Tonnetz?">
                 <span class="sl-info-pill__icon">ⓘ</span> Learn
               </a>
@@ -1521,6 +1551,10 @@
           <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-P" title="Parallel">P</button>
           <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-R" title="Relative">R</button>
           <button class="sl-btn sl-btn--gold sl-btn--prl" id="btn-L" title="Leading-tone">L</button>
+        </div>
+        <div class="sl-divider"></div>
+        <div class="sl-ctrl-group">
+          <button class="sl-btn" id="btn-lock" title="Lock current chord for transforms">🔒 Lock</button>
         </div>
         <div class="sl-divider"></div>
         <div class="sl-ctrl-group">
@@ -1591,6 +1625,13 @@
           <div class="sl-key-header">
             <span class="sl-key-chord" id="sl-key-chord">C major</span>
             <span class="sl-key-notes" id="sl-key-notes">C · E · G</span>
+          </div>
+          <div class="sl-ctrl-group sl-kb-size-picker" id="kb-size-picker">
+            <span class="sl-ctrl-label">Size</span>
+            <button class="sl-btn" data-kb-size="25" title="25 keys (C3–C5)">25</button>
+            <button class="sl-btn" data-kb-size="49" title="49 keys (C2–C6)">49</button>
+            <button class="sl-btn" data-kb-size="61" title="61 keys (C1–C6)">61</button>
+            <button class="sl-btn" data-kb-size="88" title="88 keys (A0–C8)">88</button>
           </div>
           <div id="exp-keyboard-container"></div>
         </div>
@@ -1664,7 +1705,7 @@
   <script type="module">
     import { HarmonyState }
       from '{{ url_for("static", filename="shared/harmony-state.js") }}';
-    import { TRANSFORMS, triadNotes, noteToPC, NOTE_NAMES }
+    import { TRANSFORMS, triadNotes, chordNotes, noteToPC, NOTE_NAMES }
       from '{{ url_for("static", filename="shared/transforms.js") }}';
     import { MIDIInput }
       from '{{ url_for("static", filename="shared/midi-input.js") }}';
@@ -1694,6 +1735,7 @@
     // ════════════════════════════════════════════════════════════════
     let currentRoot    = 'C';
     let currentQuality = 'major';
+    let _lockedChord   = null;  // { root, quality } when locked
 
     // ════════════════════════════════════════════════════════════════
     // AUDIO
@@ -1920,6 +1962,7 @@
     const stageViews   = document.querySelectorAll('.sl-stage-view[data-stage-view]');
     let _stageFretboard = null;
     let _spectrumRenderer = null;
+    let _userOverrodeStage = false;
 
     function _setStageView(name) {
       if (!STAGE_LABELS[name]) return;
@@ -1964,7 +2007,10 @@
     stageTabs.forEach(tab => {
       tab.removeAttribute('disabled');
       tab.removeAttribute('title');
-      tab.addEventListener('click', () => _setStageView(tab.dataset.stageView));
+      tab.addEventListener('click', () => {
+        _userOverrodeStage = true;
+        _setStageView(tab.dataset.stageView);
+      });
     });
 
     // ── Rhythm stage renderer ──────────────────────────────────────
@@ -2215,6 +2261,35 @@
       },
     });
 
+    // ── Keyboard size picker (matches common MIDI controller ranges) ──
+    const KB_SIZES = {
+      '25': ['C3', 'C5'],
+      '49': ['C2', 'C6'],
+      '61': ['C1', 'C6'],
+      '88': ['A0', 'C8'],
+    };
+    const kbSizePicker = document.getElementById('kb-size-picker');
+    const kbSizeBtns = kbSizePicker.querySelectorAll('[data-kb-size]');
+
+    function _setKeyboardSize(size) {
+      const range = KB_SIZES[size];
+      if (!range) return;
+      KeyboardView.setRange(range[0], range[1]);
+      kbSizeBtns.forEach(b => {
+        b.classList.toggle('sl-btn--gold', b.dataset.kbSize === size);
+      });
+      localStorage.setItem('songlab_kb_size', size);
+    }
+
+    kbSizeBtns.forEach(b => {
+      b.addEventListener('click', () => _setKeyboardSize(b.dataset.kbSize));
+    });
+
+    const _savedKbSize = localStorage.getItem('songlab_kb_size');
+    if (_savedKbSize && KB_SIZES[_savedKbSize]) {
+      _setKeyboardSize(_savedKbSize);
+    }
+
     // ── Fretboard (lazy) ───────────────────────────────────────────
     let fretboard = null;
     const kbPanel = document.querySelector('.exp-panel--keyboard');
@@ -2321,9 +2396,49 @@
     // ════════════════════════════════════════════════════════════════
     // CONTROLS
     // ════════════════════════════════════════════════════════════════
+    const btnLock = document.getElementById('btn-lock');
+    function _lockChord() {
+      if (_lockedChord) {
+        _lockedChord = null;
+        btnLock.textContent = '🔒 Lock';
+        btnLock.classList.remove('sl-btn--gold');
+        _updateLockIndicator();
+        return;
+      }
+      if (!currentRoot || !currentQuality) return;
+      _lockedChord = { root: currentRoot, quality: currentQuality };
+      btnLock.textContent = '🔓 ' + currentRoot + (currentQuality === 'minor' ? 'm' : '');
+      btnLock.classList.add('sl-btn--gold');
+      _suppressAutoPlay = true;
+      HarmonyState.setTriad(_lockedChord.root, _lockedChord.quality);
+      setTimeout(() => { _suppressAutoPlay = false; }, 0);
+      _updateLockIndicator();
+    }
+    function _updateLockIndicator() {
+      const el = document.getElementById('sl-lock-indicator');
+      if (!el) return;
+      el.textContent = _lockedChord
+        ? `🔒 ${_lockedChord.root}${_lockedChord.quality === 'minor' ? 'm' : ''}`
+        : '';
+      el.hidden = !_lockedChord;
+    }
+    btnLock.addEventListener('click', _lockChord);
+
     ['P', 'R', 'L'].forEach(type => {
       document.getElementById(`btn-${type}`).addEventListener('click', () => {
-        HarmonyState.setTransform(type, currentRoot, currentQuality);
+        const root    = _lockedChord ? _lockedChord.root    : currentRoot;
+        const quality = _lockedChord ? _lockedChord.quality : currentQuality;
+        HarmonyState.setTransform(type, root, quality);
+        // Chain transforms: update the lock to the resulting chord.
+        if (_lockedChord) {
+          const state = HarmonyState.get();
+          const primary = (state.activeTriads || []).find(t => t.role === 'primary');
+          if (primary) {
+            _lockedChord = { root: primary.root, quality: primary.quality };
+            btnLock.textContent = '🔓 ' + primary.root + (primary.quality === 'minor' ? 'm' : '');
+            _updateLockIndicator();
+          }
+        }
       });
     });
 
@@ -2602,7 +2717,9 @@
       HarmonyState.setTriad(_wtFirst ? _wtFirst.root : 'C', _wtFirst ? _wtFirst.quality : 'major');
     } else {
       HarmonyState.batch(state => { state.tonnetzDepth = 3; state.currentKey = 0; });
+      _suppressAutoPlay = true;
       HarmonyState.setTriad('C', 'major');
+      setTimeout(() => { _suppressAutoPlay = false; }, 0);
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -2650,7 +2767,7 @@
         // (e.g. focus: "rhythm" pops the rhythm tab on its arrival).
         const focusList = Array.isArray(focus) ? focus : (focus ? [focus] : []);
         for (const f of focusList) {
-          if (STAGE_LABELS[f]) { _setStageView(f); break; }
+          if (STAGE_LABELS[f] && !_userOverrodeStage) { _setStageView(f); break; }
         }
         // Mark the next HarmonyState dispatch as walkthrough-driven so the
         // subscriber knows to restart the rhythm sequence (re-aligning the
@@ -2674,6 +2791,7 @@
         window.open('/skratchlab', '_blank');
       },
       async onSelectSong(key, wt) {
+        _userOverrodeStage = false;
         // User picked a song from the sidebar dropdown — this click is a
         // user gesture, so we can unlock AudioContext directly instead of
         // routing through the Begin overlay.
@@ -2698,6 +2816,7 @@
     });
 
     function _startWalkthrough(wt) {
+      _userOverrodeStage = false;
       // Reset chord-change dedup so the HarmonyState subscriber always
       // treats the first walkthrough step as a fresh chord.
       _lastRoot = null;
@@ -2717,6 +2836,31 @@
       songArtistEl.textContent = artist || wt.title || '';
       exitBtn.hidden = false;
       renderRhythmStage(wt.rhythm || null);
+      // Snap the KEY dropdown to the walkthrough's tonal center, if any.
+      // Minor keys map to their relative major for the circle-of-fifths index
+      // (e.g. Am → C).
+      if (wt.key) {
+        const keyRoot = wt.key.replace(/m$/, '');
+        const keyPC = noteToPC(keyRoot);
+        if (!isNaN(keyPC)) {
+          const cofOrder = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+          const cofIdx = cofOrder.indexOf(keyPC);
+          if (cofIdx >= 0) {
+            const keySel = document.getElementById('exp-key');
+            if (keySel && keySel.value !== String(cofIdx)) {
+              keySel.value = String(cofIdx);
+              // The 'change' handler calls HarmonyState.setTriad, which would
+              // fire the auto-play subscriber. Suppress it — the begin-overlay
+              // gate (or onSelectSong's explicit playChord) handles the first
+              // chord, otherwise it sounds twice.
+              const _prevSuppress = _suppressAutoPlay;
+              _suppressAutoPlay = true;
+              keySel.dispatchEvent(new Event('change'));
+              setTimeout(() => { _suppressAutoPlay = _prevSuppress; }, 0);
+            }
+          }
+        }
+      }
       // Suppress the HarmonyState subscriber's auto-play for the initial
       // step. _lastRoot was nulled above, so the subscriber would otherwise
       // treat step 0 as a fresh chord change and fire playChord — and the
@@ -3132,6 +3276,13 @@
         await MIDIInput.init();
         if (MIDIInput.isConnected) {
           console.log('[explorer] MIDI connected:', MIDIInput.activeDevice?.name);
+          // Auto-detect keyboard size from device name (unless user has a saved preference)
+          if (!localStorage.getItem('songlab_kb_size')) {
+            const name = (MIDIInput.activeDevice?.name || '').toLowerCase();
+            for (const size of ['88', '61', '49', '25']) {
+              if (name.includes(size)) { _setKeyboardSize(size); break; }
+            }
+          }
         }
       } catch (e) {
         console.warn('[explorer] MIDI init failed:', e);
@@ -3167,6 +3318,15 @@
       });
 
       MIDIInput.onCC((cc, value, channel) => {
+        if (cc === 64) {
+          // Sustain pedal: value >= 64 = pressed, < 64 = released.
+          // Toggle the lock on each pedal edge.
+          if (value >= 64 && !_lockedChord) {
+            _lockChord();
+          } else if (value < 64 && _lockedChord) {
+            _lockChord();
+          }
+        }
         if (cc >= 21 && cc <= 28) {
           console.log(`[MIDI] Knob ${cc - 20}: ${value}`);
         }
@@ -3175,7 +3335,12 @@
       function _updateMIDIChordState() {
         const held = MIDIInput.activeNotes;
         if (!held || held.size === 0) {
-          // All notes released — clear state
+          // All notes released — clear state, unless locked (then keep
+          // the Tonnetz centered on the locked chord and just clear notes).
+          if (_lockedChord) {
+            HarmonyState.update({ activeNotes: [] });
+            return;
+          }
           HarmonyState.update({
             activeNotes: [],
             activeTriads: [],
@@ -3200,7 +3365,10 @@
         // individual-note path below.
         if (midiNotes.length >= 3) {
           const pcs = midiNotes.map(m => m % 12);
-          const resolved = resolveChord(pcs);
+          const state = HarmonyState.get();
+          const cofIdx = typeof state.currentKey === 'number' ? state.currentKey : 0;
+          const keyPC = _COF_MAJOR_PC[cofIdx];
+          const resolved = resolveChord(pcs, keyPC);
 
           if (resolved && resolved.recognized && resolved.root && resolved.quality) {
             const TRIAD_QUALITY_MAP = {
@@ -3220,25 +3388,54 @@
               sus4:    'sus4',
             };
             const q = resolved.quality;
-            try {
-              if (CHORD_TYPE_MAP[q]) {
-                HarmonyState.setChord(resolved.root, CHORD_TYPE_MAP[q]);
+            const root = resolved.root;
+            const mappedQuality = TRIAD_QUALITY_MAP[q];
+            const mappedType = CHORD_TYPE_MAP[q];
+
+            if (mappedQuality || mappedType) {
+              try {
+                const triadNotes = chordNotes(root, mappedQuality || mappedType);
+                // triadNotes may be null for some types — guard it
+
+                _suppressAutoPlay = true;
+                const _curState = HarmonyState.get();
+                HarmonyState.update({
+                  activeTriads: _lockedChord
+                    ? _curState.activeTriads
+                    : (triadNotes ? [{
+                        root: root,
+                        quality: mappedQuality || 'major',
+                        notes: triadNotes,
+                        role: 'primary',
+                        color: null,
+                      }] : []),
+                  activeNotes: midiNotes.map(m => ({
+                    note: NOTE_NAMES[m % 12],
+                    octave: Math.floor(m / 12) - 1,
+                    source: 'user',
+                    color: null,
+                  })),
+                  activeChord: _lockedChord ? _curState.activeChord : null,
+                  activeTransform: _lockedChord ? _curState.activeTransform : null,
+                });
+                setTimeout(() => { _suppressAutoPlay = false; }, 0);
                 return;
+              } catch (err) {
+                // Downstream consumers (transforms.js / tonnetz-neighborhood.js)
+                // can throw on voicings they don't support. Degrade to per-note
+                // highlights instead of crashing the MIDI handler.
+                console.warn('[MIDI] Chord state update failed, falling back to note highlights:', err.message);
               }
-              if (TRIAD_QUALITY_MAP[q]) {
-                HarmonyState.setTriad(resolved.root, TRIAD_QUALITY_MAP[q]);
-                return;
-              }
-            } catch (err) {
-              // Downstream consumers (transforms.js / tonnetz-neighborhood.js)
-              // can throw on voicings they don't support. Degrade to per-note
-              // highlights instead of crashing the MIDI handler.
-              console.warn('[MIDI] Chord state update failed, falling back to note highlights:', err.message);
             }
           }
         }
 
-        // No recognized chord — just show the individual notes
+        // No recognized chord — just show the individual notes.
+        // When locked, leave the Tonnetz triads/chord/transform untouched.
+        if (_lockedChord) {
+          HarmonyState.update({ activeNotes });
+          return;
+        }
         HarmonyState.update({
           activeNotes,
           activeTriads: [],
