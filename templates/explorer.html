@@ -852,6 +852,19 @@
        the active one). */
     .sl-stage-view[hidden] { display: none !important; }
 
+    /* Spectrum stage view — full-bleed FFT canvas */
+    .sl-stage-view[data-stage-view="spectrum"] {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: var(--daw-deep);
+    }
+    #exp-spectrum-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
     /* Chord wheel stage view — centered inside the stage */
     #exp-wheel-stage {
       display: flex;
@@ -1466,6 +1479,7 @@
               </a>
               <button class="sl-panel-tab"                      id="sl-tab-fretboard" type="button" data-stage-view="fretboard">Fretboard</button>
               <button class="sl-panel-tab"                      id="sl-tab-rhythm"    type="button" data-stage-view="rhythm">Rhythm</button>
+              <button class="sl-panel-tab"                      id="sl-tab-spectrum"  type="button" data-stage-view="spectrum">Spectrum</button>
             </div>
           </div>
           <div class="exp-panel__body">
@@ -1473,6 +1487,9 @@
             <div id="exp-wheel-stage"       class="sl-stage-view" data-stage-view="wheel" hidden></div>
             <div id="exp-fretboard-stage"   class="sl-stage-view" data-stage-view="fretboard" hidden></div>
             <div id="exp-rhythm-stage"      class="sl-stage-view" data-stage-view="rhythm" hidden></div>
+            <div id="exp-spectrum-stage"    class="sl-stage-view" data-stage-view="spectrum" hidden>
+              <canvas id="exp-spectrum-canvas"></canvas>
+            </div>
 
             <!-- Walkthrough begin overlay (gates AudioContext on iOS) -->
             <div id="exp-begin-overlay" class="exp-begin-overlay" hidden role="dialog" aria-label="Begin walkthrough">
@@ -1638,8 +1655,10 @@
   <script type="module">
     import { HarmonyState }
       from '{{ url_for("static", filename="shared/harmony-state.js") }}';
-    import { TRANSFORMS, triadNotes, noteToPC }
+    import { TRANSFORMS, triadNotes, noteToPC, NOTE_NAMES }
       from '{{ url_for("static", filename="shared/transforms.js") }}';
+    import { MIDIInput }
+      from '{{ url_for("static", filename="shared/midi-input.js") }}';
     import { TonnetzNeighborhood }
       from '{{ url_for("static", filename="shared/tonnetz-neighborhood.js") }}';
     import { KeyboardView }
@@ -1885,11 +1904,13 @@
       wheel:     'Circle of Fifths',
       fretboard: 'Fretboard',
       rhythm:    'Rhythm',
+      spectrum:  'Harmonic Resonance',
     };
     const stageLabelEl = document.getElementById('sl-stage-label');
     const stageTabs    = document.querySelectorAll('.sl-panel-tab[data-stage-view]');
     const stageViews   = document.querySelectorAll('.sl-stage-view[data-stage-view]');
     let _stageFretboard = null;
+    let _spectrumRenderer = null;
 
     function _setStageView(name) {
       if (!STAGE_LABELS[name]) return;
@@ -1911,6 +1932,11 @@
         _stageFretboard = new FretboardView('exp-fretboard-stage-container', { interactive: true });
       }
 
+      // Lazily spin up the FFT particle renderer the first time Spectrum opens
+      if (name === 'spectrum' && !_spectrumRenderer) {
+        _spectrumRenderer = _initSpectrumRenderer();
+      }
+
       stageTabs.forEach(t => {
         t.classList.toggle('sl-panel-tab--active', t.dataset.stageView === name);
       });
@@ -1918,6 +1944,12 @@
         v.hidden = v.dataset.stageView !== name;
       });
       stageLabelEl.textContent = STAGE_LABELS[name];
+
+      // Start/stop the spectrum RAF loop with tab visibility
+      if (_spectrumRenderer) {
+        if (name === 'spectrum') _spectrumRenderer.start();
+        else _spectrumRenderer.stop();
+      }
     }
 
     stageTabs.forEach(tab => {
@@ -2735,6 +2767,390 @@
       if (WALKTHROUGHS[key]) _startWalkthrough(WALKTHROUGHS[key]);
       else console.log('Available walkthroughs:', Object.keys(WALKTHROUGHS).join(', '));
     };
+
+    // ════════════════════════════════════════════════════════════════
+    // SPECTRUM RENDERER — Harmonic Resonance FFT particle visualizer
+    // ════════════════════════════════════════════════════════════════
+    function _initSpectrumRenderer() {
+      const canvas = document.getElementById('exp-spectrum-canvas');
+      if (!canvas) return null;
+      const ctx = canvas.getContext('2d');
+
+      let width = 0, height = 0, dpr = 1;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        width  = Math.max(1, Math.floor(rect.width));
+        height = Math.max(1, Math.floor(rect.height));
+        dpr    = Math.max(1, window.devicePixelRatio || 1);
+        canvas.width  = Math.floor(width  * dpr);
+        canvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        peakHold = new Float32Array(0);
+      }
+
+      // ── Axis scaling ─────────────────────────────────────────────
+      const F_MIN   = 20;
+      const F_MAX   = 20000;
+      const LOG_MIN = Math.log10(F_MIN);
+      const LOG_MAX = Math.log10(F_MAX);
+      const DB_MIN  = -100;
+
+      function freqToX(f) {
+        const lf = Math.log10(Math.max(F_MIN, f));
+        return ((lf - LOG_MIN) / (LOG_MAX - LOG_MIN)) * width;
+      }
+      function dbToY(db) {
+        const t = (db - DB_MIN) / (0 - DB_MIN);
+        return height - Math.max(0, Math.min(1, t)) * height;
+      }
+
+      // ── Particle pool (never allocate in render loop) ────────────
+      const POOL = 600;
+      const particles = new Array(POOL);
+      for (let i = 0; i < POOL; i++) {
+        particles[i] = { active: false, x: 0, y: 0, vx: 0, vy: 0,
+                         life: 0, size: 0, hue: 43, sat: 85, lig: 58 };
+      }
+      let spawnCursor = 0;
+      function spawn(x, y, hue, sat, lig) {
+        for (let n = 0; n < POOL; n++) {
+          const idx = (spawnCursor + n) % POOL;
+          const p = particles[idx];
+          if (!p.active) {
+            spawnCursor = (idx + 1) % POOL;
+            p.active = true;
+            p.x = x; p.y = y;
+            p.vx = (Math.random() - 0.5) * 0.6;
+            p.vy = -0.3 - Math.random() * 0.5;
+            p.life = 1;
+            p.size = 2 + Math.random() * 2.5;
+            p.hue = hue; p.sat = sat; p.lig = lig;
+            return;
+          }
+        }
+      }
+
+      // ── Peak-hold buffer (decays at 0.995/frame) ─────────────────
+      let peakHold = new Float32Array(0);
+
+      // ── Chord tone classification ────────────────────────────────
+      const ROLE_COLORS = {
+        root:    { h:  43, s: 85, l: 58 },
+        third:   { h:  15, s: 80, l: 60 },
+        fifth:   { h: 220, s: 70, l: 62 },
+        seventh: { h: 155, s: 60, l: 50 },
+      };
+
+      function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+      function noteEntryToMidi(entry) {
+        const name = entry && entry.note != null ? entry.note : entry;
+        if (typeof name !== 'string') return null;
+        const pc = noteToPC(name);
+        if (pc == null || Number.isNaN(pc)) return null;
+        const oct = (entry && entry.octave != null) ? entry.octave : 4;
+        return (oct + 1) * 12 + pc;
+      }
+
+      function getChordTones() {
+        const state = HarmonyState.get();
+        const notes = state.activeNotes || [];
+        if (!notes.length) {
+          // Fallback: C major
+          return [
+            { midi: 60, role: 'root'  },
+            { midi: 64, role: 'third' },
+            { midi: 67, role: 'fifth' },
+          ];
+        }
+        const tones = [];
+        let triadIdx = 0;
+        const triadRoles = ['root', 'third', 'fifth'];
+        for (const entry of notes) {
+          const midi = noteEntryToMidi(entry);
+          if (midi == null) continue;
+          if (entry && entry.source === 'extension') {
+            tones.push({ midi, role: 'seventh' });
+          } else {
+            tones.push({ midi, role: triadRoles[triadIdx] || 'fifth' });
+            triadIdx++;
+          }
+        }
+        return tones.length ? tones : [
+          { midi: 60, role: 'root'  },
+          { midi: 64, role: 'third' },
+          { midi: 67, role: 'fifth' },
+        ];
+      }
+
+      function classifyFreq(f, chordTones) {
+        let bestDist = Infinity;
+        let bestRole = 'root';
+        for (let t = 0; t < chordTones.length; t++) {
+          const fund = midiToFreq(chordTones[t].midi);
+          for (let n = 1; n <= 16; n++) {
+            const d = Math.abs(Math.log2(f / (fund * n)));
+            if (d < bestDist) {
+              bestDist = d;
+              bestRole = chordTones[t].role;
+            }
+          }
+        }
+        return bestRole;
+      }
+
+      // ── Static markers ───────────────────────────────────────────
+      const FREQ_LABELS = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
+
+      function drawGrid() {
+        ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (const f of FREQ_LABELS) {
+          const x = freqToX(f);
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+        }
+        for (let db = -100; db <= 0; db += 20) {
+          const y = dbToY(db);
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.font = '10px "Nunito", sans-serif';
+        ctx.textBaseline = 'bottom';
+        for (const f of FREQ_LABELS) {
+          const label = f >= 1000 ? (f / 1000) + 'k' : String(f);
+          ctx.fillText(label, freqToX(f) + 3, height - 3);
+        }
+      }
+
+      function drawChordMarkers(chordTones) {
+        ctx.save();
+        ctx.setLineDash([2, 5]);
+        ctx.lineWidth = 1;
+        for (const t of chordTones) {
+          const fund = midiToFreq(t.midi);
+          if (fund < F_MIN || fund > F_MAX) continue;
+          const c = ROLE_COLORS[t.role] || ROLE_COLORS.root;
+          ctx.strokeStyle = `hsla(${c.h}, ${c.s}%, ${c.l}%, 0.55)`;
+          ctx.beginPath();
+          const x = freqToX(fund);
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        for (const t of chordTones) {
+          const fund = midiToFreq(t.midi);
+          const c = ROLE_COLORS[t.role] || ROLE_COLORS.root;
+          ctx.fillStyle = `hsla(${c.h}, ${c.s}%, ${c.l}%, 0.45)`;
+          for (let n = 2; n <= 8; n++) {
+            const f = fund * n;
+            if (f > F_MAX) break;
+            ctx.beginPath();
+            ctx.arc(freqToX(f), 10, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+
+      // ── Main render loop ─────────────────────────────────────────
+      let rafId = null;
+
+      function updateAndDrawParticles() {
+        for (let i = 0; i < POOL; i++) {
+          const p = particles[i];
+          if (!p.active) continue;
+          p.life -= 0.008;
+          if (p.life <= 0) { p.active = false; continue; }
+          p.x += p.vx + Math.sin(p.life * 6) * 0.15;
+          p.y += p.vy + Math.cos(p.life * 4) * 0.1;
+          p.vy += 0.008;
+
+          const alpha = Math.max(0, Math.min(1, p.life));
+          const r = p.size * 4;
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+          g.addColorStop(0, `hsla(${p.hue}, ${p.sat}%, ${p.lig}%, ${alpha * 0.55})`);
+          g.addColorStop(1, `hsla(${p.hue}, ${p.sat}%, ${p.lig}%, 0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = `hsla(${p.hue}, ${p.sat}%, ${Math.min(92, p.lig + 22)}%, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function render() {
+        // Fade previous frame (creates soft particle trails)
+        ctx.fillStyle = 'rgba(20, 19, 16, 0.22)';
+        ctx.fillRect(0, 0, width, height);
+
+        drawGrid();
+
+        const analyser = (KeyboardView && KeyboardView.getAnalyser)
+          ? KeyboardView.getAnalyser()
+          : null;
+
+        if (!analyser || typeof analyser.getValue !== 'function') {
+          drawChordMarkers(getChordTones());
+          updateAndDrawParticles();
+          rafId = requestAnimationFrame(render);
+          return;
+        }
+
+        const data = analyser.getValue();
+        const N = data.length;
+        if (peakHold.length !== N) peakHold = new Float32Array(N).fill(DB_MIN);
+
+        const sr = (window.Tone && Tone.context && Tone.context.sampleRate) || 44100;
+        const nyquist = sr / 2;
+
+        // Filled spectrum area (orange gradient)
+        ctx.beginPath();
+        let started = false;
+        let firstX = 0;
+        for (let i = 0; i < N; i++) {
+          const f = (i / N) * nyquist;
+          if (f < F_MIN) continue;
+          if (f > F_MAX) break;
+          const db = data[i];
+          const x = freqToX(f);
+          const y = dbToY(db);
+          if (!started) { firstX = x; ctx.moveTo(x, height); ctx.lineTo(x, y); started = true; }
+          else ctx.lineTo(x, y);
+          // Peak hold update
+          if (db > peakHold[i]) peakHold[i] = db;
+          else peakHold[i] = Math.max(DB_MIN, peakHold[i] * 0.995 - 0.05);
+        }
+        if (started) {
+          ctx.lineTo(width, height);
+          ctx.lineTo(firstX, height);
+          ctx.closePath();
+          const grad = ctx.createLinearGradient(0, 0, 0, height);
+          grad.addColorStop(0, 'rgba(232, 140, 60, 0.45)');
+          grad.addColorStop(1, 'rgba(232, 140, 60, 0.02)');
+          ctx.fillStyle = grad;
+          ctx.fill();
+        }
+
+        // Envelope stroke (orange, glowing)
+        ctx.beginPath();
+        let envStarted = false;
+        for (let i = 0; i < N; i++) {
+          const f = (i / N) * nyquist;
+          if (f < F_MIN) continue;
+          if (f > F_MAX) break;
+          const x = freqToX(f);
+          const y = dbToY(data[i]);
+          if (!envStarted) { ctx.moveTo(x, y); envStarted = true; }
+          else ctx.lineTo(x, y);
+        }
+        ctx.shadowColor = 'rgba(232, 140, 60, 0.8)';
+        ctx.shadowBlur = 6;
+        ctx.strokeStyle = 'rgba(255, 170, 80, 0.88)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Peak-hold line (white, decaying)
+        ctx.beginPath();
+        let phStarted = false;
+        for (let i = 0; i < N; i++) {
+          const f = (i / N) * nyquist;
+          if (f < F_MIN) continue;
+          if (f > F_MAX) break;
+          const x = freqToX(f);
+          const y = dbToY(peakHold[i]);
+          if (!phStarted) { ctx.moveTo(x, y); phStarted = true; }
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.42)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Chord-tone markers + harmonic dots
+        const chordTones = getChordTones();
+        drawChordMarkers(chordTones);
+
+        // Spawn particles at local maxima above -60 dB
+        for (let i = 2; i < N - 2; i++) {
+          const f = (i / N) * nyquist;
+          if (f < F_MIN || f > F_MAX) continue;
+          const db = data[i];
+          if (db < -60) continue;
+          if (data[i] > data[i - 1] && data[i] > data[i + 1] &&
+              data[i] >= data[i - 2] && data[i] >= data[i + 2]) {
+            // Thin peak density so the pool lasts through sustains
+            if (Math.random() > 0.35) continue;
+            const role = classifyFreq(f, chordTones);
+            const c = ROLE_COLORS[role];
+            spawn(freqToX(f), dbToY(db), c.h, c.s, c.l);
+          }
+        }
+
+        updateAndDrawParticles();
+        rafId = requestAnimationFrame(render);
+      }
+
+      function start() {
+        if (rafId != null) return;
+        resize();
+        window.addEventListener('resize', resize);
+        rafId = requestAnimationFrame(render);
+      }
+      function stop() {
+        if (rafId != null) cancelAnimationFrame(rafId);
+        rafId = null;
+        window.removeEventListener('resize', resize);
+      }
+      return { start, stop };
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // MIDI INPUT — Launchkey 49 (and any Web MIDI device)
+    // ════════════════════════════════════════════════════════════════
+    (async function initMIDI() {
+      if (!window.MIDIInput && !MIDIInput) return;
+      try {
+        await MIDIInput.init();
+        if (MIDIInput.isConnected) {
+          console.log('[explorer] MIDI:', MIDIInput.activeDevice?.name);
+        }
+      } catch (e) {
+        console.warn('[explorer] MIDI init:', e);
+        return;
+      }
+
+      function midiToNoteStr(note) {
+        const pc = ((note % 12) + 12) % 12;
+        const oct = Math.floor(note / 12) - 1;
+        return NOTE_NAMES[pc].replace(/♯/g, '#') + oct;
+      }
+
+      MIDIInput.onNoteOn(async (note, velocity) => {
+        await ensureFullAudio();
+        if (!sampler) return;
+        sampler.triggerAttack(midiToNoteStr(note), Tone.now(), velocity / 127);
+      });
+
+      MIDIInput.onNoteOff((note) => {
+        try { if (sampler) sampler.triggerRelease(midiToNoteStr(note)); } catch (_) {}
+      });
+
+      MIDIInput.onCC((cc, value) => {
+        if (cc >= 21 && cc <= 28) {
+          console.log(`[MIDI] Knob ${cc - 20}: ${value}`);
+        }
+      });
+    })();
 
     // ════════════════════════════════════════════════════════════════
     // PROGRESSION TEST HARNESS (console-callable)
