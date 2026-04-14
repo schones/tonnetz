@@ -4,6 +4,79 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-14 — Spectrum FFT Panel, MIDI Input, Chord Lock-In, Key-Aware Resolution
+
+**Focus:** Real-time FFT visualization, MIDI keyboard integration (Launchkey 49), key-aware chord resolution, chord lock-in for transform exploration, walkthrough improvements.
+
+### Spectrum tab (Harmonic Resonance) — new Explorer panel
+- ChromaVerb-inspired FFT particle visualizer: 600-particle pool, log-frequency x-axis, dB y-axis
+- Shared `Tone.Analyser` (4096-bin FFT) spliced into `keyboard-view.js` audio chain via `_connectVolumeToOutput()` helper
+- Particles spawn from FFT bins above -60dB threshold, colored by harmonic function classification (root=gold, third=coral, fifth=blue, seventh=green)
+- Classification: for each FFT bin, check harmonics 1–16 of each chord tone, find closest match via log₂ distance
+- Orange spectral envelope with glow, peak-hold decay line (0.995/frame)
+- DPR-aware canvas, lifecycle managed (start/stop on tab switch)
+- `KeyboardView.getAnalyser()` exposed as public API — all instruments feed spectrum automatically
+- Spec: `docs/spectrum-panel-spec.md`
+
+### MIDI input module — new shared module
+- `static/shared/midi-input.js`: Web MIDI API, device discovery, auto-connect, localStorage persistence
+- Launchkey 49 CC mapping documented (knobs CC 21-28, transport CC 115-118, pads channel 10)
+- Graceful degradation when Web MIDI unavailable (iOS Safari)
+- Explorer wiring: noteOn → `sampler.triggerAttack()` + `_updateMIDIChordState()`, noteOff → release + state update
+- Keyboard size selector (25/49/61/88) with auto-detect from MIDI device name
+- Sustain pedal (CC 64) mapped to chord lock toggle
+
+### Key-aware chord resolution
+- `resolveChord(pitchClasses, preferredRootPC)` — collects all candidates, prefers diatonic roots
+- Builds major scale from key, prefers tonic → dominant → other diatonic → first match
+- Fixes: C-E-G# in key of A → E augmented (not C augmented); fully symmetrical chords resolved by key context
+
+### Chord lock-in for transform exploration
+- Lock button captures current MIDI-detected chord, centers Tonnetz, enables P/R/L
+- Transforms chain through lock: lock Em → P → E major (new lock) → R → C#m (new lock) → ...
+- While locked: MIDI notes play audio + highlight keyboard, but Tonnetz stays on locked chord
+- Sustain pedal (CC 64) toggles lock; visual badge on Tonnetz header
+- All-keys-released doesn't clear state while locked
+
+### Walkthrough improvements
+- All 18 walkthroughs tagged with `key` field (tonal center)
+- KEY dropdown syncs on walkthrough load (COF index mapping)
+- Oh! Darling expanded: 5 steps → 11-step full verse (Eaug → A → E → F#m → D → Bm7 → E → Bm7 → E → A → E)
+- Fixed: Bmm7 (chord "Bm" + chordType "min7" → changed to chord "B"), F#m label (ii → vi)
+- Walkthrough focus override: `_userOverrodeStage` flag preserves manual tab choice, resets on new song
+- Suppressed auto-play on Explorer load (`_suppressAutoPlay` around initial `setTriad`)
+- Suppressed double-play on walkthrough key sync (`_suppressAutoPlay` around `dispatchEvent`)
+
+### Bug fixes (many, iterative)
+- Quality name mismatch: chord-resolver returns `dim`/`aug`, transforms.js expects `diminished`/`augmented` → mapping tables `TRIAD_QUALITY_MAP` / `CHORD_TYPE_MAP`
+- TypeError in `_notesFromTriad(null)` → guard on `resolved.root && resolved.quality`
+- Tonnetz crash in `buildNeighborhood` on unrecognized chord types → try/catch with fallback to individual notes
+- `kv-key--midi` had no CSS → changed MIDI source to `'user'` for existing highlight styles
+- MIDI chord detection doubled audio via HarmonyState subscriber → `_suppressAutoPlay` wrapper
+- Keyboard octave jump: `setTriad`/`highlightTriad` overwrites MIDI octaves with hardcoded octave 4 → manual `HarmonyState.update()` with real MIDI note numbers from `MIDIInput.activeNotes`
+- Recognized chord path built activeNotes from chord names (deduplicating C4+C5 into one C) → switched to raw MIDI notes
+
+### Decisions made
+- Spectrum panel reads from shared analyser (not its own synth) — all instruments automatically visualize
+- MIDI path owns full HarmonyState.update (doesn't delegate to setTriad/setChord which have octave/audio side effects)
+- Lock-in chains transforms (each P/R/L result becomes new lock) for keyboard-free Tonnetz exploration
+- Walkthrough `focus` field is a suggestion, not a mandate — user tab choice overrides
+- Key hint uses diatonic scale membership (not just tonic match) for chord resolution
+
+### Workflow notes
+- Iterative prompt pattern: plan in Claude.ai → discrete Claude Code prompts → test → fix → commit
+- Claude Code prompts worked best as single-file, single-concern tasks (MIDI module → analyser wiring → Explorer integration)
+- Multi-file prompts needed more specific line-number guidance to avoid missed changes
+- The `_suppressAutoPlay` pattern is becoming load-bearing — may need a more principled audio-trigger architecture
+
+### What's next
+- Voicing Explorer: fuzzy chord matching, shape dragging, interval projection
+- CC knob mapping for Launchkey 49 → Explorer params
+- MIDI play-along feedback for walkthroughs
+- game-flow.js + adaptive engine extraction
+
+---
+
 ## 2026-04-13 — Extended Chord Support, Beyond Triads Chapter, New Walkthroughs, Global Font Scale
 
 **Focus:** Extended chord type system, project rename, three new walkthroughs (diminished + augmented), Fundamentals Chapter 4 "Beyond Triads," global typography overhaul.

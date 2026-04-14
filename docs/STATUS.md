@@ -1,29 +1,72 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-13
+**Last updated:** 2026-04-14
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
-**Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md`
+**Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/spectrum-panel-spec.md`
 **Platform name:** SongLab · SkratchLab (rebrand complete)
 
 ---
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich and approaching user testing readiness. Phase A complete. Explorer has rhythm analysis, info pills, audience-segmented walkthroughs, and a tutorial page. SkratchLab renamed, restyled, and has an interactive Rhythm Builder. Base.html restyled — all game/theory pages inherit the SongLab design system. Landing page has audience tabs (Kids/Students/Musicians) with filtered MIDI pad song grid. Dropdown nav restored with full access to all games, theory, and fundamentals pages.
-
-Full game audit completed April 11 — two game types identified (Performance and Learning), adaptive engine standardized (Pattern B with independent axes), ResultDetail schema designed for competency graph. Build plan updated to v4 with MIDI input pulled forward from Phase F, SkratchLab lightweight DAW vision captured, and fast path to Competency Graph identified (B → B.5 → E5).
+SongLab `dev` branch is feature-rich and approaching user testing readiness. Phase A complete. MIDI input and Spectrum FFT visualization landed April 14, unlocking hardware controller support and real-time audio analysis across the Explorer. Chord lock-in enables P/R/L transform exploration from MIDI-detected chords. Key-aware chord resolution resolves ambiguous voicings (augmented, diminished) using diatonic context. All 18 walkthroughs tagged with tonal center; KEY dropdown syncs on walkthrough load.
 
 **Next priorities:**
-1. Verify dim/aug rendering in new walkthroughs (Bridge Over Troubled Water, Oh! Darling, Life on Mars)
-2. Audit remaining walkthroughs for chordType opportunities
-3. Enharmonic sharp/flat toggle (backlog — Fundamentals + Explorer preference)
-4. Flexible Explorer panel sizing (user-draggable splitters)
-5. MIDI input module — `midi-input.js` (Web MIDI API → HarmonyState), Launchkey 49 target
+1. Voicing Explorer — fuzzy chord matching, shape dragging, interval projection (spec: `docs/voicing-explorer-spec.md`)
+2. CC knob mapping — Launchkey 49 knobs (CC 21-28) → Explorer params (depth, key, sustain)
+3. MIDI play-along feedback — walkthrough "did you play the right chord?" mode
+4. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
+5. Enharmonic sharp/flat toggle (backlog)
 6. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
 7. User testing prep (15-20 participants)
 
-**Completed this cycle (April 9-13):**
+**Completed this cycle (April 14):**
+
+- **Spectrum tab (Harmonic Resonance):**
+  - 5th Explorer stage tab: real-time FFT particle visualizer (ChromaVerb-inspired)
+  - Shared `Tone.Analyser` (4096-bin FFT) spliced into keyboard-view.js audio chain
+  - Particles spawn from FFT bins, colored by chord function (root=gold, third=coral, fifth=blue, seventh=green)
+  - Log-frequency x-axis (20Hz–20kHz), orange spectral envelope with glow, peak-hold decay line
+  - Lifecycle managed: animation starts/stops on tab switch for performance
+  - Spec: `docs/spectrum-panel-spec.md`
+
+- **MIDI input module:**
+  - `static/shared/midi-input.js` — standalone Web MIDI API module, device discovery, Launchkey 49-aware
+  - Note on/off → sampler audio + HarmonyState chord detection via ChordResolver
+  - Octave-correct keyboard highlights (source: 'user' for per-key accuracy)
+  - Keyboard size selector (25/49/61/88 keys) with auto-detect from MIDI device name
+  - CC logging for knobs (CC 21-28), sustain pedal (CC 64) mapped to chord lock
+
+- **Key-aware chord resolution:**
+  - `resolveChord(pitchClasses, preferredRootPC)` — prefers diatonic roots for ambiguous chords
+  - Builds major scale from key, prefers tonic > dominant > other diatonic candidates
+  - Fixes augmented/diminished root ambiguity (C-E-G# in key of A → E augmented, not C augmented)
+
+- **Chord lock-in for transforms:**
+  - Lock button freezes detected MIDI chord as Tonnetz center, enabling P/R/L exploration
+  - Transforms chain through lock (lock Em → P → E major → R → C#m → ...)
+  - Sustain pedal (CC 64) toggles lock
+  - Visual badge on Tonnetz header shows locked chord
+  - MIDI notes still play audio + highlight keyboard while locked, Tonnetz stays stable
+
+- **Walkthrough improvements:**
+  - All 18 walkthroughs tagged with `key` field; KEY dropdown syncs on walkthrough load
+  - Oh! Darling expanded to full 11-step verse (Eaug → A → E → F#m → D → Bm7 → E → Bm7 → E → A → E)
+  - Fixed Bmm7 bug (chord: "Bm" + chordType: "min7" → changed to chord: "B")
+  - Fixed F#m function label (was "ii", corrected to "vi")
+  - Walkthrough focus override: user's manual tab choice respected, reset on new song selection
+  - Suppressed auto-play on Explorer load and walkthrough key-sync
+
+- **Bug fixes:**
+  - Quality name mismatch between chord-resolver.js and transforms.js (dim→diminished, aug→augmented, etc.)
+  - TypeError in _notesFromTriad when triadNotes returned null for unrecognized qualities
+  - Tonnetz crash (buildNeighborhood) on unrecognized chord types — try/catch guard added
+  - kv-key--midi missing CSS → changed MIDI source to 'user' for existing highlight styles
+  - Duplicate audio on MIDI chord detection → _suppressAutoPlay wrapper
+  - Keyboard octave jump on chord detection → manual HarmonyState.update with real MIDI octaves
+
+**Completed previous cycle (April 9-13):**
 
 - **Project rename (April 13):** Tonnetz → SongLab across GitHub, Railway, CLAUDE.md, README.md, doc filenames, cross-references. Music theory "Tonnetz" references preserved.
 
@@ -108,9 +151,14 @@ Full game audit completed April 11 — two game types identified (Performance an
 
 
 
-### Tonnetz Explorer ✅ fully restyled
+### Tonnetz Explorer ✅ fully restyled + Spectrum + MIDI
 - DAW-style dark theme at `/explorer`: transport controls, song info bar, walkthrough sidebar
-- Tabbed panel area: Tonnetz / Chord Wheel / Fretboard / **Rhythm** (all wired and synchronized via HarmonyState)
+- Tabbed panel area: Tonnetz / Chord Wheel / Fretboard / **Rhythm** / **Spectrum** (all wired and synchronized via HarmonyState)
+- **Spectrum tab (Harmonic Resonance):** real-time FFT particle visualizer, particles colored by chord function, spectral envelope with peak-hold
+- **MIDI input:** Web MIDI API via `midi-input.js`, Launchkey 49 auto-detect, keyboard size selector (25/49/61/88)
+- **Chord lock-in:** freeze MIDI-detected chord for P/R/L transform exploration, sustain pedal toggle, chained transforms
+- **Key-aware chord resolution:** ambiguous chords (aug/dim) resolve using diatonic context from KEY selector
+- Shared FFT analyser in audio chain (`KeyboardView.getAnalyser()`) — all instruments feed spectrum
 - Chord-quality color families: blue=major, green=minor, coral=borrowed
 - Tonnetz animations: pulsing nodes, glow worm paths, ghost trails
 - Cream keyboard keys with real piano proportions, lightened Tonnetz canvas
@@ -124,14 +172,16 @@ Full game audit completed April 11 — two game types identified (Performance an
 - Deep-linking via URL params: ?root=, ?quality=, ?progression=, ?walkthrough=
 - Record-and-export bridge to SkratchLab (sessionStorage + window.open) — includes rhythm data
 
-### Guided Walkthrough System ✅ with rhythm + audience tracks + extended chords
+### Guided Walkthrough System ✅ with rhythm + audience tracks + extended chords + key context
 - Walkthrough sidebar in Explorer driven by `static/shared/walkthroughs.js`
-- **17 walkthroughs** across 3 audiences:
+- **18 walkthroughs** across 3 audiences:
   - Kids: Let It Go (pop formula), You've Got a Friend in Me (shuffle feel)
-  - Students: Stand By Me (doo-wop loop), Lean on Me (gospel piano, Cmaj7), Oh! Darling (augmented passing chord)
-  - Musicians: Yesterday, Eleanor Rigby, Creep, ii-V-I jazz (min7/dom7/maj7), Norwegian Wood (Mixolydian), Stairway (P transform), In My Life (deceptive cadence), Johnny B. Goode (twelve-bar blues, dom7), Folsom Prison Blues (train beat, dom7), Why Does My Heart (Moby), Bridge Over Troubled Water (diminished passing chords), Life on Mars? (augmented connectors)
+  - Students: Stand By Me (doo-wop loop), Lean on Me (gospel piano, Cmaj7), Oh! Darling (augmented passing chord, 11-step full verse)
+  - Musicians: Yesterday, Eleanor Rigby, Creep, ii-V-I jazz (min7/dom7/maj7), Norwegian Wood (Mixolydian), Stairway (P transform), In My Life (deceptive cadence), Johnny B. Goode (twelve-bar blues, dom7), Folsom Prison Blues (train beat, dom7), Why Does My Heart (Moby), Bridge Over Troubled Water (diminished passing chords), Life on Mars? (augmented connectors), Vienna (chromatic mediant)
+- All walkthroughs tagged with `key` field — KEY dropdown syncs on walkthrough load
 - Extended chord types: `chordType` field on steps drives `highlightChord()` path, showing full chord symbols (B7, Cmaj7, F♯°, E+) on Tonnetz and keyboard
 - All walkthroughs have rhythm data (time sig, BPM, feel, beat pattern)
+- Walkthrough focus override: user's manual tab choice respected, reset on new song
 - Categories: Voice Leading, Transforms, Jazz Harmony, Modes & Scales, Progressions, Rhythm & Feel
 - Each step: chord state via HarmonyState, auto-play, conversational explanation, harmonic function label
 - "Try this" game pills with deep-linking (CONCEPT_GAME_MAP → pre-configured URL params)
