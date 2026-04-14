@@ -6,6 +6,9 @@
  * Each walkthrough is a named entry with:
  *   title   — display name for the walkthrough
  *   song    — song/source attribution (shown small on the card)
+ *   key     — tonal center of the walkthrough (e.g. "C", "G", "Am")
+ *             Used to set the Explorer's key context and as a hint for
+ *             chord resolution of ambiguous voicings.
  *   seeAlso — optional { label, href } shown on the final step as a nudge
  *             to a related game/tool, e.g. { label: "Chord Walks", href: "/games/chord-walks" }
  *   steps[] — ordered steps, each with:
@@ -26,6 +29,7 @@ const WALKTHROUGHS = {
   yesterday_voice_leading: {
     title: "Yesterday's Aching Bass Line",
     song: "Yesterday — The Beatles",
+    key: "F",
     category: "Voice Leading",
     audience: "musician",
     seeAlso: { label: "Harmony Trainer", href: "/games/chord-walks" },
@@ -56,6 +60,7 @@ const WALKTHROUGHS = {
   am_c_relationship: {
     title: "Two Chords, Two Shared Notes",
     song: "Eleanor Rigby — The Beatles",
+    key: "C",
     category: "Transforms",
     audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
@@ -85,6 +90,7 @@ const WALKTHROUGHS = {
   creep_progression: {
     title: "The Shock of the Chromatic Mediant",
     song: "Creep — Radiohead",
+    key: "G",
     category: "Transforms",
     audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
@@ -115,6 +121,7 @@ const WALKTHROUGHS = {
   ii_V_I: {
     title: "The Backbone of Jazz",
     song: "Autumn Leaves / Fly Me to the Moon",
+    key: "C",
     category: "Jazz Harmony",
     audience: "musician",
     rhythm: {
@@ -143,6 +150,7 @@ const WALKTHROUGHS = {
   mixolydian: {
     title: "One Note Changes Everything",
     song: "Norwegian Wood — The Beatles",
+    key: "G",
     category: "Modes & Scales",
     audience: "musician",
     rhythm: {
@@ -169,6 +177,7 @@ const WALKTHROUGHS = {
   stairway_P_transform: {
     title: "Light and Shadow",
     song: "Stairway to Heaven — Led Zeppelin",
+    key: "Am",
     category: "Transforms",
     audience: "musician",
     rhythm: {
@@ -198,6 +207,7 @@ const WALKTHROUGHS = {
   deceptive_cadence: {
     title: "The Chord Your Ear Didn't Expect",
     song: "In My Life — The Beatles",
+    key: "C",
     category: "Progressions",
     audience: "musician",
     rhythm: {
@@ -226,6 +236,7 @@ const WALKTHROUGHS = {
   why_does_my_heart_moby: {
     title: "Six Chords That Ache",
     song: "Why Does My Heart Feel So Bad? — Moby",
+    key: "Am",
     category: "Modes & Scales",
     audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/games/chord-walks" },
@@ -258,6 +269,7 @@ const WALKTHROUGHS = {
   twelve_bar_blues: {
     title: "Three Chords, One Triangle",
     song: "Johnny B. Goode — Chuck Berry",
+    key: "C",
     category: "Progressions",
     audience: "musician",
     seeAlso: { label: "Strum Patterns", href: "/games/strum-patterns" },
@@ -288,6 +300,7 @@ const WALKTHROUGHS = {
   folsom_train_beat: {
     title: "The Train Beat",
     song: "Folsom Prison Blues — Johnny Cash",
+    key: "E",
     category: "Rhythm & Feel",
     audience: "musician",
     seeAlso: { label: "Swing Trainer", href: "/games/swing-trainer" },
@@ -359,6 +372,7 @@ const WALKTHROUGHS = {
   let_it_go_pop_formula: {
     title: "The Pop Formula",
     song: "Let It Go — Frozen",
+    key: "A♭",
     category: "Progressions",
     audience: "kids",
     rhythm: {
@@ -388,6 +402,7 @@ const WALKTHROUGHS = {
   friend_in_me_shuffle: {
     title: "The Shuffle Feel",
     song: "You've Got a Friend in Me — Toy Story",
+    key: "C",
     category: "Rhythm & Feel",
     audience: "kids",
     rhythm: {
@@ -417,6 +432,7 @@ const WALKTHROUGHS = {
   stand_by_me_doo_wop: {
     title: "The Doo-Wop Loop",
     song: "Stand By Me — Ben E. King",
+    key: "A",
     category: "Progressions",
     audience: "student",
     rhythm: {
@@ -446,6 +462,7 @@ const WALKTHROUGHS = {
   lean_on_me_gospel: {
     title: "The Gospel Piano",
     song: "Lean on Me — Bill Withers",
+    key: "C",
     category: "Progressions",
     audience: "student",
     rhythm: {
@@ -475,6 +492,7 @@ const WALKTHROUGHS = {
   bridge_over_troubled_water: {
     title: "The Diminished Passing Chord",
     song: "Bridge Over Troubled Water — Simon & Garfunkel",
+    key: "C",
     category: "Voice Leading",
     audience: "musician",
     seeAlso: { label: "Chord Spotter", href: "/games/chord-spotter" },
@@ -508,6 +526,7 @@ const WALKTHROUGHS = {
   oh_darling_augmented: {
     title: "The Augmented Passing Chord",
     song: "Oh! Darling — The Beatles",
+    key: "A",
     category: "Voice Leading",
     audience: "student",
     seeAlso: { label: "Chord Spotter", href: "/games/chord-spotter" },
@@ -532,17 +551,24 @@ const WALKTHROUGHS = {
       ]
     },
     steps: [
-      { chord: "E",   function: "tonic (I)",                  title: "Home",                 body: "E major — 'Oh! Darling.' A straight major chord. But listen to what happens to the B (the fifth) as the chord changes.", autoPlay: true },
-      { chord: "E",   chordType: "augmented", function: "I+", title: "One note rises",       body: "E augmented. Only one note changed — the B rose to B♯ (C). That's all an augmented chord is: a major chord with the fifth raised by one half step. It creates an upward pull, a sense that the harmony is reaching for something.", autoPlay: true, concept_specifics: ["augmented", "chromatic_voice_leading"] },
-      { chord: "A",   function: "subdominant (IV)",           title: "The resolution",       body: "A major. The B♯ resolved up to C♯ — the third of A major. That chromatic walk (B → B♯ → C♯) is the engine. The augmented chord was a bridge between I and IV, just like diminished chords bridge other pairs. One note, moving by half steps, connecting two stable chords.", autoPlay: true },
-      { chord: "F#m", function: "submediant (ii)",            title: "The minor turn",       body: "F♯ minor. McCartney keeps the progression moving into darker territory. After the brightness of the augmented push, the minor chord adds weight.", autoPlay: true },
-      { chord: "B",   chordType: "dom7", function: "dominant (V7)", title: "The turnaround", body: "B7 — the dominant seventh, pulling hard back to E. Between the augmented chord pushing up and the dominant seventh pulling home, every chord in this progression has a job. Nothing is decoration. The Beatles understood that chromatic movement — even just one note — transforms everything around it.", autoPlay: true, concept_specifics: ["dom7", "V_I_resolution"] }
+      { chord: "E",   chordType: "augmented", function: "dominant augmented (V+)", title: "Oh!",                 body: "E augmented on the word 'Oh!' — the song opens on pure tension. The fifth (B) has been raised to B♯. McCartney's voice lands on this reaching chord. It's a major chord that can't sit still.", autoPlay: true, concept_specifics: ["augmented", "chromatic_voice_leading"] },
+      { chord: "A",   function: "tonic (I)",                                       title: "Darling",             body: "A major on 'Darling.' The B♯ resolved up to C♯ — the third of A. That chromatic walk (B → B♯ → C♯) is the whole engine. One note, moving by half steps, connecting tension to resolution.", autoPlay: true },
+      { chord: "E",   function: "dominant (V)",                                    title: "Back to the dominant", body: "E major. The V chord, now without the augmented fifth. Stable. Compare this to step 1 — same root, completely different feel.", autoPlay: true },
+      { chord: "F#m", function: "submediant (vi)",                                 title: "The minor turn",      body: "F♯ minor. The relative minor of A. After the brightness of the opening, this is where the ache comes in.", autoPlay: true },
+      { chord: "D",   function: "subdominant (IV)",                                title: "Opening up",          body: "D major. The IV chord opens the progression outward — we've moved from I to vi to IV, each step further from home.", autoPlay: true },
+      { chord: "B",   chordType: "min7", function: "supertonic (ii7)",             title: "The gentle pull",     body: "B minor 7. The ii chord with a seventh, creating a soft pull toward the dominant.", autoPlay: true },
+      { chord: "E",   function: "dominant (V)",                                    title: "The turnaround",      body: "E major again. Pulling back.", autoPlay: true },
+      { chord: "B",   chordType: "min7", function: "supertonic (ii7)",             title: "Once more",           body: "B minor 7 again — the ii-V pattern repeating. McCartney is building tension through repetition.", autoPlay: true },
+      { chord: "E",   function: "dominant (V)",                                    title: "The final push",      body: "E major. Three times we've hit the dominant now. The pull toward home is undeniable.", autoPlay: true, concept_specifics: ["V_I_resolution"] },
+      { chord: "A",   function: "tonic (I)",                                       title: "Home",                body: "A major. Resolution at last. The whole progression started with that one raised note. B♯ reaching up to C♯. That's all it took to make 'Oh! Darling' ache.", autoPlay: true },
+      { chord: "E",   function: "dominant (V)",                                    title: "Ready to reach again", body: "E major. The dominant, hanging open. Not resolved — because the next time around, that B is going to rise again. The cycle never really ends.", autoPlay: true, concept_specifics: ["V_I_resolution"] }
     ]
   },
 
   life_on_mars_augmented: {
     title: "Augmented Chords as Chromatic Connectors",
     song: "Life on Mars? — David Bowie",
+    key: "F",
     category: "Voice Leading",
     audience: "musician",
     seeAlso: { label: "Chord Walks", href: "/harmony" },
@@ -577,6 +603,7 @@ const WALKTHROUGHS = {
   vienna_chromatic_mediant: {
     title: "Vienna's Chromatic Heartache",
     song: "Vienna — Billy Joel",
+    key: "C",
     category: "Voice Leading",
     audience: "musician",
     seeAlso: { label: "Voice Leading", href: "/games/chord-walks" },
