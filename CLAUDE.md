@@ -11,6 +11,7 @@
 - `docs/explorer-spec.md` — Explorer panel design and canonical orientation
 - `docs/game-engine-spec.md` — game audit, adaptive engine, ResultDetail schemas
 - `docs/design-system-reference.md` — CSS tokens, color palette, typography
+- `docs/spectrum-panel-spec.md` — Harmonic Resonance FFT visualizer + MIDI input
 
 ## Rules
 - Never run git add, commit, or push — Dustin manages git himself
