@@ -2,8 +2,8 @@
  * Music Theory Games — Audio Utilities
  * shared/audio.js
  *
- * Wraps Tone.js (loaded via CDN) for synthesis and the raw Web Audio API
- * for pitch detection via autocorrelation.
+ * Wraps Tone.js (loaded via CDN) for synthesis, note/frequency
+ * conversions, and interval playback.
  */
 
 /* ---------------------------------------------------------- */
@@ -47,10 +47,6 @@ const A4_MIDI = 69;
 
 let audioContext = null;
 let synth = null;
-let micStream = null;
-let analyserNode = null;
-let detectionRunning = false;
-let detectionFrameId = null;
 
 /* ---------------------------------------------------------- */
 /*  Initialization                                            */
@@ -247,124 +243,6 @@ export function playInterval(rootNote, intervalSemitones, mode = "melodic-up", n
       synth.triggerAttackRelease(secondFreq, noteDuration, now + noteDuration + 0.15);
       break;
   }
-}
-
-/* ---------------------------------------------------------- */
-/*  Pitch Detection (autocorrelation)                         */
-/* ---------------------------------------------------------- */
-
-export async function startPitchDetection(callback) {
-  if (detectionRunning) return;
-  detectionRunning = true;
-
-  try {
-    await fetch('/start_listen', { method: 'POST' });
-  } catch (err) {
-    console.error(err);
-    throw new Error("Could not start background python audio listener.");
-  }
-
-  async function detect() {
-    if (!detectionRunning) return;
-
-    try {
-      const res = await fetch('/poll_audio');
-      const data = await res.json();
-      
-      if (data.active && data.pitch && data.pitch.frequency > 0) {
-        const freq = data.pitch.frequency;
-        const noteInfo = frequencyToNote(freq);
-        callback(freq, noteInfo);
-      } else {
-        callback(0, null);
-      }
-    } catch (e) {
-      // ignore poll errors
-    }
-
-    if (detectionRunning) {
-      detectionFrameId = setTimeout(detect, 40); // Poll ~25fps
-    }
-  }
-
-  detect();
-}
-
-/**
- * Stop pitch detection and release the microphone.
- */
-export function stopPitchDetection() {
-  detectionRunning = false;
-
-  if (detectionFrameId) {
-    clearTimeout(detectionFrameId);
-    detectionFrameId = null;
-  }
-
-  fetch('/stop_listen', { method: 'POST' }).catch(e => console.error(e));
-}
-
-/**
- * Autocorrelation pitch detection.
- * Returns the detected fundamental frequency in Hz, or -1 if no clear pitch.
- *
- * @param {Float32Array} buffer     - Time-domain audio samples
- * @param {number}       sampleRate - Audio context sample rate
- * @returns {number} Frequency in Hz, or -1
- */
-function autocorrelate(buffer, sampleRate) {
-  const n = buffer.length;
-
-  // Check if signal is loud enough (RMS)
-  let rms = 0;
-  for (let i = 0; i < n; i++) {
-    rms += buffer[i] * buffer[i];
-  }
-  rms = Math.sqrt(rms / n);
-  if (rms < 0.01) return -1; // Too quiet
-
-  // Trim silence from edges
-  let start = 0;
-  let end = n - 1;
-  const threshold = 0.2;
-  while (start < n && Math.abs(buffer[start]) < threshold) start++;
-  while (end > 0 && Math.abs(buffer[end]) < threshold) end--;
-
-  if (end <= start) return -1;
-
-  const trimmed = buffer.slice(start, end + 1);
-  const len = trimmed.length;
-
-  // Autocorrelation
-  const corr = new Float32Array(len);
-  for (let lag = 0; lag < len; lag++) {
-    let sum = 0;
-    for (let i = 0; i < len - lag; i++) {
-      sum += trimmed[i] * trimmed[i + lag];
-    }
-    corr[lag] = sum;
-  }
-
-  // Find first dip then first peak after it
-  let d = 0;
-  while (d < len && corr[d] > 0) d++;
-  if (d >= len) return -1;
-
-  let maxVal = -1;
-  let maxPos = -1;
-  for (let i = d; i < len; i++) {
-    if (corr[i] > maxVal) {
-      maxVal = corr[i];
-      maxPos = i;
-    }
-  }
-
-  if (maxPos === -1) return -1;
-
-  // Educational UI: Simplified pitch reporting without parabolic sub-sample accuracy.
-  // The +/- 15 grace window handles the "close enough" logic for kids.
-  // This reduces processing overhead slightly and avoids micro-fluctuations in UI.
-  return sampleRate / maxPos;
 }
 
 /* ---------------------------------------------------------- */
