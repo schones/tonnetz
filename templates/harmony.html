@@ -751,6 +751,69 @@
         }
 
         // --- 4. Browser Mic → /process_audio_chunk Integration ---
+        /*
+         * ═══════════════════════════════════════════════════════════
+         * MIGRATION GUIDE: Server-side → Client-side Pitch Detection
+         * ═══════════════════════════════════════════════════════════
+         *
+         * Current flow:
+         *   ScriptProcessorNode captures audio
+         *   → POST /process_audio_chunk (FormData with raw Float32)
+         *   → Python librosa.pyin → JSON { pitch: { frequency, ... } }
+         *   → handlePitchData()
+         *   Latency: ~130–300 ms per frame
+         *
+         * Target flow:
+         *   import { createPitchDetector } from '/static/shared/pitch-detection.js';
+         *   → client-side YIN algorithm → handlePitchData()
+         *   Latency: ~20–50 ms per frame
+         *
+         * Steps to migrate:
+         *
+         * 1. Convert this <script> block to type="module" and add:
+         *      import { createPitchDetector } from '/static/shared/pitch-detection.js';
+         *
+         * 2. Replace doStartListening() body:
+         *      let detector = null;
+         *      async function doStartListening() {
+         *        if (state.listening) return;
+         *        await initAudio();
+         *        detector = createPitchDetector({ confidenceThreshold: 0.6 });
+         *        await detector.start(({ frequency, note, octave, cents, confidence, fullName }) => {
+         *          handlePitchData({
+         *            pitch: frequency > 0
+         *              ? { frequency, note: fullName, cents, confidence }
+         *              : null
+         *          });
+         *        });
+         *        state.listening = true;
+         *        $('btn-listen').textContent = 'Stop Listening';
+         *        $('btn-listen').classList.replace('game-btn--success', 'game-btn--danger');
+         *      }
+         *
+         * 3. Replace doStopListening() body:
+         *      function doStopListening() {
+         *        if (!state.listening) return;
+         *        state.listening = false;
+         *        if (detector) { detector.stop(); detector = null; }
+         *        $('btn-listen').textContent = 'Start Listening';
+         *        $('btn-listen').classList.replace('game-btn--danger', 'game-btn--success');
+         *        updateTuner(null);
+         *        $('tuner-note').textContent = '--';
+         *        $('tuner-detail').textContent = 'Waiting for input...';
+         *      }
+         *
+         * 4. Delete: onAudioProcess(), sendingChunk flag,
+         *    micStream/micAudioCtx/micSourceNode/micProcessorNode vars,
+         *    and the fetch() call to /process_audio_chunk.
+         *
+         * 5. handlePitchData() stays unchanged — same data shape.
+         *
+         * Note: Harmony Trainer uses a lower confidenceThreshold (0.6)
+         * than Melody Match (0.8) because it evaluates pitch continuously
+         * rather than locking notes after stable detection.
+         * ═══════════════════════════════════════════════════════════
+         */
         let micStream = null;
         let micAudioCtx = null;
         let micSourceNode = null;

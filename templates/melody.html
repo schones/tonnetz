@@ -339,10 +339,9 @@
   <script type="module">
     import {
       initAudio, playNote, noteToFrequency, frequencyToNote,
-      // TODO: Replace with pitch-detection.js (A++.4)
-      // startPitchDetection, stopPitchDetection,
       NOTE_NAMES
     } from '/static/shared/audio.js';
+    import { createPitchDetector } from '/static/shared/pitch-detection.js';
     import {
       saveScore, getLeaderboard, renderLeaderboard,
       getPreference, savePreference
@@ -400,6 +399,7 @@
     };
 
     /* ── Pitch detection state ── */
+    let detector = null;
     let pitchBuffer = [];
     let noteTimeout = null;
 
@@ -903,9 +903,21 @@
         return;
       }
 
-      // Start pitch detection (requests mic permission once)
+      // Start client-side pitch detection (requests mic permission once)
       try {
-        await startPitchDetection(onPitch);
+        detector = createPitchDetector();
+        await detector.start((data) => {
+          if (data.frequency > 0 && data.fullName) {
+            onPitch(data.frequency, {
+              fullName: data.fullName,
+              noteName: data.note,
+              octave: data.octave,
+              cents: data.cents,
+            });
+          } else {
+            onPitch(0, null);
+          }
+        });
       } catch (err) {
         $('feedback').textContent = 'Microphone access required: ' + err.message;
         $('feedback').className = 'game-feedback game-feedback--miss';
@@ -919,7 +931,7 @@
 
     /* ── Results ── */
     async function showResults() {
-      stopPitchDetection();
+      if (detector) { detector.stop(); detector = null; }
 
       const accuracy = state.attempts > 0 ? Math.round(state.hits / state.attempts * 100) : 0;
 
@@ -988,7 +1000,7 @@
     /* ── Quit ── */
     function handleQuit() {
       clearTimeout(noteTimeout);
-      stopPitchDetection();
+      if (detector) { detector.stop(); detector = null; }
       state.phase = 'setup';
       showScreen('setup');
       refreshLeaderboard('leaderboard-setup');
