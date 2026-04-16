@@ -6,6 +6,7 @@
 
 ## Reference docs
 - `docs/songlab-build-plan.md` — phased build plan (v4) with task prompts
+- `docs/audio-architecture.md` — audio & input architecture: detection modalities, client-side DSP, device selection, input provider
 - `docs/content-architecture.md` — content model and topic schema
 - `docs/keyboard-component-spec.md` — shared keyboard component spec
 - `docs/explorer-spec.md` — Explorer panel design and canonical orientation

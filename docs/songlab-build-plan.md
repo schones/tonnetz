@@ -1,8 +1,8 @@
 # SongLab Platform — Post-MVP Build Plan (v4)
 
-**Date:** 2026-04-12  
+**Date:** 2026-04-16  
 **Status:** Active roadmap  
-**Context:** Platform rebranded as SongLab. Phase A complete. Explorer fully restyled with DAW dark theme, rhythm tab, walkthrough sidebar, info pills, game deep-linking. 14 walkthroughs with audience tracks and rhythm data. SkratchLab renamed and promoted to top-level nav with Rhythm Builder. Landing page redesigned with audience tabs. 81 song examples. Base.html restyled to SongLab warm palette. Approaching user testing readiness. Game audit completed April 11 (see `docs/game-engine-spec.md`). This document scopes the full post-MVP roadmap.
+**Context:** Platform rebranded as SongLab. Phase A complete. MIDI input and Spectrum FFT landed April 14. Audio architecture audit (April 16) revealed broken client-side pitch detection, dead code in audio.js, and a server-side DSP bottleneck incompatible with rhythm games. New Phase A++ added: client-side audio DSP migration, five detection modalities (click/MIDI/onset/pitch/chord), audio interface support (Scarlett 2i2), unified input abstraction. See `docs/audio-architecture.md` for full spec. 18 walkthroughs with audience tracks, rhythm data, and extended chords. 84 song examples. Game audit completed April 11 (see `docs/game-engine-spec.md`). This document scopes the full post-MVP roadmap.
 
 ---
 
@@ -73,12 +73,59 @@ Pulled forward from Phase F3. The full `NoteInputProvider` abstraction (unifying
 
 ---
 
+### Phase A++: Audio & Input Architecture
+
+**Goal:** Migrate real-time audio DSP from server-side (Python/librosa, ~200 ms latency) to client-side (Web Audio API, ~30 ms latency). Establish five detection modalities as first-class platform capabilities. Add audio interface support. Deliver unified input abstraction for games.  
+**Depends on:** Phase A+ (MIDI input landed, shared `Tone.Analyser` exists in Spectrum panel).  
+**Spec:** `docs/audio-architecture.md`  
+**Sessions:** 3–5
+
+**Why now:** The April 14 MIDI + Spectrum work created the infrastructure (shared FFT analyser, HarmonyState event model) that makes client-side DSP practical. Without this phase, rhythm games (Polyrhythm Trainer, Rhythm Tapper) can't use mic input (server roundtrip too slow), Melody Match is broken in production (calls non-existent routes), and the Scarlett 2i2 sits unused. This is the foundation Phase B's new games build on.
+
+**A++.1. Dead code cleanup** (audio.js)  
+Delete broken `startPitchDetection()` / `stopPitchDetection()` (call non-existent `/start_listen` and `/poll_audio` routes) and unreferenced `autocorrelate()`. Keep all note/frequency conversion functions and playback. Fix Melody Match import.
+
+**A++.2. Audio input device selection** (`audio-input.js`)  
+Enumerate audio input devices, auto-detect known interfaces (Scarlett, Focusrite, etc.), let user pick. Feed selected device's `MediaStream` into the shared `Tone.Analyser` chain. Spectrum panel (Harmonic Resonance) reads live external audio — guitarist plugs into Scarlett, sees harmonics visualized in real-time. Pairs with `midi-input.js` in a shared "Hardware" settings panel: `🎹 Launchkey 49 ✅` / `🎸 Scarlett 2i2 ✅`. Stores device preference in localStorage.
+
+**A++.3. Onset detection** (`onset-detection.js`)  
+Spectral-flux algorithm reading from existing `Tone.Analyser`. Detects attack timing for taps, claps, plucks, vocal "ta." Exports `start(onOnset)` with `{ timestamp, strength }`. Adjustable threshold and cooldown. This is the **highest-leverage single module** — half a day of work, unlocks Polyrhythm Trainer + upgrades Rhythm Lab, Strum Patterns, Swing Trainer. Note: single mic = single onset stream; polyrhythm Level 2 needs two input channels (two keys, two MIDI pads, or mic + keyboard).
+
+**A++.4. Client-side pitch detection** (`pitch-detection.js`)  
+YIN algorithm for monophonic pitch (voice, single-note guitar). Strategy pattern: `engine: 'yin'` (free, ~3 KB) swappable to `engine: 'crepe'` (Pro tier, ~5 MB lazy-load, Phase E). Identical callback API regardless of engine: `{ frequency, note, octave, cents, confidence }`. Pedagogical grace window (±15 cents → "close enough"). Confidence threshold below which game shows "Try again" instead of scoring wrong. Replaces server-side `/process_audio_chunk` for real-time games. Fixes Melody Match.
+
+**A++.5. Client-side chord detection** (`chord-detection.js`)  
+Port of `chord_detector.py` logic to JS: chroma vector from FFT → template matching (10 chord types) → bass note detection → publish to HarmonyState. Reuses `ChordResolver.resolveChord()` for key-aware disambiguation. Quality depends on source: **interface (Scarlett DI) = excellent; built-in mic = experimental.** UI communicates expectations honestly per source quality.
+
+**A++.6. Unified input provider** (`input-provider.js`)  
+Thin abstraction: each game declares supported modalities → provider emits uniform event stream (`noteOn`, `noteOff`, `onset`, `chord`) regardless of source → input-picker UI renders available options as pills. Games are modality-agnostic from day one. Full `NoteInputProvider` from Phase F3 becomes an extension of this foundation rather than a ground-up build.
+
+**Game input support matrix (declared per game):**
+
+| Game | click | midi | onset | pitch | chord |
+|---|---|---|---|---|---|
+| Harmony Trainer | ✅ | ✅ | — | ✅ | — |
+| Strum Patterns | ✅ | — | ✅ | — | — |
+| Swing Trainer | ✅ | ✅ | ✅ | — | — |
+| Melody Match | ✅ | ✅ | — | ✅ | — |
+| Chord Spotter | ✅ | ✅ | — | — | ✅ |
+| Rhythm Lab | ✅ | ✅ | ✅ | — | — |
+| Scale Builder | ✅ | ✅ | — | ✅ | — |
+| Relative Key Trainer | ✅ | — | — | — | — |
+| Polyrhythm Trainer (B8) | ✅ | ✅ | ✅ | — | — |
+| Voice Leading Detective (B7) | ✅ | ✅ | — | — | ✅ |
+
+**Python backend retention:** Server-side DSP (`pitch_matcher.py`, `chord_detector.py`, `/process_audio_chunk`) stays in codebase as legacy fallback and future "upload recording for analysis" path (Phase E). No changes needed — just stop routing real-time game traffic through it.
+
+---
+
 ### Phase B: Game Library + Game Engine Extraction
 
-**Goal:** Extract the shared game engine, unify adaptive difficulty, expand the game library with new game types. Two categories of games identified (see `game-engine-spec.md`):
+**Goal:** Extract the shared game engine, unify adaptive difficulty, expand the game library with new game types. All new games built on `input-provider.js` (Phase A++) for modality-agnostic input from day one. Two categories of games identified (see `game-engine-spec.md`):
 - **Performance games** (training precision): No Learn mode needed, difficulty axes control tolerance/pool. Harmony Trainer, Strum Patterns, Swing Trainer, Melody Match, Chord Spotter, Rhythm Lab.
 - **Learning games** (teaching concepts): Stage-based with Intro/Practice/Test per stage. Scale Builder, Relative Key Trainer.
 
+**Depends on:** Phase A++ (input-provider.js, onset/pitch/chord detection modules).  
 **Sessions:** 6–10  
 
 **First task: Extract `game-flow.js` shared module**
@@ -122,12 +169,13 @@ Given a start chord and target chord, change the fewest notes to get there. Thre
 - Level 3 (Real progressions): Voice lead through I-vi-IV-V. Practical application for songwriting/arranging.
 The "so what?" moment for neo-Riemannian theory — bridges learning games (Relative Key Trainer teaches P/L/R) with musical application. Direct consumer of multi-chord glow worm visualization. Three-panel Explorer is the interface. Pro extension: explore alternative voicings for musicality (inversions, drop-2, rootless).
 
-**B8. Polyrhythm Trainer**  
-Two buttons/keys, each mapped to a different rhythm layer. Tap both simultaneously.
-- Level 1 (Feel it): Tap ONE layer, other plays automatically.
-- Level 2 (Split it): Tap BOTH layers. Accuracy scored per layer independently.
+**B8. Polyrhythm Trainer** ⭐ (first game built natively on `input-provider.js` + `onset-detection.js`)  
+Two buttons/keys, each mapped to a different rhythm layer. Tap both simultaneously. **Primary mic modality: onset detection** (clap, tap, voice "ta") — not pitch. Single mic = single onset stream, so Level 2 uses two keyboard keys or two MIDI pads; mic handles Level 1 only.
+- Level 0 (Listen): Just hear the polyrhythm with visual showing lock points. No interaction.
+- Level 1 (Feel it): Tap ONE layer (mic onset or key), other plays automatically.
+- Level 2 (Split it): Tap BOTH layers (two keys, two MIDI pads). Accuracy scored per layer independently.
 - Level 3 (Real songs): Play polyrhythms from real songs at tempo (e.g., Linus and Lucy dotted quarter vs straight eighth).
-Progression: 2:3 → 3:4 → dotted patterns → exotic ratios. Could leverage SkratchLab Rhythm Builder grid.
+Progression: 2:3 → 3:4 → dotted patterns → exotic ratios. Visual: two horizontal scrolling ribbons with shared "now" line. Could leverage SkratchLab Rhythm Builder grid. See `docs/audio-architecture.md` for onset detection constraints.
 
 ---
 
@@ -271,8 +319,8 @@ Neo-Riemannian pathfinding: navigate from start chord to target chord using P/L/
 **F2. Fog of War / spatial progress map**  
 The Tonnetz grid as a progress visualization: explored regions are revealed, unexplored areas are dimmed. Ties into curriculum completion and game performance.
 
-**F3. NoteInputProvider abstraction**  
-Full unified input abstraction: keyboard clicks, voice (pitch detection), and MIDI under one interface. Basic MIDI input pulled forward to Phase A+.3; this phase completes the abstraction so all games accept any input source transparently. Enables assessment with real instruments across all games.
+**F3. NoteInputProvider full abstraction**  
+Extends the thin `input-provider.js` from Phase A++ into the complete unified input system: input recording/playback for replays, input quantization for rhythm games, multi-source mixing (e.g., MIDI + onset simultaneously), per-game input analytics, and full assessment-with-real-instruments capability. The A++ thin version handles event routing and UI; this phase adds the infrastructure for deep game integration.
 
 **F4. Voicing Explorer — Advanced Features**  
 Post-MIDI additions: Sequence Mode (record/playback melodies with interval projections applied), voice leading visualization (show which notes move between chord shapes, with optional neo-Riemannian P/L/R labels), shape library (save/recall voicings, requires auth), advanced projection UI (multiple simultaneous projections, inversion awareness). See `voicing-explorer-spec.md`.
@@ -406,10 +454,19 @@ Each pack is a JSON file with song entries, a learning path order, and milestone
 Phase A (Missing Concepts + Voicing Explorer MVP) ✅ Complete
   │
   ↓
-Phase A+ (Game Visual Unification + MIDI Input) ← current focus
+Phase A+ (Game Visual Unification + MIDI Input)
   │  ├── A+.1: game-shell.css extraction
   │  ├── A+.2: game template unification
-  │  └── A+.3: MIDI input module (pulled from Phase F)
+  │  └── A+.3: MIDI input module ✅ (landed April 14)
+  │
+  ↓
+Phase A++ (Audio & Input Architecture) ← current focus
+  │  ├── A++.1: dead code cleanup (audio.js)
+  │  ├── A++.2: audio-input.js (Scarlett + device picker)
+  │  ├── A++.3: onset-detection.js (highest leverage)
+  │  ├── A++.4: pitch-detection.js (YIN; CREPE upgrade in Phase E)
+  │  ├── A++.5: chord-detection.js (port of chord_detector.py)
+  │  └── A++.6: input-provider.js (thin unified abstraction)
   │
   │  ← can run in parallel ──────────────────────────────┐
   ↓                                                       │
@@ -417,9 +474,10 @@ Phase B (Game Library + Game Engine)                       │
   │  First: extract game-flow.js (Pattern B adaptive,     │
   │         ResultDetail logging, independent axes)        │
   │  B7 Voice Leading Detective needs glow worm paths     │
+  │  B8 Polyrhythm Trainer: first game on input-provider  │
   │                                                       │
   │  SkratchLab DAW (parallel) ──────────────────────────┘
-  │  Song Examples DB v1 ✅ (81 entries)
+  │  Song Examples DB v1 ✅ (84 entries)
   │
   ↓
 Phase B.5 (Auth & Persistence)
@@ -443,17 +501,18 @@ Phase D (Differentiated UX)                        ││
   │                                                ││
   ↓                                                ││
 Phase E1–E4 (Per-game AI Feedback)  ←──────────────┘│
-  │  └── Song Examples DB v3 (AI-enhanced)          │
+  │  ├── Song Examples DB v3 (AI-enhanced)          │
+  │  └── CREPE pitch engine upgrade (Pro tier)      │
   │                                                 │
   ↓                                                 │
 Phase F (Advanced)  ←───────────────────────────────┘
   │  ├── F1: Puzzle Paths
-  │  ├── F3: NoteInputProvider full abstraction
+  │  ├── F3: NoteInputProvider full abstraction (extends A++.6)
   │  ├── F4: Voicing Explorer advanced
   │  └── F5: Social features
 ```
 
-**Fast path to Competency Graph:** A+ → B → B.5 → E5 (~10–16 sessions, ~1 week at current pace).  
+**Fast path to Competency Graph:** A+ → A++ → B → B.5 → E5 (~13–21 sessions).  
 C and D can run in parallel or after. SkratchLab DAW is parallel to B.
 
 ---
@@ -494,30 +553,33 @@ These are ideas that didn't make the Phase B cut but are worth revisiting:
 | Phase | Sessions | Cumulative | Notes |
 |-------|----------|------------|-------|
 | A: Missing Concepts | — | — | ✅ Complete (A1–A5 + fretboard) |
-| A+: Visual Unification + MIDI | 3–5 | 3–5 | CSS extraction, template unification, MIDI module |
-| B: Games + Engine | 6–10 | 9–15 | game-flow.js first, then new games. B1 Scale Builder ✅ |
-| SkratchLab DAW | 3–5 | 12–20 | Parallel to Phase B |
-| Song DB v1 | — | — | ✅ Complete (81 entries in song-examples.js) |
-| B.5: Auth & Persistence | 2–3 | 14–23 | Focused infrastructure sprint |
-| E5: Competency Graph (fast path) | 1–2 | 15–25 | Skips C/D — just needs B + B.5 |
-| C: Curriculum | 4–6 | 19–31 | Can run after or parallel to E5 |
-| D: Differentiated UX | 3–5 | 22–36 | Mostly configuration + polish |
-| E1–E4: Per-game AI Feedback | 4–6 | 26–42 | Per-game analysis sessions |
-| F: Advanced | 8+ | 34–50+ | Long tail |
+| A+: Visual Unification + MIDI | 3–5 | 3–5 | CSS extraction, template unification, MIDI module. A+.3 ✅ |
+| A++: Audio & Input Architecture | 3–5 | 6–10 | Client-side DSP, device picker, onset/pitch/chord detection, input provider |
+| B: Games + Engine | 6–10 | 12–20 | game-flow.js first, then new games. B1 Scale Builder ✅ |
+| SkratchLab DAW | 3–5 | 15–25 | Parallel to Phase B |
+| Song DB v1 | — | — | ✅ Complete (84 entries in song-examples.js) |
+| B.5: Auth & Persistence | 2–3 | 17–28 | Focused infrastructure sprint |
+| E5: Competency Graph (fast path) | 1–2 | 18–30 | Skips C/D — just needs B + B.5 |
+| C: Curriculum | 4–6 | 22–36 | Can run after or parallel to E5 |
+| D: Differentiated UX | 3–5 | 25–41 | Mostly configuration + polish |
+| E1–E4: Per-game AI Feedback | 4–6 | 29–47 | Per-game analysis sessions. CREPE upgrade here. |
+| F: Advanced | 8+ | 37–55+ | Long tail |
 
-**At current pace (~10–16 sessions/week): A+ through E5 in ~2 weeks. Full platform through Phase D in ~3–4 weeks.**
+**At current pace (~10–16 sessions/week): A+ through E5 in ~2–3 weeks. Full platform through Phase D in ~4–5 weeks.**
 
 ---
 
-## Immediate Next Steps (as of 2026-04-12)
+## Immediate Next Steps (as of 2026-04-16)
 
-1. **Game visual unification** — Extract `game-shell.css`, all games extend base.html, use design tokens. Swing Trainer fix (extend base.html + fix 500 error).
-2. **MIDI input module** — `midi-input.js` shared module, Web MIDI API → HarmonyState. Launchkey 49 target.
-3. **SkratchLab lightweight DAW** — Song preset loader, chord loops + rhythm, melody play-over, instrument selection.
-4. **Multi-chord glow worm paths** — Voice leading visualization on Tonnetz. Enables Voice Leading Detective game.
-5. **game-flow.js extraction** — Pattern B adaptive, independent axes, ResultDetail schema. Wire all existing games.
-6. **User testing prep** — 15–20 participants. Visual unification must be done first.
-7. **Walkthrough backlog** — Vienna (Billy Joel), Take Five (5/4), Superstition (syncopation).
+1. **Audio dead code cleanup** — Delete broken `startPitchDetection`/`stopPitchDetection`/`autocorrelate` from audio.js. Verify Melody Match is broken in production. (A++.1)
+2. **Audio input device selection** — `audio-input.js`, Scarlett auto-detect, device picker, Spectrum panel reads live external audio. (A++.2)
+3. **Onset detection** — `onset-detection.js`, spectral flux, highest-leverage single module. (A++.3)
+4. **Client-side pitch detection** — `pitch-detection.js` (YIN), fix Melody Match, fix Harmony Trainer. CREPE strategy pattern for Phase E. (A++.4)
+5. **Client-side chord detection** — `chord-detection.js`, port of chord_detector.py, interface-recommended. (A++.5)
+6. **Input provider** — `input-provider.js`, thin unified abstraction + picker UI. (A++.6)
+7. **game-flow.js extraction** — Pattern B adaptive, independent axes, ResultDetail schema. Wire all existing games. (B, first task)
+8. **Polyrhythm Trainer** — First game built natively on input-provider + onset-detection. (B8)
+9. **User testing prep** — 15–20 participants. Visual unification + working mic input must be done first.
 
 ---
 
@@ -525,6 +587,7 @@ These are ideas that didn't make the Phase B cut but are worth revisiting:
 
 | Doc | Purpose |
 |---|---|
+| `docs/audio-architecture.md` | **Audio & Input spec** — detection modalities, client-side DSP, device selection, input provider, CREPE upgrade path |
 | `docs/game-engine-spec.md` | **Game audit** — per-game analysis, adaptive axes, ResultDetail schemas, new games |
 | `docs/design-system-reference.md` | CSS tokens, color palette, typography — design system reference |
 | `docs/visual-engine-spec.md` | Generative art engine spec (Tonnetz-driven, post-launch) |
