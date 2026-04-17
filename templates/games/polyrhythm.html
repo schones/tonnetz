@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block theme %}dark{% endblock %}
+{% block title %}Polyrhythm Trainer — SongLab{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='shared/game-shell.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='games/polyrhythm.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+{% endblock %}
+
+{% block content %}
+<main class="game-page polyrhythm-page" data-theme="dark">
+  <div class="game-top-bar">
+    <h1 class="game-title">Polyrhythm Trainer</h1>
+    <a href="/" class="game-back-link">← Back</a>
+  </div>
+
+  <!-- ─── Setup / Controls ────────────────────────────────── -->
+  <section class="pr-setup">
+    <div class="pr-setup__row">
+      <label class="pr-field">
+        <span class="pr-field__label">Polyrhythm</span>
+        <select id="pr-polyrhythm" class="pr-select">
+          <option value="3:2">3 : 2</option>
+          <option value="4:3">4 : 3</option>
+          <option value="5:4">5 : 4</option>
+          <option value="3:4">3 : 4</option>
+          <option value="2:3">2 : 3 (reverse)</option>
+        </select>
+      </label>
+
+      <div class="pr-field">
+        <span class="pr-field__label">Level</span>
+        <div class="pr-levels" id="pr-levels">
+          <button class="pr-level-pill pr-level-pill--on" data-level="0">Listen</button>
+          <button class="pr-level-pill" data-level="1">Feel it</button>
+          <button class="pr-level-pill" data-level="2">Split it</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pr-setup__row">
+      <div class="pr-field pr-field--wide">
+        <span class="pr-field__label">Input</span>
+        <div id="pr-input-picker" class="pr-input-picker"></div>
+      </div>
+    </div>
+
+    <div class="pr-setup__row">
+      <label class="pr-field pr-field--wide">
+        <span class="pr-field__label">Tempo <span id="pr-bpm-value" class="pr-bpm-value">80</span> BPM</span>
+        <input id="pr-bpm" type="range" min="40" max="200" value="80" class="pr-slider" />
+      </label>
+
+      <div class="pr-field">
+        <span class="pr-field__label">Layers</span>
+        <div class="pr-mutes">
+          <button id="pr-mute-a" class="pr-mute pr-mute--a" data-layer="a">
+            <span class="pr-mute__dot"></span>Layer A
+          </button>
+          <button id="pr-mute-b" class="pr-mute pr-mute--b" data-layer="b">
+            <span class="pr-mute__dot"></span>Layer B
+          </button>
+        </div>
+      </div>
+
+      <button id="pr-start" class="pr-start-btn">Start</button>
+    </div>
+
+    <p class="pr-hint">
+      <span class="pr-hint__kbd">F</span> for Layer A,
+      <span class="pr-hint__kbd">J</span> for Layer B — or tap left/right of canvas.
+    </p>
+    <p class="pr-hint pr-hint--dim">Linus &amp; Lucy ≈ 3:2 @ 150 bpm</p>
+  </section>
+
+  <!-- ─── Stage ─────────────────────────────────────────── -->
+  <section class="pr-stage">
+    <div class="pr-canvas-wrap">
+      <canvas id="pr-canvas" width="640" height="420"></canvas>
+
+      <div class="pr-hud">
+        <div class="pr-hud__col pr-hud__col--a">
+          <span class="pr-hud__label">Layer A</span>
+          <span class="pr-hud__value" id="pr-acc-a">—</span>
+        </div>
+        <div class="pr-hud__col pr-hud__col--streak">
+          <span class="pr-hud__label">Streak</span>
+          <span class="pr-hud__value" id="pr-streak">0</span>
+        </div>
+        <div class="pr-hud__col pr-hud__col--b">
+          <span class="pr-hud__label">Layer B</span>
+          <span class="pr-hud__value" id="pr-acc-b">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="pr-message" class="pr-message">Press Start to listen to the polyrhythm.</div>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='games/polyrhythm.js') }}"></script>
+{% endblock %}
