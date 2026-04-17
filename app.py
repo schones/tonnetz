@@ -208,6 +208,10 @@ def scale_builder():
 def swing_trainer():
     return render_template("games/swing-trainer.html")
 
+@app.route("/games/polyrhythm")
+def polyrhythm():
+    return render_template("games/polyrhythm.html")
+
 @app.route("/skratchlab")
 def skratch():
     return render_template("skratch-studio.html")

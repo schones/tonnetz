@@ -94,6 +94,62 @@
           <span class="pr-hud__value" id="pr-acc-b">—</span>
         </div>
       </div>
+
+      <!-- Adaptive promote/demote toast -->
+      <div id="pr-adapt-toast" class="pr-adapt-toast" role="status" aria-live="polite" hidden></div>
+
+      <!-- Results overlay (shown on session end) -->
+      <div id="pr-results" class="pr-results" role="dialog" aria-modal="true" aria-labelledby="pr-results-title" hidden>
+        <div class="pr-results__card">
+          <h2 id="pr-results-title" class="pr-results__title">Session complete</h2>
+
+          <div class="pr-results__grid">
+            <div class="pr-result-stat pr-result-stat--a">
+              <span class="pr-result-stat__label">Layer A accuracy</span>
+              <span class="pr-result-stat__value" id="pr-result-acc-a">—</span>
+            </div>
+            <div class="pr-result-stat pr-result-stat--b">
+              <span class="pr-result-stat__label">Layer B accuracy</span>
+              <span class="pr-result-stat__value" id="pr-result-acc-b">—</span>
+            </div>
+            <div class="pr-result-stat">
+              <span class="pr-result-stat__label">Best streak</span>
+              <span class="pr-result-stat__value" id="pr-result-streak">—</span>
+            </div>
+            <div class="pr-result-stat">
+              <span class="pr-result-stat__label">Score</span>
+              <span class="pr-result-stat__value" id="pr-result-score">—</span>
+            </div>
+            <div class="pr-result-stat">
+              <span class="pr-result-stat__label">Polyrhythm</span>
+              <span class="pr-result-stat__value" id="pr-result-poly">—</span>
+            </div>
+            <div class="pr-result-stat">
+              <span class="pr-result-stat__label">Tempo</span>
+              <span class="pr-result-stat__value" id="pr-result-bpm">—</span>
+            </div>
+            <div class="pr-result-stat">
+              <span class="pr-result-stat__label">Good window</span>
+              <span class="pr-result-stat__value" id="pr-result-tolerance">—</span>
+            </div>
+          </div>
+
+          <div id="pr-result-song" class="pr-result-song" hidden>
+            <span class="pr-result-song__eyebrow">Hear it in a song</span>
+            <div class="pr-result-song__head">
+              <span class="pr-result-song__title" id="pr-result-song-title"></span>
+              <span class="pr-result-song__artist" id="pr-result-song-artist"></span>
+            </div>
+            <p class="pr-result-song__insight" id="pr-result-song-insight"></p>
+            <a id="pr-result-song-link" class="pr-result-song__link" href="#" hidden>Open in Explorer →</a>
+          </div>
+
+          <div class="pr-results__actions">
+            <button id="pr-replay" class="pr-btn pr-btn--primary" type="button">Play Again</button>
+            <button id="pr-quit" class="pr-btn pr-btn--secondary" type="button">Quit</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="pr-message" class="pr-message">Press Start to listen to the polyrhythm.</div>

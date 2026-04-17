@@ -13,6 +13,7 @@
    ============================================================ */
 
 import { createInputProvider } from '/static/shared/input-provider.js';
+import SONG_EXAMPLES from '/static/shared/song-examples.js';
 
 /* ── Constants ──────────────────────────────────────────── */
 const HIT_Y          = 370;          // y of hit zone in 420px canvas
@@ -26,8 +27,32 @@ const BASE_LANE_W    = 78;
 const LANE_EXPAND    = 22;
 const NOTE_COLORS = { A: LANE_COLOR_A, B: LANE_COLOR_B };
 const NOTE_COLORS_RGB = { A: LANE_COLOR_A_RGB, B: LANE_COLOR_B_RGB };
-const PERFECT_MS     = 40;
-const GOOD_MS        = 120;
+const PERFECT_MS     = 40;            // Perfect window — fixed across tolerance levels
+
+/* ── Adaptive engine ─────────────────────────────────────── */
+const POLY_PROGRESSION = ['2:3', '3:2', '3:4', '4:3', '5:4'];
+const TOLERANCE_LEVELS = [
+  { name: 'wide',   goodMs: 120 },
+  { name: 'medium', goodMs: 90  },
+  { name: 'tight',  goodMs: 60  },
+];
+const BPM_FLOOR   = 50;
+const BPM_CEILING = 200;
+const COMPLEXITY_PROMOTE_STREAK = 5;   // consec good-or-better on BOTH layers
+const COMPLEXITY_DEMOTE_STREAK  = 5;   // consec miss on EITHER layer
+const TEMPO_PROMOTE_BARS        = 3;   // bars with both layers >80%
+const TEMPO_DEMOTE_BARS         = 2;   // bars with either layer <50%
+const TOLERANCE_PROMOTE_BARS    = 8;
+const TOLERANCE_DEMOTE_BARS     = 4;
+const SESSION_DURATION_S        = 60;
+const SESSION_MAX_BARS          = 16;
+const RESULT_STORAGE_KEY        = 'songlab_results_polyrhythm';
+
+/* ── Song connections ────────────────────────────────────── */
+// Map polyrhythm ratio → song-examples.js entry + optional walkthroughs.js id
+const POLY_SONG_MAP = {
+  '3:2': { songId: 'triplet_swing_guaraldi', walkthroughId: null },
+};
 
 /* ── DOM ────────────────────────────────────────────────── */
 const canvas       = document.getElementById('pr-canvas');
@@ -43,6 +68,24 @@ const accAEl       = document.getElementById('pr-acc-a');
 const accBEl       = document.getElementById('pr-acc-b');
 const streakEl     = document.getElementById('pr-streak');
 const messageEl    = document.getElementById('pr-message');
+
+// Adaptive toast + results overlay (created/wired lazily in init)
+const adaptToastEl = document.getElementById('pr-adapt-toast');
+const resultsEl    = document.getElementById('pr-results');
+const resultAccAEl = document.getElementById('pr-result-acc-a');
+const resultAccBEl = document.getElementById('pr-result-acc-b');
+const resultStreakEl = document.getElementById('pr-result-streak');
+const resultScoreEl  = document.getElementById('pr-result-score');
+const resultPolyEl   = document.getElementById('pr-result-poly');
+const resultBpmEl    = document.getElementById('pr-result-bpm');
+const resultToleranceEl = document.getElementById('pr-result-tolerance');
+const resultSongCard   = document.getElementById('pr-result-song');
+const resultSongTitle  = document.getElementById('pr-result-song-title');
+const resultSongArtist = document.getElementById('pr-result-song-artist');
+const resultSongInsight = document.getElementById('pr-result-song-insight');
+const resultSongLink   = document.getElementById('pr-result-song-link');
+const replayBtn  = document.getElementById('pr-replay');
+const quitBtn    = document.getElementById('pr-quit');
 
 /* ── State ──────────────────────────────────────────────── */
 const state = {
@@ -74,17 +117,47 @@ const state = {
   tapFlashA: 0,
   tapFlashB: 0,
 
-  // scoring
+  // scoring (overall session — used for HUD + results)
   totalTapsA: 0,
-  goodTapsA: 0,
+  goodTapsA: 0,        // good-or-better hits (perfect + good)
   totalTapsB: 0,
   goodTapsB: 0,
   streak: 0,
+  bestStreak: 0,
+
+  // per-rating counts (for score = perfect*300 + good*100)
+  perfectA: 0, goodA: 0, missA: 0,
+  perfectB: 0, goodB: 0, missB: 0,
+
+  // ResultDetail logs — one entry per tap, per layer
+  logA: [], logB: [],
 
   // hit bookkeeping — per bar, per beat: record whether we've already counted a tap
-  hitResultsA: new Map(),   // key `${bar}:${i}` -> 'perfect' | 'good' | 'miss'
+  hitResultsA: new Map(),   // key `${bar}:${i}` -> 'perfect' | 'good' | 'miss' | 'untapped'
   hitResultsB: new Map(),
   missedMarkedBar: -1,      // track which past bars have been swept for misses
+
+  // Session meta
+  totalBarsPlayed: 0,
+  ended: false,             // true once endSession() has fired (prevents re-entry)
+
+  // Adaptive engine state
+  adaptive: {
+    polyIndex: 1,            // index into POLY_PROGRESSION — synced on start()
+    toleranceIdx: 0,         // index into TOLERANCE_LEVELS — starts 'wide'
+
+    // Axis 1 — complexity (consecutive tap ratings)
+    consecGoodA: 0, consecGoodB: 0,
+    consecMissA: 0, consecMissB: 0,
+
+    // Axis 2 — tempo (consecutive bar accuracy)
+    barsBothAbove80: 0,
+    barsEitherBelow50: 0,
+
+    // Axis 3 — tolerance (consecutive bar accuracy, both layers)
+    barsSustained80: 0,
+    barsSustained50Below: 0,
+  },
 
   // input-provider integration
   provider: null,           // createInputProvider instance
@@ -221,24 +294,25 @@ function handleTap(layer) {
 
   // Find the nearest beat across [currentBar-1, currentBar, currentBar+1]
   const bar = Math.floor(tapTime / state.barDuration);
-  let best = { delta: Infinity, absDelta: Infinity, bar: 0, i: 0 };
+  let best = { delta: Infinity, absDelta: Infinity, bar: 0, i: 0, expected: 0 };
   for (let b = bar - 1; b <= bar + 1; b++) {
     for (let i = 0; i < nBeats; i++) {
       const beatAbs = b * state.barDuration + beats[i];
       const delta = tapTime - beatAbs;       // positive = late
       const abs = Math.abs(delta);
       if (abs < best.absDelta) {
-        best = { delta, absDelta: abs, bar: b, i };
+        best = { delta, absDelta: abs, bar: b, i, expected: beatAbs };
       }
     }
   }
 
   const deltaMs = best.delta * 1000;
   const absMs = Math.abs(deltaMs);
+  const goodWindow = currentGoodWindow();
   let rating;
-  if (absMs <= PERFECT_MS) rating = 'perfect';
-  else if (absMs <= GOOD_MS) rating = 'good';
-  else rating = 'miss';
+  if (absMs <= PERFECT_MS)      rating = 'perfect';
+  else if (absMs <= goodWindow) rating = 'good';
+  else                          rating = 'miss';
 
   const key = `${best.bar}:${best.i}`;
   // Don't double-count: if this beat already has a perfect/good, keep the best
@@ -247,19 +321,44 @@ function handleTap(layer) {
   if (prior === 'good' && rating !== 'perfect') return;
   results.set(key, rating);
 
-  // scoring
+  // Log the tap for ResultDetail (per-tap schema)
+  const logEntry = {
+    expected: Number(best.expected.toFixed(4)),
+    actual:   Number(tapTime.toFixed(4)),
+    deltaMs:  Math.round(deltaMs),
+    rating,
+  };
+  if (layer === 'A') state.logA.push(logEntry); else state.logB.push(logEntry);
+
+  // scoring + per-rating counts
   if (layer === 'A') {
     state.totalTapsA += 1;
-    if (rating !== 'miss') state.goodTapsA += 1;
+    if (rating === 'perfect') { state.perfectA += 1; state.goodTapsA += 1; }
+    else if (rating === 'good') { state.goodA += 1; state.goodTapsA += 1; }
+    else { state.missA += 1; }
   } else {
     state.totalTapsB += 1;
-    if (rating !== 'miss') state.goodTapsB += 1;
+    if (rating === 'perfect') { state.perfectB += 1; state.goodTapsB += 1; }
+    else if (rating === 'good') { state.goodB += 1; state.goodTapsB += 1; }
+    else { state.missB += 1; }
   }
   if (rating === 'miss') {
     state.streak = 0;
   } else {
     state.streak += 1;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
   }
+
+  // Axis 1 — Rhythmic complexity: track consecutive good-or-better / miss per layer
+  const a = state.adaptive;
+  if (layer === 'A') {
+    if (rating === 'miss') { a.consecGoodA = 0; a.consecMissA += 1; }
+    else                   { a.consecMissA = 0; a.consecGoodA += 1; }
+  } else {
+    if (rating === 'miss') { a.consecGoodB = 0; a.consecMissB += 1; }
+    else                   { a.consecMissB = 0; a.consecGoodB += 1; }
+  }
+  evalComplexityAxis();
 
   // Visual feedback
   const laneX = layer === 'A' ? canvas.clientWidth * LANE_X_A_FRAC : canvas.clientWidth * LANE_X_B_FRAC;
@@ -297,32 +396,325 @@ function spawnParticles(x, y, rgb, count) {
   }
 }
 
-/* Sweep past bars for missed beats (no tap logged) — updates streak once
-   per beat that's drifted safely past the Good window. */
+/* Sweep past bars for missed beats (no tap logged), then evaluate per-bar
+   accuracy for the tempo + tolerance adaptive axes. */
 function sweepMisses() {
   if (state.level === 0) return;
   const { bar } = currentBarAndPhase();
   // Sweep any bar that's now fully past (bar-1) — beats in it can't still be tapped
-  // because currentTime - beatAbsTime > GOOD_MS.
+  // because currentTime - beatAbsTime > the Good window.
   const sweepTargetBar = bar - 1;
   if (sweepTargetBar <= state.missedMarkedBar) return;
   for (let b = state.missedMarkedBar + 1; b <= sweepTargetBar; b++) {
-    for (const [layer, beats, results] of [
-      ['A', state.beatTimesA, state.hitResultsA],
-      ['B', state.beatTimesB, state.hitResultsB],
+    for (const [beats, results] of [
+      [state.beatTimesA, state.hitResultsA],
+      [state.beatTimesB, state.hitResultsB],
     ]) {
       for (let i = 0; i < beats.length; i++) {
         const key = `${b}:${i}`;
         if (!results.has(key)) {
           results.set(key, 'untapped');
-          // Don't reset streak for Level 1 on the non-chosen layer — but we
-          // don't know which layer the player chose. For now the player can
-          // freely switch; only miss-by-tap breaks the streak.
+          // Untapped beats don't count as taps in the HUD accuracy; they
+          // only feed per-bar accuracy via barAccuracy().
         }
       }
     }
+    // Per-bar evaluation for tempo + tolerance axes
+    if (state.level > 0) {
+      state.totalBarsPlayed += 1;
+      const acc = barAccuracy(b);
+      evalTempoAxis(acc);
+      evalToleranceAxis(acc);
+    }
   }
   state.missedMarkedBar = sweepTargetBar;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ADAPTIVE ENGINE — three independent axes (Pattern B)
+   ══════════════════════════════════════════════════════════ */
+function currentGoodWindow() {
+  return TOLERANCE_LEVELS[state.adaptive.toleranceIdx].goodMs;
+}
+
+function currentToleranceName() {
+  return TOLERANCE_LEVELS[state.adaptive.toleranceIdx].name;
+}
+
+/* Compute per-layer accuracy (0..1) for a completed bar. 'perfect' and
+   'good' count as hits; 'miss' and 'untapped' do not. */
+function barAccuracy(bar) {
+  let hitA = 0, totA = state.beatTimesA.length;
+  let hitB = 0, totB = state.beatTimesB.length;
+  for (let i = 0; i < totA; i++) {
+    const r = state.hitResultsA.get(`${bar}:${i}`);
+    if (r === 'perfect' || r === 'good') hitA += 1;
+  }
+  for (let i = 0; i < totB; i++) {
+    const r = state.hitResultsB.get(`${bar}:${i}`);
+    if (r === 'perfect' || r === 'good') hitB += 1;
+  }
+  return {
+    a: totA ? hitA / totA : 0,
+    b: totB ? hitB / totB : 0,
+  };
+}
+
+/* Axis 1 — Rhythmic complexity.
+   Promote after 5 consec good-or-better on BOTH layers.
+   Demote after 5 consec miss on EITHER layer. */
+function evalComplexityAxis() {
+  const a = state.adaptive;
+  if (a.consecGoodA >= COMPLEXITY_PROMOTE_STREAK && a.consecGoodB >= COMPLEXITY_PROMOTE_STREAK) {
+    a.consecGoodA = 0; a.consecGoodB = 0;
+    if (a.polyIndex < POLY_PROGRESSION.length - 1) {
+      a.polyIndex += 1;
+      const next = POLY_PROGRESSION[a.polyIndex];
+      applyAudioConfig({ polyrhythm: next });
+      showAdaptToast(`Polyrhythm up — ${next}`);
+    }
+    return;
+  }
+  if (a.consecMissA >= COMPLEXITY_DEMOTE_STREAK || a.consecMissB >= COMPLEXITY_DEMOTE_STREAK) {
+    a.consecMissA = 0; a.consecMissB = 0;
+    if (a.polyIndex > 0) {
+      a.polyIndex -= 1;
+      const prev = POLY_PROGRESSION[a.polyIndex];
+      applyAudioConfig({ polyrhythm: prev });
+      showAdaptToast(`Easing off — ${prev}`);
+    }
+  }
+}
+
+/* Axis 2 — Tempo.
+   Promote +10 BPM after 3 consec bars with BOTH layers >80%.
+   Demote -10 BPM after 2 consec bars with EITHER layer <50%.
+   Floor 50, Ceiling 200. */
+function evalTempoAxis(acc) {
+  const a = state.adaptive;
+  if (acc.a > 0.8 && acc.b > 0.8) a.barsBothAbove80 += 1;
+  else                             a.barsBothAbove80 = 0;
+
+  if (acc.a < 0.5 || acc.b < 0.5) a.barsEitherBelow50 += 1;
+  else                             a.barsEitherBelow50 = 0;
+
+  if (a.barsBothAbove80 >= TEMPO_PROMOTE_BARS && state.bpm < BPM_CEILING) {
+    a.barsBothAbove80 = 0;
+    const next = Math.min(BPM_CEILING, state.bpm + 10);
+    applyAudioConfig({ bpm: next });
+    showAdaptToast(`Tempo up! ${next} BPM`);
+    return;
+  }
+  if (a.barsEitherBelow50 >= TEMPO_DEMOTE_BARS && state.bpm > BPM_FLOOR) {
+    a.barsEitherBelow50 = 0;
+    const next = Math.max(BPM_FLOOR, state.bpm - 10);
+    applyAudioConfig({ bpm: next });
+    showAdaptToast(`Slowing down — ${next} BPM`);
+  }
+}
+
+/* Axis 3 — Timing tolerance (Good window).
+   Promote after 8 sustained bars >80% accuracy (both layers average).
+   Demote after 4 sustained bars <50% accuracy. */
+function evalToleranceAxis(acc) {
+  const a = state.adaptive;
+  const avg = (acc.a + acc.b) / 2;
+  if (avg > 0.8) a.barsSustained80 += 1;      else a.barsSustained80 = 0;
+  if (avg < 0.5) a.barsSustained50Below += 1; else a.barsSustained50Below = 0;
+
+  if (a.barsSustained80 >= TOLERANCE_PROMOTE_BARS) {
+    a.barsSustained80 = 0;
+    if (a.toleranceIdx < TOLERANCE_LEVELS.length - 1) {
+      a.toleranceIdx += 1;
+      showAdaptToast(`Nice — tightening timing window (±${currentGoodWindow()}ms)`);
+    }
+    return;
+  }
+  if (a.barsSustained50Below >= TOLERANCE_DEMOTE_BARS) {
+    a.barsSustained50Below = 0;
+    if (a.toleranceIdx > 0) {
+      a.toleranceIdx -= 1;
+      showAdaptToast(`Widening timing window — focus on the feel (±${currentGoodWindow()}ms)`);
+    }
+  }
+}
+
+/* Apply a polyrhythm or BPM change mid-session. Reschedules the audio
+   cleanly from the next lookahead moment; bar indices reset so in-flight
+   per-beat hit bookkeeping is cleared. Session-wide counters (scoring,
+   best streak, logs) are preserved. */
+function applyAudioConfig({ polyrhythm, bpm }) {
+  if (!state.running) return;
+  if (polyrhythm !== undefined) {
+    state.polyrhythm = polyrhythm;
+    if (polyEl) polyEl.value = polyrhythm;
+  }
+  if (bpm !== undefined) {
+    state.bpm = bpm;
+    if (bpmEl) bpmEl.value = String(bpm);
+    if (bpmValueEl) bpmValueEl.textContent = String(bpm);
+  }
+  updateConfig();
+
+  // Kill any pending scheduler tick, re-base timing to a fresh bar 0.
+  if (state.schedulerTimer) { clearTimeout(state.schedulerTimer); state.schedulerTimer = null; }
+  const ac = state.audioCtx;
+  if (!ac) return;
+  state.playStartTime = ac.currentTime + 0.12;
+  state.nextBarContextTime = state.playStartTime;
+  state.hitResultsA.clear();
+  state.hitResultsB.clear();
+  state.missedMarkedBar = -1;
+  schedulerTick();
+}
+
+let adaptToastTimer = null;
+function showAdaptToast(msg) {
+  if (!adaptToastEl) return;
+  adaptToastEl.textContent = msg;
+  adaptToastEl.hidden = false;
+  adaptToastEl.classList.add('pr-adapt-toast--show');
+  if (adaptToastTimer) clearTimeout(adaptToastTimer);
+  adaptToastTimer = setTimeout(() => {
+    adaptToastEl.classList.remove('pr-adapt-toast--show');
+    // Keep hidden attr until the CSS transition settles
+    setTimeout(() => { if (adaptToastEl) adaptToastEl.hidden = true; }, 350);
+  }, 1800);
+}
+
+function hideAdaptToast() {
+  if (adaptToastTimer) { clearTimeout(adaptToastTimer); adaptToastTimer = null; }
+  if (adaptToastEl) {
+    adaptToastEl.classList.remove('pr-adapt-toast--show');
+    adaptToastEl.hidden = true;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SESSION / RESULTS
+   ══════════════════════════════════════════════════════════ */
+function checkSessionEnd() {
+  if (state.ended) return false;
+  if (state.level === 0) return false;   // Listen mode has no session
+  const elapsed = getElapsed();
+  if (elapsed >= SESSION_DURATION_S || state.totalBarsPlayed >= SESSION_MAX_BARS) {
+    endSession();
+    return true;
+  }
+  return false;
+}
+
+function computeResults() {
+  const totalA = state.perfectA + state.goodA + state.missA;
+  const totalB = state.perfectB + state.goodB + state.missB;
+  const accA = totalA ? Math.round(((state.perfectA + state.goodA) / totalA) * 100) : 0;
+  const accB = totalB ? Math.round(((state.perfectB + state.goodB) / totalB) * 100) : 0;
+  const score = (state.perfectA + state.perfectB) * 300 +
+                (state.goodA    + state.goodB)    * 100;
+  return {
+    accA, accB,
+    bestStreak: state.bestStreak,
+    score,
+    polyrhythm: state.polyrhythm,
+    bpm: state.bpm,
+    tolerance: currentGoodWindow(),
+    toleranceName: currentToleranceName(),
+    duration: Math.max(0, Math.round(getElapsed())),
+  };
+}
+
+function persistResult(results) {
+  const detail = {
+    gameId: 'polyrhythm',
+    timestamp: new Date().toISOString(),
+    mode: 'practice',
+    difficulty: {
+      polyrhythm: results.polyrhythm,
+      bpm: results.bpm,
+      tolerance: results.tolerance,
+    },
+    duration: results.duration,
+    correct: ((results.accA + results.accB) / 2) > 70,
+    detail: {
+      polyrhythm: results.polyrhythm,
+      bpm: results.bpm,
+      layer1: state.logA.slice(),
+      layer2: state.logB.slice(),
+      perLayerAccuracy: { a: results.accA, b: results.accB },
+      streak: results.bestStreak,
+    },
+  };
+  try {
+    const existing = JSON.parse(localStorage.getItem(RESULT_STORAGE_KEY) || '[]');
+    existing.push(detail);
+    localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(existing));
+  } catch (err) {
+    console.warn('[polyrhythm] Failed to save result:', err);
+  }
+  return detail;
+}
+
+function renderSongConnection(polyrhythm) {
+  if (!resultSongCard) return;
+  const mapping = POLY_SONG_MAP[polyrhythm];
+  if (!mapping) { resultSongCard.hidden = true; return; }
+  const entry = SONG_EXAMPLES.find(e => e.id === mapping.songId);
+  if (!entry) { resultSongCard.hidden = true; return; }
+
+  if (resultSongTitle)  resultSongTitle.textContent  = entry.song || '';
+  if (resultSongArtist) resultSongArtist.textContent = entry.artist || '';
+  if (resultSongInsight) {
+    const insight = (entry.insight && entry.insight.musician) || '';
+    resultSongInsight.textContent = insight;
+  }
+  if (resultSongLink) {
+    if (mapping.walkthroughId) {
+      resultSongLink.href = `/explorer?walkthrough=${encodeURIComponent(mapping.walkthroughId)}`;
+      resultSongLink.hidden = false;
+    } else {
+      resultSongLink.hidden = true;
+      resultSongLink.removeAttribute('href');
+    }
+  }
+  resultSongCard.hidden = false;
+}
+
+function endSession() {
+  if (state.ended) return;
+  state.ended = true;
+  hideAdaptToast();
+
+  // Stop audio + RAF but keep state intact for the results screen
+  state.running = false;
+  if (state.schedulerTimer) { clearTimeout(state.schedulerTimer); state.schedulerTimer = null; }
+  if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = null; }
+
+  const results = computeResults();
+  persistResult(results);
+  showResults(results);
+
+  startBtn.textContent = 'Start';
+  startBtn.classList.remove('stopping');
+}
+
+function showResults(results) {
+  if (!resultsEl) return;
+  if (resultAccAEl)    resultAccAEl.textContent    = `${results.accA}%`;
+  if (resultAccBEl)    resultAccBEl.textContent    = `${results.accB}%`;
+  if (resultStreakEl)  resultStreakEl.textContent  = String(results.bestStreak);
+  if (resultScoreEl)   resultScoreEl.textContent   = String(results.score);
+  if (resultPolyEl)    resultPolyEl.textContent    = results.polyrhythm;
+  if (resultBpmEl)     resultBpmEl.textContent     = `${results.bpm} BPM`;
+  if (resultToleranceEl) resultToleranceEl.textContent = `±${results.tolerance}ms`;
+  renderSongConnection(results.polyrhythm);
+  resultsEl.hidden = false;
+  resultsEl.classList.add('pr-results--show');
+}
+
+function hideResults() {
+  if (!resultsEl) return;
+  resultsEl.classList.remove('pr-results--show');
+  resultsEl.hidden = true;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -424,6 +816,7 @@ function render() {
   }
 
   sweepMisses();
+  if (checkSessionEnd()) return;
   state.rafId = requestAnimationFrame(render);
 }
 
@@ -708,6 +1101,13 @@ function resetScoring() {
   state.totalTapsB = 0;
   state.goodTapsB = 0;
   state.streak = 0;
+  state.bestStreak = 0;
+  state.perfectA = 0; state.goodA = 0; state.missA = 0;
+  state.perfectB = 0; state.goodB = 0; state.missB = 0;
+  state.logA.length = 0;
+  state.logB.length = 0;
+  state.totalBarsPlayed = 0;
+  state.ended = false;
   state.hitResultsA.clear();
   state.hitResultsB.clear();
   state.missedMarkedBar = -1;
@@ -715,7 +1115,24 @@ function resetScoring() {
   state.blooms.length = 0;
   state.rings.length = 0;
   state.combos.length = 0;
+
+  // Reset adaptive counters (keep polyIndex + toleranceIdx — those are the
+  // "current level" the player has earned; scoring counters reset each
+  // session but level persists unless the user goes back to Quit).
+  const a = state.adaptive;
+  a.consecGoodA = 0; a.consecGoodB = 0;
+  a.consecMissA = 0; a.consecMissB = 0;
+  a.barsBothAbove80 = 0; a.barsEitherBelow50 = 0;
+  a.barsSustained80 = 0; a.barsSustained50Below = 0;
+
   updateHud();
+}
+
+/* Sync adaptive polyIndex when the user picks a polyrhythm from the dropdown
+   or when the session starts — so promotion/demotion walks from where they are. */
+function syncPolyIndex() {
+  const idx = POLY_PROGRESSION.indexOf(state.polyrhythm);
+  state.adaptive.polyIndex = idx >= 0 ? idx : 1;  // default to 3:2
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -832,6 +1249,8 @@ function start() {
   ensureAudioCtx();
   updateConfig();
   resetScoring();
+  syncPolyIndex();
+  hideResults();
   resizeCanvas();
 
   state.running = true;
@@ -854,6 +1273,7 @@ function stop() {
   state.schedulerTimer = null;
   if (state.rafId) cancelAnimationFrame(state.rafId);
   state.rafId = null;
+  hideAdaptToast();
 
   // Clear canvas
   const w = canvas.clientWidth;
@@ -877,6 +1297,7 @@ function restart() {
    ══════════════════════════════════════════════════════════ */
 polyEl.addEventListener('change', () => {
   state.polyrhythm = polyEl.value;
+  syncPolyIndex();
   if (state.running) restart(); else updateConfig();
 });
 
@@ -908,6 +1329,30 @@ muteBEl.addEventListener('click', () => {
 startBtn.addEventListener('click', () => {
   if (state.running) stop(); else start();
 });
+
+/* Results screen actions */
+if (replayBtn) {
+  replayBtn.addEventListener('click', () => {
+    hideResults();
+    // Play Again keeps current poly/bpm/tolerance (player earned them) and
+    // restarts a fresh session.
+    start();
+  });
+}
+if (quitBtn) {
+  quitBtn.addEventListener('click', () => {
+    hideResults();
+    // Quit reverts the adaptive level to whatever the dropdown/slider say —
+    // the user's explicit setup choice.
+    state.polyrhythm = polyEl.value;
+    state.bpm = Number(bpmEl.value);
+    bpmValueEl.textContent = state.bpm;
+    state.adaptive.toleranceIdx = 0;
+    syncPolyIndex();
+    updateConfig();
+    messageEl.textContent = 'Session ended. Press Start to go again.';
+  });
+}
 
 /* Keyboard — F (Layer A), J (Layer B); ignore repeats */
 window.addEventListener('keydown', (e) => {
