@@ -1,7 +1,8 @@
 # Polyrhythm Trainer — Game Spec (B8)
 
 **Created:** 2026-04-16
-**Status:** Spec — ready for implementation
+**Updated:** 2026-04-17
+**Status:** v2 — Practice/Challenge mode redesign
 **Type:** Performance game
 **Theme:** Dark DAW (matches Explorer/SkratchLab)
 **Route:** `/games/polyrhythm`
@@ -13,7 +14,9 @@
 
 ## Overview
 
-Guitar Hero-style falling-note game that teaches rhythmic independence — the ability to hear and play two independent rhythm layers simultaneously. Two vertical lanes (purple and gold), notes fall toward receptor rings at the bottom, player taps in time. Visual design emphasizes the relationship between the two layers through wave interference patterns.
+Guitar Hero-style falling-note game that teaches rhythmic independence — the ability to hear and play two independent rhythm layers simultaneously. Two vertical lanes (purple and gold), notes fall toward receptor rings, player taps drum pads in time. Visual design emphasizes the relationship between the two layers through wave interference patterns.
+
+Two modes: **Practice** (structured training ramp for a specific polyrhythm) and **Challenge** (arcade-style adaptive difficulty). Practice Mode is the core pedagogical tool — it walks the player through learning one polyrhythm from slow to performance tempo. Challenge Mode is the show-off arcade for experienced players.
 
 First game built natively on `input-provider.js` and `onset-detection.js`.
 
@@ -40,7 +43,7 @@ Notes spawn at the top of the canvas and fall toward the hit zone near the botto
 
 ### Hit Zone
 
-Horizontal band at y = ~88% of canvas height. Subtle white gradient glow across full width.
+Horizontal band at y = HIT_Y (~67% of canvas height, 280px of 420px). Subtle white gradient glow across full width. Notes that miss continue falling below and fade out before reaching the canvas bottom.
 
 **Receptor rings:** hollow circles at each lane's x-position. Default state: faint colored stroke (alpha 0.2). On tap: bright flash (alpha 0.8), expanding ring, radial color bloom behind.
 
@@ -68,10 +71,37 @@ When both layers have beats at the same time position (bar downbeat, etc.), a fa
 
 ### HUD
 
-Overlay at top of canvas, not inside the dark stage area:
+Overlay at top of canvas:
+- Phase indicator: step progress showing `Listen → Layer A → Layer B → Both → ✓`. Active phase highlighted, completed phases filled.
+- Current BPM → Goal BPM with visual progress bar between them
 - Layer A accuracy (percentage)
 - Streak count
 - Layer B accuracy (percentage)
+
+### Drum Pads
+
+Two large pad elements rendered as **HTML elements below the canvas** (not drawn on canvas). These are the primary tap targets.
+
+```
+┌─────────────────┐  ┌─────────────────┐
+│                 │  │                 │
+│    ●  Layer A   │  │    ●  Layer B   │
+│       [ F ]     │  │       [ J ]     │
+│                 │  │                 │
+└─────────────────┘  └─────────────────┘
+     purple              gold
+```
+
+**Behavior:**
+- Click/tap on pad = same as pressing the mapped key
+- On hit: pad flashes bright (matching lane color bloom), subtle scale animation (0.97 → 1.0)
+- On miss: brief red tint or horizontal shake
+- Key label (F / J) always visible so players learn the keyboard shortcut
+- In single-layer phases: the inactive layer's pad dims to ~30% opacity
+- In Both phase: both pads full brightness
+- Pad styling: dark background matching stage (#222), colored border matching lane, rounded corners (border-radius-lg), min-height ~80px for comfortable touch targets
+
+**Why HTML not canvas:** proper touch event handling (multi-touch for two-thumb Phase 4 on mobile), accessibility, no interference with canvas rendering. Canvas is the visual display; pads are the input surface.
 
 ### Scrolling Grid
 
@@ -79,43 +109,142 @@ Faint horizontal lines scroll downward at tempo speed (~0.03 alpha). Gives sense
 
 ---
 
-## Game Levels
+## Game Modes
 
-| Level | Name | Player action | Layer A audio | Layer B audio | Input modes |
-|---|---|---|---|---|---|
-| 0 | Listen | None — watch and listen | Auto-plays | Auto-plays | None |
-| 1 | Feel it | Tap along with ONE layer (player chooses which) | Auto or player | Auto or player | onset (mic/key), midi pad, click |
-| 2 | Split it | Tap BOTH layers simultaneously | Player-driven | Player-driven | Two keys (F/J), two MIDI pads, click left/right |
-| 3 | Real songs | Play polyrhythms from song examples at tempo | Player-driven | Player-driven | Same as Level 2 |
+### Setup Screen
 
-### Level 0 — Listen
+| Field | Control | Default | Notes |
+|---|---|---|---|
+| Mode | Toggle: Practice / Challenge | Practice | Practice = structured ramp; Challenge = arcade |
+| Polyrhythm | Dropdown: 3:2, 2:3, 4:3, 3:4, 5:4 | 3:2 | Manual selection (not adaptive) |
+| Goal BPM | Slider 60–200 | 150 | Practice mode only |
+| Start BPM | Slider 40–goal | 60 | Practice mode only |
+| BPM increment | Pills: 5 / 10 / 15 / 20 | 10 | How much to speed up on promotion |
 
-No scoring. Both layers play automatically. All visual elements active (falling notes, waves, convergence lines). Purpose: build the mental model of what the polyrhythm looks and sounds like before attempting it.
-
-Design question (deferred): should this be a separate intro screen or the first 4 bars of every attempt? Start with "first 4 bars auto-play, then scoring begins" — smoother UX.
-
-### Level 1 — Feel it
-
-Player picks one layer to tap. The other plays automatically. Scoring applies only to the tapped layer. This is where `onset-detection.js` shines — player can clap, tap a desk, say "ta", or press a key.
-
-**Constraint:** single mic = single onset stream. Player can only tap one layer via mic. The other layer must auto-play. Two keyboard keys or two MIDI pads allow tapping both even at Level 1, but the game doesn't require it.
-
-### Level 2 — Split it
-
-Both layers are player-driven. Requires two separate input channels:
-- Two keyboard keys: F (Layer A) and J (Layer B)
-- Two MIDI pads (configurable)
-- Click/tap left half vs right half of canvas
-
-**Mic input cannot drive Level 2** — a single onset stream can't distinguish which layer the tap belongs to. The input picker should gray out mic-onset for Level 2 or auto-switch to keyboard.
-
-### Level 3 — Real songs
-
-Polyrhythm patterns sourced from `song-examples.js` entries with rhythm data. Song context card displayed above the stage. Tempo locked to the song's BPM. Links back to Explorer walkthrough for the song.
+**Preset buttons** for common targets (fill polyrhythm + goal BPM automatically):
+- "Linus and Lucy" → 3:2 @ 150
+- "Oye Como Va" → 3:4 @ 120
+- "Mission Impossible" → 5:4 @ 100
 
 ---
 
-## Polyrhythm Progression
+### Practice Mode — Structured Training Ramp
+
+The core pedagogical tool. Walks the player through mastering one polyrhythm from slow to performance tempo in five phases.
+
+**Phase flow:**
+
+```
+Phase 1: LISTEN (4 bars at start BPM)
+  → auto-advances (or press Space / click "Ready" to skip ahead)
+
+Phase 2: LAYER A (4 bars per tempo step, ramp from start → goal BPM)
+  → accuracy ≥ 80% for 4 bars → BPM += increment
+  → accuracy < 50% for 4 bars → BPM -= increment (floor: start BPM)
+  → BPM reaches goal → advance to Phase 3
+
+Phase 3: LAYER B (same ramp structure)
+  → BPM resets to start, ramps to goal
+  → advance to Phase 4
+
+Phase 4: BOTH LAYERS (same ramp structure)
+  → requires two inputs (F+J, two pads, two MIDI pads)
+  → BPM resets to start, ramps to goal
+  → advance to Phase 5
+
+Phase 5: VICTORY / RESULTS
+```
+
+#### Phase 1 — Listen
+
+No scoring. Both layers auto-play. All visual elements active (falling notes, waves, convergence lines). Purpose: build the mental model of what the polyrhythm sounds like.
+
+Duration: 4 bars, then auto-advances. Player can press Space or click "I'm ready" to skip ahead early. Message: "Listen — hear how the two patterns interlock."
+
+Both drum pads dimmed to ~30%.
+
+#### Phase 2 — Layer A
+
+Layer A: player taps (F key, left pad, or mic onset). Layer B: auto-plays. Scoring on Layer A only.
+
+Layer B's pad dimmed to ~30%. Layer B's falling notes slightly desaturated.
+
+BPM ramp logic (per 4-bar window):
+- Accuracy ≥ 80% → BPM += increment. Toast: "80 → 90 bpm"
+- Accuracy < 50% → BPM -= increment (floor: start BPM). Toast: "Slowing down..."
+- 50–80% → hold current BPM. No toast.
+- BPM reaches goal → brief celebration, advance to Phase 3
+
+Message: "Tap the purple rhythm"
+
+#### Phase 3 — Layer B
+
+Mirror of Phase 2. Layer B: player taps (J key, right pad, or mic onset). Layer A: auto-plays.
+
+BPM resets to start BPM for a fresh ramp. Layer A's pad dimmed.
+
+Message: "Now tap the gold rhythm"
+
+#### Phase 4 — Both
+
+Both layers player-driven. Requires two separate inputs:
+- Two keyboard keys: F (Layer A) and J (Layer B)
+- Two drum pads (click/touch)
+- Two MIDI pads
+
+**Mic onset cannot drive Phase 4** — a single onset stream can't distinguish which layer the tap belongs to. If mic is the active modality, show message: "Both layers needs two inputs — use the pads, F/J keys, or MIDI pads." Mic stays available but routes to whichever single layer the player used in Phase 2/3.
+
+Both pads full brightness. BPM resets to start BPM for a fresh ramp.
+
+Message: "Both hands — one rhythm each"
+
+#### Phase 5 — Victory / Results
+
+```
+3:2 Polyrhythm — Practice Complete!
+
+Phase        Final BPM    Accuracy
+Layer A      150 bpm      92%
+Layer B      150 bpm      87%
+Both         130 bpm      74%   ← didn't reach goal
+
+Total time: 3m 42s
+
+[Hear it in a song: Linus and Lucy — Vince Guaraldi]
+
+[Try again at 130]  [New goal: 160]  [New polyrhythm]
+```
+
+"Try again at 130" sets start BPM to where the player stalled — skip the easy part.
+
+**Phase transitions:** smooth, not jarring. Between phases, a 2-bar transition where the message changes and the next layer's receptor ring / drum pad pulses to draw attention. Music keeps going — no loading screen, no modal.
+
+**Skip controls:** "Skip to Both" button jumps to Phase 4 at start BPM. For experienced players who don't need single-layer practice.
+
+---
+
+### Challenge Mode — Arcade
+
+Separate mode toggle. This is the adaptive arcade experience.
+
+```
+- Starts at user-selected polyrhythm, 80 bpm
+- Both layers always active
+- Three adaptive axes (Pattern B):
+  1. Tempo: +10 BPM after 3 bars at >80% accuracy
+  2. Polyrhythm complexity: switches after 16 bars at >80%
+     Progression: 2:3 → 3:2 → 3:4 → 4:3 → 5:4
+  3. Timing tolerance: ±120ms → ±90ms → ±60ms
+     after 8 bars at >80%
+- Score accumulates endlessly (Perfect*300 + Good*100)
+- Session ends when player quits or accuracy drops below 30% for 4 bars
+- Leaderboard (localStorage)
+- "How far can you get?"
+```
+
+---
+
+## Polyrhythm Library
 
 | Polyrhythm | Difficulty | BPM range | Song connection |
 |---|---|---|---|
@@ -123,7 +252,6 @@ Polyrhythm patterns sourced from `song-examples.js` entries with rhythm data. So
 | 3:2 | Starter | 60–150 | Linus and Lucy (Vince Guaraldi, ~150 bpm) |
 | 3:4 | Intermediate | 60–120 | Afro-Cuban clave, "Oye Como Va" |
 | 4:3 | Intermediate | 60–120 | Reverse of 3:4 — tests flexibility |
-| Dotted quarter vs straight eighth | Intermediate | 80–150 | Linus and Lucy (implied polyrhythm) |
 | 5:4 | Advanced | 50–100 | Mission Impossible theme |
 | 7:4 | Advanced | 50–80 | Progressive rock, "Money" (Pink Floyd) |
 
@@ -152,49 +280,53 @@ Two distinct timbres so the player can hear layers separately:
 | Good | ±120 ms | 100 |
 | Miss | >120 ms | 0, breaks streak |
 
+Fixed windows — no adaptive tolerance in Practice Mode. Tolerance axis only active in Challenge Mode.
+
 Each layer scored independently. Total accuracy = (good + perfect) / total taps per layer.
-
-### Adaptive Engine (Pattern B)
-
-Three independent axes:
-
-**1. Rhythmic complexity**
-- Promote: 2:3 → 3:2 → 3:4 → 4:3 → 5:4
-- Threshold: 5 consecutive Good-or-better on both layers
-
-**2. Tempo**
-- Promote: +10 BPM after 3 consecutive bars at >80% accuracy
-- Demote: -10 BPM after 2 consecutive bars at <50% accuracy
-- Floor: 50 BPM. Ceiling: 200 BPM.
-
-**3. Timing tolerance**
-- Promote: Good window narrows from ±120 ms → ±90 ms → ±60 ms
-- Threshold: 80%+ accuracy sustained for 8 bars
 
 ### ResultDetail Schema
 
+**Practice Mode:**
 ```json
 {
   "gameId": "polyrhythm",
   "timestamp": "ISO",
   "mode": "practice",
-  "difficulty": { "polyrhythm": "3:2", "bpm": 150, "tolerance": 120 },
-  "duration": 45,
+  "difficulty": { "polyrhythm": "3:2", "goalBpm": 150, "startBpm": 60, "increment": 10 },
+  "duration": 222,
   "correct": true,
   "detail": {
     "polyrhythm": "3:2",
-    "bpm": 150,
-    "layer1": [
-      { "expected": 0.0, "actual": 0.018, "deltaMs": 18, "rating": "perfect" },
-      { "expected": 0.667, "actual": 0.702, "deltaMs": 35, "rating": "perfect" },
-      { "expected": 1.333, "actual": 1.450, "deltaMs": 117, "rating": "good" }
-    ],
-    "layer2": [
-      { "expected": 0.0, "actual": 0.025, "deltaMs": 25, "rating": "perfect" },
-      { "expected": 1.0, "actual": 1.155, "deltaMs": 155, "rating": "miss" }
-    ],
-    "perLayerAccuracy": { "a": 100, "b": 50 },
-    "streak": 4
+    "phases": {
+      "layerA": { "finalBpm": 150, "accuracy": 92, "reachedGoal": true },
+      "layerB": { "finalBpm": 150, "accuracy": 87, "reachedGoal": true },
+      "both":   { "finalBpm": 130, "accuracy": 74, "reachedGoal": false }
+    },
+    "perTap": {
+      "layer1": [ { "expected": 0.0, "actual": 0.018, "deltaMs": 18, "rating": "perfect", "phase": "layerA", "bpm": 90 } ],
+      "layer2": [ { "expected": 0.0, "actual": 0.025, "deltaMs": 25, "rating": "perfect", "phase": "layerB", "bpm": 80 } ]
+    },
+    "streak": 14
+  }
+}
+```
+
+**Challenge Mode:**
+```json
+{
+  "gameId": "polyrhythm",
+  "timestamp": "ISO",
+  "mode": "challenge",
+  "difficulty": { "polyrhythm": "4:3", "bpm": 130, "tolerance": 90 },
+  "duration": 180,
+  "correct": true,
+  "detail": {
+    "finalPolyrhythm": "4:3",
+    "finalBpm": 130,
+    "finalTolerance": 90,
+    "score": 12400,
+    "streak": 22,
+    "polyrhythmProgression": ["2:3", "3:2", "3:4", "4:3"]
   }
 }
 ```
@@ -214,26 +346,38 @@ createInputProvider({
     onset: { mic: true, interface: true },
   },
   containerEl: document.getElementById('input-picker'),
-  analyser: toneAnalyser,  // for onset detection
+  analyser: toneAnalyser,
 });
 ```
 
 ### Input Mapping
 
-| Source | Layer A | Layer B | Level 2 capable? |
+| Source | Layer A | Layer B | Phase 4 (Both) capable? |
 |---|---|---|---|
+| Drum pads (HTML) | Left pad click/touch | Right pad click/touch | Yes (multi-touch) |
 | Keyboard | F key | J key | Yes |
 | MIDI pads | Pad 1 (configurable) | Pad 2 (configurable) | Yes |
-| Mic onset | Single stream — player picks layer | — | No (one stream) |
-| Click/tap | Left half of canvas | Right half of canvas | Yes |
+| Mic onset | Single stream — routes to active layer | — | No (single stream) |
+
+### Mic Onset Routing Per Phase
+
+| Phase | Mic behavior |
+|---|---|
+| Listen | Disabled (no input accepted) |
+| Layer A | Onset routes to Layer A |
+| Layer B | Onset routes to Layer B |
+| Both | Routes to last single-layer phase used; message suggests switching to pads/keys |
 
 ### Onset Detection Wiring
 
 When mic_onset is active:
 1. `onset-detection.js` fires `{ timestamp, strength }` events
-2. Game routes onset to whichever layer the player selected (Level 1 only)
+2. Game routes onset based on current phase:
+   - Phase 2 (Layer A): onset → Layer A tap
+   - Phase 3 (Layer B): onset → Layer B tap
+   - Phase 4 (Both): onset → last single-layer used; message suggests pads/keys
 3. Strength threshold filters weak onsets (ambient noise)
-4. Input picker grays out mic_onset option when Level 2 is selected
+4. In Phase 4, show hint: "Mic supports one layer. Use pads or F/J for both."
 
 ---
 
@@ -241,7 +385,9 @@ When mic_onset is active:
 
 Uses raw Web Audio API (not Tone.js sampler) for the game sounds — minimal latency, no sample loading. The `Tone.Analyser` is needed only if onset detection (mic input) is active.
 
-**Audio scheduling:** use the Web Audio API scheduler pattern (lookahead + setTimeout at 20–25 ms intervals) for sample-accurate beat timing. Same pattern as the prototype.
+**Audio chain:** `oscillator → layerGain (A or B) → masterGain → destination`. Layer gains handle per-layer muting instantly. Master gain is torn down and rebuilt on tempo/polyrhythm changes to silence pre-scheduled oscillators in the lookahead buffer.
+
+**Audio scheduling:** Web Audio API scheduler pattern (lookahead + setTimeout at 20–25 ms intervals) for sample-accurate beat timing.
 
 **Future:** replace sine-wave placeholders with sampled percussion sounds (woodblock, clave, kick). Load via `fetch` + `AudioContext.decodeAudioData`.
 
@@ -254,19 +400,27 @@ templates/games/polyrhythm.html
 ├── extends base.html (dark theme variant)
 ├── game-shell.css (shared game chrome)
 ├── Setup screen
+│   ├── Mode toggle (Practice / Challenge)
 │   ├── Polyrhythm selector (dropdown)
-│   ├── Level pills (Listen / Feel it / Split it / Real songs)
-│   ├── BPM slider (40–200)
+│   ├── Preset buttons (Linus and Lucy, Oye Como Va, etc.)
+│   ├── Goal BPM slider (Practice only)
+│   ├── Start BPM slider (Practice only)
+│   ├── BPM increment pills (5/10/15/20)
 │   ├── Input picker (from input-provider.js)
 │   └── Start button
 ├── Game stage (canvas)
+│   ├── Phase indicator (Listen → A → B → Both → ✓)
+│   ├── BPM progress (current → goal)
 │   ├── HUD overlay (accuracy, streak)
-│   └── Message bar (level instructions)
+│   └── Message bar (phase instructions)
+├── Drum pads (HTML, below canvas)
+│   ├── Left pad (Layer A, purple, [F])
+│   └── Right pad (Layer B, gold, [J])
 ├── Results screen
-│   ├── Per-layer accuracy
+│   ├── Per-phase accuracy breakdown
 │   ├── Best streak
-│   ├── Timing histogram (optional, future)
-│   └── Song connection card
+│   ├── Song connection card
+│   └── Action buttons (Try again / New goal / New polyrhythm)
 └── Mute toggles (Layer A / Layer B)
 ```
 
@@ -308,7 +462,7 @@ Game surfaces "Hear it in a song" callouts linking to Explorer walkthroughs wher
 
 ## Open Questions
 
-1. **Level 0 as intro vs first-4-bars:** prototype uses a manual level toggle. Production version should auto-play 4 bars before scoring begins, with a visual countdown ("3... 2... 1... Go!"). The level selector then controls which levels are available, not the intro behavior.
+1. **~~Level 0 as intro vs first-4-bars~~** — Resolved: Practice Mode Phase 1 (Listen) auto-plays 4 bars, player can skip with Space or "I'm ready" click.
 
 2. **MIDI pad mapping:** which pads on the Launchkey 49 map to Layer A and Layer B? Pads are on channel 10. Need to test with actual hardware. Default: first two pads in the bottom row.
 
@@ -316,4 +470,8 @@ Game surfaces "Hear it in a song" callouts linking to Explorer walkthroughs wher
 
 4. **Dark theme for all Performance games:** this game establishes a precedent. Should Rhythm Lab, Strum Patterns, Swing Trainer also get the dark treatment? Deferred — note in design-system-reference.md.
 
-5. **Mobile touch:** two-thumb tap for Level 2 on mobile — left thumb / right thumb on canvas halves. Needs testing. The `pointerdown` event handler already splits by x-position.
+5. **Mobile drum pads:** two-thumb tap on the HTML drum pads should work via multi-touch. Needs testing on real devices. The pads should be large enough for comfortable thumb targets (~80px min-height).
+
+6. **Phase transition smoothness:** the 2-bar transition between phases where the message changes and the next layer's pad pulses — how exactly should this feel? Should the music stop momentarily, or should it crossfade seamlessly? Start with seamless (music keeps going) and iterate.
+
+7. **"Skip to Both" button:** should this be visible during single-layer phases (as an escape hatch for experienced players), or only on the setup screen? Leaning toward always visible during play — small "Skip →" link near the phase indicator.
