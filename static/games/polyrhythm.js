@@ -16,7 +16,7 @@ import { createInputProvider } from '/static/shared/input-provider.js';
 import SONG_EXAMPLES from '/static/shared/song-examples.js';
 
 /* ── Constants ──────────────────────────────────────────── */
-const HIT_Y          = 370;          // y of hit zone in 420px canvas
+const HIT_Y          = 280;          // y of hit zone in 420px canvas; ~140px below is the post-hit effects area
 const LANE_X_A_FRAC  = 0.33;
 const LANE_X_B_FRAC  = 0.67;
 const LANE_COLOR_A   = '#7F77DD';    // purple
@@ -29,7 +29,22 @@ const NOTE_COLORS = { A: LANE_COLOR_A, B: LANE_COLOR_B };
 const NOTE_COLORS_RGB = { A: LANE_COLOR_A_RGB, B: LANE_COLOR_B_RGB };
 const PERFECT_MS     = 40;            // Perfect window — fixed across tolerance levels
 
-/* ── Adaptive engine ─────────────────────────────────────── */
+/* ── Practice-mode phase engine ──────────────────────────── */
+const LISTEN_BARS       = 4;     // bars of reference playback before Phase 2 begins
+const PHASE_EVAL_BARS   = 4;     // BPM promote/demote window inside a phase
+const PHASE_PROMOTE_ACC = 0.80;  // window accuracy to step BPM up (or advance at goal)
+const PHASE_DEMOTE_ACC  = 0.50;  // window accuracy to step BPM down
+
+const PHASES_ORDER = ['listen', 'layerA', 'layerB', 'both'];
+const PHASE_LABELS = { listen: 'Listen', layerA: 'Layer A', layerB: 'Layer B', both: 'Both' };
+const PHASE_MESSAGES = {
+  listen: 'Listen — hear how the two patterns interlock.',
+  layerA: 'Tap the <strong>purple</strong> rhythm (F / left pad).',
+  layerB: 'Now tap the <strong>gold</strong> rhythm (J / right pad).',
+  both:   '<strong>Both hands</strong> — one rhythm each (F + J, or both pads).',
+};
+
+/* ── Challenge-mode adaptive engine (Pattern B, three independent axes) ── */
 const POLY_PROGRESSION = ['2:3', '3:2', '3:4', '4:3', '5:4'];
 const TOLERANCE_LEVELS = [
   { name: 'wide',   goodMs: 120 },
@@ -38,15 +53,15 @@ const TOLERANCE_LEVELS = [
 ];
 const BPM_FLOOR   = 50;
 const BPM_CEILING = 200;
-const COMPLEXITY_PROMOTE_STREAK = 5;   // consec good-or-better on BOTH layers
-const COMPLEXITY_DEMOTE_STREAK  = 5;   // consec miss on EITHER layer
-const TEMPO_PROMOTE_BARS        = 3;   // bars with both layers >80%
-const TEMPO_DEMOTE_BARS         = 2;   // bars with either layer <50%
-const TOLERANCE_PROMOTE_BARS    = 8;
-const TOLERANCE_DEMOTE_BARS     = 4;
-const SESSION_DURATION_S        = 60;
-const SESSION_MAX_BARS          = 16;
+const TEMPO_PROMOTE_BARS        = 3;   // +10 BPM after 3 bars >80% both layers
+const TEMPO_DEMOTE_BARS         = 2;   // −10 BPM after 2 bars <50% either layer
+const COMPLEXITY_PROMOTE_BARS   = 16;  // next polyrhythm after 16 bars >80% both layers
+const TOLERANCE_PROMOTE_BARS    = 8;   // tighter window after 8 bars >80% avg
+const SESSION_FAIL_BARS         = 4;   // end session after 4 bars <30% avg
+const SESSION_FAIL_THRESHOLD    = 0.30;
 const RESULT_STORAGE_KEY        = 'songlab_results_polyrhythm';
+const CHALLENGE_LEADERBOARD_KEY = 'songlab_challenge_polyrhythm';
+const LEADERBOARD_SIZE          = 5;
 
 /* ── Song connections ────────────────────────────────────── */
 // Map polyrhythm ratio → song-examples.js entry + optional walkthroughs.js id
@@ -58,22 +73,29 @@ const POLY_SONG_MAP = {
 const canvas       = document.getElementById('pr-canvas');
 const ctx          = canvas.getContext('2d');
 const polyEl       = document.getElementById('pr-polyrhythm');
-const levelsEl     = document.getElementById('pr-levels');
+const modesEl      = document.getElementById('pr-modes');
+const presetsEl    = document.getElementById('pr-presets');
+const goalBpmEl    = document.getElementById('pr-goal-bpm');
+const goalBpmValueEl = document.getElementById('pr-goal-bpm-value');
+const startBpmEl   = document.getElementById('pr-start-bpm');
+const startBpmValueEl = document.getElementById('pr-start-bpm-value');
+const incrementsEl = document.getElementById('pr-increments');
 const bpmEl        = document.getElementById('pr-bpm');
 const bpmValueEl   = document.getElementById('pr-bpm-value');
 const startBtn     = document.getElementById('pr-start');
 const muteAEl      = document.getElementById('pr-mute-a');
 const muteBEl      = document.getElementById('pr-mute-b');
+const padAEl       = document.getElementById('pr-pad-a');
+const padBEl       = document.getElementById('pr-pad-b');
 const accAEl       = document.getElementById('pr-acc-a');
 const accBEl       = document.getElementById('pr-acc-b');
 const streakEl     = document.getElementById('pr-streak');
 const messageEl    = document.getElementById('pr-message');
+const modeOnlyEls  = document.querySelectorAll('.pr-mode-only');
 
 // Adaptive toast + results overlay (created/wired lazily in init)
 const adaptToastEl = document.getElementById('pr-adapt-toast');
 const resultsEl    = document.getElementById('pr-results');
-const resultAccAEl = document.getElementById('pr-result-acc-a');
-const resultAccBEl = document.getElementById('pr-result-acc-b');
 const resultStreakEl = document.getElementById('pr-result-streak');
 const resultScoreEl  = document.getElementById('pr-result-score');
 const resultPolyEl   = document.getElementById('pr-result-poly');
@@ -85,25 +107,76 @@ const resultSongArtist = document.getElementById('pr-result-song-artist');
 const resultSongInsight = document.getElementById('pr-result-song-insight');
 const resultSongLink   = document.getElementById('pr-result-song-link');
 const replayBtn  = document.getElementById('pr-replay');
-const quitBtn    = document.getElementById('pr-quit');
+
+// Practice-mode overlay + controls (created in the template for Prompt 2)
+const skipBothEl        = document.getElementById('pr-skip-both');
+const practiceResultsEl = document.getElementById('pr-practice-results');
+const challengeResultsEl = document.getElementById('pr-challenge-results');
+const practiceTimeEl    = document.getElementById('pr-practice-time');
+const practiceActionsEl = document.getElementById('pr-practice-actions');
+const challengeActionsEl = document.getElementById('pr-challenge-actions');
+const practiceRetryBtn  = document.getElementById('pr-practice-retry');
+const practiceNewGoalBtn= document.getElementById('pr-practice-new-goal');
+const practiceNewPolyBtn= document.getElementById('pr-practice-new-poly');
+// phase result cells
+const phaseRowEls = {
+  layerA: {
+    row:  document.getElementById('pr-phase-row-a'),
+    bpm:  document.getElementById('pr-phase-bpm-a'),
+    acc:  document.getElementById('pr-phase-acc-a'),
+    mark: document.getElementById('pr-phase-mark-a'),
+  },
+  layerB: {
+    row:  document.getElementById('pr-phase-row-b'),
+    bpm:  document.getElementById('pr-phase-bpm-b'),
+    acc:  document.getElementById('pr-phase-acc-b'),
+    mark: document.getElementById('pr-phase-mark-b'),
+  },
+  both: {
+    row:  document.getElementById('pr-phase-row-both'),
+    bpm:  document.getElementById('pr-phase-bpm-both'),
+    acc:  document.getElementById('pr-phase-acc-both'),
+    mark: document.getElementById('pr-phase-mark-both'),
+  },
+};
 
 /* ── State ──────────────────────────────────────────────── */
 const state = {
   // config
+  mode: 'practice',    // 'practice' | 'challenge'
   polyrhythm: '3:2',
   nA: 3,
   nB: 2,
-  bpm: 80,
+  bpm: 80,             // active tempo; in practice mode mirrors currentBpm, in challenge reflects the single slider
+  goalBpm: 150,        // practice mode only
+  startBpm: 60,        // practice mode only
+  bpmIncrement: 10,    // practice mode only — BPM step per promotion
+  currentBpm: 60,      // practice mode — ramps from startBpm → goalBpm within each phase
   barDuration: 3.0,    // (60/bpm) * 4
   beatTimesA: [],
   beatTimesB: [],
-  level: 0,
   muteA: false,
   muteB: false,
+
+  // Practice-mode phase engine
+  phase: 'listen',      // 'listen' | 'layerA' | 'layerB' | 'both' | 'results'
+  barsInWindow: 0,      // bars elapsed in the current eval window
+  windowHits: 0,        // good+perfect taps counted for the current eval window
+  windowTotal: 0,       // expected taps counted for the current eval window
+  phaseResults: { layerA: null, layerB: null, both: null },
+  phaseTotals: {         // per-phase cumulative hit/total for the overall phase accuracy
+    layerA: { hits: 0, total: 0 },
+    layerB: { hits: 0, total: 0 },
+    both:   { hits: 0, total: 0 },
+  },
+  practiceStartMs: 0,   // wall-clock start of the practice session (for "Total time")
 
   // runtime
   running: false,
   audioCtx: null,
+  masterGain: null,      // cut on every restart to silence in-flight oscillators
+  gainA: null,           // per-layer gain — mute by setting value to 0
+  gainB: null,
   playStartTime: 0,      // AudioContext time at which bar 0 begins
   nextBarContextTime: 0, // AudioContext time for next bar to schedule
   schedulerTimer: null,
@@ -141,23 +214,27 @@ const state = {
   totalBarsPlayed: 0,
   ended: false,             // true once endSession() has fired (prevents re-entry)
 
-  // Adaptive engine state
+  // Challenge-mode adaptive engine state (Pattern B, three independent axes)
   adaptive: {
     polyIndex: 1,            // index into POLY_PROGRESSION — synced on start()
     toleranceIdx: 0,         // index into TOLERANCE_LEVELS — starts 'wide'
 
-    // Axis 1 — complexity (consecutive tap ratings)
-    consecGoodA: 0, consecGoodB: 0,
-    consecMissA: 0, consecMissB: 0,
-
-    // Axis 2 — tempo (consecutive bar accuracy)
+    // Axis 1 — tempo (consecutive bar accuracy)
     barsBothAbove80: 0,
     barsEitherBelow50: 0,
 
-    // Axis 3 — tolerance (consecutive bar accuracy, both layers)
+    // Axis 2 — complexity (bars with both layers >80%)
+    barsComplexityAbove80: 0,
+
+    // Axis 3 — tolerance (bars with averaged accuracy >80%)
     barsSustained80: 0,
-    barsSustained50Below: 0,
+
+    // Session fail — bars with averaged accuracy <30%
+    barsFailing: 0,
   },
+
+  // Challenge-mode: polyrhythms walked during the session (starts with user's pick).
+  polyrhythmProgression: [],
 
   // input-provider integration
   provider: null,           // createInputProvider instance
@@ -167,12 +244,8 @@ const state = {
   onsetLayer: 'A',          // which layer mic-onset taps drive (Level 1)
 };
 
-/* ── Level instructions ─────────────────────────────────── */
-const LEVEL_COPY = [
-  'Listen. Let the two rhythms sit in your ears — watch how they align and diverge.',
-  'Feel it. Tap along with one layer (F for purple, J for gold). The other keeps playing.',
-  'Split it. Tap both: F for purple, J for gold. Both layers keep ringing as a reference.',
-];
+/* ── Challenge-mode instructions ────────────────────────── */
+const CHALLENGE_COPY = 'Challenge — both layers, both pads. How far can you get?';
 
 /* ══════════════════════════════════════════════════════════
    CONFIG / SETUP
@@ -208,12 +281,56 @@ function ensureAudioCtx() {
   return state.audioCtx;
 }
 
+/* Build a fresh master + per-layer gain chain. Any existing chain is cut
+   to zero and discarded, so oscillators scheduled against it go silent
+   immediately — this is how we prevent audio overlap when the scheduler
+   already pre-scheduled beats into the future. */
+function setupGainChain() {
+  const ac = state.audioCtx;
+  if (!ac) return;
+  teardownGainChain();
+
+  const master = ac.createGain();
+  master.gain.value = 1;
+  master.connect(ac.destination);
+
+  const gA = ac.createGain();
+  gA.gain.value = state.muteA ? 0 : 1;
+  gA.connect(master);
+
+  const gB = ac.createGain();
+  gB.gain.value = state.muteB ? 0 : 1;
+  gB.connect(master);
+
+  state.masterGain = master;
+  state.gainA = gA;
+  state.gainB = gB;
+}
+
+function teardownGainChain() {
+  if (state.masterGain) {
+    state.masterGain.gain.value = 0;
+    try { state.masterGain.disconnect(); } catch (e) { /* ok */ }
+    state.masterGain = null;
+  }
+  if (state.gainA) {
+    try { state.gainA.disconnect(); } catch (e) { /* ok */ }
+    state.gainA = null;
+  }
+  if (state.gainB) {
+    try { state.gainB.disconnect(); } catch (e) { /* ok */ }
+    state.gainB = null;
+  }
+}
+
 function scheduleClick(layer, contextTime) {
   const ac = state.audioCtx;
   if (!ac) return;
+  const layerGain = layer === 'A' ? state.gainA : state.gainB;
+  if (!layerGain) return; // no chain — game isn't running
   const osc  = ac.createOscillator();
   const gain = ac.createGain();
-  osc.connect(gain).connect(ac.destination);
+  osc.connect(gain).connect(layerGain);
 
   if (layer === 'A') {
     osc.type = 'sine';
@@ -250,13 +367,9 @@ function schedulerTick() {
 
   while (state.nextBarContextTime < horizon) {
     const barStart = state.nextBarContextTime;
-    // Schedule every beat in this bar
-    if (!state.muteA) {
-      for (const t of state.beatTimesA) scheduleClick('A', barStart + t);
-    }
-    if (!state.muteB) {
-      for (const t of state.beatTimesB) scheduleClick('B', barStart + t);
-    }
+    // Schedule every beat in this bar — muting is handled by layer gain.
+    for (const t of state.beatTimesA) scheduleClick('A', barStart + t);
+    for (const t of state.beatTimesB) scheduleClick('B', barStart + t);
     state.nextBarContextTime += state.barDuration;
   }
 
@@ -283,7 +396,12 @@ function currentBarAndPhase() {
    ══════════════════════════════════════════════════════════ */
 function handleTap(layer) {
   if (!state.running) return;
-  if (state.level === 0) return; // Listen mode: no input
+  if (state.mode === 'practice') {
+    if (state.phase === 'listen' || state.phase === 'results') return;
+    if (state.phase === 'layerA' && layer !== 'A') return;
+    if (state.phase === 'layerB' && layer !== 'B') return;
+  }
+  // Challenge mode: both layers always active — no phase gating.
   const elapsed = getElapsed();
   if (elapsed < 0) return;
 
@@ -349,17 +467,6 @@ function handleTap(layer) {
     if (state.streak > state.bestStreak) state.bestStreak = state.streak;
   }
 
-  // Axis 1 — Rhythmic complexity: track consecutive good-or-better / miss per layer
-  const a = state.adaptive;
-  if (layer === 'A') {
-    if (rating === 'miss') { a.consecGoodA = 0; a.consecMissA += 1; }
-    else                   { a.consecMissA = 0; a.consecGoodA += 1; }
-  } else {
-    if (rating === 'miss') { a.consecGoodB = 0; a.consecMissB += 1; }
-    else                   { a.consecMissB = 0; a.consecGoodB += 1; }
-  }
-  evalComplexityAxis();
-
   // Visual feedback
   const laneX = layer === 'A' ? canvas.clientWidth * LANE_X_A_FRAC : canvas.clientWidth * LANE_X_B_FRAC;
   const rgb = NOTE_COLORS_RGB[layer];
@@ -376,19 +483,55 @@ function handleTap(layer) {
   const comboColor = rating === 'perfect' ? LANE_COLOR_A
                    : rating === 'good'    ? '#e0ddd4'
                    : '#e85b5b';
-  state.combos.push({ x: laneX, y: HIT_Y - 22, text: comboText, color: comboColor, life: 1.0 });
+  state.combos.push({ x: laneX, y: HIT_Y + 22, text: comboText, color: comboColor, life: 1.0 });
+
+  flashPad(layer, rating === 'miss' ? 'miss' : 'hit');
 
   updateHud();
 }
 
+/* Pad flash: 'hit' for 120ms, 'miss' for 200ms. Restarts cleanly on rapid retaps. */
+const padFlashTimers = { A: null, B: null };
+function flashPad(layer, kind) {
+  const pad = layer === 'A' ? padAEl : padBEl;
+  if (!pad) return;
+  pad.classList.remove('hit', 'miss');
+  // Force reflow so the class re-add restarts any running transition.
+  void pad.offsetWidth;
+  pad.classList.add(kind);
+  if (padFlashTimers[layer]) clearTimeout(padFlashTimers[layer]);
+  const duration = kind === 'hit' ? 120 : 200;
+  padFlashTimers[layer] = setTimeout(() => {
+    pad.classList.remove(kind);
+    padFlashTimers[layer] = null;
+  }, duration);
+}
+
+/* Dim/undim the drum pads based on the current training phase.
+   'listen' → both dimmed · 'layerA' → B dimmed · 'layerB' → A dimmed · 'both' → neither */
+function setActivePads(phase) {
+  if (!padAEl || !padBEl) return;
+  padAEl.classList.remove('dimmed');
+  padBEl.classList.remove('dimmed');
+  if (phase === 'listen') {
+    padAEl.classList.add('dimmed');
+    padBEl.classList.add('dimmed');
+  } else if (phase === 'layerA') {
+    padBEl.classList.add('dimmed');
+  } else if (phase === 'layerB') {
+    padAEl.classList.add('dimmed');
+  }
+}
+
 function spawnParticles(x, y, rgb, count) {
   for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
+    // Downward hemisphere (0..π) so particles spray into the area below HIT_Y.
+    const angle = Math.random() * Math.PI;
     const speed = 2.2 + Math.random() * 3.4;
     state.particles.push({
       x, y,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 1.4,
+      vy: Math.sin(angle) * speed + 0.6,
       life: 0.95 + Math.random() * 0.15,
       rgb,
       size: 2 + Math.random() * 3,
@@ -397,14 +540,13 @@ function spawnParticles(x, y, rgb, count) {
 }
 
 /* Sweep past bars for missed beats (no tap logged), then evaluate per-bar
-   accuracy for the tempo + tolerance adaptive axes. */
+   accuracy for the practice-phase engine (in practice) or the three adaptive
+   axes + session-fail check (in challenge). */
 function sweepMisses() {
-  if (state.level === 0) return;
   const { bar } = currentBarAndPhase();
-  // Sweep any bar that's now fully past (bar-1) — beats in it can't still be tapped
-  // because currentTime - beatAbsTime > the Good window.
   const sweepTargetBar = bar - 1;
   if (sweepTargetBar <= state.missedMarkedBar) return;
+
   for (let b = state.missedMarkedBar + 1; b <= sweepTargetBar; b++) {
     for (const [beats, results] of [
       [state.beatTimesA, state.hitResultsA],
@@ -412,22 +554,181 @@ function sweepMisses() {
     ]) {
       for (let i = 0; i < beats.length; i++) {
         const key = `${b}:${i}`;
-        if (!results.has(key)) {
-          results.set(key, 'untapped');
-          // Untapped beats don't count as taps in the HUD accuracy; they
-          // only feed per-bar accuracy via barAccuracy().
-        }
+        if (!results.has(key)) results.set(key, 'untapped');
       }
     }
-    // Per-bar evaluation for tempo + tolerance axes
-    if (state.level > 0) {
-      state.totalBarsPlayed += 1;
+    state.missedMarkedBar = b;
+    state.totalBarsPlayed += 1;
+
+    if (state.mode === 'practice') {
+      // Practice: listen-phase countdown, then 4-bar eval windows per phase.
+      if (state.phase === 'listen') {
+        state.barsInWindow += 1;
+        if (state.barsInWindow >= LISTEN_BARS) {
+          advancePhase();
+          return; // applyAudioConfig inside advancePhase reset the bar clock
+        }
+      } else if (state.phase === 'layerA' || state.phase === 'layerB' || state.phase === 'both') {
+        aggregateBarIntoWindow(b);
+        state.barsInWindow += 1;
+        if (state.barsInWindow >= PHASE_EVAL_BARS) {
+          evalPhaseWindow();
+          return;
+        }
+      }
+    } else {
+      // Challenge: feed per-bar accuracy into each adaptive axis + session-fail.
       const acc = barAccuracy(b);
+      // Session-fail check runs first so we can early-exit before wasting
+      // cycles on axes that won't matter after endSession() fires.
+      if (evalSessionFail(acc)) { endSession(); return; }
       evalTempoAxis(acc);
+      evalComplexityAxis(acc);
       evalToleranceAxis(acc);
     }
   }
-  state.missedMarkedBar = sweepTargetBar;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRACTICE MODE — phase engine
+   ══════════════════════════════════════════════════════════
+   Runs only when state.mode === 'practice'. Walks the player
+   through Listen → Layer A → Layer B → Both, ramping BPM
+   from startBpm → goalBpm inside each scored phase based on
+   4-bar accuracy windows. See docs/polyrhythm-trainer-spec.md
+   ("Practice Mode — Structured Training Ramp").
+   ══════════════════════════════════════════════════════════ */
+
+function initPracticeSession() {
+  state.phase = 'listen';
+  state.currentBpm = state.startBpm;
+  state.bpm = state.startBpm;
+  state.barsInWindow = 0;
+  state.windowHits = 0;
+  state.windowTotal = 0;
+  state.phaseResults = { layerA: null, layerB: null, both: null };
+  state.phaseTotals = {
+    layerA: { hits: 0, total: 0 },
+    layerB: { hits: 0, total: 0 },
+    both:   { hits: 0, total: 0 },
+  };
+  state.practiceStartMs = Date.now();
+}
+
+/* Count completed bar `b` into the current window AND the phase's cumulative
+   total. Which layers feed the numbers depends on the active phase. */
+function aggregateBarIntoWindow(b) {
+  const phase = state.phase;
+  const phaseKey = phase === 'layerA' ? 'layerA' : phase === 'layerB' ? 'layerB' : 'both';
+  const layers = [];
+  if (phase === 'layerA' || phase === 'both') layers.push(['A', state.beatTimesA, state.hitResultsA]);
+  if (phase === 'layerB' || phase === 'both') layers.push(['B', state.beatTimesB, state.hitResultsB]);
+
+  let hits = 0, total = 0;
+  for (const [, beats, results] of layers) {
+    for (let i = 0; i < beats.length; i++) {
+      total += 1;
+      const r = results.get(`${b}:${i}`);
+      if (r === 'perfect' || r === 'good') hits += 1;
+    }
+  }
+  state.windowHits  += hits;
+  state.windowTotal += total;
+  state.phaseTotals[phaseKey].hits  += hits;
+  state.phaseTotals[phaseKey].total += total;
+}
+
+function evalPhaseWindow() {
+  const acc = state.windowTotal > 0 ? state.windowHits / state.windowTotal : 0;
+  const atGoal = state.currentBpm >= state.goalBpm;
+  let newBpm = null;
+  let advanceNow = false;
+
+  if (acc >= PHASE_PROMOTE_ACC && atGoal) {
+    advanceNow = true;
+  } else if (acc >= PHASE_PROMOTE_ACC && !atGoal) {
+    newBpm = Math.min(state.goalBpm, state.currentBpm + state.bpmIncrement);
+    showAdaptToast(`${state.currentBpm} → ${newBpm} bpm`);
+    state.currentBpm = newBpm;
+  } else if (acc < PHASE_DEMOTE_ACC && state.currentBpm > state.startBpm) {
+    newBpm = Math.max(state.startBpm, state.currentBpm - state.bpmIncrement);
+    showAdaptToast(`Slowing down — ${newBpm} bpm`);
+    state.currentBpm = newBpm;
+  }
+
+  state.barsInWindow = 0;
+  state.windowHits = 0;
+  state.windowTotal = 0;
+
+  if (advanceNow) { advancePhase(); return; }
+  if (newBpm != null) applyAudioConfig({ bpm: newBpm });
+}
+
+function recordPhaseResult(key) {
+  const totals = state.phaseTotals[key];
+  const accuracy = totals.total > 0 ? Math.round((totals.hits / totals.total) * 100) : 0;
+  state.phaseResults[key] = {
+    finalBpm: state.currentBpm,
+    accuracy,
+    reachedGoal: state.currentBpm >= state.goalBpm,
+  };
+}
+
+function enterPhase(next) {
+  state.phase = next;
+  state.currentBpm = state.startBpm;
+  state.barsInWindow = 0;
+  state.windowHits = 0;
+  state.windowTotal = 0;
+  setActivePads(next);
+  refreshPhaseMessage();
+  updateSkipLink();
+  applyAudioConfig({ bpm: state.startBpm });
+}
+
+function advancePhase() {
+  if (state.phase === 'listen') {
+    enterPhase('layerA');
+  } else if (state.phase === 'layerA') {
+    recordPhaseResult('layerA');
+    enterPhase('layerB');
+  } else if (state.phase === 'layerB') {
+    recordPhaseResult('layerB');
+    enterPhase('both');
+  } else if (state.phase === 'both') {
+    recordPhaseResult('both');
+    state.phase = 'results';
+    finishPractice();
+  }
+}
+
+/* "Skip to Both →" — jumps to Phase 4 immediately, recording the skipped
+   single-layer phases with sentinel values so the results screen can mark
+   them as skipped rather than "0% fail". */
+function skipToBoth() {
+  if (state.mode !== 'practice' || !state.running) return;
+  if (state.phase !== 'layerA' && state.phase !== 'layerB') return;
+  if (!state.phaseResults.layerA) {
+    state.phaseResults.layerA = { finalBpm: 'skipped', accuracy: 'skipped', reachedGoal: false };
+  }
+  if (!state.phaseResults.layerB) {
+    state.phaseResults.layerB = { finalBpm: 'skipped', accuracy: 'skipped', reachedGoal: false };
+  }
+  enterPhase('both');
+}
+
+function refreshPhaseMessage() {
+  if (state.mode !== 'practice' || !messageEl) return;
+  const msg = PHASE_MESSAGES[state.phase] || '';
+  messageEl.innerHTML = msg;
+}
+
+function updateSkipLink() {
+  if (!skipBothEl) return;
+  const show = state.mode === 'practice'
+    && state.running
+    && (state.phase === 'layerA' || state.phase === 'layerB');
+  skipBothEl.hidden = !show;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -460,35 +761,9 @@ function barAccuracy(bar) {
   };
 }
 
-/* Axis 1 — Rhythmic complexity.
-   Promote after 5 consec good-or-better on BOTH layers.
-   Demote after 5 consec miss on EITHER layer. */
-function evalComplexityAxis() {
-  const a = state.adaptive;
-  if (a.consecGoodA >= COMPLEXITY_PROMOTE_STREAK && a.consecGoodB >= COMPLEXITY_PROMOTE_STREAK) {
-    a.consecGoodA = 0; a.consecGoodB = 0;
-    if (a.polyIndex < POLY_PROGRESSION.length - 1) {
-      a.polyIndex += 1;
-      const next = POLY_PROGRESSION[a.polyIndex];
-      applyAudioConfig({ polyrhythm: next });
-      showAdaptToast(`Polyrhythm up — ${next}`);
-    }
-    return;
-  }
-  if (a.consecMissA >= COMPLEXITY_DEMOTE_STREAK || a.consecMissB >= COMPLEXITY_DEMOTE_STREAK) {
-    a.consecMissA = 0; a.consecMissB = 0;
-    if (a.polyIndex > 0) {
-      a.polyIndex -= 1;
-      const prev = POLY_PROGRESSION[a.polyIndex];
-      applyAudioConfig({ polyrhythm: prev });
-      showAdaptToast(`Easing off — ${prev}`);
-    }
-  }
-}
-
-/* Axis 2 — Tempo.
-   Promote +10 BPM after 3 consec bars with BOTH layers >80%.
-   Demote -10 BPM after 2 consec bars with EITHER layer <50%.
+/* Axis 1 — Tempo.
+   +10 BPM after 3 consec bars with BOTH layers >80%.
+   −10 BPM after 2 consec bars with EITHER layer <50%.
    Floor 50, Ceiling 200. */
 function evalTempoAxis(acc) {
   const a = state.adaptive;
@@ -513,30 +788,48 @@ function evalTempoAxis(acc) {
   }
 }
 
+/* Axis 2 — Polyrhythm complexity.
+   Switch to next in POLY_PROGRESSION after 16 consec bars at >80% on BOTH layers.
+   Promotion-only (no demotion — session-fail handles runaway failure). */
+function evalComplexityAxis(acc) {
+  const a = state.adaptive;
+  if (acc.a > 0.8 && acc.b > 0.8) a.barsComplexityAbove80 += 1;
+  else                             a.barsComplexityAbove80 = 0;
+
+  if (a.barsComplexityAbove80 >= COMPLEXITY_PROMOTE_BARS
+      && a.polyIndex < POLY_PROGRESSION.length - 1) {
+    a.barsComplexityAbove80 = 0;
+    a.polyIndex += 1;
+    const next = POLY_PROGRESSION[a.polyIndex];
+    state.polyrhythmProgression.push(next);
+    applyAudioConfig({ polyrhythm: next });
+    showAdaptToast(`Level up! ${next}`);
+  }
+}
+
 /* Axis 3 — Timing tolerance (Good window).
-   Promote after 8 sustained bars >80% accuracy (both layers average).
-   Demote after 4 sustained bars <50% accuracy. */
+   Tighten after 8 consec bars >80% averaged accuracy.
+   Promotion-only in Challenge Mode (±120ms → ±90ms → ±60ms). */
 function evalToleranceAxis(acc) {
   const a = state.adaptive;
   const avg = (acc.a + acc.b) / 2;
-  if (avg > 0.8) a.barsSustained80 += 1;      else a.barsSustained80 = 0;
-  if (avg < 0.5) a.barsSustained50Below += 1; else a.barsSustained50Below = 0;
+  if (avg > 0.8) a.barsSustained80 += 1; else a.barsSustained80 = 0;
 
-  if (a.barsSustained80 >= TOLERANCE_PROMOTE_BARS) {
+  if (a.barsSustained80 >= TOLERANCE_PROMOTE_BARS
+      && a.toleranceIdx < TOLERANCE_LEVELS.length - 1) {
     a.barsSustained80 = 0;
-    if (a.toleranceIdx < TOLERANCE_LEVELS.length - 1) {
-      a.toleranceIdx += 1;
-      showAdaptToast(`Nice — tightening timing window (±${currentGoodWindow()}ms)`);
-    }
-    return;
+    a.toleranceIdx += 1;
+    showAdaptToast(`Tightening timing — ±${currentGoodWindow()}ms`);
   }
-  if (a.barsSustained50Below >= TOLERANCE_DEMOTE_BARS) {
-    a.barsSustained50Below = 0;
-    if (a.toleranceIdx > 0) {
-      a.toleranceIdx -= 1;
-      showAdaptToast(`Widening timing window — focus on the feel (±${currentGoodWindow()}ms)`);
-    }
-  }
+}
+
+/* Session-fail — averaged accuracy <30% for 4 consecutive bars ends the run. */
+function evalSessionFail(acc) {
+  const a = state.adaptive;
+  const avg = (acc.a + acc.b) / 2;
+  if (avg < SESSION_FAIL_THRESHOLD) a.barsFailing += 1;
+  else                              a.barsFailing = 0;
+  return a.barsFailing >= SESSION_FAIL_BARS;
 }
 
 /* Apply a polyrhythm or BPM change mid-session. Reschedules the audio
@@ -560,6 +853,9 @@ function applyAudioConfig({ polyrhythm, bpm }) {
   if (state.schedulerTimer) { clearTimeout(state.schedulerTimer); state.schedulerTimer = null; }
   const ac = state.audioCtx;
   if (!ac) return;
+  // Swap in a fresh gain chain — the old one is cut to 0, silencing any
+  // oscillators already scheduled into the lookahead window.
+  setupGainChain();
   state.playStartTime = ac.currentTime + 0.12;
   state.nextBarContextTime = state.playStartTime;
   state.hitResultsA.clear();
@@ -594,54 +890,52 @@ function hideAdaptToast() {
    SESSION / RESULTS
    ══════════════════════════════════════════════════════════ */
 function checkSessionEnd() {
-  if (state.ended) return false;
-  if (state.level === 0) return false;   // Listen mode has no session
-  const elapsed = getElapsed();
-  if (elapsed >= SESSION_DURATION_S || state.totalBarsPlayed >= SESSION_MAX_BARS) {
-    endSession();
-    return true;
-  }
-  return false;
+  // Practice ends via advancePhase → finishPractice; Challenge ends via
+  // endSession() fired from sweepMisses() when evalSessionFail passes
+  // (4 bars <30% averaged accuracy) or when the user clicks Stop. Either
+  // way there's no timer/bar cap to poll from the render loop.
+  return state.ended;
 }
 
 function computeResults() {
-  const totalA = state.perfectA + state.goodA + state.missA;
-  const totalB = state.perfectB + state.goodB + state.missB;
-  const accA = totalA ? Math.round(((state.perfectA + state.goodA) / totalA) * 100) : 0;
-  const accB = totalB ? Math.round(((state.perfectB + state.goodB) / totalB) * 100) : 0;
   const score = (state.perfectA + state.perfectB) * 300 +
                 (state.goodA    + state.goodB)    * 100;
   return {
-    accA, accB,
     bestStreak: state.bestStreak,
     score,
-    polyrhythm: state.polyrhythm,
-    bpm: state.bpm,
-    tolerance: currentGoodWindow(),
+    finalPolyrhythm: state.polyrhythm,
+    finalBpm: state.bpm,
+    finalTolerance: currentGoodWindow(),
     toleranceName: currentToleranceName(),
+    polyrhythmProgression: state.polyrhythmProgression.slice(),
     duration: Math.max(0, Math.round(getElapsed())),
+    timestamp: new Date().toISOString(),
   };
 }
 
 function persistResult(results) {
+  // ResultDetail — Challenge schema (see docs/polyrhythm-trainer-spec.md).
   const detail = {
     gameId: 'polyrhythm',
-    timestamp: new Date().toISOString(),
-    mode: 'practice',
+    timestamp: results.timestamp,
+    mode: 'challenge',
     difficulty: {
-      polyrhythm: results.polyrhythm,
-      bpm: results.bpm,
-      tolerance: results.tolerance,
+      polyrhythm: results.finalPolyrhythm,
+      bpm: results.finalBpm,
+      tolerance: results.finalTolerance,
     },
     duration: results.duration,
-    correct: ((results.accA + results.accB) / 2) > 70,
+    // Session that didn't fall off a cliff counts as "correct" for the
+    // competency graph — any progression past the starting polyrhythm or a
+    // non-trivial score clears the bar.
+    correct: results.score >= 2000 || results.polyrhythmProgression.length > 1,
     detail: {
-      polyrhythm: results.polyrhythm,
-      bpm: results.bpm,
-      layer1: state.logA.slice(),
-      layer2: state.logB.slice(),
-      perLayerAccuracy: { a: results.accA, b: results.accB },
+      finalPolyrhythm: results.finalPolyrhythm,
+      finalBpm: results.finalBpm,
+      finalTolerance: results.finalTolerance,
+      score: results.score,
       streak: results.bestStreak,
+      polyrhythmProgression: results.polyrhythmProgression.slice(),
     },
   };
   try {
@@ -652,6 +946,41 @@ function persistResult(results) {
     console.warn('[polyrhythm] Failed to save result:', err);
   }
   return detail;
+}
+
+/* ──────────── Challenge-mode leaderboard (localStorage, top 5) ───────── */
+function loadLeaderboard() {
+  try {
+    const list = JSON.parse(localStorage.getItem(CHALLENGE_LEADERBOARD_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+/* Insert the fresh result, re-sort descending by score, keep the top
+   LEADERBOARD_SIZE. Returns the final list plus the rank (0-indexed) of
+   the current entry — -1 if it didn't make the cut. */
+function updateLeaderboard(results) {
+  const entry = {
+    score: results.score,
+    polyrhythm: results.finalPolyrhythm,
+    bpm: results.finalBpm,
+    tolerance: results.finalTolerance,
+    streak: results.bestStreak,
+    timestamp: results.timestamp,
+  };
+  const list = loadLeaderboard();
+  list.push(entry);
+  list.sort((a, b) => (b.score || 0) - (a.score || 0));
+  const trimmed = list.slice(0, LEADERBOARD_SIZE);
+  try {
+    localStorage.setItem(CHALLENGE_LEADERBOARD_KEY, JSON.stringify(trimmed));
+  } catch (err) {
+    console.warn('[polyrhythm] Failed to save leaderboard:', err);
+  }
+  const rank = trimmed.indexOf(entry);
+  return { list: trimmed, rank, entry };
 }
 
 function renderSongConnection(polyrhythm) {
@@ -688,6 +1017,7 @@ function endSession() {
   state.running = false;
   if (state.schedulerTimer) { clearTimeout(state.schedulerTimer); state.schedulerTimer = null; }
   if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = null; }
+  teardownGainChain();
 
   const results = computeResults();
   persistResult(results);
@@ -699,22 +1029,173 @@ function endSession() {
 
 function showResults(results) {
   if (!resultsEl) return;
-  if (resultAccAEl)    resultAccAEl.textContent    = `${results.accA}%`;
-  if (resultAccBEl)    resultAccBEl.textContent    = `${results.accB}%`;
-  if (resultStreakEl)  resultStreakEl.textContent  = String(results.bestStreak);
-  if (resultScoreEl)   resultScoreEl.textContent   = String(results.score);
-  if (resultPolyEl)    resultPolyEl.textContent    = results.polyrhythm;
-  if (resultBpmEl)     resultBpmEl.textContent     = `${results.bpm} BPM`;
-  if (resultToleranceEl) resultToleranceEl.textContent = `±${results.tolerance}ms`;
-  renderSongConnection(results.polyrhythm);
+  // Challenge results grid on, practice results off
+  if (challengeResultsEl) challengeResultsEl.hidden = false;
+  if (practiceResultsEl)  practiceResultsEl.hidden  = true;
+  if (challengeActionsEl) challengeActionsEl.hidden = false;
+  if (practiceActionsEl)  practiceActionsEl.hidden  = true;
+
+  if (resultStreakEl)    resultStreakEl.textContent    = String(results.bestStreak);
+  if (resultScoreEl)     resultScoreEl.textContent     = results.score.toLocaleString();
+  if (resultPolyEl)      resultPolyEl.textContent      = results.finalPolyrhythm;
+  if (resultBpmEl)       resultBpmEl.textContent       = `${results.finalBpm} BPM`;
+  if (resultToleranceEl) resultToleranceEl.textContent = `±${results.finalTolerance}ms`;
+
+  renderChallengeProgression(results.polyrhythmProgression);
+  renderLeaderboard(results);
+  renderSongConnection(results.finalPolyrhythm);
   resultsEl.hidden = false;
   resultsEl.classList.add('pr-results--show');
+}
+
+/* Render the chain of polyrhythms the player walked through this session
+   (starting pick → each promotion). Hidden if the session never promoted
+   past the starting polyrhythm. */
+function renderChallengeProgression(progression) {
+  const wrap = document.getElementById('pr-result-progression');
+  const path = document.getElementById('pr-result-progression-path');
+  if (!wrap || !path) return;
+  if (!Array.isArray(progression) || progression.length <= 1) {
+    wrap.hidden = true;
+    return;
+  }
+  // Tokens separated by arrows — "2:3 → 3:2 → 3:4"
+  path.innerHTML = progression
+    .map((p) => `<span class="pr-progression__step">${p}</span>`)
+    .join('<span class="pr-progression__sep">→</span>');
+  wrap.hidden = false;
+}
+
+/* Render the Challenge leaderboard if the current result made the top N.
+   Reveals the fresh entry with a highlight row; hidden otherwise. */
+function renderLeaderboard(results) {
+  const wrap = document.getElementById('pr-result-leaderboard');
+  const list = document.getElementById('pr-result-leaderboard-list');
+  if (!wrap || !list) return;
+  const { list: board, rank } = updateLeaderboard(results);
+  if (rank < 0) {
+    wrap.hidden = true;
+    return;
+  }
+  list.innerHTML = board.map((entry, i) => {
+    const score = (entry.score || 0).toLocaleString();
+    const cls = i === rank ? 'pr-leaderboard__row pr-leaderboard__row--current' : 'pr-leaderboard__row';
+    return `<li class="${cls}">`
+      + `<span class="pr-leaderboard__rank">${i + 1}</span>`
+      + `<span class="pr-leaderboard__score">${score}</span>`
+      + `<span class="pr-leaderboard__meta">${entry.polyrhythm} · ${entry.bpm} BPM · ±${entry.tolerance}ms</span>`
+      + `</li>`;
+  }).join('');
+  wrap.hidden = false;
 }
 
 function hideResults() {
   if (!resultsEl) return;
   resultsEl.classList.remove('pr-results--show');
   resultsEl.hidden = true;
+}
+
+/* ──────────── Practice-mode finish + results ──────────── */
+function finishPractice() {
+  if (state.ended) return;
+  state.ended = true;
+  hideAdaptToast();
+  state.running = false;
+  if (state.schedulerTimer) { clearTimeout(state.schedulerTimer); state.schedulerTimer = null; }
+  if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = null; }
+  teardownGainChain();
+  updateSkipLink();
+
+  persistPracticeResult();
+  showPracticeResults();
+
+  startBtn.textContent = 'Start';
+  startBtn.classList.remove('stopping');
+}
+
+function persistPracticeResult() {
+  const durationS = Math.max(0, Math.round((Date.now() - state.practiceStartMs) / 1000));
+  const both = state.phaseResults.both;
+  const detail = {
+    gameId: 'polyrhythm',
+    timestamp: new Date().toISOString(),
+    mode: 'practice',
+    difficulty: {
+      polyrhythm: state.polyrhythm,
+      goalBpm: state.goalBpm,
+      startBpm: state.startBpm,
+      increment: state.bpmIncrement,
+    },
+    duration: durationS,
+    correct: both && both.reachedGoal === true,
+    detail: {
+      polyrhythm: state.polyrhythm,
+      phases: state.phaseResults,
+      perTap: { layer1: state.logA.slice(), layer2: state.logB.slice() },
+      streak: state.bestStreak,
+    },
+  };
+  try {
+    const existing = JSON.parse(localStorage.getItem(RESULT_STORAGE_KEY) || '[]');
+    existing.push(detail);
+    localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(existing));
+  } catch (err) {
+    console.warn('[polyrhythm] Failed to save practice result:', err);
+  }
+}
+
+function formatPhaseCell(result) {
+  // sentinel 'skipped' from skip-to-both
+  if (!result || result.accuracy === 'skipped') {
+    return { bpm: 'skipped', acc: '—', mark: '→', markClass: 'pr-mark--skipped' };
+  }
+  return {
+    bpm: `${result.finalBpm} bpm`,
+    acc: `${result.accuracy}%`,
+    mark: result.reachedGoal ? '✓' : '✗',
+    markClass: result.reachedGoal ? 'pr-mark--pass' : 'pr-mark--fail',
+  };
+}
+
+function showPracticeResults() {
+  if (!resultsEl) return;
+  if (challengeResultsEl) challengeResultsEl.hidden = true;
+  if (practiceResultsEl)  practiceResultsEl.hidden  = false;
+  if (challengeActionsEl) challengeActionsEl.hidden = true;
+  if (practiceActionsEl)  practiceActionsEl.hidden  = false;
+
+  for (const key of ['layerA', 'layerB', 'both']) {
+    const cells = phaseRowEls[key];
+    if (!cells || !cells.bpm) continue;
+    const fmt = formatPhaseCell(state.phaseResults[key]);
+    cells.bpm.textContent = fmt.bpm;
+    cells.acc.textContent = fmt.acc;
+    cells.mark.textContent = fmt.mark;
+    cells.mark.className = `pr-phase-mark ${fmt.markClass}`;
+  }
+
+  if (practiceTimeEl) {
+    const secs = Math.max(0, Math.round((Date.now() - state.practiceStartMs) / 1000));
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    practiceTimeEl.textContent = `${m}m ${s.toString().padStart(2, '0')}s`;
+  }
+
+  // "Try again at {both.finalBpm}" — relabel the retry button per stall point
+  if (practiceRetryBtn) {
+    const both = state.phaseResults.both;
+    if (both && typeof both.finalBpm === 'number') {
+      practiceRetryBtn.textContent = `Try again at ${both.finalBpm}`;
+      practiceRetryBtn.dataset.retryBpm = String(both.finalBpm);
+    } else {
+      practiceRetryBtn.textContent = 'Try again';
+      delete practiceRetryBtn.dataset.retryBpm;
+    }
+  }
+
+  renderSongConnection(state.polyrhythm);
+  resultsEl.hidden = false;
+  resultsEl.classList.add('pr-results--show');
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -778,16 +1259,16 @@ function render() {
   const laneXB = w * LANE_X_B_FRAC;
 
   // --- Background lane breathing + interference ---
-  drawLaneBreathing(laneXA, state.beatTimesA, state.nA, elapsed, pxPerSec, LANE_COLOR_A_RGB);
-  drawLaneBreathing(laneXB, state.beatTimesB, state.nB, elapsed, pxPerSec, LANE_COLOR_B_RGB);
-  drawInterferenceWave(laneXA, laneXB, elapsed, pxPerSec);
+  drawLaneBreathing(laneXA, state.beatTimesA, state.nA, elapsed, pxPerSec, LANE_COLOR_A_RGB, h);
+  drawLaneBreathing(laneXB, state.beatTimesB, state.nB, elapsed, pxPerSec, LANE_COLOR_B_RGB, h);
+  drawInterferenceWave(laneXA, laneXB, elapsed, pxPerSec, h);
 
   // --- Convergence lines (dashed, where beats align) ---
   drawConvergenceLines(laneXA, laneXB, elapsed, pxPerSec);
 
   // --- Falling notes ---
-  drawFallingNotes('A', laneXA, state.beatTimesA, state.hitResultsA, elapsed, pxPerSec);
-  drawFallingNotes('B', laneXB, state.beatTimesB, state.hitResultsB, elapsed, pxPerSec);
+  drawFallingNotes('A', laneXA, state.beatTimesA, state.hitResultsA, elapsed, pxPerSec, h);
+  drawFallingNotes('B', laneXB, state.beatTimesB, state.hitResultsB, elapsed, pxPerSec, h);
 
   // --- Hit zone band ---
   drawHitZone(w, laneXA, laneXB);
@@ -815,26 +1296,163 @@ function render() {
     ctx.fillRect(0, 0, w, h);
   }
 
+  // --- Mode-specific HUD additions ---
+  if (state.mode === 'practice') {
+    drawPhaseIndicator(w);
+    drawBpmProgress(w);
+  } else {
+    drawChallengeIndicator(w);
+  }
+
   sweepMisses();
   if (checkSessionEnd()) return;
   state.rafId = requestAnimationFrame(render);
 }
 
+/* Challenge-mode indicator — "CHALLENGE" label + live adaptive readout
+   (current polyrhythm · BPM · tolerance). Rendered below the HTML HUD so
+   it doesn't collide with the Streak column. */
+function drawChallengeIndicator(w) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 10px Nunito, system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(127, 119, 221, 0.9)';
+  ctx.fillText('CHALLENGE', w / 2, 58);
+
+  ctx.font = '600 11px Nunito, system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  const line = `${state.polyrhythm} · ${state.bpm} BPM · ±${currentGoodWindow()}ms`;
+  ctx.fillText(line, w / 2, 74);
+  ctx.restore();
+}
+
+/* Phase step indicator — Listen → Layer A → Layer B → Both → ✓ */
+function drawPhaseIndicator(w) {
+  const y = 15;
+  const steps = PHASES_ORDER;
+  const gap = 82;
+  const totalW = gap * (steps.length - 1);
+  const startX = w / 2 - totalW / 2;
+  const isDone = state.phase === 'results';
+  const curIdx = isDone ? steps.length : steps.indexOf(state.phase);
+
+  ctx.save();
+  ctx.font = '500 11px Nunito, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < steps.length - 1; i++) {
+    const x1 = startX + i * gap + 6;
+    const x2 = startX + (i + 1) * gap - 6;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+  }
+
+  for (let i = 0; i < steps.length; i++) {
+    const x = startX + i * gap;
+    const ph = steps[i];
+    const active = i === curIdx;
+    const completed = i < curIdx;
+    let dotRgb = '255, 255, 255';
+    let dotAlpha = 0.28;
+    if (active) { dotAlpha = 1.0; }
+    else if (completed) {
+      if (ph === 'layerA') dotRgb = LANE_COLOR_A_RGB;
+      else if (ph === 'layerB') dotRgb = LANE_COLOR_B_RGB;
+      dotAlpha = 0.85;
+    }
+    ctx.fillStyle = `rgba(${dotRgb}, ${dotAlpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, active ? 4.2 : 3.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = active
+      ? 'rgba(255, 255, 255, 0.95)'
+      : completed ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.3)';
+    ctx.fillText(PHASE_LABELS[ph], x, y - 11);
+  }
+
+  // Trailing ✓ after Both completes
+  const xTail = startX + (steps.length - 1) * gap + 24;
+  if (isDone) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillText('✓', xTail, y);
+  } else {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fillText('✓', xTail, y);
+  }
+  ctx.restore();
+}
+
+/* Current BPM → Goal BPM progress bar below the phase indicator. */
+function drawBpmProgress(w) {
+  const y = 32;
+  const barW = 170;
+  const centerX = w / 2;
+  const x0 = centerX - barW / 2;
+  const x1 = centerX + barW / 2;
+
+  const span = Math.max(1, state.goalBpm - state.startBpm);
+  const t = Math.max(0, Math.min(1, (state.currentBpm - state.startBpm) / span));
+
+  ctx.save();
+  ctx.font = '600 11px Nunito, system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+
+  // left label: current
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#e0ddd4';
+  ctx.fillText(String(state.currentBpm), x0 - 8, y);
+
+  // right label: goal
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.fillText(`${state.goalBpm} bpm`, x1 + 8, y);
+
+  // track
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x0, y); ctx.lineTo(x1, y);
+  ctx.stroke();
+
+  // progress
+  ctx.strokeStyle = `rgba(${LANE_COLOR_A_RGB}, 0.85)`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x0, y); ctx.lineTo(x0 + barW * t, y);
+  ctx.stroke();
+
+  // knob
+  ctx.fillStyle = '#e0ddd4';
+  ctx.beginPath();
+  ctx.arc(x0 + barW * t, y, 3.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 /* ─── Background waves ──────────────────────────────────── */
-function drawLaneBreathing(laneX, beats, nBeats, elapsed, pxPerSec, rgb) {
+function drawLaneBreathing(laneX, beats, nBeats, elapsed, pxPerSec, rgb, h) {
   const step = 4;
-  // Build left/right edges
+  // Build left/right edges for the full canvas height — the wave shape
+  // continues past HIT_Y as atmospheric decoration below the hit zone.
   const points = [];
-  for (let y = 0; y <= HIT_Y; y += step) {
+  for (let y = 0; y <= h; y += step) {
     const env = laneEnvelopeAt(y, beats, nBeats, elapsed, pxPerSec);
     const width = BASE_LANE_W + env * LANE_EXPAND * 2;
     points.push({ y, left: laneX - width / 2, right: laneX + width / 2, env });
   }
 
-  // --- Fill (vertical gradient: 0.01 top → 0.10 bottom) ---
-  const grad = ctx.createLinearGradient(0, 0, 0, HIT_Y);
-  grad.addColorStop(0, `rgba(${rgb}, 0.01)`);
-  grad.addColorStop(1, `rgba(${rgb}, 0.10)`);
+  // Gradient peaks at HIT_Y and fades at both ends.
+  const hitStop = Math.max(0, Math.min(1, HIT_Y / h));
+
+  // --- Fill ---
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0,       `rgba(${rgb}, 0.01)`);
+  grad.addColorStop(hitStop, `rgba(${rgb}, 0.10)`);
+  grad.addColorStop(1,       `rgba(${rgb}, 0.02)`);
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.moveTo(points[0].left, points[0].y);
@@ -843,10 +1461,11 @@ function drawLaneBreathing(laneX, beats, nBeats, elapsed, pxPerSec, rgb) {
   ctx.closePath();
   ctx.fill();
 
-  // --- Stroke edges (gradient 0.02 top → 0.18 bottom) ---
-  const gradS = ctx.createLinearGradient(0, 0, 0, HIT_Y);
-  gradS.addColorStop(0, `rgba(${rgb}, 0.02)`);
-  gradS.addColorStop(1, `rgba(${rgb}, 0.18)`);
+  // --- Stroke edges ---
+  const gradS = ctx.createLinearGradient(0, 0, 0, h);
+  gradS.addColorStop(0,       `rgba(${rgb}, 0.02)`);
+  gradS.addColorStop(hitStop, `rgba(${rgb}, 0.18)`);
+  gradS.addColorStop(1,       `rgba(${rgb}, 0.04)`);
   ctx.strokeStyle = gradS;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -859,7 +1478,7 @@ function drawLaneBreathing(laneX, beats, nBeats, elapsed, pxPerSec, rgb) {
   ctx.stroke();
 }
 
-function drawInterferenceWave(laneXA, laneXB, elapsed, pxPerSec) {
+function drawInterferenceWave(laneXA, laneXB, elapsed, pxPerSec, h) {
   const step = 5;
   const centerX = (laneXA + laneXB) / 2;
   const maxAmp = 26;
@@ -868,7 +1487,7 @@ function drawInterferenceWave(laneXA, laneXB, elapsed, pxPerSec) {
   ctx.beginPath();
   const leftPts = [];
   const rightPts = [];
-  for (let y = 0; y <= HIT_Y; y += step) {
+  for (let y = 0; y <= h; y += step) {
     const envA = laneEnvelopeAt(y, state.beatTimesA, state.nA, elapsed, pxPerSec);
     const envB = laneEnvelopeAt(y, state.beatTimesB, state.nB, elapsed, pxPerSec);
     const avg = (envA + envB) / 2;
@@ -916,8 +1535,11 @@ function drawConvergenceLines(laneXA, laneXB, elapsed, pxPerSec) {
 }
 
 /* ─── Falling notes ─────────────────────────────────────── */
-function drawFallingNotes(layer, laneX, beats, results, elapsed, pxPerSec) {
+function drawFallingNotes(layer, laneX, beats, results, elapsed, pxPerSec, h) {
   const travel = state.barDuration * 0.8;
+  // Missed notes keep falling past HIT_Y to the canvas bottom, fading out.
+  const postHitSpan = Math.max(1, h - HIT_Y);
+  const postHitTime = postHitSpan / pxPerSec;
   const bar = Math.floor(elapsed / state.barDuration);
   const color = NOTE_COLORS[layer];
   const rgb = NOTE_COLORS_RGB[layer];
@@ -927,17 +1549,19 @@ function drawFallingNotes(layer, laneX, beats, results, elapsed, pxPerSec) {
     for (let i = 0; i < beats.length; i++) {
       const abs = barStart + beats[i];
       const remaining = abs - elapsed;
-      if (remaining < -0.18 || remaining > travel) continue;
+      if (remaining < -postHitTime || remaining > travel) continue;
 
       const key = `${b}:${i}`;
       const res = results.get(key);
       if (res === 'perfect' || res === 'good') continue; // popped
 
       const y = HIT_Y - (remaining / travel) * HIT_Y;
-      const progress = Math.max(0, Math.min(1, y / HIT_Y));
-      const alpha = 0.08 + progress * 0.92;
-      const radius = 4 + progress * 8;
-      const strokeWidth = 1 + progress * 1.5;
+      if (y > h) continue;
+      const preHit = Math.min(1, y / HIT_Y);
+      const postHitFade = y > HIT_Y ? Math.max(0, 1 - (y - HIT_Y) / postHitSpan) : 1;
+      const alpha = (0.08 + preHit * 0.92) * postHitFade;
+      const radius = 4 + preHit * 8;
+      const strokeWidth = 1 + preHit * 1.5;
 
       // Trail
       ctx.save();
@@ -969,16 +1593,18 @@ function drawFallingNotes(layer, laneX, beats, results, elapsed, pxPerSec) {
       ctx.arc(laneX, y, radius * 0.35, 0, Math.PI * 2);
       ctx.fill();
 
-      // Pulse halo when close to hit zone
-      const proximity = Math.abs(y - HIT_Y) / HIT_Y;
-      if (proximity < 0.12) {
-        const t = performance.now() / 1000;
-        const pulseR = radius + 6 + 4 * Math.sin(t * 14 * Math.PI * 2);
-        ctx.strokeStyle = `rgba(${rgb}, ${0.45 * (1 - proximity / 0.12)})`;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(laneX, y, pulseR, 0, Math.PI * 2);
-        ctx.stroke();
+      // Pulse halo only for notes still approaching the hit zone
+      if (y < HIT_Y) {
+        const proximity = (HIT_Y - y) / HIT_Y;
+        if (proximity < 0.12) {
+          const t = performance.now() / 1000;
+          const pulseR = radius + 6 + 4 * Math.sin(t * 14 * Math.PI * 2);
+          ctx.strokeStyle = `rgba(${rgb}, ${0.45 * (1 - proximity / 0.12)})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(laneX, y, pulseR, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       }
 
       // Miss marker: after 'untapped' sweep, show a faint red X at hit zone briefly
@@ -1118,12 +1744,17 @@ function resetScoring() {
 
   // Reset adaptive counters (keep polyIndex + toleranceIdx — those are the
   // "current level" the player has earned; scoring counters reset each
-  // session but level persists unless the user goes back to Quit).
+  // session but level persists unless the user quits back to setup).
   const a = state.adaptive;
-  a.consecGoodA = 0; a.consecGoodB = 0;
-  a.consecMissA = 0; a.consecMissB = 0;
-  a.barsBothAbove80 = 0; a.barsEitherBelow50 = 0;
-  a.barsSustained80 = 0; a.barsSustained50Below = 0;
+  a.barsBothAbove80 = 0;
+  a.barsEitherBelow50 = 0;
+  a.barsComplexityAbove80 = 0;
+  a.barsSustained80 = 0;
+  a.barsFailing = 0;
+
+  // Challenge progression history: seed with the starting polyrhythm so
+  // the results screen can always show at least one entry.
+  state.polyrhythmProgression = [state.polyrhythm];
 
   updateHud();
 }
@@ -1181,28 +1812,24 @@ function wireMicToAnalyser() {
   return state.micWiringPromise;
 }
 
-function levelMessage() {
-  let msg = LEVEL_COPY[state.level];
+function challengeMessage() {
+  let msg = CHALLENGE_COPY;
   const modality = state.provider ? state.provider.getActiveModality() : 'click';
   if (modality === 'mic_onset') {
-    if (state.level === 2) {
-      msg += ' <strong>Mic input supports one layer at a time. Use F/J keys for both layers.</strong>';
-    } else if (state.level === 1) {
-      msg += ` Mic taps drive Layer ${state.onsetLayer}.`;
-    }
+    msg += ` <strong>Mic supports one layer — taps route to Layer ${state.onsetLayer}. Use F/J or pads for both.</strong>`;
   }
   return msg;
 }
 
-function refreshLevelMessage() {
-  messageEl.innerHTML = levelMessage();
+function refreshChallengeMessage() {
+  messageEl.innerHTML = challengeMessage();
 }
 
 function handleProviderOnset(_event) {
   if (!state.running) return;
-  if (state.level === 0) return;     // Listen mode: no input
-  // Single mic stream → one layer at a time. In Level 2 the player needs
-  // F/J for the other layer; mic still drives `onsetLayer` here.
+  // Single mic stream can only route to one layer; in Challenge's two-layer
+  // mode this means mic-onset drives whichever layer `onsetLayer` points at
+  // (default 'A'). Players who need two-handed input must use pads/keys.
   handleTap(state.onsetLayer);
   playClickNow(state.onsetLayer);
 }
@@ -1236,8 +1863,10 @@ function initInputProvider() {
     const btn = e.target.closest('[data-modality="mic_onset"]');
     if (!btn || btn.disabled) return;
     wireMicToAnalyser();
-    // Update the message in case mic_onset + level 2 needs the constraint hint
-    setTimeout(refreshLevelMessage, 0);
+    // Refresh the status message so challenge mode surfaces the mic-only-one-layer hint.
+    setTimeout(() => {
+      if (state.mode === 'challenge') refreshChallengeMessage();
+    }, 0);
   }, true);
 }
 
@@ -1247,6 +1876,9 @@ function initInputProvider() {
 function start() {
   if (state.running) return;
   ensureAudioCtx();
+  if (state.mode === 'practice') {
+    initPracticeSession();
+  }
   updateConfig();
   resetScoring();
   syncPolyIndex();
@@ -1254,6 +1886,7 @@ function start() {
   resizeCanvas();
 
   state.running = true;
+  setupGainChain();
   // Delay first bar start slightly so scheduler has lead time
   state.playStartTime = state.audioCtx.currentTime + 0.12;
   state.nextBarContextTime = state.playStartTime;
@@ -1263,7 +1896,16 @@ function start() {
 
   startBtn.textContent = 'Stop';
   startBtn.classList.add('stopping');
-  refreshLevelMessage();
+
+  if (state.mode === 'practice') {
+    setActivePads('listen');
+    refreshPhaseMessage();
+    updateSkipLink();
+  } else {
+    setActivePads('both');
+    updateSkipLink();
+    refreshChallengeMessage();
+  }
 }
 
 function stop() {
@@ -1273,7 +1915,14 @@ function stop() {
   state.schedulerTimer = null;
   if (state.rafId) cancelAnimationFrame(state.rafId);
   state.rafId = null;
+  // Cut the master gain to silence any oscillators still queued in the
+  // scheduler's lookahead window, then drop the chain.
+  teardownGainChain();
   hideAdaptToast();
+  updateSkipLink();
+  // Un-dim pads so the setup screen looks correct again.
+  if (padAEl) padAEl.classList.remove('dimmed');
+  if (padBEl) padBEl.classList.remove('dimmed');
 
   // Clear canvas
   const w = canvas.clientWidth;
@@ -1301,29 +1950,124 @@ polyEl.addEventListener('change', () => {
   if (state.running) restart(); else updateConfig();
 });
 
-levelsEl.addEventListener('click', (e) => {
-  const btn = e.target.closest('.pr-level-pill');
+/* Mode toggle — practice vs challenge. Toggling swaps which BPM controls
+   are visible and what state.bpm reflects. Game flow logic unchanged for
+   now (Prompt 2). */
+function applyMode(mode) {
+  state.mode = mode;
+  modesEl.querySelectorAll('.pr-mode-pill').forEach(b => {
+    b.classList.toggle('pr-mode-pill--on', b.dataset.mode === mode);
+  });
+  modeOnlyEls.forEach((el) => {
+    if (el.classList.contains('pr-mode-only--practice')) el.hidden = (mode !== 'practice');
+    else if (el.classList.contains('pr-mode-only--challenge')) el.hidden = (mode !== 'challenge');
+  });
+  const pageEl = document.querySelector('.polyrhythm-page');
+  if (pageEl) pageEl.dataset.mode = mode;
+  if (mode === 'practice') {
+    state.bpm = state.startBpm;
+  } else {
+    state.bpm = Number(bpmEl.value);
+  }
+  if (bpmValueEl) bpmValueEl.textContent = String(state.bpm);
+  updateSkipLink();
+  if (state.running) restart(); else updateConfig();
+}
+
+modesEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pr-mode-pill');
   if (!btn) return;
-  levelsEl.querySelectorAll('.pr-level-pill').forEach(b => b.classList.remove('pr-level-pill--on'));
-  btn.classList.add('pr-level-pill--on');
-  state.level = Number(btn.dataset.level);
-  if (state.running) resetScoring();
-  refreshLevelMessage();
+  applyMode(btn.dataset.mode);
 });
 
+/* Practice-mode presets — fill polyrhythm dropdown and goal BPM. */
+presetsEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pr-preset');
+  if (!btn) return;
+  const poly = btn.dataset.poly;
+  const goal = Number(btn.dataset.goal);
+
+  polyEl.value = poly;
+  state.polyrhythm = poly;
+  syncPolyIndex();
+
+  goalBpmEl.value = String(goal);
+  state.goalBpm = goal;
+  goalBpmValueEl.textContent = String(goal);
+
+  // Keep start BPM ≤ goal BPM.
+  startBpmEl.max = String(goal);
+  if (Number(startBpmEl.value) > goal) {
+    startBpmEl.value = String(goal);
+    state.startBpm = goal;
+    startBpmValueEl.textContent = String(goal);
+  }
+  if (state.mode === 'practice') {
+    state.bpm = state.startBpm;
+    if (bpmValueEl) bpmValueEl.textContent = String(state.bpm);
+  }
+  if (state.running) restart(); else updateConfig();
+});
+
+/* Goal BPM slider — clamps start BPM upward if it exceeds the new goal. */
+goalBpmEl.addEventListener('input', () => {
+  const val = Number(goalBpmEl.value);
+  state.goalBpm = val;
+  goalBpmValueEl.textContent = String(val);
+  startBpmEl.max = String(val);
+  if (Number(startBpmEl.value) > val) {
+    startBpmEl.value = String(val);
+    state.startBpm = val;
+    startBpmValueEl.textContent = String(val);
+    if (state.mode === 'practice') {
+      state.bpm = val;
+      if (bpmValueEl) bpmValueEl.textContent = String(val);
+      if (state.running) restart();
+    }
+  }
+});
+
+/* Start BPM slider — capped at goal BPM. */
+startBpmEl.addEventListener('input', () => {
+  let val = Number(startBpmEl.value);
+  if (val > state.goalBpm) {
+    val = state.goalBpm;
+    startBpmEl.value = String(val);
+  }
+  state.startBpm = val;
+  startBpmValueEl.textContent = String(val);
+  if (state.mode === 'practice') {
+    state.bpm = val;
+    if (bpmValueEl) bpmValueEl.textContent = String(val);
+    if (state.running) restart();
+  }
+});
+
+/* BPM increment pills — stored on state; applied by Prompt 2's ramp logic. */
+incrementsEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pr-inc-pill');
+  if (!btn) return;
+  incrementsEl.querySelectorAll('.pr-inc-pill').forEach(b => b.classList.remove('pr-inc-pill--on'));
+  btn.classList.add('pr-inc-pill--on');
+  state.bpmIncrement = Number(btn.dataset.inc);
+});
+
+/* Challenge-mode single BPM slider. */
 bpmEl.addEventListener('input', () => {
   state.bpm = Number(bpmEl.value);
   bpmValueEl.textContent = state.bpm;
-  if (state.running) restart();
+  if (state.mode === 'challenge' && state.running) restart();
 });
 
 muteAEl.addEventListener('click', () => {
   state.muteA = !state.muteA;
   muteAEl.classList.toggle('off', state.muteA);
+  if (state.gainA) state.gainA.gain.value = state.muteA ? 0 : 1;
 });
 muteBEl.addEventListener('click', () => {
   state.muteB = !state.muteB;
   muteBEl.classList.toggle('off', state.muteB);
+  if (state.gainB) state.gainB.gain.value = state.muteB ? 0 : 1;
 });
 
 startBtn.addEventListener('click', () => {
@@ -1334,23 +2078,60 @@ startBtn.addEventListener('click', () => {
 if (replayBtn) {
   replayBtn.addEventListener('click', () => {
     hideResults();
-    // Play Again keeps current poly/bpm/tolerance (player earned them) and
-    // restarts a fresh session.
-    start();
-  });
-}
-if (quitBtn) {
-  quitBtn.addEventListener('click', () => {
-    hideResults();
-    // Quit reverts the adaptive level to whatever the dropdown/slider say —
-    // the user's explicit setup choice.
+    // "Play again" revives a Challenge session from the user's setup choices
+    // (not the adaptive level they reached), since they just washed out —
+    // it would be cruel to drop them back at the failing polyrhythm/BPM.
     state.polyrhythm = polyEl.value;
-    state.bpm = Number(bpmEl.value);
-    bpmValueEl.textContent = state.bpm;
+    state.bpm = state.mode === 'practice' ? state.startBpm : Number(bpmEl.value);
+    if (bpmValueEl) bpmValueEl.textContent = String(state.bpm);
     state.adaptive.toleranceIdx = 0;
     syncPolyIndex();
     updateConfig();
-    messageEl.textContent = 'Session ended. Press Start to go again.';
+    start();
+  });
+}
+
+/* Practice results — "Try again at {both.finalBpm}" re-enters practice with
+   startBpm bumped up to where the player stalled, so they skip the easy ramp. */
+if (practiceRetryBtn) {
+  practiceRetryBtn.addEventListener('click', () => {
+    hideResults();
+    const retryBpm = Number(practiceRetryBtn.dataset.retryBpm);
+    if (Number.isFinite(retryBpm) && retryBpm > 0) {
+      const clamped = Math.min(state.goalBpm, Math.max(40, retryBpm));
+      state.startBpm = clamped;
+      if (startBpmEl) startBpmEl.value = String(clamped);
+      if (startBpmValueEl) startBpmValueEl.textContent = String(clamped);
+    }
+    start();
+  });
+}
+
+/* "New goal" — close results, leave the user on the setup screen to change
+   goal BPM / increment. Don't auto-restart. */
+if (practiceNewGoalBtn) {
+  practiceNewGoalBtn.addEventListener('click', () => {
+    hideResults();
+    if (goalBpmEl && typeof goalBpmEl.focus === 'function') goalBpmEl.focus();
+    messageEl.textContent = 'Pick a new goal BPM, then press Start.';
+  });
+}
+
+/* "New polyrhythm" — close results, focus the polyrhythm dropdown. */
+if (practiceNewPolyBtn) {
+  practiceNewPolyBtn.addEventListener('click', () => {
+    hideResults();
+    if (polyEl && typeof polyEl.focus === 'function') polyEl.focus();
+    messageEl.textContent = 'Pick a new polyrhythm, then press Start.';
+  });
+}
+
+/* Skip-to-Both link — jumps past the single-layer phases at startBpm,
+   marking them as "skipped" in the results. Only meaningful during layerA
+   or layerB; the button itself is hidden otherwise via updateSkipLink(). */
+if (skipBothEl) {
+  skipBothEl.addEventListener('click', () => {
+    skipToBoth();
   });
 }
 
@@ -1363,7 +2144,19 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'j') { handleTap('B'); playClickNow('B'); }
 });
 
-/* Pointer — left half → A, right half → B */
+/* Drum pads — primary tap targets. */
+padAEl.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  handleTap('A');
+  playClickNow('A');
+});
+padBEl.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  handleTap('B');
+  playClickNow('B');
+});
+
+/* Canvas pointer fallback — left half → A, right half → B. */
 canvas.addEventListener('pointerdown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -1381,13 +2174,21 @@ window.addEventListener('resize', () => {
    ══════════════════════════════════════════════════════════ */
 (function init() {
   state.polyrhythm = polyEl.value;
-  state.bpm = Number(bpmEl.value);
-  bpmValueEl.textContent = state.bpm;
+  state.goalBpm = Number(goalBpmEl.value);
+  state.startBpm = Number(startBpmEl.value);
+  goalBpmValueEl.textContent = String(state.goalBpm);
+  startBpmValueEl.textContent = String(state.startBpm);
+  startBpmEl.max = String(state.goalBpm);
+  const activeInc = incrementsEl.querySelector('.pr-inc-pill--on');
+  if (activeInc) state.bpmIncrement = Number(activeInc.dataset.inc);
+
+  // Set initial mode + BPM control visibility; applyMode() sets state.bpm accordingly.
+  applyMode(state.mode);
   updateConfig();
   resizeCanvas();
 
   initInputProvider();
-  refreshLevelMessage();
+  if (state.mode === 'challenge') refreshChallengeMessage();
 
   // Paint an idle canvas
   const w = canvas.clientWidth;

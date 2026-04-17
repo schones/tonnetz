@@ -19,6 +19,14 @@
   <!-- ─── Setup / Controls ────────────────────────────────── -->
   <section class="pr-setup">
     <div class="pr-setup__row">
+      <div class="pr-field">
+        <span class="pr-field__label">Mode</span>
+        <div class="pr-modes" id="pr-modes">
+          <button class="pr-mode-pill pr-mode-pill--on" data-mode="practice">Practice</button>
+          <button class="pr-mode-pill" data-mode="challenge">Challenge</button>
+        </div>
+      </div>
+
       <label class="pr-field">
         <span class="pr-field__label">Polyrhythm</span>
         <select id="pr-polyrhythm" class="pr-select">
@@ -29,15 +37,47 @@
           <option value="2:3">2 : 3 (reverse)</option>
         </select>
       </label>
+    </div>
 
-      <div class="pr-field">
-        <span class="pr-field__label">Level</span>
-        <div class="pr-levels" id="pr-levels">
-          <button class="pr-level-pill pr-level-pill--on" data-level="0">Listen</button>
-          <button class="pr-level-pill" data-level="1">Feel it</button>
-          <button class="pr-level-pill" data-level="2">Split it</button>
+    <div class="pr-setup__row pr-mode-only pr-mode-only--practice" id="pr-presets-row">
+      <div class="pr-field pr-field--wide">
+        <span class="pr-field__label">Presets</span>
+        <div class="pr-presets" id="pr-presets">
+          <button class="pr-preset" type="button" data-poly="3:2" data-goal="150">Linus &amp; Lucy</button>
+          <button class="pr-preset" type="button" data-poly="3:4" data-goal="120">Oye Como Va</button>
+          <button class="pr-preset" type="button" data-poly="5:4" data-goal="100">Mission Impossible</button>
         </div>
       </div>
+    </div>
+
+    <div class="pr-setup__row pr-mode-only pr-mode-only--practice" id="pr-practice-bpm-row">
+      <label class="pr-field pr-field--wide">
+        <span class="pr-field__label">Goal BPM <span id="pr-goal-bpm-value" class="pr-bpm-value">150</span></span>
+        <input id="pr-goal-bpm" type="range" min="60" max="200" value="150" class="pr-slider" />
+      </label>
+      <label class="pr-field pr-field--wide">
+        <span class="pr-field__label">Start BPM <span id="pr-start-bpm-value" class="pr-bpm-value">60</span></span>
+        <input id="pr-start-bpm" type="range" min="40" max="150" value="60" class="pr-slider" />
+      </label>
+    </div>
+
+    <div class="pr-setup__row pr-mode-only pr-mode-only--practice" id="pr-increment-row">
+      <div class="pr-field">
+        <span class="pr-field__label">BPM Increment</span>
+        <div class="pr-increments" id="pr-increments">
+          <button class="pr-inc-pill" type="button" data-inc="5">5</button>
+          <button class="pr-inc-pill pr-inc-pill--on" type="button" data-inc="10">10</button>
+          <button class="pr-inc-pill" type="button" data-inc="15">15</button>
+          <button class="pr-inc-pill" type="button" data-inc="20">20</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pr-setup__row pr-mode-only pr-mode-only--challenge" id="pr-challenge-bpm-row" hidden>
+      <label class="pr-field pr-field--wide">
+        <span class="pr-field__label">Tempo <span id="pr-bpm-value" class="pr-bpm-value">80</span> BPM</span>
+        <input id="pr-bpm" type="range" min="40" max="200" value="80" class="pr-slider" />
+      </label>
     </div>
 
     <div class="pr-setup__row">
@@ -48,11 +88,6 @@
     </div>
 
     <div class="pr-setup__row">
-      <label class="pr-field pr-field--wide">
-        <span class="pr-field__label">Tempo <span id="pr-bpm-value" class="pr-bpm-value">80</span> BPM</span>
-        <input id="pr-bpm" type="range" min="40" max="200" value="80" class="pr-slider" />
-      </label>
-
       <div class="pr-field">
         <span class="pr-field__label">Layers</span>
         <div class="pr-mutes">
@@ -70,9 +105,8 @@
 
     <p class="pr-hint">
       <span class="pr-hint__kbd">F</span> for Layer A,
-      <span class="pr-hint__kbd">J</span> for Layer B — or tap left/right of canvas.
+      <span class="pr-hint__kbd">J</span> for Layer B — or tap the pads below.
     </p>
-    <p class="pr-hint pr-hint--dim">Linus &amp; Lucy ≈ 3:2 @ 150 bpm</p>
   </section>
 
   <!-- ─── Stage ─────────────────────────────────────────── -->
@@ -98,40 +132,83 @@
       <!-- Adaptive promote/demote toast -->
       <div id="pr-adapt-toast" class="pr-adapt-toast" role="status" aria-live="polite" hidden></div>
 
+      <!-- Practice-mode "Skip to Both →" (hidden outside Layer A / Layer B phases) -->
+      <button id="pr-skip-both" class="pr-skip-both" type="button" hidden>Skip to Both →</button>
+
       <!-- Results overlay (shown on session end) -->
       <div id="pr-results" class="pr-results" role="dialog" aria-modal="true" aria-labelledby="pr-results-title" hidden>
         <div class="pr-results__card">
           <h2 id="pr-results-title" class="pr-results__title">Session complete</h2>
 
-          <div class="pr-results__grid">
-            <div class="pr-result-stat pr-result-stat--a">
-              <span class="pr-result-stat__label">Layer A accuracy</span>
-              <span class="pr-result-stat__value" id="pr-result-acc-a">—</span>
-            </div>
-            <div class="pr-result-stat pr-result-stat--b">
-              <span class="pr-result-stat__label">Layer B accuracy</span>
-              <span class="pr-result-stat__value" id="pr-result-acc-b">—</span>
+          <!-- Challenge-mode breakdown (final reached values + totals) -->
+          <div id="pr-challenge-results" class="pr-results__grid" hidden>
+            <div class="pr-result-stat pr-result-stat--score">
+              <span class="pr-result-stat__label">Total score</span>
+              <span class="pr-result-stat__value" id="pr-result-score">—</span>
             </div>
             <div class="pr-result-stat">
               <span class="pr-result-stat__label">Best streak</span>
               <span class="pr-result-stat__value" id="pr-result-streak">—</span>
             </div>
-            <div class="pr-result-stat">
-              <span class="pr-result-stat__label">Score</span>
-              <span class="pr-result-stat__value" id="pr-result-score">—</span>
-            </div>
-            <div class="pr-result-stat">
-              <span class="pr-result-stat__label">Polyrhythm</span>
+            <div class="pr-result-stat pr-result-stat--a">
+              <span class="pr-result-stat__label">Final polyrhythm</span>
               <span class="pr-result-stat__value" id="pr-result-poly">—</span>
             </div>
-            <div class="pr-result-stat">
-              <span class="pr-result-stat__label">Tempo</span>
+            <div class="pr-result-stat pr-result-stat--b">
+              <span class="pr-result-stat__label">Final tempo</span>
               <span class="pr-result-stat__value" id="pr-result-bpm">—</span>
             </div>
             <div class="pr-result-stat">
-              <span class="pr-result-stat__label">Good window</span>
+              <span class="pr-result-stat__label">Final tolerance</span>
               <span class="pr-result-stat__value" id="pr-result-tolerance">—</span>
             </div>
+          </div>
+
+          <!-- Polyrhythm progression history (shown only if promoted past starting poly) -->
+          <div id="pr-result-progression" class="pr-result-progression" hidden>
+            <span class="pr-result-progression__label">Polyrhythms played</span>
+            <div class="pr-result-progression__path" id="pr-result-progression-path"></div>
+          </div>
+
+          <!-- Challenge leaderboard (top 5, shown only if this run makes the cut) -->
+          <div id="pr-result-leaderboard" class="pr-result-leaderboard" hidden>
+            <span class="pr-result-leaderboard__label">Challenge leaderboard — Top 5</span>
+            <ol id="pr-result-leaderboard-list" class="pr-leaderboard"></ol>
+          </div>
+
+          <!-- Practice-mode per-phase breakdown -->
+          <div id="pr-practice-results" class="pr-practice-results" hidden>
+            <table class="pr-phase-table">
+              <thead>
+                <tr>
+                  <th>Phase</th>
+                  <th>Final BPM</th>
+                  <th>Accuracy</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr id="pr-phase-row-a" class="pr-phase-row pr-phase-row--a">
+                  <td>Layer A</td>
+                  <td id="pr-phase-bpm-a">—</td>
+                  <td id="pr-phase-acc-a">—</td>
+                  <td id="pr-phase-mark-a" class="pr-phase-mark">—</td>
+                </tr>
+                <tr id="pr-phase-row-b" class="pr-phase-row pr-phase-row--b">
+                  <td>Layer B</td>
+                  <td id="pr-phase-bpm-b">—</td>
+                  <td id="pr-phase-acc-b">—</td>
+                  <td id="pr-phase-mark-b" class="pr-phase-mark">—</td>
+                </tr>
+                <tr id="pr-phase-row-both" class="pr-phase-row pr-phase-row--both">
+                  <td>Both</td>
+                  <td id="pr-phase-bpm-both">—</td>
+                  <td id="pr-phase-acc-both">—</td>
+                  <td id="pr-phase-mark-both" class="pr-phase-mark">—</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="pr-practice-time">Total time: <span id="pr-practice-time">—</span></div>
           </div>
 
           <div id="pr-result-song" class="pr-result-song" hidden>
@@ -144,12 +221,30 @@
             <a id="pr-result-song-link" class="pr-result-song__link" href="#" hidden>Open in Explorer →</a>
           </div>
 
-          <div class="pr-results__actions">
-            <button id="pr-replay" class="pr-btn pr-btn--primary" type="button">Play Again</button>
-            <button id="pr-quit" class="pr-btn pr-btn--secondary" type="button">Quit</button>
+          <div id="pr-challenge-actions" class="pr-results__actions" hidden>
+            <button id="pr-replay" class="pr-btn pr-btn--primary" type="button">Play again</button>
+          </div>
+
+          <div id="pr-practice-actions" class="pr-results__actions" hidden>
+            <button id="pr-practice-retry" class="pr-btn pr-btn--primary" type="button">Try again</button>
+            <button id="pr-practice-new-goal" class="pr-btn pr-btn--secondary" type="button">New goal</button>
+            <button id="pr-practice-new-poly" class="pr-btn pr-btn--secondary" type="button">New polyrhythm</button>
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="pr-pads">
+      <button class="pr-pad pr-pad--a" id="pr-pad-a" type="button">
+        <span class="pr-pad__dot"></span>
+        <span class="pr-pad__label">Layer A</span>
+        <span class="pr-pad__key">F</span>
+      </button>
+      <button class="pr-pad pr-pad--b" id="pr-pad-b" type="button">
+        <span class="pr-pad__dot"></span>
+        <span class="pr-pad__label">Layer B</span>
+        <span class="pr-pad__key">J</span>
+      </button>
     </div>
 
     <div id="pr-message" class="pr-message">Press Start to listen to the polyrhythm.</div>

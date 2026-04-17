@@ -86,7 +86,7 @@
   box-shadow: 0 0 0 3px rgba(127, 119, 221, 0.2);
 }
 
-.pr-levels {
+.pr-modes {
   display: flex;
   gap: 4px;
   background: #0a0a0a;
@@ -94,8 +94,8 @@
   border-radius: 8px;
   padding: 3px;
 }
-.pr-level-pill {
-  padding: 7px 14px;
+.pr-mode-pill {
+  padding: 7px 16px;
   border: none;
   background: transparent;
   color: rgba(255, 255, 255, 0.5);
@@ -106,15 +106,71 @@
   cursor: pointer;
   transition: all 0.15s;
 }
-.pr-level-pill:hover:not(.pr-level-pill--on) {
+.pr-mode-pill:hover:not(.pr-mode-pill--on) {
   color: #e0ddd4;
   background: rgba(255, 255, 255, 0.04);
 }
-.pr-level-pill--on {
+.pr-mode-pill--on {
   background: #7F77DD;
   color: #fff;
   box-shadow: 0 2px 8px rgba(127, 119, 221, 0.35);
 }
+
+.pr-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pr-preset {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pr-preset:hover {
+  border-color: #7F77DD;
+  color: #e0ddd4;
+  background: rgba(127, 119, 221, 0.08);
+}
+
+.pr-increments {
+  display: flex;
+  gap: 4px;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 3px;
+}
+.pr-inc-pill {
+  padding: 6px 12px;
+  min-width: 36px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pr-inc-pill:hover:not(.pr-inc-pill--on) {
+  color: #e0ddd4;
+  background: rgba(255, 255, 255, 0.04);
+}
+.pr-inc-pill--on {
+  background: #7F77DD;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(127, 119, 221, 0.35);
+}
+
+.pr-mode-only[hidden] { display: none !important; }
 
 .pr-slider {
   -webkit-appearance: none;
@@ -250,6 +306,74 @@
   touch-action: none;
 }
 
+/* ── Drum Pads ──────────────────────────────────────── */
+.pr-pads {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.pr-pad {
+  flex: 1;
+  min-height: 80px;
+  background: #222;
+  border: 2px solid;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #e0ddd4;
+  font-family: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease, opacity 0.15s ease;
+}
+.pr-pad--a { border-color: rgba(127, 119, 221, 0.4); }
+.pr-pad--b { border-color: rgba(239, 159, 39, 0.4); }
+
+.pr-pad__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.pr-pad--a .pr-pad__dot { background: #7F77DD; }
+.pr-pad--b .pr-pad__dot { background: #EF9F27; }
+
+.pr-pad__label {
+  font-size: 14px;
+  color: #ccc;
+  font-weight: 700;
+}
+.pr-pad__key {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.pr-pad--a.hit {
+  background: rgba(127, 119, 221, 0.15);
+  border-color: #7F77DD;
+  transform: scale(0.97);
+}
+.pr-pad--b.hit {
+  background: rgba(239, 159, 39, 0.15);
+  border-color: #EF9F27;
+  transform: scale(0.97);
+}
+.pr-pad.miss {
+  background: rgba(200, 80, 80, 0.1);
+}
+.pr-pad.dimmed {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
 /* HUD overlay */
 .pr-hud {
   position: absolute;
@@ -289,6 +413,12 @@
 .pr-hud__col--b .pr-hud__value { color: #EF9F27; }
 .pr-hud__col--streak .pr-hud__value { color: #e0ddd4; }
 
+/* Practice mode puts the phase indicator + BPM ramp where Streak sits,
+   so hide the Streak column while keeping Layer A/B accuracy in the corners. */
+.polyrhythm-page[data-mode="practice"] .pr-hud__col--streak {
+  visibility: hidden;
+}
+
 .pr-message {
   min-height: 1.5em;
   padding: 10px 16px;
@@ -303,21 +433,25 @@
 .pr-message strong { color: #e0ddd4; font-weight: 700; }
 
 /* ── Adaptive toast ──────────────────────────────────── */
+/* Sits below the HUD (row 1) and the Challenge indicator (row 2, y≈58–78 on
+   canvas). Dark-DAW tinted with a purple accent glow for "Level up" / tempo
+   promotions; placement avoids the drum-pad area below. */
 .pr-adapt-toast {
   position: absolute;
-  top: 56px;
+  top: 94px;
   left: 50%;
   transform: translate(-50%, -6px);
-  padding: 8px 16px;
-  background: rgba(17, 17, 17, 0.92);
-  border: 1px solid rgba(127, 119, 221, 0.55);
+  padding: 9px 18px;
+  background: linear-gradient(180deg, rgba(26, 24, 30, 0.96) 0%, rgba(17, 17, 17, 0.96) 100%);
+  border: 1px solid rgba(127, 119, 221, 0.6);
   border-radius: 999px;
-  color: #e0ddd4;
+  color: #f2eee4;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  box-shadow: 0 6px 18px rgba(127, 119, 221, 0.35);
+  box-shadow: 0 8px 22px rgba(83, 74, 183, 0.45),
+              0 0 0 1px rgba(127, 119, 221, 0.15) inset;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.28s ease, transform 0.28s ease;
@@ -401,6 +535,118 @@
 }
 .pr-result-stat--a .pr-result-stat__value { color: #7F77DD; }
 .pr-result-stat--b .pr-result-stat__value { color: #EF9F27; }
+.pr-result-stat--score {
+  grid-column: 1 / -1;
+  background: linear-gradient(180deg, rgba(127, 119, 221, 0.18) 0%, rgba(83, 74, 183, 0.08) 100%);
+  border-color: rgba(127, 119, 221, 0.35);
+}
+.pr-result-stat--score .pr-result-stat__value {
+  color: #fff;
+  font-size: 28px;
+}
+
+/* ── Polyrhythm progression history ───────────────────── */
+.pr-result-progression {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pr-result-progression__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+}
+.pr-result-progression__path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #e0ddd4;
+  font-variant-numeric: tabular-nums;
+}
+.pr-progression__step {
+  color: #7F77DD;
+}
+.pr-progression__step:last-of-type {
+  color: #EF9F27;
+}
+.pr-progression__sep {
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 600;
+}
+
+/* ── Challenge leaderboard ────────────────────────────── */
+.pr-result-leaderboard {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pr-result-leaderboard__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: rgba(127, 119, 221, 0.9);
+}
+.pr-leaderboard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pr-leaderboard__row {
+  display: grid;
+  grid-template-columns: 24px auto 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-variant-numeric: tabular-nums;
+}
+.pr-leaderboard__rank {
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: right;
+}
+.pr-leaderboard__score {
+  font-weight: 800;
+  color: #e0ddd4;
+  font-size: 14px;
+}
+.pr-leaderboard__meta {
+  color: rgba(255, 255, 255, 0.5);
+  text-align: right;
+  font-size: 11px;
+}
+.pr-leaderboard__row--current {
+  background: linear-gradient(90deg, rgba(127, 119, 221, 0.22) 0%, rgba(127, 119, 221, 0.08) 100%);
+  box-shadow: inset 0 0 0 1px rgba(127, 119, 221, 0.35);
+}
+.pr-leaderboard__row--current .pr-leaderboard__rank,
+.pr-leaderboard__row--current .pr-leaderboard__score {
+  color: #fff;
+}
+.pr-leaderboard__row--current .pr-leaderboard__meta {
+  color: rgba(239, 159, 39, 0.9);
+}
 
 .pr-result-song {
   background: linear-gradient(180deg, rgba(127, 119, 221, 0.12) 0%, rgba(127, 119, 221, 0.04) 100%);
@@ -489,4 +735,80 @@
 .pr-btn--secondary:hover {
   border-color: rgba(255, 255, 255, 0.3);
   background: #141414;
+}
+
+/* ── Skip-to-Both link (practice mode) ───────────────── */
+.pr-skip-both {
+  position: absolute;
+  top: 48px;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  z-index: 3;
+}
+.pr-skip-both:hover {
+  color: #e0ddd4;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Practice-mode per-phase results table ───────────── */
+.pr-practice-results {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pr-phase-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+.pr-phase-table th,
+.pr-phase-table td {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 13px;
+}
+.pr-phase-table thead th {
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+}
+.pr-phase-table tbody tr + tr td {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.pr-phase-row--a td:first-child { color: #7F77DD; font-weight: 700; }
+.pr-phase-row--b td:first-child { color: #EF9F27; font-weight: 700; }
+.pr-phase-row--both td:first-child { color: #e0ddd4; font-weight: 700; }
+
+.pr-phase-mark {
+  text-align: right;
+  font-weight: 800;
+  font-size: 15px;
+}
+.pr-mark--pass { color: #9cd27a; }
+.pr-mark--fail { color: #e85b5b; }
+.pr-mark--skipped { color: rgba(255, 255, 255, 0.4); }
+
+.pr-practice-time {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: right;
+  padding: 0 4px;
 }
