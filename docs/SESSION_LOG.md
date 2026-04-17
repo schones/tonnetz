@@ -4,6 +4,108 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-17 — Polyrhythm Trainer v2, Code Review Fixes
+
+**Focus:** Polyrhythm game redesign (Practice/Challenge modes, drum pads, phase-based BPM ramp), Opus 4.7 code review fixes.
+
+### Polyrhythm Trainer v2 redesign
+- Replaced the old level system (Listen/Feel it/Split it) with two distinct modes:
+  - **Practice Mode:** structured 5-phase training ramp (Listen → Layer A → Layer B → Both → Victory). BPM auto-ramps from start to goal within each phase. Player masters one polyrhythm progressively.
+  - **Challenge Mode:** arcade-style adaptive difficulty. Three axes: tempo, polyrhythm complexity, timing tolerance. Endless scoring with leaderboard.
+- **Drum pads:** two large HTML pad elements below canvas (Layer A = purple [F], Layer B = gold [J]). Primary tap targets with hit/miss flash animations. Dims inactive pad during single-layer phases.
+- Phase indicator drawn on canvas: `Listen → A → B → Both → ✓` with BPM progress bar
+- Per-phase results screen with accuracy breakdown, "Try again at {stalled BPM}" button
+- Challenge Mode: top-5 leaderboard in localStorage, progression path visualization, session-fail at <30% for 4 bars
+- "Skip to Both →" link for experienced players
+- Song preset buttons: "Linus & Lucy" (3:2 @ 150), "Oye Como Va" (3:4 @ 120), "Mission Impossible" (5:4 @ 100)
+
+### Polyrhythm visual tweaks
+- HIT_Y moved from 370 → 280 (1/3 from bottom). Particles spray downward into post-hit zone. Combo text spawns below hit line and floats up.
+- Lane breathing waves + interference wave extend past HIT_Y to canvas bottom with fade-out
+- Missed notes continue falling below HIT_Y and fade out
+- Audio gain chain: oscillator → layerGain → masterGain → destination. Eliminates audio overlap on tempo/polyrhythm changes and enables instant per-layer muting.
+
+### Opus 4.7 code review fixes (5 critical blockers resolved)
+1. **audio-bridge.js** — replaced dead `startPitchDetection`/`stopPitchDetection` imports with `createPitchDetector` from pitch-detection.js. SkratchLab loads again.
+2. **rhythm.js + detection.js** — disabled dead `/start_listen`/`/poll_audio`/`/stop_listen` route calls. Added TODO pointing to onset-detection.js migration.
+3. **audio-input.js** — fixed cross-AudioContext wiring. Now uses `Tone.getContext().rawContext` instead of creating a separate context. Falls back gracefully if Tone unavailable.
+4. **chord-detection.js** — replaced hardcoded `sampleRate = 44100` with runtime `analyser.context?.sampleRate ?? 48000`. Fixes chord detection on 48kHz systems.
+5. **Dev routes gated** — 7 test routes wrapped in `if app.debug:`. Hidden in production.
+6. **Swing Trainer** — couldn't reproduce 500 locally. Added diagnostic comment and KNOWN-ISSUES entry.
+7. **Orphan cleanup** — deleted 5 dead files (old-ch1-sound.js, scrollymess-ch1-sound.js, walkthrough-overlay.js, config.js, config.example.js). Removed unused `scipy.signal` import. Added try/catch to user-profile.js `_save()`.
+
+### Decisions made
+- Practice Mode phase progression is the core pedagogical tool; Challenge Mode is the arcade show-off
+- Mic onset works for single-layer phases (2 & 3); Phase 4 (Both) requires two inputs (pads/keys/MIDI)
+- Temporal onset assignment for two-layer mic was considered and deferred — convergence-point ambiguity too frustrating
+- Drum pads are HTML (not canvas) for proper multi-touch and accessibility
+- Dark theme confirmed for this game; whether other Performance games follow is deferred
+
+### What's next
+- Test both Practice and Challenge modes thoroughly
+- Business model discussion (deferred from April 16)
+- Add Polyrhythm Trainer to nav dropdown and landing page
+- Linus and Lucy walkthrough to connect from the Polyrhythm Trainer
+- Consider: dark theme for other Performance games?
+
+---
+
+## 2026-04-16 — Audio Architecture (Phase A++), Polyrhythm Trainer v1, Opus 4.7 Code Review
+
+**Focus:** Client-side audio DSP migration (6 modules), audio.js dead code cleanup, Melody Match fix, Polyrhythm Trainer initial build, comprehensive Opus 4.7 code review.
+
+### Audio architecture audit + decision
+- Discovered broken state: `startPitchDetection`/`stopPitchDetection` in audio.js call non-existent Flask routes (`/start_listen`, `/poll_audio`). `autocorrelate()` defined but never called. Melody Match was non-functional in production.
+- Server-side DSP (`librosa.pyin` via `/process_audio_chunk`) has ~130-300ms latency — unusable for rhythm games.
+- Decision: migrate to client-side DSP. Python backend retained for future offline analysis (Phase E).
+- Created `docs/audio-architecture.md` — full spec covering five detection modalities, device selection, migration plan.
+- Updated `docs/songlab-build-plan.md` — new Phase A++ inserted with six tasks, dependency graph updated, session budget revised.
+
+### Phase A++ — six modules landed
+1. **Dead code cleanup** (audio.js) — deleted `startPitchDetection`, `stopPitchDetection`, `autocorrelate`, related state vars. Fixed Melody Match import with TODO.
+2. **`audio-input.js`** — audio interface device selection (Scarlett 2i2 auto-detect), `getUserMedia` with device picker, source quality flag, localStorage persistence. Pairs with `midi-input.js` as "pro hardware" setup.
+3. **`onset-detection.js`** — spectral flux onset detector reading from shared `Tone.Analyser`. Adjustable threshold + cooldown. Highest-leverage single module — unlocks 4 rhythm games.
+4. **`pitch-detection.js`** — client-side YIN algorithm for monophonic pitch. Strategy pattern: `engine: 'yin'` (free) swappable to `engine: 'crepe'` (Pro tier, Phase E). 15-cent grace window, confidence threshold. **Fixed Melody Match** — first working mic input in unknown amount of time.
+5. **`chord-detection.js`** — port of `chord_detector.py` to JS. Chroma vector from FFT → template matching (10 chord types) → bass detection. Interface recommended, mic experimental.
+6. **`input-provider.js`** — unified input abstraction. Games declare supported modalities → provider emits uniform events → picker UI shows available options. Polyrhythm Trainer is first consumer.
+
+### Polyrhythm Trainer v1 (B8) — initial build
+- Guitar Hero-style falling-note game with dark DAW theme
+- Two vertical lanes (purple/gold), ghost-to-solid note fade, receptor rings, particle bursts
+- Background: lane breathing waves (Gaussian pulse), interference wave in center gap, scrolling grid
+- Web Audio API scheduler (20ms lookahead), raw oscillator sounds (880Hz / 260Hz)
+- Three-level system (Listen/Feel it/Split it) with 3-axis adaptive engine
+- `input-provider.js` + `onset-detection.js` wired for mic/clap input
+- Adaptive engine: tempo, polyrhythm complexity, timing tolerance axes
+- Results screen with per-layer accuracy, song connection cards
+- Route: `/games/polyrhythm`
+
+### Opus 4.7 code review
+- Ran comprehensive overnight review using Claude Code CLI with Opus 4.7 (8 hours, 5 sections)
+- Report: `docs/code-review-opus47.md`
+- Found 5 critical blockers, 8 warnings, many info items
+- Key findings: dead imports breaking SkratchLab, cross-AudioContext wiring invalid, hardcoded sample rate, `_suppressAutoPlay` at 17 sites, triplicated chord-type registries
+- Architecture positives: HarmonyState subscriber hygiene clean, no secrets client-side, template inheritance consistent
+
+### Decisions made
+- "Mic is universal input" reframed: mic_onset is highest-leverage (4 games), not mic_pitch
+- Five detection modalities: click, midi, onset, pitch, chord (not three as originally conceived)
+- MIDI + audio interface coupled as "pro hardware" (same user, same USB hub)
+- YIN now, CREPE later (Pro tier, Phase E). Strategy pattern locks the API contract.
+- Spectrum panel reads live external audio when Scarlett connected
+- Server-side Python DSP retained as legacy/future path, not deleted
+- `audio-architecture.md` created as canonical spec for all audio/input decisions
+
+### Workflow notes
+- Opus 4.7 available on release day (April 16). Used for overnight code review.
+- Claude Code CLI installed via `curl -fsSL https://claude.ai/install.sh | bash`
+- API key auth worked; browser OAuth had bot-verification issues
+- `caffeinate -i &` keeps Mac awake for overnight runs
+- `/auto-accept` in Claude Code for autonomous file-reading runs
+- 30K input token/min rate limit on API key tier — Pro subscription has higher limits
+
+---
+
 ## 2026-04-14 — Spectrum FFT Panel, MIDI Input, Chord Lock-In, Key-Aware Resolution
 
 **Focus:** Real-time FFT visualization, MIDI keyboard integration (Launchkey 49), key-aware chord resolution, chord lock-in for transform exploration, walkthrough improvements.

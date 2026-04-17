@@ -1,62 +1,56 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-14
+**Last updated:** 2026-04-17
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
-**Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/spectrum-panel-spec.md`
+**Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
 **Platform name:** SongLab · SkratchLab (rebrand complete)
 
 ---
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich and approaching user testing readiness. Phase A complete. MIDI input and Spectrum FFT visualization landed April 14, unlocking hardware controller support and real-time audio analysis across the Explorer. Chord lock-in enables P/R/L transform exploration from MIDI-detected chords. Key-aware chord resolution resolves ambiguous voicings (augmented, diminished) using diatonic context. All 18 walkthroughs tagged with tonal center; KEY dropdown syncs on walkthrough load.
+SongLab `dev` branch is feature-rich. Phase A and A++ complete. Client-side audio DSP landed April 16-17: five detection modules (onset, pitch, chord, device selection, unified input provider) replace the server-side bottleneck. Melody Match fixed — client-side YIN pitch detection working. Polyrhythm Trainer (B8) shipped with Practice Mode (phase-based BPM ramp) and Challenge Mode (arcade adaptive). Opus 4.7 code review completed; 5 critical blockers resolved. Approaching user testing readiness.
 
 **Next priorities:**
-1. Voicing Explorer — fuzzy chord matching, shape dragging, interval projection (spec: `docs/voicing-explorer-spec.md`)
-2. CC knob mapping — Launchkey 49 knobs (CC 21-28) → Explorer params (depth, key, sustain)
-3. MIDI play-along feedback — walkthrough "did you play the right chord?" mode
+1. Add Polyrhythm Trainer to nav dropdown and landing page
+2. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
+3. Business model / monetization spec
 4. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
-5. Enharmonic sharp/flat toggle (backlog)
-6. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
-7. User testing prep (15-20 participants)
+5. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
+6. Consolidate triplicated chord-type registries (code review finding)
+7. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
+8. User testing prep (15-20 participants)
 
-**Completed this cycle (April 14):**
+**Completed this cycle (April 16-17):**
 
-- **Spectrum tab (Harmonic Resonance):**
-  - 5th Explorer stage tab: real-time FFT particle visualizer (ChromaVerb-inspired)
-  - Shared `Tone.Analyser` (4096-bin FFT) spliced into keyboard-view.js audio chain
-  - Particles spawn from FFT bins, colored by chord function (root=gold, third=coral, fifth=blue, seventh=green)
-  - Log-frequency x-axis (20Hz–20kHz), orange spectral envelope with glow, peak-hold decay line
-  - Lifecycle managed: animation starts/stops on tab switch for performance
-  - Spec: `docs/spectrum-panel-spec.md`
+- **Phase A++ — Audio & Input Architecture (6 modules):**
+  - `audio-input.js` — audio interface device selection, Scarlett 2i2 auto-detect, `getUserMedia` with device picker, source quality flag
+  - `onset-detection.js` — spectral flux onset detector, reads shared `Tone.Analyser`, adjustable threshold/cooldown
+  - `pitch-detection.js` — client-side YIN monophonic pitch, strategy pattern for CREPE Pro-tier upgrade, 15-cent grace window
+  - `chord-detection.js` — chroma vector template matching (10 chord types), bass detection, key-aware disambiguation
+  - `input-provider.js` — unified input abstraction, modality picker UI, games declare supported inputs
+  - Dead code cleanup: removed broken `startPitchDetection`/`stopPitchDetection`/`autocorrelate` from audio.js
+  - **Melody Match fixed** — client-side pitch detection replaces broken server route calls
+  - Spec: `docs/audio-architecture.md`
 
-- **MIDI input module:**
-  - `static/shared/midi-input.js` — standalone Web MIDI API module, device discovery, Launchkey 49-aware
-  - Note on/off → sampler audio + HarmonyState chord detection via ChordResolver
-  - Octave-correct keyboard highlights (source: 'user' for per-key accuracy)
-  - Keyboard size selector (25/49/61/88 keys) with auto-detect from MIDI device name
-  - CC logging for knobs (CC 21-28), sustain pedal (CC 64) mapped to chord lock
+- **Polyrhythm Trainer (B8) — new game:**
+  - Guitar Hero-style falling-note game at `/games/polyrhythm`, dark DAW theme
+  - **Practice Mode:** 5-phase structured ramp (Listen → Layer A → Layer B → Both → Victory), BPM auto-ramps from start to goal within each phase, per-phase results with "Try again at {bpm}"
+  - **Challenge Mode:** arcade adaptive (tempo + polyrhythm + tolerance axes), endless scoring, top-5 leaderboard
+  - Two vertical lanes (purple/gold), ghost-to-solid falling notes, lane breathing waves, interference wave, particle bursts, receptor rings
+  - HTML drum pads below canvas with hit/miss flash animations, phase-aware dimming
+  - Song preset buttons (Linus & Lucy, Oye Como Va, Mission Impossible)
+  - Web Audio gain chain (oscillator → layerGain → masterGain → destination) for clean audio switching
+  - First game built on `input-provider.js` + `onset-detection.js`
+  - Spec: `docs/polyrhythm-trainer-spec.md`
 
-- **Key-aware chord resolution:**
-  - `resolveChord(pitchClasses, preferredRootPC)` — prefers diatonic roots for ambiguous chords
-  - Builds major scale from key, prefers tonic > dominant > other diatonic candidates
-  - Fixes augmented/diminished root ambiguity (C-E-G# in key of A → E augmented, not C augmented)
-
-- **Chord lock-in for transforms:**
-  - Lock button freezes detected MIDI chord as Tonnetz center, enabling P/R/L exploration
-  - Transforms chain through lock (lock Em → P → E major → R → C#m → ...)
-  - Sustain pedal (CC 64) toggles lock
-  - Visual badge on Tonnetz header shows locked chord
-  - MIDI notes still play audio + highlight keyboard while locked, Tonnetz stays stable
-
-- **Walkthrough improvements:**
-  - All 18 walkthroughs tagged with `key` field; KEY dropdown syncs on walkthrough load
-  - Oh! Darling expanded to full 11-step verse (Eaug → A → E → F#m → D → Bm7 → E → Bm7 → E → A → E)
-  - Fixed Bmm7 bug (chord: "Bm" + chordType: "min7" → changed to chord: "B")
-  - Fixed F#m function label (was "ii", corrected to "vi")
-  - Walkthrough focus override: user's manual tab choice respected, reset on new song selection
-  - Suppressed auto-play on Explorer load and walkthrough key-sync
+- **Opus 4.7 code review + fixes:**
+  - Comprehensive overnight review: `docs/code-review-opus47.md`
+  - Fixed: SkratchLab broken import (audio-bridge.js), dead route calls (rhythm.js, detection.js), cross-AudioContext wiring (audio-input.js), hardcoded sample rate (chord-detection.js)
+  - Dev routes gated behind `app.debug`
+  - Orphan files deleted (5 files), unused imports removed, Safari private mode resilience added to user-profile.js
+  - Architecture positives confirmed: HarmonyState clean, no secrets client-side, template inheritance consistent
 
 - **Bug fixes:**
   - Quality name mismatch between chord-resolver.js and transforms.js (dim→diminished, aug→augmented, etc.)
@@ -247,10 +241,16 @@ SongLab `dev` branch is feature-rich and approaching user testing readiness. Pha
 - `transforms.js` — PLR math, pitch utilities, interval utilities, **CHORD_TYPES**, chordPCs/chordNotes/baseTriad/extensionNotes/chordSymbol
 - `harmony-state.js` — pub/sub state model, **setChord/highlightChord** for extended chord types
 - `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring, **extension node rendering**
-- `keyboard-view.js` — real piano proportions, highlight layer, click interaction, **extension ring highlights**
+- `keyboard-view.js` — real piano proportions, highlight layer, click interaction, **extension ring highlights**, shared `Tone.Analyser` owner
 - `chord-wheel.js` — dual-ring circle of fifths
 - `song-examples.js` — 84 curated real-song references
 - `walkthroughs.js` — 17 guided Explorer walkthroughs with rhythm data, audience tags, category labels, extended chord types
+- `audio-input.js` — audio interface device selection (Scarlett auto-detect), source quality flag
+- `onset-detection.js` — spectral flux onset detector, reads shared Tone.Analyser
+- `pitch-detection.js` — client-side YIN pitch detection, CREPE strategy pattern for Pro tier
+- `chord-detection.js` — chroma template matching, 10 chord types, bass detection
+- `input-provider.js` — unified input abstraction, modality picker UI
+- `midi-input.js` — Web MIDI API, Launchkey 49 auto-detect, device persistence
 
 ### Intro Module ✅ 6 chapters
 - 6 chapters: Sound & Notes, Intervals & Scales, Chords & Progressions, **Beyond Triads** (new), Meet the Tonnetz, Transforms
@@ -261,6 +261,7 @@ SongLab `dev` branch is feature-rich and approaching user testing readiness. Pha
 ### Games & Tools
 - Harmony Trainer, Chord Walks (4 tiers), Rhythm Lab, Strum Patterns, Chord Spotter, Scale Builder, Melody Match
 - **Swing Trainer**: ear-training for jazz swing feel (rotary knob, waveform viz, Practice/Test)
+- **Polyrhythm Trainer** (new): Guitar Hero-style falling-note game. Practice Mode (phase-based BPM ramp: Listen → Layer A → Layer B → Both → Victory) and Challenge Mode (arcade adaptive with leaderboard). Dark DAW theme, drum pads, lane breathing waves. First game on `input-provider.js` + `onset-detection.js`. Spec: `docs/polyrhythm-trainer-spec.md`
 - **SkratchLab**: Blockly + audio + music blocks + Rhythm Builder
 - All games accept URL params for deep-linking from walkthroughs
 - Visual layer system (visual-config.js, visual-layer.js, visual-toggle.js)
@@ -268,6 +269,8 @@ SongLab `dev` branch is feature-rich and approaching user testing readiness. Pha
 ### General
 - Backend API proxy ✅ complete
 - Phase A complete: A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅
+- Phase A++ complete: client-side audio DSP, 5 detection modalities, device selection, input provider
+- Opus 4.7 code review completed: `docs/code-review-opus47.md` — 5 critical blockers resolved
 
 ---
 
@@ -275,32 +278,38 @@ SongLab `dev` branch is feature-rich and approaching user testing readiness. Pha
 
 See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 
-- **Phase A+:** Game visual unification (`game-shell.css` extraction, all games extend base.html) + MIDI input module (`midi-input.js`, pulled forward from Phase F)
+- **Phase A+:** Game visual unification (`game-shell.css` extraction, all games extend base.html) — partially complete (CSS extracted, templates unified, MIDI module landed)
 - **Multi-chord glow worm paths** — visualize chord progressions/transitions with simultaneous paths showing voice leading (notes that stay vs. move)
 - **SkratchLab lightweight DAW** — song presets, chord loops + rhythm, melody play-over, instrument selection (parallel to Phase B)
-- **Phase B:** Extract `game-flow.js` (Pattern B adaptive, independent axes, ResultDetail schema), new games (Voice Leading Detective, Polyrhythm Trainer, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation)
+- **Phase B:** Extract `game-flow.js` (Pattern B adaptive, independent axes, ResultDetail schema), new games (Voice Leading Detective, Note Name Trainer, Interval Spotter, Chord Progression Builder, Rhythm Tapper, Melody Dictation). **Polyrhythm Trainer ✅ complete (B8)**
 - **Phase B.5:** Auth & Persistence — Supabase auth, profile migration, ResultDetail → Supabase
-- **Phase E5:** Competency Graph — fast path (B → B.5 → E5), cross-game skill tracking
+- **Phase E5:** Competency Graph — fast path (B → B.5 → E5), cross-game skill tracking. CREPE pitch engine upgrade (Pro tier).
 - **Phase C:** Curriculum paths, path runner UI, Tonnetz curriculum map
 - **Phase D:** Differentiated experiences by user level
 - **Phase E1–E4:** Per-game AI-powered feedback
-- **Phase F:** Puzzle Paths, NoteInputProvider full abstraction, Voicing Explorer advanced, social features
+- **Phase F:** Puzzle Paths, NoteInputProvider full abstraction (extends A++.6), Voicing Explorer advanced, social features
+- **Architecture cleanup (from code review):** consolidate triplicated chord-type registries into transforms.js, replace `_suppressAutoPlay` with source-tagged HarmonyState.update(), standardize factory-function naming across detection modules
 
 ---
 
 ## Known Issues
 
-- **Swing Trainer 500 on production** — route returning server error, needs investigation before deploy
+- **Swing Trainer 500 on production** — could not reproduce locally (April 17). Template extends base.html correctly. Likely Railway deploy state issue. Need fresh deploy + production stack trace capture. See `docs/KNOWN-ISSUES.md`.
 - **Railway cold start** — ~15s first load after inactivity (hobby tier), warn testers
+- **Rhythm Lab + Strum Patterns mic paths disabled** — dead route calls commented out, TODO points to onset-detection.js migration. Keyboard/spacebar input still works.
+- **Harmony Trainer still uses server-side pitch detection** — `/process_audio_chunk` → librosa. Migration guide in `templates/harmony.html` comment block.
+- **`_suppressAutoPlay` load-bearing** — 17 sites in explorer.html. Code review recommends source-tagged HarmonyState.update(). Deferred.
+- **Triplicated chord-type registries** — transforms.js, chord-resolver.js, chord-detection.js. Consolidation into transforms.js recommended.
+- **`/api/chat` proxy hardening** — model allowlist and server-side system prompt recommended. Not a blocker.
 - Swing Trainer: dial slightly finicky past midpoint
 - Swing Trainer: song-examples.js swing_ratio field not yet consumed by game
 - SkratchLab Rhythm Builder: strum row doesn't export to Blockly (no strum block exists)
 - Sustain pedal bug: Organ/Synth in SkratchLab — `triggerAttackRelease` bypasses sustain state
 - Mobile/responsive not tested — deferred to post-MVP
 - SkratchLab: "Clear All" button clears blocks but not canvas — needs canvas reset
+- Polyrhythm Trainer not yet in nav dropdown or landing page
 - Full list: `docs/KNOWN-ISSUES.md`
-- Verify diminished/augmented triad rendering through setChord() path in new walkthroughs (should work — dim/aug are base triads with no extensions)
-- **Backlog:** Enharmonic sharp/flat toggle for Fundamentals keyboards (deferred — students don't need it; Explorer handles spelling via key context)
+- **Backlog:** Enharmonic sharp/flat toggle for Fundamentals keyboards (deferred)
 
 ---
 
@@ -308,7 +317,10 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 
 | Doc | Purpose |
 |---|---|
-| `docs/songlab-build-plan.md` | **Active roadmap** (v4) — Phases A–F + A+ + B.5, dependency graph, session budget |
+| `docs/songlab-build-plan.md` | **Active roadmap** (v4) — Phases A–F + A+ + A++ + B.5, dependency graph, session budget |
+| `docs/audio-architecture.md` | **Audio & Input spec** — detection modalities, client-side DSP, device selection, input provider, CREPE upgrade path |
+| `docs/polyrhythm-trainer-spec.md` | **Polyrhythm Trainer spec** (v2) — Practice/Challenge modes, drum pads, phase-based ramp |
+| `docs/code-review-opus47.md` | **Code review** — Opus 4.7 comprehensive review, 5 sections, severity ratings |
 | `docs/game-engine-spec.md` | **Game audit** — per-game analysis, adaptive axes, ResultDetail schemas, new game designs |
 | `docs/design-system-reference.md` | CSS tokens, color palette, typography — design system reference |
 | `docs/visual-engine-spec.md` | Generative art engine spec (Tonnetz-driven, post-launch) |
@@ -319,7 +331,7 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 | `docs/auth-architecture.md` | Supabase auth, profile migration, security checklist |
 | `docs/KNOWN-ISSUES.md` | Tracked bugs and fixes |
 | `docs/claude-code-preferences.md` | Claude Code workflow conventions |
-| `docs/extended-chords-spec.md` | Extended chord type system — CHORD_TYPES, data model, visual rendering, Fundamentals chapter notes |
+| `docs/extended-chords-spec.md` | Extended chord type system — CHORD_TYPES, data model, visual rendering |
 ---
 
 ## Update Protocol
