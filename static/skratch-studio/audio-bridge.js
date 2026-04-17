@@ -9,7 +9,7 @@
 // Sustain pedal: works for all instruments. For the piano sampler, notes held via
 // sustain simply defer triggerRelease() until the pedal is lifted.
 
-import { startPitchDetection, stopPitchDetection } from '../shared/audio.js';
+import { createPitchDetector } from '/static/shared/pitch-detection.js';
 import { loadSoundfontSampler, VOICE_TYPES } from '../shared/keyboard-view.js';
 
 // ── Salamander Grand Piano sample map ────────────────────────────────────────
@@ -72,6 +72,7 @@ export class AudioBridge {
     this._voiceOptions = {};
     this._toneStarted = false;
     this._micActive = false;
+    this._pitchDetector = null;
     this._rafId = null;
     this._onNoteCallbacks = [];
     this._lastDetectedNote = '--';
@@ -488,12 +489,13 @@ export class AudioBridge {
     await this.ensureTone();
     this._micActive = true;
 
-    await startPitchDetection((freq, noteInfo) => {
+    this._pitchDetector = createPitchDetector();
+    await this._pitchDetector.start((data) => {
       if (!this._micActive) return;
 
-      if (freq > 0 && noteInfo) {
-        const noteName = noteInfo.fullName;
-        this.state.currentPitch = Math.round(freq);
+      if (data.frequency > 0 && data.fullName) {
+        const noteName = data.fullName;
+        this.state.currentPitch = Math.round(data.frequency);
         this.state.currentNoteName = noteName;
         this.state.noteIsPlaying = true;
         this.state.currentVolume = 70;
@@ -515,7 +517,10 @@ export class AudioBridge {
 
   stopMic() {
     this._micActive = false;
-    stopPitchDetection();
+    if (this._pitchDetector) {
+      this._pitchDetector.stop();
+      this._pitchDetector = null;
+    }
     this.state.currentPitch = 0;
     this.state.currentNoteName = '--';
     this.state.noteIsPlaying = false;

@@ -44,6 +44,11 @@ from pitch_matcher import PitchMatcher
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
 
+# app.debug must be set before @app.route decorators run so the `if app.debug:`
+# block below can register dev-only routes at import time (gunicorn imports the
+# module without calling app.run()).
+app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+
 # ---------------------------------------------------------------------------
 # Rate limiting (in-memory, per-IP, max 30 req/min) — no extra dependencies
 # ---------------------------------------------------------------------------
@@ -170,10 +175,6 @@ def index():
 def relative():
     return render_template("relative.html")
 
-@app.route("/tone-check")
-def tone_check():
-    return render_template("tone-check.html")
-
 @app.route("/chord-identification")
 def chord_identification():
     return render_template("chord-identification.html")
@@ -206,6 +207,14 @@ def scale_builder():
 
 @app.route("/games/swing-trainer")
 def swing_trainer():
+    # Production 500 reported in STATUS.md but could not be reproduced locally
+    # under werkzeug or gunicorn (both return 200). STATUS.md claimed the
+    # template didn't extend base.html, but it does (verified bf102a9). The
+    # template renders fine, every referenced static asset 200s, and the
+    # template is identical between main and dev. Suspected cause is a Railway
+    # deploy-state issue (stale image or missing templates/games/ directory in
+    # the slug) rather than a code bug. Redeploy on Railway before further
+    # investigation. Tracked in docs/KNOWN-ISSUES.md.
     return render_template("games/swing-trainer.html")
 
 @app.route("/games/polyrhythm")
@@ -224,27 +233,34 @@ def skratch_help():
 def skratch_piano_popout():
     return render_template("piano-popout.html")
 
-@app.route("/test_sustain")
-def test_sustain():
-    return app.send_static_file("skratch-studio/test-sustain.html")
+if app.debug:
+    @app.route("/test_sustain")
+    def test_sustain():
+        return app.send_static_file("skratch-studio/test-sustain.html")
 
-@app.route("/test-tooltips")
-def test_tooltips():
-    return render_template("test-tooltips.html")
+    @app.route("/test-tooltips")
+    def test_tooltips():
+        return render_template("test-tooltips.html")
 
-@app.route("/test/shared")
-def test_shared():
-    return render_template("test-shared.html")
+    @app.route("/test/shared")
+    def test_shared():
+        return render_template("test-shared.html")
 
+    @app.route("/test/fretboard")
+    def test_fretboard():
+        return render_template("test-fretboard.html")
 
-@app.route("/test/fretboard")
-def test_fretboard():
-    return render_template("test-fretboard.html")
+    @app.route("/chord-wheel-test")
+    def chord_wheel_test():
+        return render_template("chord-wheel-test.html")
 
+    @app.route("/tone-check")
+    def tone_check():
+        return render_template("tone-check.html")
 
-@app.route("/showcase")
-def showcase():
-    return render_template("showcase.html")
+    @app.route("/showcase")
+    def showcase():
+        return render_template("showcase.html")
 
 
 @app.route("/explorer")
@@ -255,11 +271,6 @@ def explorer():
 @app.route("/tutorial")
 def tutorial():
     return render_template("tutorial.html")
-
-
-@app.route("/chord-wheel-test")
-def chord_wheel_test():
-    return render_template("chord-wheel-test.html")
 
 
 @app.route("/theory/circle-of-fifths")
@@ -407,8 +418,6 @@ def status():
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == '__main__':
-    import os
     host = os.environ.get('HOST', '0.0.0.0')
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-    app.run(host=host, port=port, debug=debug)
+    app.run(host=host, port=port, debug=app.debug)

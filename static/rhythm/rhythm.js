@@ -545,48 +545,18 @@ function sleep(ms) {
 /* ---------------------------------------------------------- */
 
 async function startOnsetDetection() {
-  try {
-    await fetch('/start_listen', { method: 'POST' });
-  } catch (err) {
-    // Mic access denied — allow keyboard-only play
-    console.warn("Python backend listener failed to start. Use spacebar to tap along.");
-    return;
-  }
-
-  async function detectOnset() {
-    if (!state.playing) return;
-
-    let rms = 0;
-    try {
-      const res = await fetch('/poll_audio');
-      const data = await res.json();
-      if (data.active) {
-        rms = data.volume;
-      }
-    } catch (e) { }
-
-    const now = performance.now();
-
-    // Onset detection: crossing threshold from below
-    if (rms > ONSET_THRESHOLD && state.prevRMS <= ONSET_THRESHOLD) {
-      if (now - state.lastOnsetTime > ONSET_COOLDOWN_MS) {
-        state.lastOnsetTime = now;
-        // Use the AudioContext time for precise scoring, not performance.now()
-        registerClap(state.audioCtx.currentTime - (LATENCY_COMPENSATION_MS / 1000));
-      }
-    }
-
-    state.prevRMS = rms;
-    if (state.playing) {
-      setTimeout(detectOnset, 20);
-    }
-  }
-
-  detectOnset();
+  // TODO: migrate mic-based clap detection to /static/shared/onset-detection.js.
+  // The old Python-backed routes (/start_listen, /poll_audio, /stop_listen) have
+  // been removed from app.py. Until the client-side onset detector is wired up,
+  // this game is spacebar-only.
+  // await fetch('/start_listen', { method: 'POST' });
+  // ...poll loop removed; see git history for the previous implementation.
+  return;
 }
 
 function stopMic() {
-  fetch('/stop_listen', { method: 'POST' }).catch(e => { });
+  // TODO: migrate to /static/shared/onset-detection.js. Dead Python route.
+  // fetch('/stop_listen', { method: 'POST' }).catch(e => { });
 }
 
 /* ---------------------------------------------------------- */

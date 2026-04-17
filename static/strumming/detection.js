@@ -76,27 +76,30 @@ export async function startDetection(audioCtx, onOnset, bpm = 0) {
     stopDetection();
   }
 
-  try {
-    await fetch('/start_listen', { method: 'POST' });
-  } catch (err) {
-    console.warn("[detection] Backend listener failed to start:", err.message);
-    return false;
-  }
-
-  detector = {
-    audioCtx,
-    lastOnsetTime: 0,
-    prevRMS: 0,
-    skipFrames: 0,
-    lockoutMs: computeLockout(bpm),
-    running: true,
-    animFrameId: 0,
-    onOnset,
-  };
-
-  // Kick off detection loop
-  detectLoop();
-  return true;
+  // TODO: migrate to /static/shared/onset-detection.js. The old Python-backed
+  // routes (/start_listen, /poll_audio, /stop_listen) have been removed from
+  // app.py, so the mic path is disabled here. Callers fall back to spacebar.
+  // try {
+  //   await fetch('/start_listen', { method: 'POST' });
+  // } catch (err) {
+  //   console.warn("[detection] Backend listener failed to start:", err.message);
+  //   return false;
+  // }
+  //
+  // detector = {
+  //   audioCtx,
+  //   lastOnsetTime: 0,
+  //   prevRMS: 0,
+  //   skipFrames: 0,
+  //   lockoutMs: computeLockout(bpm),
+  //   running: true,
+  //   animFrameId: 0,
+  //   onOnset,
+  // };
+  //
+  // detectLoop();
+  // return true;
+  return false;
 }
 
 /**
@@ -111,7 +114,8 @@ export function stopDetection() {
     clearTimeout(detector.animFrameId);
   }
 
-  fetch('/stop_listen', { method: 'POST' }).catch(e => { });
+  // TODO: migrate to /static/shared/onset-detection.js. Dead Python route.
+  // fetch('/stop_listen', { method: 'POST' }).catch(e => { });
 
   detector = null;
 }
@@ -214,15 +218,12 @@ async function detectLoop() {
     d.skipFrames = SKIP_FRAMES_AFTER_LOCKOUT;
   }
 
-  // --- Read audio from Python backend ---
+  // --- Read audio ---
+  // TODO: migrate to /static/shared/onset-detection.js. Dead Python route.
   let rms = 0;
-  try {
-    const res = await fetch('/poll_audio');
-    const data = await res.json();
-    if (data.active) {
-      rms = data.volume;
-    }
-  } catch (e) { }
+  // const res = await fetch('/poll_audio');
+  // const data = await res.json();
+  // if (data.active) { rms = data.volume; }
 
   // --- Post-lockout skip frames: establish baseline without triggering ---
   if (d.skipFrames > 0) {

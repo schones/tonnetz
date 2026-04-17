@@ -43,7 +43,12 @@ function _load() {
 }
 
 function _save(profile) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  } catch (e) {
+    // Safari private mode / quota-exceeded — swallow so profile writes don't crash callers
+    console.warn('[user-profile] could not save profile:', e.message);
+  }
 }
 
 // ── Public API ────────────────────────────────────────────────────────────

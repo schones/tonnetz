@@ -229,6 +229,12 @@ export function createPitchDetector(options = {}) {
       ownsStream = true;
     }
 
+    // Intentionally creates its own AudioContext, separate from Tone's.
+    // Safe because this detector never connects nodes back to Tone's graph —
+    // the ScriptProcessor consumes the mic stream in isolation and emits
+    // results via callback. Using a dedicated context also lets us pin the
+    // sampleRate for YIN period math. (See audio-input.js for the cross-
+    // context rule that applies when wiring INTO a Tone.Analyser.)
     audioContext = new (window.AudioContext || window.webkitAudioContext)({
       sampleRate,
     });

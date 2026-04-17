@@ -300,7 +300,7 @@ export function create(options) {
     // Tone.Analyser can return nested arrays; handle both shapes
     const fftData = dbValues[0] instanceof Float32Array ? dbValues[0] : dbValues;
     const fftSize = fftData.length * 2;  // Tone.Analyser returns fftSize/2 bins
-    const sampleRate = 44100;  // Tone.js default context sample rate
+    const sampleRate = analyser.context?.sampleRate ?? 48000;
 
     // ── Step 1: Convert dB → linear magnitude ───────────────────
     const magnitudes = new Float32Array(fftData.length);

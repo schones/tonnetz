@@ -291,7 +291,6 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 ## Known Issues
 
 - **Swing Trainer 500 on production** — route returning server error, needs investigation before deploy
-- **Swing Trainer doesn't extend base.html** — standalone HTML file, gets no SongLab nav or design system
 - **Railway cold start** — ~15s first load after inactivity (hobby tier), warn testers
 - Swing Trainer: dial slightly finicky past midpoint
 - Swing Trainer: song-examples.js swing_ratio field not yet consumed by game

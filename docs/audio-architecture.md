@@ -35,6 +35,8 @@ Hardware support spans three tiers: built-in mic (everyone), MIDI controller (ke
 | `stopPitchDetection()` | `static/shared/audio.js` | Calls `POST /stop_listen` — route doesn't exist |
 | `autocorrelate()` | `static/shared/audio.js` | Defined but never called by any code path |
 | Melody Match mic input | `templates/melody.html` | Imports `startPitchDetection` from audio.js — calls broken routes |
+| Strum Patterns mic detection | `static/strumming/detection.js:80,114,220` | Calls `/start_listen`, `/stop_listen`, `/poll_audio` directly — 404s on every call |
+| Rhythm Lab mic/tap detection | `static/rhythm/rhythm.js:549,561,589` | Same dead routes — mic-based tap detection 404s |
 
 ### Missing
 
@@ -437,8 +439,8 @@ After modules are built, each game migrates from its current input wiring to `in
 | Melody Match | Broken (`startPitchDetection` → dead routes) | Rewire to `pitch-detection.js` via provider. **Urgent — currently non-functional.** |
 | Harmony Trainer | Server-side (`/process_audio_chunk`) | Rewire to `pitch-detection.js` via provider |
 | Chord Spotter | Click only | Add chord detection via provider |
-| Rhythm Lab | Click only | Add onset detection via provider |
-| Strum Patterns | Click only | Add onset detection via provider |
+| Rhythm Lab | Click + broken mic path (dead `/start_listen` routes in `rhythm.js`) | Rip out dead-route calls; wire onset detection via provider |
+| Strum Patterns | Click + broken mic path (dead `/start_listen` routes in `detection.js`) | Rip out dead-route calls; wire onset detection via provider |
 | Swing Trainer | Click only | Add onset detection via provider |
 | Scale Builder | Click only | Add pitch detection via provider |
 | Polyrhythm Trainer | Not built yet | Build natively on provider from day one |

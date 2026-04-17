@@ -234,10 +234,29 @@ const AudioInput = {
     _selectedDeviceId = deviceId;
     _savePreferred(deviceId);
 
-    // Create source node and connect to analyser
-    _audioContext = _stream.getAudioTracks()[0]
-      ? new (window.AudioContext || window.webkitAudioContext)()
-      : null;
+    // Create source node and connect to analyser.
+    // The MediaStreamSource MUST live in the same AudioContext as the
+    // Tone.Analyser we're connecting to — Web Audio forbids cross-context
+    // node wiring. Prefer Tone's context; fall back to a standalone context
+    // only if Tone isn't loaded/started (in which case the _analyser will
+    // not receive audio).
+    if (_stream.getAudioTracks()[0]) {
+      const toneCtx = (typeof window !== 'undefined' && window.Tone && window.Tone.getContext)
+        ? window.Tone.getContext().rawContext
+        : null;
+
+      if (toneCtx && toneCtx.state === 'running') {
+        _audioContext = toneCtx;
+      } else {
+        console.warn(
+          '[AudioInput] Tone.js context not available/running — falling back to standalone AudioContext. '
+          + 'Mic input will NOT connect to Tone-based analysers. Call Tone.start() before selectDevice().'
+        );
+        _audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    } else {
+      _audioContext = null;
+    }
 
     if (_audioContext && _stream) {
       _sourceNode = _audioContext.createMediaStreamSource(_stream);
