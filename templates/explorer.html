@@ -1283,6 +1283,64 @@
       min-width: 26px;
     }
 
+    /* Hardware (audio input) controls — device picker + status indicator */
+    .sl-hw-select {
+      max-width: 180px;
+      padding: 3px 6px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--daw-border);
+      background: var(--daw-raised);
+      color: var(--daw-text);
+      font-size: var(--font-size-sm);
+      cursor: pointer;
+    }
+    .sl-hw-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: var(--font-size-xs);
+      color: var(--daw-text-mute);
+      letter-spacing: 0.04em;
+    }
+    .sl-hw-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--daw-text-mute);
+      box-shadow: none;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+    .sl-hw-status[data-state="active"] .sl-hw-dot {
+      background: #4caf50;
+      box-shadow: 0 0 6px rgba(76, 175, 80, 0.7);
+    }
+    .sl-hw-status[data-state="error"] .sl-hw-dot {
+      background: #e0654a;
+      box-shadow: 0 0 6px rgba(224, 101, 74, 0.7);
+    }
+    .sl-hw-badge {
+      display: none;
+      padding: 1px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--daw-border);
+      font-size: var(--font-size-2xs);
+      font-weight: var(--font-weight-medium);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--daw-text-mute);
+    }
+    .sl-hw-badge[data-quality="interface"] {
+      display: inline-block;
+      color: var(--gold);
+      border-color: var(--gold-edge);
+      background: var(--gold-soft);
+    }
+    .sl-hw-badge[data-quality="mic"] {
+      display: inline-block;
+      color: var(--daw-text-dim);
+      background: var(--daw-raised);
+    }
+
     /* Dynamic keyboard highlight color driven by chord quality */
     #exp-keyboard-container[data-chord-quality="minor"] {
       --keyboard-highlight-primary: var(--q-minor-stroke);
@@ -1614,6 +1672,18 @@
           <span class="sl-ctrl-label">Chords</span>
           <input type="range" class="sl-vol-slider" id="vol-chords" min="0" max="100" value="80" step="5" title="Chord volume">
         </div>
+        <div class="sl-divider"></div>
+        <div class="sl-ctrl-group" id="hw-picker">
+          <span class="sl-ctrl-label">Hardware</span>
+          <select class="sl-hw-select" id="audio-input-device" title="Audio input device">
+            <option value="">No audio input</option>
+          </select>
+          <span class="sl-hw-status" id="audio-input-status" data-state="idle" title="Audio input status">
+            <span class="sl-hw-dot"></span>
+            <span class="sl-hw-status-text">Off</span>
+          </span>
+          <span class="sl-hw-badge" id="audio-input-badge" data-quality=""></span>
+        </div>
       </div>
 
       <!-- Keyboard panel -->
@@ -1709,6 +1779,8 @@
       from '{{ url_for("static", filename="shared/transforms.js") }}';
     import { MIDIInput }
       from '{{ url_for("static", filename="shared/midi-input.js") }}';
+    import { AudioInput }
+      from '{{ url_for("static", filename="shared/audio-input.js") }}';
     import { TonnetzNeighborhood }
       from '{{ url_for("static", filename="shared/tonnetz-neighborhood.js") }}';
     import { KeyboardView }
@@ -1773,6 +1845,10 @@
         } else {
           _syncInstButtons('piano', 'loaded');
         }
+        // Tone is running and the shared analyser exists — wire any active
+        // audio input source through it (or rewire if it was previously
+        // connected to the standalone fallback context).
+        try { await _attachAudioInputToTone(); } catch (e) { console.warn('[explorer] audio-input rewire failed:', e); }
       })();
       return _audioInitPromise;
     }
@@ -3266,6 +3342,148 @@
       }
       return { start, stop };
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // AUDIO INPUT — interface/mic picker → shared FFT analyser
+    // ════════════════════════════════════════════════════════════════
+    // selectDevice() needs Tone's rawContext to be running before a
+    // MediaStreamSource can be wired into KeyboardView's analyser. On
+    // initial load Tone hasn't been started (no user gesture yet), so an
+    // auto-restored device temporarily lives in a standalone AudioContext.
+    // _attachAudioInputToTone() rewires it once Tone is up.
+    let _audioInputNeedsToneRewire = false;
+
+    function _hwEls() {
+      return {
+        select: document.getElementById('audio-input-device'),
+        status: document.getElementById('audio-input-status'),
+        statusText: document.querySelector('#audio-input-status .sl-hw-status-text'),
+        badge:  document.getElementById('audio-input-badge'),
+      };
+    }
+
+    function _populateAudioDeviceDropdown(devices) {
+      const { select } = _hwEls();
+      if (!select) return;
+      const previous = select.value;
+      const activeId = AudioInput.activeDevice ? AudioInput.activeDevice.deviceId : '';
+      select.innerHTML = '';
+
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'No audio input';
+      select.appendChild(placeholder);
+
+      for (const d of devices) {
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        const tag = d.isInterface ? '🎚 ' : '🎤 ';
+        opt.textContent = tag + d.label;
+        select.appendChild(opt);
+      }
+
+      const desired = activeId || previous || '';
+      if (desired && [...select.options].some(o => o.value === desired)) {
+        select.value = desired;
+      }
+    }
+
+    function _updateAudioInputStatus() {
+      const { status, statusText, badge } = _hwEls();
+      if (!status) return;
+      const active = AudioInput.isActive && AudioInput.activeDevice;
+      const quality = AudioInput.getSourceQuality();
+
+      status.dataset.state = active ? 'active' : 'idle';
+      if (active) {
+        const label = AudioInput.activeDevice.label || 'Connected';
+        const trimmed = label.length > 28 ? label.slice(0, 25) + '…' : label;
+        statusText.textContent = trimmed;
+      } else {
+        statusText.textContent = 'Off';
+      }
+
+      if (badge) {
+        if (active && quality) {
+          badge.dataset.quality = quality;
+          badge.textContent = quality === 'interface' ? 'Interface' : 'Mic';
+        } else {
+          badge.dataset.quality = '';
+          badge.textContent = '';
+        }
+      }
+    }
+
+    async function _attachAudioInputToTone() {
+      if (typeof AudioInput === 'undefined') return;
+      const analyser = (KeyboardView && KeyboardView.getAnalyser) ? KeyboardView.getAnalyser() : null;
+      if (!analyser) return;
+
+      if (_audioInputNeedsToneRewire && AudioInput.activeDevice) {
+        // Existing source lives in the standalone fallback context.
+        // Re-select to recreate the MediaStreamSource inside Tone's rawContext.
+        const id = AudioInput.activeDevice.deviceId;
+        _audioInputNeedsToneRewire = false;
+        try { AudioInput.setAnalyser(analyser); } catch (_) { /* cross-context — re-select fixes it */ }
+        try { await AudioInput.selectDevice(id); } catch (e) { console.warn('[explorer] audio-input re-select failed:', e); }
+        _updateAudioInputStatus();
+      } else {
+        try { AudioInput.setAnalyser(analyser); } catch (e) { console.warn('[explorer] setAnalyser failed:', e); }
+      }
+    }
+
+    (async function _initAudioInput() {
+      if (typeof AudioInput === 'undefined') return;
+      const { select, status } = _hwEls();
+      if (!select) return;
+
+      // USB plug/unplug → refresh dropdown
+      AudioInput.onDeviceChange((devices) => {
+        _populateAudioDeviceDropdown(devices);
+        _updateAudioInputStatus();
+      });
+
+      try {
+        // Enumerate + auto-restore (uses fallback context if Tone isn't started yet)
+        const { devices } = await AudioInput.init();
+        _populateAudioDeviceDropdown(devices);
+        if (AudioInput.isActive) _audioInputNeedsToneRewire = true;
+        _updateAudioInputStatus();
+      } catch (e) {
+        console.warn('[explorer] AudioInput init failed:', e);
+        if (status) {
+          status.dataset.state = 'error';
+          const t = status.querySelector('.sl-hw-status-text');
+          if (t) t.textContent = 'Unavailable';
+        }
+        return;
+      }
+
+      select.addEventListener('change', async (e) => {
+        const id = e.target.value;
+        if (!id) {
+          AudioInput.disconnect();
+          _audioInputNeedsToneRewire = false;
+          _updateAudioInputStatus();
+          return;
+        }
+        // Ensure Tone is running so the source wires into the shared analyser
+        try { await ensureFullAudio(); } catch (_) {}
+        const analyser = (KeyboardView && KeyboardView.getAnalyser) ? KeyboardView.getAnalyser() : null;
+        if (analyser) { try { AudioInput.setAnalyser(analyser); } catch (_) {} }
+        const ok = await AudioInput.selectDevice(id);
+        _audioInputNeedsToneRewire = false;
+        _updateAudioInputStatus();
+        if (!ok) {
+          const { status } = _hwEls();
+          if (status) {
+            status.dataset.state = 'error';
+            const t = status.querySelector('.sl-hw-status-text');
+            if (t) t.textContent = 'Permission denied';
+          }
+        }
+      });
+    })();
 
     // ════════════════════════════════════════════════════════════════
     // MIDI INPUT — Launchkey 49 (and any Web MIDI device)
