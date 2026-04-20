@@ -865,6 +865,14 @@
       display: block;
     }
 
+    /* Resonance stage view — Tonnetz sparkle-blob canvas */
+    .sl-stage-view[data-stage-view="resonance"] {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #080808;
+    }
+
     /* Chord wheel stage view — centered inside the stage */
     #exp-wheel-stage {
       display: flex;
@@ -1577,6 +1585,7 @@
               <button class="sl-panel-tab"                      id="sl-tab-fretboard" type="button" data-stage-view="fretboard">Fretboard</button>
               <button class="sl-panel-tab"                      id="sl-tab-rhythm"    type="button" data-stage-view="rhythm">Rhythm</button>
               <button class="sl-panel-tab"                      id="sl-tab-spectrum"  type="button" data-stage-view="spectrum">Spectrum</button>
+              <button class="sl-panel-tab"                      id="sl-tab-resonance" type="button" data-stage-view="resonance">Resonance</button>
             </div>
           </div>
           <div class="exp-panel__body">
@@ -1587,6 +1596,7 @@
             <div id="exp-spectrum-stage"    class="sl-stage-view" data-stage-view="spectrum" hidden>
               <canvas id="exp-spectrum-canvas"></canvas>
             </div>
+            <div id="exp-resonance-stage"   class="sl-stage-view" data-stage-view="resonance" hidden></div>
 
             <!-- Walkthrough begin overlay (gates AudioContext on iOS) -->
             <div id="exp-begin-overlay" class="exp-begin-overlay" hidden role="dialog" aria-label="Begin walkthrough">
@@ -1793,6 +1803,8 @@
       from '{{ url_for("static", filename="shared/chord-resolver.js") }}';
     import { FretboardView }
       from '{{ url_for("static", filename="shared/fretboard-view.js") }}';
+    import { ResonanceView }
+      from '{{ url_for("static", filename="shared/resonance-view.js") }}';
     import { WALKTHROUGHS }
       from '{{ url_for("static", filename="shared/walkthroughs.js") }}';
     import { WalkthroughSidebar }
@@ -2032,12 +2044,14 @@
       fretboard: 'Fretboard',
       rhythm:    'Rhythm',
       spectrum:  'Harmonic Resonance',
+      resonance: 'Resonance',
     };
     const stageLabelEl = document.getElementById('sl-stage-label');
     const stageTabs    = document.querySelectorAll('.sl-panel-tab[data-stage-view]');
     const stageViews   = document.querySelectorAll('.sl-stage-view[data-stage-view]');
     let _stageFretboard = null;
     let _spectrumRenderer = null;
+    let _resonanceView    = null;
     let _userOverrodeStage = false;
 
     function _setStageView(name) {
@@ -2065,6 +2079,12 @@
         _spectrumRenderer = _initSpectrumRenderer();
       }
 
+      // Lazily spin up the Tonnetz sparkle renderer the first time Resonance opens
+      if (name === 'resonance' && !_resonanceView) {
+        _resonanceView = new ResonanceView();
+        _resonanceView.init('exp-resonance-stage');
+      }
+
       stageTabs.forEach(t => {
         t.classList.toggle('sl-panel-tab--active', t.dataset.stageView === name);
       });
@@ -2077,6 +2097,19 @@
       if (_spectrumRenderer) {
         if (name === 'spectrum') _spectrumRenderer.start();
         else _spectrumRenderer.stop();
+      }
+
+      // Resonance reads the same shared analyser the Spectrum panel uses
+      if (_resonanceView) {
+        if (name === 'resonance') {
+          const analyser = (KeyboardView && KeyboardView.getAnalyser)
+            ? KeyboardView.getAnalyser()
+            : null;
+          _resonanceView.setAnalyser(analyser);
+          _resonanceView.start();
+        } else {
+          _resonanceView.stop();
+        }
       }
     }
 
