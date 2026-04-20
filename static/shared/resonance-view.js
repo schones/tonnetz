@@ -11,6 +11,34 @@
  *   - A shared Tone.Analyser passed via setAnalyser()
  *
  * Exposes: class ResonanceView { init, setAnalyser, start, stop, destroy }
+ *
+ * Temporal alignment with the Spectrum panel
+ * ------------------------------------------
+ * The Spectrum panel (templates/explorer.html _initSpectrumRenderer) is the
+ * reference for how the envelope jitters and how particles attack/decay/cluster.
+ * Spatial mapping differs (radial vs linear); timing constants below match.
+ *
+ *                           Spectrum                  Resonance (before)         Resonance (now)
+ *   FFT envelope              raw bins each frame     attack 0.35 / decay 0.9    raw (analyser's
+ *                                                     exponential on top of      internal smoothing
+ *                                                     analyser smoothing)        only — matches
+ *   Particle pool             600                     500                        1200
+ *   Spawn threshold           −60 dB                  0.01 linear (≈ −40 dB)     0.001 linear (≈ −60 dB)
+ *   Spawn sites per node      top 6 peaks             top 6 peaks                ALL harmonics above thr.
+ *   Spawn rate per site       0.35 probabilistic      min(0.9, mag * 2)          min(0.9, mag * 1.6)
+ *   Particle lifetime         ~2.08 s (life −= .008)  0.30 – 0.60 s              1.20 – 2.00 s
+ *   Initial velocity          ±0.3 H, 0.3 – 0.8 V     0.6 – 1.5 radial           1.1 – 2.1 radial
+ *   Angular spread            n/a                     ±15°                       ±30°
+ *   Deceleration              none (gravity only)     ×0.96 per frame            none (drift + wiggle)
+ *   Wiggle                    sin(life*6) * 0.15      none                       same
+ *   Trail fade                0.22 alpha              0.28                       0.22
+ *   Envelope stroke           1.2 px, shadowBlur 6    1.5 px, blur 5             1.2 px, blur 6
+ *   Particle base size        2.0 – 4.5 px            1.5 – 3.0 px               2.0 – 4.5 px
+ *   Glow alpha (inner stop)   0.55 on every particle  0.08 on "hot" only         0.50 on every particle
+ *
+ * Spectrum's peak-hold line (decays at 0.995/frame) has no equivalent here —
+ * the radial envelope has no obvious analogue and adding one would be a
+ * feature, not an alignment. Leaving it out.
  */
 
 import { noteToPC } from './transforms.js';
@@ -22,8 +50,8 @@ import { HarmonyState } from './harmony-state.js';
 //   diagonal up-right   (col+1,row-1) → +M3 (+4 st)
 //   diagonal down-right (row +1)      → +m3 (+3 st)  [P5 − M3]
 //   PC(col, row) = (7·col + 3·row) mod 12
-const GRID_COLS = 9;
-const GRID_ROWS = 7;
+const GRID_COLS = 7;
+const GRID_ROWS = 5;
 
 // Offsets of a node's six Tonnetz neighbors (dcol, drow):
 //   [ +P5, −P5, +M3, −M3, +m3, −m3 ]
@@ -48,18 +76,37 @@ const ROLE_COLORS = {
 const DEFAULT_ROLE = 'root';
 
 // ── Smoothing ─────────────────────────────────────────────────────
-const ATTACK_RATE  = 0.35;   // ~50 ms rise at 60 fps
-const DECAY_RATE   = 0.88;   // ~500 ms release floor
-const SILENT_EPS   = 0.0015; // energy below this → node goes dark
+// HarmonyState gates WHICH pitch classes are allowed to light up — only
+// PCs in activeNotes read new FFT data. This prevents harmonic bleed
+// (e.g. an F major chord lighting up every node the FFT overlaps).
+// When a PC leaves activeNotes its harmonic magnitudes decay by
+// RELEASE_DECAY per frame so the blob fades naturally (~0.5 s at 60 fps).
+// While active, Spectrum-style raw reads drive the envelope — the
+// analyser's own exponential smoothing (Tone.js default 0.8) is enough.
+const SILENT_EPS    = 0.001;  // total energy below this → node goes dark
+const RELEASE_DECAY = 0.9;    // per-frame multiplier once PC leaves activeNotes
 
 // ── Particle pool ─────────────────────────────────────────────────
-const PARTICLE_POOL  = 360;
-const PARTICLE_LIFE_MIN = 0.4;
-const PARTICLE_LIFE_MAX = 0.8;
+// Lifetimes and pool size match Spectrum's ~2 s trails so sustained
+// chords reach a similar steady-state particle density.
+const PARTICLE_POOL     = 1200;
+const PARTICLE_LIFE_MIN = 1.2;
+const PARTICLE_LIFE_MAX = 2.0;
+
+// ── Peak markers ──────────────────────────────────────────────────
+const PEAK_COUNT         = 6;      // top N harmonics get a bright dot
+const HOT_PEAK_COUNT     = 6;      // every marked peak glows (match Spectrum)
+const PEAK_MAG_THRESHOLD = 0.001;  // ≈ −60 dB, matches Spectrum spawn floor
 
 function dbToLinear(db) {
   if (db <= DB_FLOOR) return 0;
   return Math.pow(10, db / 20);
+}
+
+function linearToDb(lin) {
+  if (lin <= 0) return DB_FLOOR;
+  const db = 20 * Math.log10(lin);
+  return db < DB_FLOOR ? DB_FLOOR : db;
 }
 
 function entryToPC(entry) {
@@ -84,7 +131,7 @@ export class ResonanceView {
     this.height = 0;
     this.dpr    = 1;
 
-    // Grid nodes for the 9×7 lattice
+    // Grid nodes for the 7×5 lattice
     this.nodes = [];               // [{ col, row, x, y, pc }]
     this.nodesByPC = Array.from({ length: 12 }, () => []);
     this.edges = [];               // [[nodeIdxA, nodeIdxB], …]
@@ -144,7 +191,20 @@ export class ResonanceView {
     this._resize();
     window.addEventListener('resize', this._resizeHandler);
 
-    // Seed role/active from current HarmonyState immediately
+    // Clear all per-PC state and the particle pool so a fresh mount starts
+    // dark. Role flags still come from HarmonyState, but nothing renders
+    // until the FFT actually has energy at a node's harmonics.
+    for (let pc = 0; pc < 12; pc++) {
+      const s = this.pcState[pc];
+      s.harmonics.fill(0);
+      s.energy = 0;
+      s.active = false;
+      s.role = DEFAULT_ROLE;
+    }
+    for (let i = 0; i < PARTICLE_POOL; i++) this.particles[i].active = false;
+
+    // Seed with current state so a chord held before the tab mounts is
+    // reflected immediately; HarmonyState.on doesn't fire an initial snapshot.
     this._readHarmonyState(HarmonyState.get());
     this._unsubscribe = HarmonyState.on((state) => this._readHarmonyState(state));
 
@@ -190,12 +250,12 @@ export class ResonanceView {
 
   _buildGrid() {
     const W = this.width, H = this.height;
-    // Horizontal extent is 11·dx (col span 0..8 plus row skew 0..6 × ½),
-    // vertical extent is 6·dy.
+    // Horizontal extent is 8·dx (col span 0..6 plus row skew 0..4 × ½),
+    // vertical extent is 4·dy.
     const padX = Math.max(24, W * 0.05);
     const padY = Math.max(24, H * 0.08);
-    const dx = (W - 2 * padX) / 11;
-    const dy = (H - 2 * padY) / 6;
+    const dx = (W - 2 * padX) / 8;
+    const dy = (H - 2 * padY) / 4;
     const originX = padX;
     const originY = padY;
 
@@ -233,7 +293,7 @@ export class ResonanceView {
 
     // Node radius scales with grid density
     this._nodeBaseR = Math.max(8, Math.min(dx, dy) * 0.18);
-    this._nodeMaxR  = Math.min(dx, dy) * 0.55;
+    this._nodeMaxR  = Math.min(dx, dy) * 0.55 * 1.3;
   }
 
   // ── HarmonyState → role/active flags ──────────────────────────
@@ -277,12 +337,17 @@ export class ResonanceView {
     const W = this.width, H = this.height;
     if (!ctx) return;
 
-    // Trail fade
-    ctx.fillStyle = 'rgba(8, 8, 8, 0.28)';
+    // Trail fade + faint lattice always render — they're ambient.
+    // 0.22 alpha matches Spectrum — gives particles a ~2 s visible tail.
+    ctx.fillStyle = 'rgba(8, 8, 8, 0.22)';
     ctx.fillRect(0, 0, W, H);
-
-    this._updateHarmonicsFromFFT();
     this._drawGrid();
+
+    // HarmonyState picks WHICH PCs can light up (activeNotes); the FFT
+    // shapes HOW they look. Released PCs skip the FFT read and decay
+    // out. No audio at an active PC → no blob; active flag alone is
+    // never enough to render.
+    this._updateHarmonicsFromFFT();
     this._drawBlobs();
     this._updateAndDrawParticles();
   }
@@ -300,33 +365,35 @@ export class ResonanceView {
     for (let pc = 0; pc < 12; pc++) {
       const s = this.pcState[pc];
       const harmonics = s.harmonics;
-      const f0 = BASE_FREQ * Math.pow(2, pc / 12);
 
-      // Read raw magnitudes from FFT (or synthesize a gentle shape if
-      // no analyser is connected yet, so the view still animates).
-      let rawSum = 0;
+      // HarmonyState gate: only PCs that are currently held/selected
+      // read new FFT energy. Released PCs decay out — they keep whatever
+      // harmonic shape they had when released, but shrink each frame.
+      if (!s.active) {
+        let sum = 0;
+        for (let k = 0; k < NUM_HARMONICS; k++) {
+          harmonics[k] *= RELEASE_DECAY;
+          sum += harmonics[k];
+        }
+        s.energy = sum;
+        continue;
+      }
+
+      const f0 = BASE_FREQ * Math.pow(2, pc / 12);
+      let sum = 0;
       for (let k = 0; k < NUM_HARMONICS; k++) {
         const f = f0 * (k + 1);
         let mag = 0;
         if (haveFFT && f < nyquist) {
           const bin = Math.round((f / nyquist) * N);
           if (bin >= 0 && bin < N) mag = dbToLinear(data[bin]);
-        } else if (!haveFFT && s.active) {
-          // Synthetic fallback: 1/k envelope + a tiny flicker
-          mag = (0.6 / (k + 1)) * (0.85 + 0.15 * Math.sin(performance.now() * 0.003 + k + pc));
         }
-
-        if (s.active) {
-          // Fast rise toward raw magnitude
-          harmonics[k] += (mag - harmonics[k]) * ATTACK_RATE;
-        } else {
-          // Independent release — decay regardless of FFT content
-          harmonics[k] *= DECAY_RATE;
-          if (harmonics[k] < 1e-4) harmonics[k] = 0;
-        }
-        rawSum += harmonics[k];
+        // Raw read — Spectrum does the same. The analyser's internal
+        // smoothing is the entire envelope; no extra follower here.
+        harmonics[k] = mag;
+        sum += mag;
       }
-      s.energy = rawSum;
+      s.energy = sum;
     }
   }
 
@@ -357,153 +424,161 @@ export class ResonanceView {
     ctx.restore();
   }
 
-  // ── Blob rendering ────────────────────────────────────────────
+  // ── Node rendering (radial spectrum analyzer) ────────────────
   _drawBlobs() {
-    const ctx = this.ctx;
-    const now = performance.now();
-    const baseR = this._nodeBaseR;
-    const maxR  = this._nodeMaxR;
+    const maxR = this._nodeMaxR;
 
     for (let pc = 0; pc < 12; pc++) {
       const s = this.pcState[pc];
       if (s.energy < SILENT_EPS) continue;
-
-      // Scale blob radius with total energy, clamped to the node cell.
-      const energyScale = Math.min(1, s.energy * 0.8);
-      const avgR = baseR + energyScale * (maxR - baseR);
-
       const color = ROLE_COLORS[s.role] || ROLE_COLORS[DEFAULT_ROLE];
-
-      // Render at every lattice node whose PC matches
       for (const idx of this.nodesByPC[pc]) {
         const n = this.nodes[idx];
-        this._drawBlobAt(n.x, n.y, s.harmonics, avgR, color, now, pc, s);
+        this._drawRadialSpectrumAt(n.x, n.y, s.harmonics, maxR, color);
       }
     }
   }
 
-  _drawBlobAt(cx, cy, harmonics, avgR, rgb, now, pc, pcState) {
+  // Render one node as a miniature circular spectrum analyzer:
+  //   angular axis = harmonic number (1 at 12 o'clock, clockwise)
+  //   radial axis  = magnitude in dB (inner = silent, outer = 0 dB)
+  _drawRadialSpectrumAt(cx, cy, harmonics, maxR, rgb) {
     const ctx = this.ctx;
     const N = NUM_HARMONICS;
+    const innerR = maxR * 0.18;
+    const span   = maxR - innerR;
+    const dbRange = 0 - DB_FLOOR;
+
+    // Build the envelope points.
     const pts = new Array(N);
-
-    // Angular rotation drifts slightly per PC so identical shapes don't
-    // phase-lock across nodes.
-    const rot = (now * 0.00015 + pc * 0.27) % (Math.PI * 2);
-
-    // Normalize harmonics so a full chord doesn't wash out — use max of
-    // recent harmonics + a tiny epsilon.
-    let maxH = 1e-4;
-    for (let k = 0; k < N; k++) if (harmonics[k] > maxH) maxH = harmonics[k];
-
-    let edgeSum = 0;
+    let totalEnergy = 0;
     for (let k = 0; k < N; k++) {
-      const angle = rot + (k / N) * Math.PI * 2;
-      // Each slice extends from avgR·0.65 (silent) to avgR·1.35 (loud),
-      // so the blob is always recognizable as a lobed shape.
-      const norm = harmonics[k] / maxH;     // 0..1
-      const rr   = avgR * (0.65 + norm * 0.7);
-      pts[k] = { x: cx + Math.cos(angle) * rr, y: cy + Math.sin(angle) * rr, r: rr, a: angle, mag: harmonics[k] };
-      edgeSum += rr;
+      // Canvas y is down, so +angle from -π/2 traces clockwise.
+      const angle = -Math.PI / 2 + (k / N) * Math.PI * 2;
+      const mag = harmonics[k];
+      const db  = linearToDb(mag);
+      let t = (db - DB_FLOOR) / dbRange;
+      if (t < 0) t = 0; else if (t > 1) t = 1;
+      const rr = innerR + t * span;
+      pts[k] = {
+        x: cx + Math.cos(angle) * rr,
+        y: cy + Math.sin(angle) * rr,
+        a: angle,
+        mag,
+        r: rr,
+      };
+      totalEnergy += mag;
     }
 
-    // Three layers: outer ghost → inner fill → envelope stroke
-    this._tracePath(pts, 1.0);
-    ctx.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.05)`;
+    // Fill under the envelope: radial gradient, transparent center →
+    // subtle color at envelope edge. Atmospheric, not solid.
+    this._tracePolar(pts);
+    const fillGrad = ctx.createRadialGradient(cx, cy, innerR * 0.4, cx, cy, maxR);
+    fillGrad.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
+    fillGrad.addColorStop(1, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.1)`);
+    ctx.fillStyle = fillGrad;
     ctx.fill();
 
-    this._tracePath(pts, 0.6);
-    ctx.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.12)`;
-    ctx.fill();
-
-    this._tracePath(pts, 1.0);
-    ctx.lineWidth = 0.6 + Math.min(0.8, pcState.energy * 0.25);
-    ctx.strokeStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.4)`;
+    // Envelope stroke — role-colored, matches Spectrum's 1.2 px / blur 6
+    // treatment but tinted per chord function.
+    this._tracePolar(pts);
+    ctx.save();
+    ctx.lineWidth = 1.2;
+    ctx.shadowColor = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.8)`;
+    ctx.shadowBlur = 6;
+    ctx.strokeStyle = `rgba(${Math.min(255, rgb[0] + 30)}, ${Math.min(255, rgb[1] + 30)}, ${Math.min(255, rgb[2] + 30)}, 0.88)`;
     ctx.stroke();
+    ctx.restore();
 
-    // Hot core
-    const coreR = Math.max(2, Math.min(6, 2 + pcState.energy * 1.4));
+    // Identify the strongest harmonics (top PEAK_COUNT by magnitude).
+    const ranked = [];
+    for (let k = 0; k < N; k++) {
+      if (pts[k].mag > PEAK_MAG_THRESHOLD) ranked.push(k);
+    }
+    ranked.sort((a, b) => pts[b].mag - pts[a].mag);
+    const peakCount = Math.min(PEAK_COUNT, ranked.length);
+
+    // Peak dots on the envelope — small, bright, flicker with the signal.
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    for (let i = 0; i < peakCount; i++) {
+      const p = pts[ranked[i]];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Particles radiate outward from EVERY above-threshold harmonic so the
+    // starburst fills the full circle, not just the upward-facing arc where
+    // low-k peaks cluster.
+    this._spawnFromHarmonics(pts, ranked, rgb);
+
+    // Center dot — size scales subtly with total energy, 2..5 px range.
+    const coreR = 2 + Math.min(3, totalEnergy * 0.8);
+    ctx.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.95)`;
     ctx.beginPath();
     ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.9)`;
     ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.beginPath();
     ctx.arc(cx, cy, coreR * 0.45, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.fill();
-
-    // Particle spawning from high-energy slices
-    this._spawnFromBlob(cx, cy, pts, rgb, pcState.energy);
   }
 
-  _tracePath(pts, scale) {
+  // Smooth closed curve through the radial points using midpoint-
+  // quadratic interpolation — with 16 points this is plenty smooth
+  // without subsampling.
+  _tracePolar(pts) {
     const ctx = this.ctx;
     const N = pts.length;
-    ctx.beginPath();
-    // Start at midpoint of segment N-1 → 0
     const last = pts[N - 1], first = pts[0];
-    const startX = (last.x + first.x) * 0.5;
-    const startY = (last.y + first.y) * 0.5;
-    ctx.moveTo(startX, startY);
+    const sx = (last.x + first.x) * 0.5;
+    const sy = (last.y + first.y) * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
     for (let i = 0; i < N; i++) {
       const p  = pts[i];
       const pn = pts[(i + 1) % N];
       const mx = (p.x + pn.x) * 0.5;
       const my = (p.y + pn.y) * 0.5;
-      // Scale control point relative to circle center — not strictly
-      // necessary for the outer (scale=1) pass, but keeps the inner fill
-      // (scale<1) shrunk toward the node.
-      if (scale === 1) {
-        ctx.quadraticCurveTo(p.x, p.y, mx, my);
-      } else {
-        // Shrink both the control point and mid-point toward blob centroid
-        // (approximated by averaging all pts once could be nicer — but
-        // shrinking toward each slice's chord midpoint also works well).
-        const cpX = p.x * scale + (1 - scale) * ((p.x + pn.x + pts[(i + N - 1) % N].x) / 3);
-        const cpY = p.y * scale + (1 - scale) * ((p.y + pn.y + pts[(i + N - 1) % N].y) / 3);
-        const mX  = mx * scale + (1 - scale) * ((p.x + pn.x) / 2);
-        const mY  = my * scale + (1 - scale) * ((p.y + pn.y) / 2);
-        ctx.quadraticCurveTo(cpX, cpY, mX, mY);
-      }
+      ctx.quadraticCurveTo(p.x, p.y, mx, my);
     }
     ctx.closePath();
   }
 
   // ── Particles ─────────────────────────────────────────────────
-  _spawnFromBlob(cx, cy, pts, rgb, energy) {
-    // Spawn rate scales with energy. At low energy: maybe 0 per frame.
-    const target = Math.min(6, energy * 8);
-    const count = Math.floor(target) + (Math.random() < (target % 1) ? 1 : 0);
-    if (count <= 0) return;
-
-    // Rank slices by magnitude; pick proportionally among the top half
-    const N = pts.length;
-    for (let s = 0; s < count; s++) {
-      // Weighted pick: sample by magnitude
-      let totalMag = 0;
-      for (let k = 0; k < N; k++) totalMag += pts[k].mag;
-      if (totalMag <= 0) return;
-      let r = Math.random() * totalMag;
-      let pick = 0;
-      for (let k = 0; k < N; k++) {
-        r -= pts[k].mag;
-        if (r <= 0) { pick = k; break; }
+  // Sparks radiating off the spectral envelope: each harmonic above
+  // threshold is a spawn site on the envelope edge, emitting particles
+  // along the radial direction from the node center (± a 30° spread)
+  // so the result is a full starburst, not a one-sided plume.
+  _spawnFromHarmonics(pts, ranked, rgb) {
+    const SPREAD = Math.PI / 6; // ±30°
+    for (let i = 0; i < ranked.length; i++) {
+      const p = pts[ranked[i]];
+      // Higher rate than Spectrum's 35 % cap: every above-threshold
+      // harmonic sheds sparks every frame on a loud signal, producing
+      // a visible radial cloud rather than lone peaks.
+      const rate = Math.min(0.9, p.mag * 1.6);
+      const count = Math.floor(rate) + (Math.random() < (rate % 1) ? 1 : 0);
+      if (count <= 0) continue;
+      const hot = i < HOT_PEAK_COUNT;
+      const baseSize = 2 + Math.random() * 2.5;
+      for (let s = 0; s < count; s++) {
+        const spread = (Math.random() - 0.5) * 2 * SPREAD;
+        // The angle from node center to spawn point IS p.a (spawn point
+        // sits at (cx + cos(p.a)·r, cy + sin(p.a)·r)), so p.a + spread
+        // gives a direction that radiates outward from the center.
+        const dir = p.a + spread;
+        const speed = 1.1 + Math.random() * 1.0;
+        this._spawnParticle(
+          p.x, p.y,
+          Math.cos(dir) * speed, Math.sin(dir) * speed,
+          rgb, hot, baseSize
+        );
       }
-      const p = pts[pick];
-      const spread = (Math.random() - 0.5) * 0.5;
-      const dirX = Math.cos(p.a + spread);
-      const dirY = Math.sin(p.a + spread);
-      const speed = 0.6 + Math.random() * 1.6 + energy * 0.6;
-      const hot = p.mag / (pts[(pick + 1) % N].mag + pts[(pick + N - 1) % N].mag + 1e-6) > 0.8;
-      this._spawnParticle(
-        p.x, p.y,
-        dirX * speed, dirY * speed,
-        rgb, hot
-      );
     }
   }
 
-  _spawnParticle(x, y, vx, vy, rgb, hot) {
+  _spawnParticle(x, y, vx, vy, rgb, hot, baseSize) {
     const pool = this.particles;
     for (let n = 0; n < PARTICLE_POOL; n++) {
       const i = (this._spawnCursor + n) % PARTICLE_POOL;
@@ -514,7 +589,7 @@ export class ResonanceView {
         p.x = x; p.y = y; p.vx = vx; p.vy = vy;
         p.lifeMax = PARTICLE_LIFE_MIN + Math.random() * (PARTICLE_LIFE_MAX - PARTICLE_LIFE_MIN);
         p.life = p.lifeMax;
-        p.size = hot ? (1.6 + Math.random() * 1.4) : (0.9 + Math.random() * 1.1);
+        p.size = baseSize + (Math.random() - 0.5) * 0.3;
         p.hot  = hot;
         p.r = rgb[0]; p.g = rgb[1]; p.b = rgb[2];
         return;
@@ -532,35 +607,35 @@ export class ResonanceView {
       if (!p.active) continue;
       p.life -= dt;
       if (p.life <= 0) { p.active = false; continue; }
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vx *= 0.985;
-      p.vy *= 0.985;
+      // Near-constant drift + sinusoidal wiggle, like Spectrum. No
+      // multiplicative deceleration — particles travel freely until
+      // their lifetime runs out.
+      const lifeT = p.lifeMax - p.life;
+      p.x += p.vx + Math.sin(lifeT * 6) * 0.15;
+      p.y += p.vy + Math.cos(lifeT * 4) * 0.10;
 
       const alpha = p.life / p.lifeMax;
-      if (p.hot) {
-        // Soft glow halo
-        const glowR = p.size * 4;
-        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
-        grad.addColorStop(0, `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha * 0.35})`);
-        grad.addColorStop(1, `rgba(${p.r}, ${p.g}, ${p.b}, 0)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha})`;
+      // Shrink as they fade: ends at ~40% of start size.
+      const curSize = p.size * (0.4 + 0.6 * alpha);
+
+      // Soft halo on every particle, matching Spectrum's always-on glow.
+      const glowR = curSize * 4;
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
+      grad.addColorStop(0, `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha * 0.5})`);
+      grad.addColorStop(1, `rgba(${p.r}, ${p.g}, ${p.b}, 0)`);
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
       ctx.fill();
 
-      // Bright inner dot on hot particles
-      if (p.hot) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      // Bright inner dot — lightened role color (mirrors Spectrum).
+      const lr = Math.min(255, p.r + 60);
+      const lg = Math.min(255, p.g + 60);
+      const lb = Math.min(255, p.b + 60);
+      ctx.fillStyle = `rgba(${lr}, ${lg}, ${lb}, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, curSize * 0.6, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 }

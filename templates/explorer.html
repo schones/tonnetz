@@ -873,6 +873,114 @@
       background: #080808;
     }
 
+    /* ── Fullscreen toggle button ─────────────────────────────────── */
+    .sl-fullscreen-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      cursor: pointer;
+      opacity: 0.4;
+      transition: opacity 120ms ease, background 120ms ease;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sl-fullscreen-btn:hover,
+    .sl-fullscreen-btn:focus-visible {
+      opacity: 0.9;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+    }
+    /* Expand-corners icon drawn with nested box-shadow-less borders.
+       A 14×14 box with four 6×6 L-shapes pinned to the corners. */
+    .sl-fullscreen-btn__icon {
+      position: relative;
+      width: 14px;
+      height: 14px;
+      display: block;
+    }
+    .sl-fullscreen-btn__icon::before,
+    .sl-fullscreen-btn__icon::after {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border: 2px solid #fff;
+    }
+    /* Top-left corner */
+    .sl-fullscreen-btn__icon::before {
+      top: 0; left: 0;
+      border-right: none;
+      border-bottom: none;
+    }
+    /* Bottom-right corner */
+    .sl-fullscreen-btn__icon::after {
+      bottom: 0; right: 0;
+      border-left: none;
+      border-top: none;
+    }
+    /* Flip to "collapse" chevrons when fullscreen is active */
+    .sl-stage-view:fullscreen .sl-fullscreen-btn__icon::before {
+      border: 2px solid #fff;
+      border-left: none;
+      border-top: none;
+      top: 0; left: 0;
+    }
+    .sl-stage-view:fullscreen .sl-fullscreen-btn__icon::after {
+      border: 2px solid #fff;
+      border-right: none;
+      border-bottom: none;
+      bottom: 0; right: 0;
+    }
+
+    /* When a stage view is fullscreen, canvas fills the viewport and
+       the backdrop picks up a solid dark tone matching each view. */
+    .sl-stage-view:fullscreen {
+      width: 100vw;
+      height: 100vh;
+      padding: 0;
+    }
+    .sl-stage-view[data-stage-view="spectrum"]:fullscreen {
+      background: #111;
+    }
+    .sl-stage-view[data-stage-view="resonance"]:fullscreen {
+      background: #080808;
+    }
+    .sl-stage-view:fullscreen #exp-spectrum-canvas,
+    .sl-stage-view:fullscreen canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* "Press Esc to exit" hint — only visible in fullscreen, fades out */
+    .sl-fullscreen-hint {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 12px;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 400ms ease;
+      z-index: 10;
+    }
+    .sl-stage-view:fullscreen .sl-fullscreen-hint.is-visible {
+      opacity: 1;
+    }
+
     /* Chord wheel stage view — centered inside the stage */
     #exp-wheel-stage {
       display: flex;
@@ -1595,8 +1703,17 @@
             <div id="exp-rhythm-stage"      class="sl-stage-view" data-stage-view="rhythm" hidden></div>
             <div id="exp-spectrum-stage"    class="sl-stage-view" data-stage-view="spectrum" hidden>
               <canvas id="exp-spectrum-canvas"></canvas>
+              <button class="sl-fullscreen-btn" type="button" title="Full screen" aria-label="Toggle full screen" data-fullscreen-target="exp-spectrum-stage">
+                <span class="sl-fullscreen-btn__icon" aria-hidden="true"></span>
+              </button>
+              <div class="sl-fullscreen-hint" aria-hidden="true">Press Esc to exit</div>
             </div>
-            <div id="exp-resonance-stage"   class="sl-stage-view" data-stage-view="resonance" hidden></div>
+            <div id="exp-resonance-stage"   class="sl-stage-view" data-stage-view="resonance" hidden>
+              <button class="sl-fullscreen-btn" type="button" title="Full screen" aria-label="Toggle full screen" data-fullscreen-target="exp-resonance-stage">
+                <span class="sl-fullscreen-btn__icon" aria-hidden="true"></span>
+              </button>
+              <div class="sl-fullscreen-hint" aria-hidden="true">Press Esc to exit</div>
+            </div>
 
             <!-- Walkthrough begin overlay (gates AudioContext on iOS) -->
             <div id="exp-begin-overlay" class="exp-begin-overlay" hidden role="dialog" aria-label="Begin walkthrough">
@@ -2121,6 +2238,44 @@
         _setStageView(tab.dataset.stageView);
       });
     });
+
+    // ── Fullscreen toggle (Spectrum & Resonance stages) ────────────
+    // The renderers already listen to window 'resize', so dispatching
+    // a resize on fullscreenchange is enough to make them re-measure.
+    (function wireFullscreenButtons() {
+      const btns = document.querySelectorAll('.sl-fullscreen-btn[data-fullscreen-target]');
+      let _hintTimer = null;
+
+      function showHint(stage) {
+        const hint = stage.querySelector('.sl-fullscreen-hint');
+        if (!hint) return;
+        hint.classList.add('is-visible');
+        if (_hintTimer) clearTimeout(_hintTimer);
+        _hintTimer = setTimeout(() => hint.classList.remove('is-visible'), 2000);
+      }
+
+      btns.forEach(btn => {
+        const stage = document.getElementById(btn.dataset.fullscreenTarget);
+        if (!stage) return;
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          if (document.fullscreenElement === stage) {
+            document.exitFullscreen && document.exitFullscreen();
+          } else if (stage.requestFullscreen) {
+            stage.requestFullscreen().catch(() => {});
+          }
+        });
+      });
+
+      document.addEventListener('fullscreenchange', () => {
+        const fsEl = document.fullscreenElement;
+        // Nudge renderers that size off container bounds
+        window.dispatchEvent(new Event('resize'));
+        if (fsEl && fsEl.classList && fsEl.classList.contains('sl-stage-view')) {
+          showHint(fsEl);
+        }
+      });
+    })();
 
     // ── Rhythm stage renderer ──────────────────────────────────────
     let currentRhythmData = null;
