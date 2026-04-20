@@ -1,6 +1,6 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-17
+**Last updated:** 2026-04-19
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
@@ -10,47 +10,41 @@
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich. Phase A and A++ complete. Client-side audio DSP landed April 16-17: five detection modules (onset, pitch, chord, device selection, unified input provider) replace the server-side bottleneck. Melody Match fixed — client-side YIN pitch detection working. Polyrhythm Trainer (B8) shipped with Practice Mode (phase-based BPM ramp) and Challenge Mode (arcade adaptive). Opus 4.7 code review completed; 5 critical blockers resolved. Approaching user testing readiness.
+SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Resonance tab landed April 19 — radial FFT spectrum visualization on the Tonnetz grid, the generative art concept realized as a 6th Explorer panel. Audio interface (Scarlett 2i2) wired into Explorer, feeding both Spectrum and Resonance tabs via shared analyser. Polyrhythm Trainer has Practice Mode (phase-based BPM ramp) and Challenge Mode (arcade adaptive). Approaching user testing readiness.
 
 **Next priorities:**
-1. Add Polyrhythm Trainer to nav dropdown and landing page
-2. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
+1. Refine Resonance sparkle particles (density, direction, glow)
+2. Debug Scarlett audio input flow (browser sees device, audio routing needs verification)
 3. Business model / monetization spec
-4. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
-5. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
-6. Consolidate triplicated chord-type registries (code review finding)
-7. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
-8. User testing prep (15-20 participants)
+4. Add Polyrhythm Trainer to nav dropdown and landing page
+5. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
+6. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
+7. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
+8. Consolidate triplicated chord-type registries (code review finding)
+9. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
+10. User testing prep (15-20 participants)
 
-**Completed this cycle (April 16-17):**
+**Completed this cycle (April 19):**
 
-- **Phase A++ — Audio & Input Architecture (6 modules):**
-  - `audio-input.js` — audio interface device selection, Scarlett 2i2 auto-detect, `getUserMedia` with device picker, source quality flag
-  - `onset-detection.js` — spectral flux onset detector, reads shared `Tone.Analyser`, adjustable threshold/cooldown
-  - `pitch-detection.js` — client-side YIN monophonic pitch, strategy pattern for CREPE Pro-tier upgrade, 15-cent grace window
-  - `chord-detection.js` — chroma vector template matching (10 chord types), bass detection, key-aware disambiguation
-  - `input-provider.js` — unified input abstraction, modality picker UI, games declare supported inputs
-  - Dead code cleanup: removed broken `startPitchDetection`/`stopPitchDetection`/`autocorrelate` from audio.js
-  - **Melody Match fixed** — client-side pitch detection replaces broken server route calls
-  - Spec: `docs/audio-architecture.md`
+- **Resonance tab (new Explorer panel):**
+  - 6th Explorer stage tab: radial FFT spectrum visualization on Tonnetz grid
+  - `static/shared/resonance-view.js` — ResonanceView class, 7×5 Tonnetz lattice
+  - Each active node renders the FFT spectrum wrapped in a circle — frequency → angle, magnitude → radius
+  - HarmonyState gates which nodes render, FFT drives how they look. No synthetic fallback — pure audio-driven.
+  - Chord-function coloring: gold (root), coral (third), blue (fifth), green (seventh)
+  - Particles spawn from FFT peaks, radiate outward, dynamics matched to Spectrum panel
+  - Fullscreen toggle on both Spectrum and Resonance tabs
 
-- **Polyrhythm Trainer (B8) — new game:**
-  - Guitar Hero-style falling-note game at `/games/polyrhythm`, dark DAW theme
-  - **Practice Mode:** 5-phase structured ramp (Listen → Layer A → Layer B → Both → Victory), BPM auto-ramps from start to goal within each phase, per-phase results with "Try again at {bpm}"
-  - **Challenge Mode:** arcade adaptive (tempo + polyrhythm + tolerance axes), endless scoring, top-5 leaderboard
-  - Two vertical lanes (purple/gold), ghost-to-solid falling notes, lane breathing waves, interference wave, particle bursts, receptor rings
-  - HTML drum pads below canvas with hit/miss flash animations, phase-aware dimming
-  - Song preset buttons (Linus & Lucy, Oye Como Va, Mission Impossible)
-  - Web Audio gain chain (oscillator → layerGain → masterGain → destination) for clean audio switching
-  - First game built on `input-provider.js` + `onset-detection.js`
-  - Spec: `docs/polyrhythm-trainer-spec.md`
+- **Audio interface wiring (Explorer):**
+  - `audio-input.js` connected to Explorer with Hardware UI (device dropdown, status, quality badge)
+  - Scarlett 2i2 auto-detect, MediaStreamSource feeds shared `Tone.Analyser`
+  - Both Spectrum and Resonance read live external audio
+  - Fixed Tone.js cross-context node connection error
 
-- **Opus 4.7 code review + fixes:**
-  - Comprehensive overnight review: `docs/code-review-opus47.md`
-  - Fixed: SkratchLab broken import (audio-bridge.js), dead route calls (rhythm.js, detection.js), cross-AudioContext wiring (audio-input.js), hardcoded sample rate (chord-detection.js)
-  - Dev routes gated behind `app.debug`
-  - Orphan files deleted (5 files), unused imports removed, Safari private mode resilience added to user-profile.js
-  - Architecture positives confirmed: HarmonyState clean, no secrets client-side, template inheritance consistent
+- **Polyrhythm Trainer tweaks:**
+  - Hit zone moved up (HIT_Y 370→280), post-hit effects area below
+  - Audio gain chain (layerGain → masterGain) eliminates overlap on changes
+  - Lane waves + missed notes extend below hit zone with fade-out
 
 - **Bug fixes:**
   - Quality name mismatch between chord-resolver.js and transforms.js (dim→diminished, aug→augmented, etc.)
@@ -145,14 +139,17 @@ SongLab `dev` branch is feature-rich. Phase A and A++ complete. Client-side audi
 
 
 
-### Tonnetz Explorer ✅ fully restyled + Spectrum + MIDI
+### Tonnetz Explorer ✅ fully restyled + Spectrum + MIDI + Resonance + Audio Interface
 - DAW-style dark theme at `/explorer`: transport controls, song info bar, walkthrough sidebar
-- Tabbed panel area: Tonnetz / Chord Wheel / Fretboard / **Rhythm** / **Spectrum** (all wired and synchronized via HarmonyState)
+- Tabbed panel area: Tonnetz / Chord Wheel / Fretboard / **Rhythm** / **Spectrum** / **Resonance** (all wired and synchronized via HarmonyState)
 - **Spectrum tab (Harmonic Resonance):** real-time FFT particle visualizer, particles colored by chord function, spectral envelope with peak-hold
+- **Resonance tab (new):** radial FFT spectrum visualization on Tonnetz grid. Each active node renders the spectrum wrapped in a circle — frequency → angle, magnitude → radius. HarmonyState gates which nodes render, FFT drives how they look. Particles spawn from peaks, radiate outward. Fullscreen toggle.
+- **Audio interface support:** Hardware UI (device dropdown, status, quality badge). Scarlett 2i2 auto-detect. External audio feeds shared `Tone.Analyser` — both Spectrum and Resonance visualize live guitar/mic input.
 - **MIDI input:** Web MIDI API via `midi-input.js`, Launchkey 49 auto-detect, keyboard size selector (25/49/61/88)
 - **Chord lock-in:** freeze MIDI-detected chord for P/R/L transform exploration, sustain pedal toggle, chained transforms
 - **Key-aware chord resolution:** ambiguous chords (aug/dim) resolve using diatonic context from KEY selector
-- Shared FFT analyser in audio chain (`KeyboardView.getAnalyser()`) — all instruments feed spectrum
+- Shared FFT analyser in audio chain (`KeyboardView.getAnalyser()`) — all instruments + external audio feed spectrum
+- Fullscreen toggle on Spectrum and Resonance tabs
 - Chord-quality color families: blue=major, green=minor, coral=borrowed
 - Tonnetz animations: pulsing nodes, glow worm paths, ghost trails
 - Cream keyboard keys with real piano proportions, lightened Tonnetz canvas
@@ -242,10 +239,11 @@ SongLab `dev` branch is feature-rich. Phase A and A++ complete. Client-side audi
 - `harmony-state.js` — pub/sub state model, **setChord/highlightChord** for extended chord types
 - `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring, **extension node rendering**
 - `keyboard-view.js` — real piano proportions, highlight layer, click interaction, **extension ring highlights**, shared `Tone.Analyser` owner
+- `resonance-view.js` — radial FFT Tonnetz visualization, HarmonyState-gated, chord-function coloring, Spectrum-matched particle dynamics
 - `chord-wheel.js` — dual-ring circle of fifths
 - `song-examples.js` — 84 curated real-song references
 - `walkthroughs.js` — 17 guided Explorer walkthroughs with rhythm data, audience tags, category labels, extended chord types
-- `audio-input.js` — audio interface device selection (Scarlett auto-detect), source quality flag
+- `audio-input.js` — audio interface device selection (Scarlett auto-detect), source quality flag, Explorer Hardware UI
 - `onset-detection.js` — spectral flux onset detector, reads shared Tone.Analyser
 - `pitch-detection.js` — client-side YIN pitch detection, CREPE strategy pattern for Pro tier
 - `chord-detection.js` — chroma template matching, 10 chord types, bass detection
@@ -294,6 +292,8 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 
 ## Known Issues
 
+- **Scarlett 2i2 audio routing needs verification** — browser sees the device, Hardware UI selects it, but audio may not be flowing through to the analyser in all cases. Needs hands-on debugging with the physical hardware.
+- **Resonance particle refinement needed** — sparkle density, direction spread, and glow tuning need iteration with real audio input
 - **Swing Trainer 500 on production** — could not reproduce locally (April 17). Template extends base.html correctly. Likely Railway deploy state issue. Need fresh deploy + production stack trace capture. See `docs/KNOWN-ISSUES.md`.
 - **Railway cold start** — ~15s first load after inactivity (hobby tier), warn testers
 - **Rhythm Lab + Strum Patterns mic paths disabled** — dead route calls commented out, TODO points to onset-detection.js migration. Keyboard/spacebar input still works.

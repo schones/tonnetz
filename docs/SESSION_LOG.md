@@ -4,6 +4,65 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-19 — Resonance Tab, Audio Interface Wiring, Polyrhythm Tweaks
+
+**Focus:** Tonnetz generative art visualization ("Resonance" tab), Scarlett 2i2 audio interface wiring into Explorer, Polyrhythm Trainer visual refinements.
+
+### Resonance tab — new Explorer panel (6th tab)
+- `static/shared/resonance-view.js` — new module: `ResonanceView` class with init/setAnalyser/start/stop/destroy
+- 7×5 Tonnetz lattice (horizontal=P5, up-right=M3, down-right=m3) as invisible spatial scaffold (~5% alpha dots + edges)
+- **Radial spectrum visualization:** each active node renders the FFT spectrum wrapped in a circle — frequency maps to angle, magnitude maps to radius. The same FFT data the Spectrum panel reads linearly, bent into a circle around each Tonnetz node.
+- Three rendering layers per node: outer ghost fill (0.05 alpha), inner fill (0.12 alpha), envelope stroke (1.2px with glow), hot center dot with white highlight
+- Peak markers: top harmonics get bright dots on the envelope edge — flicker with live FFT
+- Particles: spawn from FFT peak positions on the envelope, radiate outward in all directions (starburst), colored by chord function, glow halos on strong peaks. Dynamics matched to Spectrum panel (spawn rate, lifetime 1.2-2s, constant velocity with sinusoidal wiggle, trail fade 0.22)
+- **HarmonyState gating:** only nodes whose pitch class is in HarmonyState's activeNotes render. Prevents harmonic bleed from lighting up unplayed notes. HarmonyState controls WHAT lights up, FFT controls HOW it looks.
+- **Pure FFT-driven decay:** no synthetic fallback. Blobs bloom with real audio, decay with the instrument's natural release envelope. Removed synthetic harmonic simulation entirely.
+- Chord-function coloring: gold (root), coral (third), blue (fifth), green (seventh) — same as Spectrum panel
+- Fullscreen toggle button on both Spectrum and Resonance tabs (Fullscreen API)
+- Lifecycle managed: start/stop on tab switch, same pattern as Spectrum
+
+### Audio interface wiring (Explorer)
+- `audio-input.js` wired into Explorer: Hardware section with device dropdown, connection status, source quality badge (Interface/Mic)
+- On device selection: MediaStreamSource feeds shared `Tone.Analyser` via `KeyboardView.getAnalyser()` — Spectrum and Resonance both read live external audio
+- Auto-restore from localStorage on page load
+- USB plug/unplug detection via `onDeviceChange`
+- Tone-context handoff: auto-restored device re-selects into Tone's context after `Tone.start()` so the source node feeds the shared FFT analyser
+- Fixed Tone.js node connection error ("value with given key not found") — native Web Audio nodes need `Tone.connect()` or access to the analyser's internal native node
+
+### Polyrhythm Trainer tweaks
+- HIT_Y moved from 370 → 280 (1/3 from bottom) — more room for post-hit effects
+- Particles spray downward into post-hit zone, combo text spawns below hit line and floats up
+- Lane breathing waves + interference wave extend past HIT_Y to canvas bottom with fade-out
+- Missed notes continue falling below HIT_Y and fade out
+- Audio gain chain: oscillator → layerGain → masterGain → destination. Eliminates overlap on tempo/polyrhythm changes and enables instant muting.
+
+### Iterative design process (Resonance)
+- Built 5 prototype iterations in claude.ai visualizer before landing on the radial spectrum concept
+- v1: horizontal scrolling beats (rejected — not Guitar Hero enough)
+- v2: organic Gaussian blobs (rejected — all shapes looked the same)
+- v3: per-node FFT sampling (closer — but simulated FFT was lifeless)
+- v4: reactive jittery blobs (better dynamics but too firework-like)
+- v5 (shipped): literal spectrum display wrapped radially, HarmonyState gating, Spectrum-matched dynamics
+- Key insight: the visualization must be grounded in physics (real FFT data), not artistic interpretation
+
+### Decisions made
+- Resonance is the 6th Explorer tab, after Spectrum. May become a standalone `/art` route later.
+- HarmonyState gates visibility (which nodes), FFT drives appearance (how they look). Neither alone is sufficient.
+- No synthetic fallback — Resonance only visualizes real audio. Dark canvas with faint grid when nothing is playing.
+- Fullscreen toggle added to both Spectrum and Resonance for immersive display
+- Scarlett 2i2 audio flows through the same analyser as internal sampler — both visualize simultaneously
+- Particle dynamics aligned with Spectrum: spawn rate, lifetime, velocity, glow, wiggle all matched
+
+### What's next
+- Refine Resonance sparkle particle behavior (density, direction, glow tuning)
+- Debug Scarlett 2i2 input in Explorer (browser sees device but audio may not be flowing)
+- Business model / monetization spec (deferred from April 16)
+- Add Polyrhythm Trainer to nav + landing page
+- Brainstorm session outcomes (printed brief available)
+- User testing prep
+
+---
+
 ## 2026-04-17 — Polyrhythm Trainer v2, Code Review Fixes
 
 **Focus:** Polyrhythm game redesign (Practice/Challenge modes, drum pads, phase-based BPM ramp), Opus 4.7 code review fixes.
