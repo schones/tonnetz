@@ -4,6 +4,79 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-20 — Resonance Debug Panel, Sparkler Tuning, /art Sandbox
+
+**Focus:** Live-tuning debug panel for Resonance, iterative refinement of particle aesthetic from "starburst" to "sparkler", and a forked `/art` sandbox route with experimental grid motion and chord-triangle merging.
+
+### Resonance debug panel (Explorer)
+- URL-gated debug panel: `/explorer?debug=resonance` mounts a fixed-position overlay in the Resonance stage. Production users see nothing.
+- Refactored `resonance-view.js` constants → `DEFAULT_PARAMS` instance object with `getParams()` / `setParam()` / `setParams()` methods. Per-frame reads enable live tuning without reload.
+- 22 tunable parameters across four collapsible sections: Smoothing & Decay, Particle Spawning, Particle Lifetime & Motion, Render & Glow.
+- Save / Export / Reset preset system with `localStorage['songlab.resonance.presets']`. Export downloads dated JSON (`resonance-presets-YYYY-MM-DD.json`).
+- Initial implementation used native `window.prompt()` for preset names; replaced with inline name-entry input row after Chrome's narrow URL-bar prompt was easy to miss and easy to dismiss accidentally.
+- Panel layout fix mid-session: viewport-fit with `flex-direction: column`, sticky header (preset bar + Save/Export/Reset always visible), internal scroll on the slider list with `min-height: 0` to make flex shrink correctly.
+
+### Bug fixes during tuning
+- **Inverted blob fill:** the per-node radial gradient was transparent at center → faint color at edge, making blobs look hollow. Fixed to center-bright → transparent at envelope edge with new `blobFillAlpha` tunable.
+- **Wiggle direction:** particle wiggle was applied in global screen X/Y axes regardless of flight direction, causing all particles to drift sideways relative to their trajectories. Fixed with proper perpendicular-to-velocity computation: `perp = (-vy, vx) / speed`, single sin term applied along it.
+- **Peak threshold hidden:** `PEAK_MAG_THRESHOLD` was a module constant; promoted to log-scale `peakMagThreshold` slider so the gating threshold for "which harmonics qualify as spawn sites" can be tuned live.
+
+### New defaults baked into Resonance (Explorer-affecting)
+Tuned to a "sparkler" aesthetic: short particle lifetimes, low velocity, high spawn rate, deceleration, increased glow.
+- New `particleDeceleration` parameter (default `0.95`) — multiplies velocity per frame so particles slow over their lifetime instead of moving in straight lines until they die. Range `0.85`–`1.0`, step `0.005`.
+- 12 baseline values updated in `DEFAULT_PARAMS`: `releaseDecay 0.95`, `spawnRateMultiplier 4.0`, `spawnRateCap 2.0`, `speedMin 0.3`, `speedMax 0.7`, `lifeMin 0.25`, `lifeMax 0.5`, `wiggleAmplitude 0.35`, `trailFadeAlpha 0.35`, `envelopeShadowBlur 14`, `glowAlphaInner 0.75`, `glowRadiusMultiplier 7`.
+- **Behavior change for end users:** Explorer's Resonance tab now renders sparkler-style by default, not starburst. Original April 19 aesthetic not preserved as a baked-in preset.
+
+### `/art` sandbox route — forked Resonance for experimentation
+- New Flask route `/art` rendering `templates/art.html`.
+- New `static/shared/resonance-art-view.js` — verbatim fork of `resonance-view.js`. Class renamed to `ResonanceArtView`, canvas class prefix `sl-resonance-art-canvas` to avoid CSS collision. Shares `DEFAULT_PARAMS` shape but will diverge.
+- Page layout: title block, dominant canvas, 25-key keyboard for audio input, Hardware audio-source line. Debug panel always visible (no URL gate — entire route is sandbox).
+- Independent preset namespace: `localStorage['songlab.art.presets']`. Panel CSS prefix `.sl-adbg-` so it can't collide with Explorer's `.sl-rdbg-`.
+- Panel title "Art Lab Tuning" (vs Explorer's "Resonance Tuning") to keep them visually distinct.
+- The Explorer's Resonance tab is fully untouched by the fork — `resonance-view.js` and `templates/explorer.html` unchanged in this step.
+
+### Grid motion (`/art` only)
+- Three new tunables, all defaulting to `0` so baseline is unchanged until dialed in: `gridRotationSpeed` (deg/s, ±30), `gridSwaySpeed` (Hz, 0–0.5), `gridSwayAmplitude` (px, 0–200).
+- Lattice rotates and sways as a single rigid body around canvas center. `_transformedNode()` helper applies the transform per-frame; `_updateGridTransform(dt)` advances rotation and circular-sway accumulators.
+- Edges, dots, and blobs all walk through the transform; particles spawn at the transformed center.
+- Particles live in screen space — they spawn from moving node positions but don't inherit subsequent grid motion. Produces a comet-trail effect on slow rotation.
+
+### Chord triangle highlights (`/art` only)
+- Triangle list built at lattice setup: ~48 triangles in the 7×5 lattice, enumerated as upward (major) and downward (minor) Tonnetz triads using the existing `nodeIdxAt` helper.
+- Per frame, for each triangle: if all three vertex PCs are simultaneously active and above `silentEps`, render a flat gold fill + stroked outline with `shadowBlur` glow. Avg vertex energy scales fill/stroke alpha.
+- Geometric truth emerges naturally without chord-specific code: held Cmaj triad lights one upward triangle; Cmin lights one downward; Cmaj7 (C-E-G-B) lights two adjacent triangles sharing the E-G edge.
+- Drawn under per-node blobs so blobs remain focal and triangles act as halo/scaffold behind them.
+- Four tunables: `triangleFillAlphaPeak` (default `0.18`), `triangleStrokeAlpha` (default `0.5`), `triangleStrokeWidth` (default `1.5`), `triangleGlowBlur` (default `12`).
+
+### Workflow / process notes
+- Strategic-planning workflow held up well: claude.ai for architecture and prompt drafting, scoped Claude Code prompts for implementation, all verified with `node --check` between rounds.
+- Six sequential Claude Code prompts ran cleanly: debug panel; layout fix + bug fixes (blob fill, wiggle, peak threshold); inline preset-name input; deceleration param + sparkler defaults; `/art` baseline fork; `/art` grid motion; `/art` chord triangles.
+- The audio-input.js change from a previous session (cross-context `_connectToAnalyser` helper) was sitting uncommitted at session start; committed as its own focused commit before starting Resonance work to keep diffs clean.
+
+### Decisions made
+- Resonance's debug panel stays gated behind `?debug=resonance`; production users see nothing. `/art`'s panel is always visible (the route itself is a sandbox).
+- Forked rather than parameterized: `resonance-art-view.js` is a separate file, will diverge freely. The Explorer version is the stable canonical.
+- Triangle coloring uses the root role (gold) for all triangles regardless of which vertex is the chord root; quality is encoded by triangle direction (up = major, down = minor) per Tonnetz convention.
+- New defaults on Resonance affect Explorer end users; original starburst not preserved as a named preset (deferred decision).
+- `/art` has no nav link — sandbox-only by design; revisit if it grows into a real destination.
+
+### What's next
+- Debug visual issues identified during `/art` testing (deferred for next session — not enumerated this session)
+- Polyrhythm Trainer → nav dropdown + landing page
+- Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
+- Tab-audio capture for YouTube playback test against `/art`
+- Decide `/art` front-door: linked from nav, footer, hidden, or remain unlinked sandbox
+- Consider preserving original "starburst" Resonance aesthetic as a named baked-in preset
+- Onset detection wired into Resonance for staccato burst behavior (deferred from earlier in session)
+- Business model / monetization spec (still deferred from April 16)
+
+### Known issues from this session
+- `/art` has no nav link (intentional for sandbox, but easy to forget the route exists)
+- Resonance defaults changed from starburst to sparkler — behavior change for any users who saw the April 19 release
+- Visual issues in `/art` experiments noted by Dustin but not enumerated; carry-over for next session
+
+---
+
 ## 2026-04-19 — Resonance Tab, Audio Interface Wiring, Polyrhythm Tweaks
 
 **Focus:** Tonnetz generative art visualization ("Resonance" tab), Scarlett 2i2 audio interface wiring into Explorer, Polyrhythm Trainer visual refinements.

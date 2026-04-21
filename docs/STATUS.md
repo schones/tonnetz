@@ -1,6 +1,6 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-20
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
@@ -10,21 +10,65 @@
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Resonance tab landed April 19 — radial FFT spectrum visualization on the Tonnetz grid, the generative art concept realized as a 6th Explorer panel. Audio interface (Scarlett 2i2) wired into Explorer, feeding both Spectrum and Resonance tabs via shared analyser. Polyrhythm Trainer has Practice Mode (phase-based BPM ramp) and Challenge Mode (arcade adaptive). Approaching user testing readiness.
+SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 20 session shipped a URL-gated debug panel for live-tuning Resonance, fixed several rendering bugs (inverted blob fill, axis-locked wiggle, hidden peak threshold), and re-baked Resonance defaults to a "sparkler" aesthetic. New `/art` sandbox route forks Resonance into an experimental playground with grid motion and chord-triangle merging. Approaching user testing readiness.
 
 **Next priorities:**
-1. Refine Resonance sparkle particles (density, direction, glow)
+1. Debug visual issues identified in `/art` experiments (carry-over from April 20)
 2. Debug Scarlett audio input flow (browser sees device, audio routing needs verification)
-3. Business model / monetization spec
-4. Add Polyrhythm Trainer to nav dropdown and landing page
-5. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
-6. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
-7. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
-8. Consolidate triplicated chord-type registries (code review finding)
-9. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
-10. User testing prep (15-20 participants)
+3. Add Polyrhythm Trainer to nav dropdown and landing page
+4. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
+5. Tab-audio capture experiment: feed YouTube into `/art`
+6. Decide `/art` front-door (linked from nav, footer, hidden, or remain unlinked sandbox)
+7. Consider preserving original "starburst" Resonance aesthetic as a named baked-in preset
+8. Onset detection wired into Resonance for staccato burst behavior
+9. Business model / monetization spec
+10. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
+11. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
+12. Consolidate triplicated chord-type registries (code review finding)
+13. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
+14. User testing prep (15-20 participants)
 
-**Completed this cycle (April 19):**
+**Completed this cycle (April 20):**
+
+- **Resonance debug panel (Explorer):**
+  - URL-gated at `/explorer?debug=resonance`; production users see nothing
+  - Refactored `resonance-view.js` constants → `DEFAULT_PARAMS` instance object with `getParams()` / `setParam()` / `setParams()` API; per-frame reads enable live tuning without reload
+  - 22 tunable parameters across four sections (Smoothing & Decay, Particle Spawning, Particle Lifetime & Motion, Render & Glow)
+  - Save / Export / Reset preset system with `localStorage['songlab.resonance.presets']`; export downloads dated JSON
+  - Inline name-entry input replacing native `window.prompt()` (Chrome's narrow URL-bar prompt was unusable)
+  - Viewport-fit panel layout with sticky header and internal slider scroll
+
+- **Resonance bug fixes:**
+  - Inverted blob fill (gradient was hollow at center) → center-bright with new `blobFillAlpha` tunable
+  - Wiggle direction was global X/Y axes → now perpendicular to particle velocity
+  - `PEAK_MAG_THRESHOLD` promoted from module constant to log-scale `peakMagThreshold` slider
+
+- **Resonance default tuning baked in (sparkler aesthetic):**
+  - New `particleDeceleration` parameter (default `0.95`)
+  - 12 baseline values updated for short-life, low-velocity, high-spawn-rate, decelerating sparkler look
+  - **Behavior change for end users:** Explorer's Resonance now renders sparkler-style by default, not starburst
+
+- **`/art` sandbox route:**
+  - New Flask route, new `templates/art.html`, new `static/shared/resonance-art-view.js` (verbatim fork of `resonance-view.js`, class `ResonanceArtView`)
+  - Always-visible debug panel (Art Lab Tuning), independent preset namespace `localStorage['songlab.art.presets']`
+  - Explorer's Resonance tab and `resonance-view.js` fully untouched by the fork
+
+- **`/art` grid motion:**
+  - Lattice rotates and sways as a rigid body around canvas center
+  - Three tunables (`gridRotationSpeed`, `gridSwaySpeed`, `gridSwayAmplitude`), all default `0` so baseline unchanged until dialed in
+  - Particles live in screen space — comet-trail effect on slow rotation
+
+- **`/art` chord triangle highlights:**
+  - Triangle list built at lattice setup (~48 triangles in 7×5 grid)
+  - For each triangle, if all three vertex PCs are simultaneously active, render a gold fill + stroked outline with shadowBlur glow
+  - Geometric truth emerges naturally: triads light one triangle, 7th chords light two adjacent triangles sharing an edge
+  - Four tunables for fill/stroke/glow
+
+- **`audio-input.js` cleanup (committed at session start):**
+  - Extracted `_connectToAnalyser()` helper that prefers `Tone.connect()` for native-to-Tone wiring with a manual fallback
+  - DRY'd up the analyser-swap path in the Hardware UI
+
+**Completed previous cycle (April 19):**
 
 - **Resonance tab (new Explorer panel):**
   - 6th Explorer stage tab: radial FFT spectrum visualization on Tonnetz grid
@@ -239,7 +283,8 @@ SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Res
 - `harmony-state.js` — pub/sub state model, **setChord/highlightChord** for extended chord types
 - `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring, **extension node rendering**
 - `keyboard-view.js` — real piano proportions, highlight layer, click interaction, **extension ring highlights**, shared `Tone.Analyser` owner
-- `resonance-view.js` — radial FFT Tonnetz visualization, HarmonyState-gated, chord-function coloring, Spectrum-matched particle dynamics
+- `resonance-view.js` — radial FFT Tonnetz visualization, HarmonyState-gated, chord-function coloring, Spectrum-matched particle dynamics. **April 20:** refactored to instance-based `DEFAULT_PARAMS` for live tuning; sparkler defaults; perpendicular wiggle; new tunables (`blobFillAlpha`, `peakMagThreshold`, `particleDeceleration`)
+- `resonance-art-view.js` — verbatim fork of `resonance-view.js` for the `/art` sandbox. Class `ResonanceArtView`. Adds grid motion (rotation + circular sway, lattice as rigid body) and chord-triangle highlights (gold fill on Tonnetz triangles whose vertex PCs are all active). Will diverge freely from the canonical Explorer version.
 - `chord-wheel.js` — dual-ring circle of fifths
 - `song-examples.js` — 84 curated real-song references
 - `walkthroughs.js` — 17 guided Explorer walkthroughs with rhythm data, audience tags, category labels, extended chord types
@@ -293,7 +338,9 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 ## Known Issues
 
 - **Scarlett 2i2 audio routing needs verification** — browser sees the device, Hardware UI selects it, but audio may not be flowing through to the analyser in all cases. Needs hands-on debugging with the physical hardware.
-- **Resonance particle refinement needed** — sparkle density, direction spread, and glow tuning need iteration with real audio input
+- **Resonance defaults changed (April 20)** — Explorer's Resonance tab now renders sparkler-style by default, not the original starburst from April 19. Original aesthetic not preserved as a baked-in preset; consider adding it back as a named preset alongside "Defaults".
+- **`/art` route is unlinked** — sandbox by design; visit `/art` directly. Easy to forget the route exists. Decide on a front-door (footer link, easter egg, or remain hidden).
+- **`/art` visual issues from April 20 testing** — Dustin flagged outstanding visual problems but did not enumerate; carry-over for next session.
 - **Swing Trainer 500 on production** — could not reproduce locally (April 17). Template extends base.html correctly. Likely Railway deploy state issue. Need fresh deploy + production stack trace capture. See `docs/KNOWN-ISSUES.md`.
 - **Railway cold start** — ~15s first load after inactivity (hobby tier), warn testers
 - **Rhythm Lab + Strum Patterns mic paths disabled** — dead route calls commented out, TODO points to onset-detection.js migration. Keyboard/spacebar input still works.
