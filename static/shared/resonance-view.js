@@ -64,7 +64,6 @@ const NEIGHBOR_OFFSETS = [
 // ── Harmonic sampling ─────────────────────────────────────────────
 const BASE_FREQ   = 130.81;  // C3 — base octave for harmonic 1
 const NUM_HARMONICS = 16;
-const DB_FLOOR    = -90;
 
 // ── Role colors (same palette as the Spectrum panel) ──────────────
 const ROLE_COLORS = {
@@ -75,38 +74,57 @@ const ROLE_COLORS = {
 };
 const DEFAULT_ROLE = 'root';
 
-// ── Smoothing ─────────────────────────────────────────────────────
-// HarmonyState gates WHICH pitch classes are allowed to light up — only
-// PCs in activeNotes read new FFT data. This prevents harmonic bleed
-// (e.g. an F major chord lighting up every node the FFT overlaps).
-// When a PC leaves activeNotes its harmonic magnitudes decay by
-// RELEASE_DECAY per frame so the blob fades naturally (~0.5 s at 60 fps).
-// While active, Spectrum-style raw reads drive the envelope — the
-// analyser's own exponential smoothing (Tone.js default 0.8) is enough.
-const SILENT_EPS    = 0.001;  // total energy below this → node goes dark
-const RELEASE_DECAY = 0.9;    // per-frame multiplier once PC leaves activeNotes
-
-// ── Particle pool ─────────────────────────────────────────────────
-// Lifetimes and pool size match Spectrum's ~2 s trails so sustained
-// chords reach a similar steady-state particle density.
-const PARTICLE_POOL     = 1200;
-const PARTICLE_LIFE_MIN = 1.2;
-const PARTICLE_LIFE_MAX = 2.0;
+// ── Particle pool size (not live-tunable — reallocation required) ─
+const PARTICLE_POOL = 1200;
 
 // ── Peak markers ──────────────────────────────────────────────────
 const PEAK_COUNT         = 6;      // top N harmonics get a bright dot
 const HOT_PEAK_COUNT     = 6;      // every marked peak glows (match Spectrum)
-const PEAK_MAG_THRESHOLD = 0.001;  // ≈ −60 dB, matches Spectrum spawn floor
 
-function dbToLinear(db) {
-  if (db <= DB_FLOOR) return 0;
+// ── Live-tunable defaults ─────────────────────────────────────────
+// Hoisted onto ResonanceView instances as this.params so the debug
+// panel can mutate them at runtime. The baked-in values live here so
+// a "Reset" action can restore them without a page reload.
+const DEFAULT_PARAMS = Object.freeze({
+  // Smoothing & decay
+  releaseDecay:         0.95,   // per-frame multiplier once PC leaves activeNotes
+  silentEps:            0.001,  // total energy below this → node goes dark
+  dbFloor:              -90,    // quietest dB to render
+
+  // Particle spawning
+  spawnRateMultiplier:  4.0,    // multiplier on p.mag for spawn probability
+  spawnRateCap:         2.0,    // upper cap on spawn rate
+  angularSpread:        30,     // ±half-spread (degrees) of particle direction
+  speedMin:             0.3,
+  speedMax:             0.7,
+  particleSizeMin:      2.0,
+  particleSizeMax:      4.5,
+  peakMagThreshold:     0.001,  // ≈ −60 dB, harmonic floor for spawn eligibility
+
+  // Particle lifetime & motion
+  lifeMin:              0.25,
+  lifeMax:              0.5,
+  wiggleAmplitude:      0.35,
+  particleDeceleration: 0.95,   // per-frame velocity multiplier
+
+  // Render & glow
+  trailFadeAlpha:       0.35,
+  envelopeStrokeWidth:  1.2,
+  envelopeShadowBlur:   14,
+  blobFillAlpha:        0.25,
+  glowAlphaInner:       0.75,
+  glowRadiusMultiplier: 7,
+});
+
+function dbToLinear(db, dbFloor) {
+  if (db <= dbFloor) return 0;
   return Math.pow(10, db / 20);
 }
 
-function linearToDb(lin) {
-  if (lin <= 0) return DB_FLOOR;
+function linearToDb(lin, dbFloor) {
+  if (lin <= 0) return dbFloor;
   const db = 20 * Math.log10(lin);
-  return db < DB_FLOOR ? DB_FLOOR : db;
+  return db < dbFloor ? dbFloor : db;
 }
 
 function entryToPC(entry) {
@@ -126,6 +144,11 @@ export class ResonanceView {
     this.ctx       = null;
     this.container = null;
     this.analyser  = null;
+
+    // Live-tunable parameters. Debug panel mutates these via setParam();
+    // render methods read from here every frame so edits take effect
+    // immediately.
+    this.params = { ...DEFAULT_PARAMS };
 
     this.width  = 0;
     this.height = 0;
@@ -235,6 +258,26 @@ export class ResonanceView {
     this.analyser = null;
   }
 
+  // ── Params (debug panel live-tuning) ──────────────────────────
+  getParams() {
+    return { ...this.params };
+  }
+
+  setParam(key, value) {
+    if (Object.prototype.hasOwnProperty.call(DEFAULT_PARAMS, key)) {
+      this.params[key] = value;
+    }
+  }
+
+  setParams(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    for (const key of Object.keys(obj)) {
+      if (Object.prototype.hasOwnProperty.call(DEFAULT_PARAMS, key)) {
+        this.params[key] = obj[key];
+      }
+    }
+  }
+
   // ── Geometry ──────────────────────────────────────────────────
   _resize() {
     if (!this.canvas || !this.ctx || !this.container) return;
@@ -339,7 +382,7 @@ export class ResonanceView {
 
     // Trail fade + faint lattice always render — they're ambient.
     // 0.22 alpha matches Spectrum — gives particles a ~2 s visible tail.
-    ctx.fillStyle = 'rgba(8, 8, 8, 0.22)';
+    ctx.fillStyle = `rgba(8, 8, 8, ${this.params.trailFadeAlpha})`;
     ctx.fillRect(0, 0, W, H);
     this._drawGrid();
 
@@ -361,6 +404,8 @@ export class ResonanceView {
     const sr = (window.Tone && window.Tone.context && window.Tone.context.sampleRate) || 44100;
     const N  = haveFFT ? data.length : 0;
     const nyquist = sr / 2;
+    const releaseDecay = this.params.releaseDecay;
+    const dbFloor = this.params.dbFloor;
 
     for (let pc = 0; pc < 12; pc++) {
       const s = this.pcState[pc];
@@ -372,7 +417,7 @@ export class ResonanceView {
       if (!s.active) {
         let sum = 0;
         for (let k = 0; k < NUM_HARMONICS; k++) {
-          harmonics[k] *= RELEASE_DECAY;
+          harmonics[k] *= releaseDecay;
           sum += harmonics[k];
         }
         s.energy = sum;
@@ -386,7 +431,7 @@ export class ResonanceView {
         let mag = 0;
         if (haveFFT && f < nyquist) {
           const bin = Math.round((f / nyquist) * N);
-          if (bin >= 0 && bin < N) mag = dbToLinear(data[bin]);
+          if (bin >= 0 && bin < N) mag = dbToLinear(data[bin], dbFloor);
         }
         // Raw read — Spectrum does the same. The analyser's internal
         // smoothing is the entire envelope; no extra follower here.
@@ -427,10 +472,11 @@ export class ResonanceView {
   // ── Node rendering (radial spectrum analyzer) ────────────────
   _drawBlobs() {
     const maxR = this._nodeMaxR;
+    const silentEps = this.params.silentEps;
 
     for (let pc = 0; pc < 12; pc++) {
       const s = this.pcState[pc];
-      if (s.energy < SILENT_EPS) continue;
+      if (s.energy < silentEps) continue;
       const color = ROLE_COLORS[s.role] || ROLE_COLORS[DEFAULT_ROLE];
       for (const idx of this.nodesByPC[pc]) {
         const n = this.nodes[idx];
@@ -447,7 +493,8 @@ export class ResonanceView {
     const N = NUM_HARMONICS;
     const innerR = maxR * 0.18;
     const span   = maxR - innerR;
-    const dbRange = 0 - DB_FLOOR;
+    const dbFloor = this.params.dbFloor;
+    const dbRange = 0 - dbFloor;
 
     // Build the envelope points.
     const pts = new Array(N);
@@ -456,8 +503,8 @@ export class ResonanceView {
       // Canvas y is down, so +angle from -π/2 traces clockwise.
       const angle = -Math.PI / 2 + (k / N) * Math.PI * 2;
       const mag = harmonics[k];
-      const db  = linearToDb(mag);
-      let t = (db - DB_FLOOR) / dbRange;
+      const db  = linearToDb(mag, dbFloor);
+      let t = (db - dbFloor) / dbRange;
       if (t < 0) t = 0; else if (t > 1) t = 1;
       const rr = innerR + t * span;
       pts[k] = {
@@ -470,12 +517,14 @@ export class ResonanceView {
       totalEnergy += mag;
     }
 
-    // Fill under the envelope: radial gradient, transparent center →
-    // subtle color at envelope edge. Atmospheric, not solid.
+    // Fill under the envelope: center-bright radial glow clipped to the
+    // envelope shape. Mirrors how Spectrum's peak blooms bloom from the
+    // inside out — brightest at the node core, fading to transparent at
+    // the envelope edge.
     this._tracePolar(pts);
-    const fillGrad = ctx.createRadialGradient(cx, cy, innerR * 0.4, cx, cy, maxR);
-    fillGrad.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
-    fillGrad.addColorStop(1, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.1)`);
+    const fillGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+    fillGrad.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${this.params.blobFillAlpha})`);
+    fillGrad.addColorStop(1, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
     ctx.fillStyle = fillGrad;
     ctx.fill();
 
@@ -483,17 +532,18 @@ export class ResonanceView {
     // treatment but tinted per chord function.
     this._tracePolar(pts);
     ctx.save();
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = this.params.envelopeStrokeWidth;
     ctx.shadowColor = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.8)`;
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = this.params.envelopeShadowBlur;
     ctx.strokeStyle = `rgba(${Math.min(255, rgb[0] + 30)}, ${Math.min(255, rgb[1] + 30)}, ${Math.min(255, rgb[2] + 30)}, 0.88)`;
     ctx.stroke();
     ctx.restore();
 
     // Identify the strongest harmonics (top PEAK_COUNT by magnitude).
+    const peakThr = this.params.peakMagThreshold;
     const ranked = [];
     for (let k = 0; k < N; k++) {
-      if (pts[k].mag > PEAK_MAG_THRESHOLD) ranked.push(k);
+      if (pts[k].mag > peakThr) ranked.push(k);
     }
     ranked.sort((a, b) => pts[b].mag - pts[a].mag);
     const peakCount = Math.min(PEAK_COUNT, ranked.length);
@@ -551,24 +601,31 @@ export class ResonanceView {
   // along the radial direction from the node center (± a 30° spread)
   // so the result is a full starburst, not a one-sided plume.
   _spawnFromHarmonics(pts, ranked, rgb) {
-    const SPREAD = Math.PI / 6; // ±30°
+    const P = this.params;
+    const spread = (P.angularSpread * Math.PI) / 180;  // degrees → radians (half-spread)
+    const spawnRateMultiplier = P.spawnRateMultiplier;
+    const spawnRateCap = P.spawnRateCap;
+    const speedMin = P.speedMin;
+    const speedSpan = Math.max(0, P.speedMax - P.speedMin);
+    const sizeMin = P.particleSizeMin;
+    const sizeSpan = Math.max(0, P.particleSizeMax - P.particleSizeMin);
     for (let i = 0; i < ranked.length; i++) {
       const p = pts[ranked[i]];
       // Higher rate than Spectrum's 35 % cap: every above-threshold
       // harmonic sheds sparks every frame on a loud signal, producing
       // a visible radial cloud rather than lone peaks.
-      const rate = Math.min(0.9, p.mag * 1.6);
+      const rate = Math.min(spawnRateCap, p.mag * spawnRateMultiplier);
       const count = Math.floor(rate) + (Math.random() < (rate % 1) ? 1 : 0);
       if (count <= 0) continue;
       const hot = i < HOT_PEAK_COUNT;
-      const baseSize = 2 + Math.random() * 2.5;
+      const baseSize = sizeMin + Math.random() * sizeSpan;
       for (let s = 0; s < count; s++) {
-        const spread = (Math.random() - 0.5) * 2 * SPREAD;
+        const jitter = (Math.random() - 0.5) * 2 * spread;
         // The angle from node center to spawn point IS p.a (spawn point
-        // sits at (cx + cos(p.a)·r, cy + sin(p.a)·r)), so p.a + spread
+        // sits at (cx + cos(p.a)·r, cy + sin(p.a)·r)), so p.a + jitter
         // gives a direction that radiates outward from the center.
-        const dir = p.a + spread;
-        const speed = 1.1 + Math.random() * 1.0;
+        const dir = p.a + jitter;
+        const speed = speedMin + Math.random() * speedSpan;
         this._spawnParticle(
           p.x, p.y,
           Math.cos(dir) * speed, Math.sin(dir) * speed,
@@ -580,6 +637,8 @@ export class ResonanceView {
 
   _spawnParticle(x, y, vx, vy, rgb, hot, baseSize) {
     const pool = this.particles;
+    const lifeMin = this.params.lifeMin;
+    const lifeSpan = Math.max(0, this.params.lifeMax - this.params.lifeMin);
     for (let n = 0; n < PARTICLE_POOL; n++) {
       const i = (this._spawnCursor + n) % PARTICLE_POOL;
       const p = pool[i];
@@ -587,7 +646,7 @@ export class ResonanceView {
         this._spawnCursor = (i + 1) % PARTICLE_POOL;
         p.active = true;
         p.x = x; p.y = y; p.vx = vx; p.vy = vy;
-        p.lifeMax = PARTICLE_LIFE_MIN + Math.random() * (PARTICLE_LIFE_MAX - PARTICLE_LIFE_MIN);
+        p.lifeMax = lifeMin + Math.random() * lifeSpan;
         p.life = p.lifeMax;
         p.size = baseSize + (Math.random() - 0.5) * 0.3;
         p.hot  = hot;
@@ -599,29 +658,41 @@ export class ResonanceView {
 
   _updateAndDrawParticles() {
     const ctx = this.ctx;
+    const P = this.params;
     // Assume ~60 fps. If framerate wobbles we just get slightly different
     // particle lifetimes, which is fine visually.
     const dt = 1 / 60;
+    const wiggle = P.wiggleAmplitude;
+    const decel = P.particleDeceleration;
+    const glowMul = P.glowRadiusMultiplier;
+    const glowAlphaInner = P.glowAlphaInner;
     for (let i = 0; i < PARTICLE_POOL; i++) {
       const p = this.particles[i];
       if (!p.active) continue;
       p.life -= dt;
       if (p.life <= 0) { p.active = false; continue; }
-      // Near-constant drift + sinusoidal wiggle, like Spectrum. No
-      // multiplicative deceleration — particles travel freely until
-      // their lifetime runs out.
+      // Near-constant drift + sinusoidal wiggle perpendicular to the
+      // particle's velocity — applied to X and Y via the perp unit
+      // vector so outward-radiating particles sway around their flight
+      // path instead of drifting sideways in screen axes.
       const lifeT = p.lifeMax - p.life;
-      p.x += p.vx + Math.sin(lifeT * 6) * 0.15;
-      p.y += p.vy + Math.cos(lifeT * 4) * 0.10;
+      const speed = Math.hypot(p.vx, p.vy) || 1;
+      const perpX = -p.vy / speed;
+      const perpY =  p.vx / speed;
+      const wig = Math.sin(lifeT * 6) * wiggle;
+      p.x += p.vx + perpX * wig;
+      p.y += p.vy + perpY * wig;
+      p.vx *= decel;
+      p.vy *= decel;
 
       const alpha = p.life / p.lifeMax;
       // Shrink as they fade: ends at ~40% of start size.
       const curSize = p.size * (0.4 + 0.6 * alpha);
 
       // Soft halo on every particle, matching Spectrum's always-on glow.
-      const glowR = curSize * 4;
+      const glowR = curSize * glowMul;
       const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
-      grad.addColorStop(0, `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha * 0.5})`);
+      grad.addColorStop(0, `rgba(${p.r}, ${p.g}, ${p.b}, ${alpha * glowAlphaInner})`);
       grad.addColorStop(1, `rgba(${p.r}, ${p.g}, ${p.b}, 0)`);
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -640,4 +711,7 @@ export class ResonanceView {
   }
 }
 
+ResonanceView.DEFAULT_PARAMS = DEFAULT_PARAMS;
+
+export { DEFAULT_PARAMS };
 export default ResonanceView;

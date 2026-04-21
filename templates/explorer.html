@@ -2200,6 +2200,7 @@
       if (name === 'resonance' && !_resonanceView) {
         _resonanceView = new ResonanceView();
         _resonanceView.init('exp-resonance-stage');
+        _maybeMountResonanceDebugPanel();
       }
 
       stageTabs.forEach(t => {
@@ -2228,6 +2229,399 @@
           _resonanceView.stop();
         }
       }
+    }
+
+    // ── Resonance debug panel (gated by ?debug=resonance) ──────────
+    // Mounts a fixed-position overlay inside #exp-resonance-stage with
+    // live sliders for ResonanceView.params. Saved presets go to
+    // localStorage under 'songlab.resonance.presets'. Inactive by
+    // default — zero DOM added unless the URL param is present.
+    let _resonanceDebugMounted = false;
+    function _maybeMountResonanceDebugPanel() {
+      if (_resonanceDebugMounted) return;
+      if (!_resonanceView) return;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('debug') !== 'resonance') return;
+      } catch (_) {
+        return;
+      }
+      const stage = document.getElementById('exp-resonance-stage');
+      if (!stage) return;
+      _buildResonanceDebugPanel(stage, _resonanceView);
+      _resonanceDebugMounted = true;
+      console.log('[Resonance Debug] Panel active. Press ✕ to collapse.');
+    }
+
+    function _buildResonanceDebugPanel(stage, view) {
+      const PRESET_KEY = 'songlab.resonance.presets';
+      const SLIDER_GROUPS = [
+        {
+          title: 'Smoothing & Decay',
+          rows: [
+            { key: 'releaseDecay', min: 0.5,    max: 0.99, step: 0.01, kind: 'linear' },
+            { key: 'silentEps',    min: 0.0001, max: 0.01, kind: 'log'    },
+            { key: 'dbFloor',      min: -120,   max: -40,  step: 1,     kind: 'linear' },
+          ],
+        },
+        {
+          title: 'Particle Spawning',
+          rows: [
+            { key: 'spawnRateMultiplier', min: 0.2, max: 4.0,  step: 0.1,  kind: 'linear' },
+            { key: 'spawnRateCap',        min: 0.1, max: 2.0,  step: 0.05, kind: 'linear' },
+            { key: 'angularSpread',       min: 0,   max: 180,  step: 5,    kind: 'linear' },
+            { key: 'speedMin',            min: 0.1, max: 5.0,  step: 0.1,  kind: 'linear' },
+            { key: 'speedMax',            min: 0.2, max: 8.0,  step: 0.1,  kind: 'linear' },
+            { key: 'particleSizeMin',     min: 0.5, max: 8.0,  step: 0.1,  kind: 'linear' },
+            { key: 'particleSizeMax',     min: 0.5, max: 12.0, step: 0.1,  kind: 'linear' },
+            { key: 'peakMagThreshold',    min: 0.0001, max: 0.01, kind: 'log'    },
+          ],
+        },
+        {
+          title: 'Particle Lifetime & Motion',
+          rows: [
+            { key: 'lifeMin',              min: 0.1,  max: 4.0, step: 0.05,  kind: 'linear' },
+            { key: 'lifeMax',              min: 0.2,  max: 6.0, step: 0.05,  kind: 'linear' },
+            { key: 'wiggleAmplitude',      min: 0,    max: 1.0, step: 0.01,  kind: 'linear' },
+            { key: 'particleDeceleration', min: 0.85, max: 1.0, step: 0.005, kind: 'linear' },
+          ],
+        },
+        {
+          title: 'Render & Glow',
+          rows: [
+            { key: 'trailFadeAlpha',       min: 0.05, max: 0.6,  step: 0.01, kind: 'linear' },
+            { key: 'envelopeStrokeWidth',  min: 0.5,  max: 4.0,  step: 0.1,  kind: 'linear' },
+            { key: 'envelopeShadowBlur',   min: 0,    max: 30,   step: 1,    kind: 'linear' },
+            { key: 'blobFillAlpha',        min: 0,    max: 0.7,  step: 0.02, kind: 'linear' },
+            { key: 'glowAlphaInner',       min: 0.05, max: 1.0,  step: 0.05, kind: 'linear' },
+            { key: 'glowRadiusMultiplier', min: 1,    max: 12,   step: 0.5,  kind: 'linear' },
+          ],
+        },
+      ];
+
+      // Inject scoped styles (guarded by the .sl-rdbg- prefix so nothing
+      // leaks into other Explorer panels).
+      if (!document.getElementById('sl-rdbg-styles')) {
+        const style = document.createElement('style');
+        style.id = 'sl-rdbg-styles';
+        style.textContent = `
+          .sl-rdbg { position: absolute; right: 16px; top: 16px; bottom: 16px; z-index: 40;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end;
+            pointer-events: none;
+            font-family: var(--font-family-base); color: var(--text-primary, #F2EFE6); }
+          .sl-rdbg__launcher { background: rgba(20, 20, 24, 0.92); color: inherit;
+            border: 1px solid var(--border-color, #2E2E3A); border-radius: var(--radius-md, 6px);
+            padding: 6px 10px; font-size: 12px; cursor: pointer;
+            pointer-events: auto;
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+          .sl-rdbg__launcher:hover { background: rgba(35, 35, 46, 0.95); }
+          .sl-rdbg__panel { width: 280px;
+            flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+            pointer-events: auto; overflow: hidden;
+            background: rgba(20, 20, 24, 0.92); border: 1px solid var(--border-color, #2E2E3A);
+            border-radius: var(--radius-lg, 8px);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.45); font-size: 11px; }
+          .sl-rdbg__header { flex-shrink: 0;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 10px; border-bottom: 1px solid var(--border-subtle, #23232E);
+            font-weight: 500; font-size: 12px; }
+          .sl-rdbg__close { background: none; border: none; color: var(--text-secondary, #C7C2B5);
+            cursor: pointer; font-size: 14px; padding: 0 4px; line-height: 1; }
+          .sl-rdbg__close:hover { color: var(--text-primary, #F2EFE6); }
+          .sl-rdbg__preset-bar { flex-shrink: 0;
+            padding: 8px 10px; border-bottom: 1px solid var(--border-subtle, #23232E);
+            display: grid; grid-template-columns: 1fr; gap: 6px; }
+          .sl-rdbg__scroll { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+          .sl-rdbg__preset-select { width: 100%; background: var(--bg-input, #12121A);
+            color: var(--text-primary, #F2EFE6); border: 1px solid var(--border-color, #2E2E3A);
+            border-radius: var(--radius-sm, 4px); padding: 4px 6px; font-size: 11px; }
+          .sl-rdbg__btn-row { display: flex; gap: 6px; }
+          .sl-rdbg__btn { flex: 1; background: var(--bg-raised, #23232E); color: inherit;
+            border: 1px solid var(--border-color, #2E2E3A); border-radius: var(--radius-sm, 4px);
+            padding: 5px 8px; font-size: 11px; cursor: pointer; }
+          .sl-rdbg__btn:hover { background: var(--border-strong, #43434F); }
+          .sl-rdbg__save-row { display: flex; gap: 6px; align-items: center; }
+          .sl-rdbg__save-row .sl-rdbg__btn { flex: 0 0 auto; padding: 5px 10px; }
+          .sl-rdbg__save-input { flex: 1 1 auto; min-width: 0;
+            background: var(--bg-input, #12121A); color: var(--text-primary, #F2EFE6);
+            border: 1px solid var(--border-color, #2E2E3A); border-radius: var(--radius-sm, 4px);
+            padding: 4px 6px; font-size: 11px; }
+          .sl-rdbg__save-input:focus { outline: none; border-color: var(--border-strong, #43434F); }
+          .sl-rdbg__section { border-bottom: 1px solid var(--border-subtle, #23232E); }
+          .sl-rdbg__section:last-child { border-bottom: none; }
+          .sl-rdbg__section > summary { padding: 6px 10px; cursor: pointer;
+            font-size: 11px; font-weight: 500; color: var(--text-secondary, #C7C2B5);
+            list-style: none; }
+          .sl-rdbg__section > summary::-webkit-details-marker { display: none; }
+          .sl-rdbg__section > summary::before { content: '▸'; display: inline-block;
+            margin-right: 6px; transition: transform 120ms ease; }
+          .sl-rdbg__section[open] > summary::before { transform: rotate(90deg); }
+          .sl-rdbg__row { display: grid; grid-template-columns: 1fr 90px 44px;
+            gap: 6px; align-items: center; padding: 3px 10px; font-size: 10px; }
+          .sl-rdbg__row label { color: var(--text-tertiary, #9A9486); font-family: ui-monospace, Menlo, monospace;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .sl-rdbg__row input[type="range"] { width: 100%; margin: 0; }
+          .sl-rdbg__val { text-align: right; font-family: ui-monospace, Menlo, monospace;
+            color: var(--text-primary, #F2EFE6); font-size: 10px; }
+          .sl-rdbg--hidden { display: none; }
+        `;
+        document.head.appendChild(style);
+      }
+
+      // Root container.
+      const root = document.createElement('div');
+      root.className = 'sl-rdbg';
+
+      const launcher = document.createElement('button');
+      launcher.type = 'button';
+      launcher.className = 'sl-rdbg__launcher sl-rdbg--hidden';
+      launcher.textContent = '⚙ tune';
+
+      const panel = document.createElement('div');
+      panel.className = 'sl-rdbg__panel';
+
+      // Header.
+      const header = document.createElement('div');
+      header.className = 'sl-rdbg__header';
+      const title = document.createElement('span');
+      title.textContent = 'Resonance Tuning';
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'sl-rdbg__close';
+      closeBtn.setAttribute('aria-label', 'Collapse');
+      closeBtn.textContent = '✕';
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+      panel.appendChild(header);
+
+      // Preset bar.
+      const presetBar = document.createElement('div');
+      presetBar.className = 'sl-rdbg__preset-bar';
+      const presetSelect = document.createElement('select');
+      presetSelect.className = 'sl-rdbg__preset-select';
+      const btnRow = document.createElement('div');
+      btnRow.className = 'sl-rdbg__btn-row';
+      const saveBtn   = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-rdbg__btn', textContent: 'Save…' });
+      const exportBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-rdbg__btn', textContent: 'Export' });
+      const resetBtn  = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-rdbg__btn', textContent: 'Reset' });
+      btnRow.appendChild(saveBtn);
+      btnRow.appendChild(exportBtn);
+      btnRow.appendChild(resetBtn);
+      // Inline save-name editor (hidden until Save is clicked).
+      const saveRow = document.createElement('div');
+      saveRow.className = 'sl-rdbg__save-row sl-rdbg--hidden';
+      const saveInput = document.createElement('input');
+      saveInput.type = 'text';
+      saveInput.className = 'sl-rdbg__save-input';
+      saveInput.placeholder = 'preset name…';
+      const saveConfirmBtn = Object.assign(document.createElement('button'),
+        { type: 'button', className: 'sl-rdbg__btn', textContent: 'Save' });
+      const saveCancelBtn = Object.assign(document.createElement('button'),
+        { type: 'button', className: 'sl-rdbg__btn', textContent: 'Cancel' });
+      saveRow.appendChild(saveInput);
+      saveRow.appendChild(saveConfirmBtn);
+      saveRow.appendChild(saveCancelBtn);
+      presetBar.appendChild(presetSelect);
+      presetBar.appendChild(btnRow);
+      presetBar.appendChild(saveRow);
+      panel.appendChild(presetBar);
+
+      // Slider sections (wrapped in a scroll container so header + preset bar
+      // stay pinned while the sliders scroll within the capped panel height).
+      const scroll = document.createElement('div');
+      scroll.className = 'sl-rdbg__scroll';
+      const rowRefs = Object.create(null);   // key → { range, readout, meta }
+      for (const group of SLIDER_GROUPS) {
+        const section = document.createElement('details');
+        section.className = 'sl-rdbg__section';
+        section.open = true;
+        const summary = document.createElement('summary');
+        summary.textContent = group.title;
+        section.appendChild(summary);
+        for (const row of group.rows) {
+          const rowEl = document.createElement('div');
+          rowEl.className = 'sl-rdbg__row';
+          const label = document.createElement('label');
+          label.textContent = row.key;
+          label.title = row.key;
+          const range = document.createElement('input');
+          range.type = 'range';
+          if (row.kind === 'log') {
+            range.min = '0'; range.max = '100'; range.step = '1';
+          } else {
+            range.min = String(row.min);
+            range.max = String(row.max);
+            range.step = String(row.step);
+          }
+          const readout = document.createElement('span');
+          readout.className = 'sl-rdbg__val';
+          rowEl.appendChild(label);
+          rowEl.appendChild(range);
+          rowEl.appendChild(readout);
+          section.appendChild(rowEl);
+
+          rowRefs[row.key] = { range, readout, meta: row };
+          range.addEventListener('input', () => {
+            const v = _readSliderValue(row, range.value);
+            view.setParam(row.key, v);
+            readout.textContent = _formatVal(row.key, v);
+          });
+        }
+        scroll.appendChild(section);
+      }
+      panel.appendChild(scroll);
+
+      function _readSliderValue(meta, raw) {
+        if (meta.kind === 'log') {
+          const t = Number(raw) / 100;
+          const lo = Math.log(meta.min), hi = Math.log(meta.max);
+          return Math.exp(lo + t * (hi - lo));
+        }
+        return Number(raw);
+      }
+
+      function _writeSliderValue(meta, value) {
+        if (meta.kind === 'log') {
+          const lo = Math.log(meta.min), hi = Math.log(meta.max);
+          const t = (Math.log(value) - lo) / (hi - lo);
+          return String(Math.max(0, Math.min(100, t * 100)));
+        }
+        return String(value);
+      }
+
+      function _formatVal(key, v) {
+        if (key === 'silentEps' || key === 'peakMagThreshold') return v.toExponential(1);
+        if (Number.isInteger(v)) return String(v);
+        const abs = Math.abs(v);
+        if (abs >= 10) return v.toFixed(1);
+        if (abs >= 1)  return v.toFixed(2);
+        return v.toFixed(3);
+      }
+
+      function _syncSlidersFromView() {
+        const current = view.getParams();
+        for (const key of Object.keys(rowRefs)) {
+          const { range, readout, meta } = rowRefs[key];
+          const v = current[key];
+          if (typeof v !== 'number') continue;
+          range.value = _writeSliderValue(meta, v);
+          readout.textContent = _formatVal(key, v);
+        }
+      }
+
+      // ── Presets (localStorage) ──
+      function _loadPresets() {
+        try {
+          const raw = localStorage.getItem(PRESET_KEY);
+          if (!raw) return {};
+          const obj = JSON.parse(raw);
+          return (obj && typeof obj === 'object') ? obj : {};
+        } catch (_) { return {}; }
+      }
+
+      function _savePresets(obj) {
+        try { localStorage.setItem(PRESET_KEY, JSON.stringify(obj)); } catch (_) {}
+      }
+
+      function _refreshPresetSelect(selectName) {
+        const presets = _loadPresets();
+        presetSelect.innerHTML = '';
+        const def = document.createElement('option');
+        def.value = '__defaults__';
+        def.textContent = 'Defaults';
+        presetSelect.appendChild(def);
+        const names = Object.keys(presets).sort((a, b) => a.localeCompare(b));
+        for (const name of names) {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          presetSelect.appendChild(opt);
+        }
+        if (selectName && (selectName === '__defaults__' || names.includes(selectName))) {
+          presetSelect.value = selectName;
+        }
+      }
+
+      presetSelect.addEventListener('change', () => {
+        const val = presetSelect.value;
+        if (val === '__defaults__') {
+          view.setParams(ResonanceView.DEFAULT_PARAMS);
+        } else {
+          const presets = _loadPresets();
+          if (presets[val]) view.setParams(presets[val]);
+        }
+        _syncSlidersFromView();
+      });
+
+      function _openSaveEditor() {
+        saveInput.value = '';
+        btnRow.classList.add('sl-rdbg--hidden');
+        saveRow.classList.remove('sl-rdbg--hidden');
+        // Defer focus so the row is visible before the caret lands.
+        setTimeout(() => saveInput.focus(), 0);
+      }
+      function _closeSaveEditor() {
+        saveRow.classList.add('sl-rdbg--hidden');
+        btnRow.classList.remove('sl-rdbg--hidden');
+      }
+      function _commitSave() {
+        const trimmed = (saveInput.value || '').trim();
+        if (!trimmed || trimmed === '__defaults__') {
+          // Empty/invalid — keep the editor open so the user can fix it.
+          saveInput.focus();
+          return;
+        }
+        const presets = _loadPresets();
+        presets[trimmed] = view.getParams();
+        _savePresets(presets);
+        _refreshPresetSelect(trimmed);
+        _closeSaveEditor();
+      }
+      saveBtn.addEventListener('click', _openSaveEditor);
+      saveConfirmBtn.addEventListener('click', _commitSave);
+      saveCancelBtn.addEventListener('click', _closeSaveEditor);
+      saveInput.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); _commitSave(); }
+        else if (ev.key === 'Escape') { ev.preventDefault(); _closeSaveEditor(); }
+      });
+
+      exportBtn.addEventListener('click', () => {
+        const presets = _loadPresets();
+        const today = new Date().toISOString().slice(0, 10);
+        const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `resonance-presets-${today}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      });
+
+      resetBtn.addEventListener('click', () => {
+        view.setParams(ResonanceView.DEFAULT_PARAMS);
+        _syncSlidersFromView();
+        presetSelect.value = '__defaults__';
+      });
+
+      // Collapse / expand.
+      closeBtn.addEventListener('click', () => {
+        panel.classList.add('sl-rdbg--hidden');
+        launcher.classList.remove('sl-rdbg--hidden');
+      });
+      launcher.addEventListener('click', () => {
+        launcher.classList.add('sl-rdbg--hidden');
+        panel.classList.remove('sl-rdbg--hidden');
+      });
+
+      root.appendChild(launcher);
+      root.appendChild(panel);
+      stage.appendChild(root);
+
+      _refreshPresetSelect('__defaults__');
+      _syncSlidersFromView();
     }
 
     stageTabs.forEach(tab => {
