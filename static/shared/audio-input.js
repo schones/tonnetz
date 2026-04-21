@@ -128,6 +128,23 @@ function _savePreferred(deviceId) {
 }
 
 /**
+ * Connect a native AudioNode source to a Tone.Analyser (or Tone node).
+ * Uses Tone.connect() when available — it handles the native-to-Tone
+ * mapping. Falls back to the analyser's internal native node otherwise.
+ *
+ * @param {AudioNode} source - Native Web Audio node
+ * @param {object} analyser - Tone.Analyser (or any Tone node)
+ */
+function _connectToAnalyser(source, analyser) {
+  if (typeof window !== 'undefined' && window.Tone && typeof window.Tone.connect === 'function') {
+    window.Tone.connect(source, analyser);
+    return;
+  }
+  const native = analyser._analyser || (analyser.input && (analyser.input._analyser || analyser.input)) || analyser;
+  source.connect(native);
+}
+
+/**
  * Disconnect the current source node and stop the media stream.
  */
 function _disconnectCurrent() {
@@ -193,7 +210,7 @@ const AudioInput = {
     // Reconnect active source to the new analyser
     if (_sourceNode && _analyser) {
       try { _sourceNode.disconnect(); } catch (e) { /* ok */ }
-      _sourceNode.connect(_analyser._analyser || _analyser.input || _analyser);
+      _connectToAnalyser(_sourceNode, _analyser);
     }
   },
 
@@ -262,9 +279,7 @@ const AudioInput = {
       _sourceNode = _audioContext.createMediaStreamSource(_stream);
 
       if (_analyser) {
-        // Tone.Analyser exposes its internal AnalyserNode — connect to it
-        const target = _analyser._analyser || _analyser.input || _analyser;
-        _sourceNode.connect(target);
+        _connectToAnalyser(_sourceNode, _analyser);
       }
     }
 
