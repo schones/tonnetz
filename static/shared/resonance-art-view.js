@@ -124,6 +124,21 @@ const DEFAULT_PARAMS = Object.freeze({
   blobFillAlpha:        0.25,
   glowAlphaInner:       0.75,
   glowRadiusMultiplier: 7,
+
+  // Grid motion (slow continuous motion of the lattice as a rigid body).
+  // All default to 0 so the baseline visualization is unchanged until the
+  // user dials motion in.
+  gridRotationSpeed:    0,      // degrees / second (negative = CCW)
+  gridSwaySpeed:        0,      // Hz — cycles / second of the circular sway
+  gridSwayAmplitude:    0,      // px — radius of the circular sway path
+
+  // Chord triangles (Tonnetz triads). Lit when all three vertex PCs are
+  // simultaneously active. Subtle by default — they sit behind the blobs
+  // as scaffold/halo rather than competing for focal attention.
+  triangleFillAlphaPeak: 0.18,
+  triangleStrokeAlpha:   0.5,
+  triangleStrokeWidth:   1.5,
+  triangleGlowBlur:      12,
 });
 
 function dbToLinear(db, dbFloor) {
@@ -168,6 +183,7 @@ export class ResonanceArtView {
     this.nodes = [];               // [{ col, row, x, y, pc }]
     this.nodesByPC = Array.from({ length: 12 }, () => []);
     this.edges = [];               // [[nodeIdxA, nodeIdxB], …]
+    this.triangles = [];           // [{ a, b, c }] — Tonnetz triads (node indices)
 
     // Per-PC smoothed harmonic magnitudes + activity state
     this.pcState = new Array(12);
@@ -191,6 +207,13 @@ export class ResonanceArtView {
       };
     }
     this._spawnCursor = 0;
+
+    // Grid motion state (see _updateGridTransform). Reset on start() so
+    // each fresh mount begins at zero rotation / sway.
+    this._gridAngle = 0;       // current rotation in radians
+    this._gridTime = 0;        // accumulator for sway phase
+    this._gridOffsetX = 0;     // current applied offset (computed from sway)
+    this._gridOffsetY = 0;
 
     this._rafId = null;
     this._running = false;
@@ -235,6 +258,12 @@ export class ResonanceArtView {
       s.role = DEFAULT_ROLE;
     }
     for (let i = 0; i < PARTICLE_POOL; i++) this.particles[i].active = false;
+
+    // Grid motion resets so each mount begins at zero rotation / sway.
+    this._gridAngle = 0;
+    this._gridTime = 0;
+    this._gridOffsetX = 0;
+    this._gridOffsetY = 0;
 
     // Seed with current state so a chord held before the tab mounts is
     // reflected immediately; HarmonyState.on doesn't fire an initial snapshot.
@@ -344,6 +373,29 @@ export class ResonanceArtView {
       }
     }
 
+    // Tonnetz triangles. Each cell yields up to two triads:
+    //   upward (major)   = (col,row), (col+1,row), (col+1,row-1)   [P5 / m3 / M3]
+    //   downward (minor) = (col,row), (col+1,row), (col,row+1)     [P5 / M3 / m3]
+    // Built once at setup; _drawTriangles() renders any whose three PCs
+    // are simultaneously active. ~48 entries on a 7×5 lattice — cheap.
+    this.triangles = [];
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS - 1; col++) {
+        if (row > 0) {
+          const a = nodeIdxAt(col,     row);
+          const b = nodeIdxAt(col + 1, row);
+          const c = nodeIdxAt(col + 1, row - 1);
+          if (a >= 0 && b >= 0 && c >= 0) this.triangles.push({ a, b, c });
+        }
+        if (row < GRID_ROWS - 1) {
+          const a = nodeIdxAt(col,     row);
+          const b = nodeIdxAt(col + 1, row);
+          const c = nodeIdxAt(col,     row + 1);
+          if (a >= 0 && b >= 0 && c >= 0) this.triangles.push({ a, b, c });
+        }
+      }
+    }
+
     // Node radius scales with grid density
     this._nodeBaseR = Math.max(8, Math.min(dx, dy) * 0.18);
     this._nodeMaxR  = Math.min(dx, dy) * 0.55 * 1.3;
@@ -394,6 +446,12 @@ export class ResonanceArtView {
     // 0.22 alpha matches Spectrum — gives particles a ~2 s visible tail.
     ctx.fillStyle = `rgba(8, 8, 8, ${this.params.trailFadeAlpha})`;
     ctx.fillRect(0, 0, W, H);
+
+    // Advance grid motion before any draws that read transformed positions.
+    // Fixed dt = 1/60 to match the particle update (if framerate wobbles the
+    // rotation/sway simply runs slightly slower/faster — visually fine).
+    this._updateGridTransform(1 / 60);
+
     this._drawGrid();
 
     // HarmonyState picks WHICH PCs can light up (activeNotes); the FFT
@@ -401,6 +459,7 @@ export class ResonanceArtView {
     // out. No audio at an active PC → no blob; active flag alone is
     // never enough to render.
     this._updateHarmonicsFromFFT();
+    this._drawTriangles();
     this._drawBlobs();
     this._updateAndDrawParticles();
   }
@@ -452,6 +511,35 @@ export class ResonanceArtView {
     }
   }
 
+  // ── Grid motion (rigid-body rotation + circular sway) ────────
+  // Rotation spins the lattice about the canvas center; sway orbits the
+  // whole grid around a small circle. Both are independent and compose
+  // additively. Both default to 0 — baseline visualization is static.
+  _updateGridTransform(dt) {
+    this._gridAngle += this.params.gridRotationSpeed * (Math.PI / 180) * dt;
+    this._gridTime  += dt;
+    const phase = this._gridTime * this.params.gridSwaySpeed * 2 * Math.PI;
+    this._gridOffsetX = Math.cos(phase) * this.params.gridSwayAmplitude;
+    this._gridOffsetY = Math.sin(phase) * this.params.gridSwayAmplitude;
+  }
+
+  // Maps a node's static (x, y) through the current rigid-body grid
+  // transform: rotate about canvas center, then translate by the sway
+  // offset. Nodes are stored in their static layout positions; this is
+  // the single place where motion is applied.
+  _transformedNode(n) {
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const dx = n.x - cx;
+    const dy = n.y - cy;
+    const cos = Math.cos(this._gridAngle);
+    const sin = Math.sin(this._gridAngle);
+    return {
+      x: cx + dx * cos - dy * sin + this._gridOffsetX,
+      y: cy + dx * sin + dy * cos + this._gridOffsetY,
+    };
+  }
+
   // ── Faint lattice scaffolding ─────────────────────────────────
   _drawGrid() {
     const ctx = this.ctx;
@@ -462,7 +550,8 @@ export class ResonanceArtView {
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (const [a, b] of this.edges) {
-      const na = this.nodes[a], nb = this.nodes[b];
+      const na = this._transformedNode(this.nodes[a]);
+      const nb = this._transformedNode(this.nodes[b]);
       ctx.moveTo(na.x, na.y);
       ctx.lineTo(nb.x, nb.y);
     }
@@ -471,12 +560,62 @@ export class ResonanceArtView {
     // Dots
     ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
     for (const n of this.nodes) {
+      const t = this._transformedNode(n);
       ctx.beginPath();
-      ctx.arc(n.x, n.y, 1.4, 0, Math.PI * 2);
+      ctx.arc(t.x, t.y, 1.4, 0, Math.PI * 2);
       ctx.fill();
     }
 
     ctx.restore();
+  }
+
+  // ── Chord triangles (Tonnetz triads) ─────────────────────────
+  // Triangle direction is the only quality cue: upward = major,
+  // downward = minor, mirroring the Tonnetz panel. Color is uniform
+  // gold (root role) regardless of which vertex is the actual chord
+  // root — keeps v1 visual language consistent and the code simple.
+  // Held 7th chords (e.g. Cmaj7 = C-E-G-B) naturally light up two
+  // adjacent triangles sharing an edge — geometric truth, no special-
+  // cased chord logic.
+  _drawTriangles() {
+    const tris = this.triangles;
+    if (!tris || !tris.length) return;
+    const ctx = this.ctx;
+    const silentEps = this.params.silentEps;
+    const fillAlphaPeak = this.params.triangleFillAlphaPeak;
+    const strokeAlpha   = this.params.triangleStrokeAlpha;
+    const strokeWidth   = this.params.triangleStrokeWidth;
+    const glowBlur      = this.params.triangleGlowBlur;
+    const rgb = ROLE_COLORS.root;
+    const colorBase = `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
+
+    for (const tri of tris) {
+      const sa = this.pcState[this.nodes[tri.a].pc];
+      const sb = this.pcState[this.nodes[tri.b].pc];
+      const sc = this.pcState[this.nodes[tri.c].pc];
+      if (!sa.active || !sb.active || !sc.active) continue;
+      if (sa.energy < silentEps || sb.energy < silentEps || sc.energy < silentEps) continue;
+
+      const intensity = Math.min(1, (sa.energy + sb.energy + sc.energy) / 3);
+      const pa = this._transformedNode(this.nodes[tri.a]);
+      const pb = this._transformedNode(this.nodes[tri.b]);
+      const pc = this._transformedNode(this.nodes[tri.c]);
+
+      ctx.save();
+      ctx.shadowBlur = glowBlur;
+      ctx.shadowColor = `rgba(${colorBase}, ${strokeAlpha * intensity})`;
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.lineTo(pc.x, pc.y);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${colorBase}, ${fillAlphaPeak * intensity})`;
+      ctx.fill();
+      ctx.lineWidth = strokeWidth;
+      ctx.strokeStyle = `rgba(${colorBase}, ${strokeAlpha * intensity})`;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // ── Node rendering (radial spectrum analyzer) ────────────────
@@ -489,8 +628,8 @@ export class ResonanceArtView {
       if (s.energy < silentEps) continue;
       const color = ROLE_COLORS[s.role] || ROLE_COLORS[DEFAULT_ROLE];
       for (const idx of this.nodesByPC[pc]) {
-        const n = this.nodes[idx];
-        this._drawRadialSpectrumAt(n.x, n.y, s.harmonics, maxR, color);
+        const t = this._transformedNode(this.nodes[idx]);
+        this._drawRadialSpectrumAt(t.x, t.y, s.harmonics, maxR, color);
       }
     }
   }
