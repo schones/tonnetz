@@ -268,6 +268,14 @@ def explorer():
     return render_template("explorer.html")
 
 
+@app.route("/art")
+def art():
+    # Experimental Resonance sandbox (see templates/art.html and
+    # static/shared/resonance-art-view.js). Kept separate from the Explorer
+    # Resonance tab so the canonical view stays stable while this iterates.
+    return render_template("art.html")
+
+
 @app.route("/tutorial")
 def tutorial():
     return render_template("tutorial.html")
