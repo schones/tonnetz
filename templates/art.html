@@ -271,6 +271,37 @@
       return _toneLoadPromise;
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // HELD-NOTES TRACKER — merges multiple input sources (on-screen
+    // keyboard now, MIDI in the next prompt) into a single
+    // HarmonyState.activeNotes update. Prevents sources from
+    // clobbering each other.
+    //
+    // The MIDI-related sets and _midiToEntry helper are intentional
+    // scaffolding for the next prompt — leave them in place even
+    // though nothing populates them in this change.
+    // ═══════════════════════════════════════════════════════════════
+    const _heldOnscreenKeys = new Map();         // "C4" → { note, octave }
+    const _heldMidiNotes = new Set();            // integer MIDI numbers currently pressed
+    const _sustainedMidiNotes = new Set();       // released-while-pedal-down, awaiting flush
+    let _pedalDown = false;
+
+    function _midiToEntry(midi) {
+      const pc = midi % 12;
+      const octave = Math.floor(midi / 12) - 1;
+      return { note: NOTE_NAMES[pc], octave, source: 'user', color: null };
+    }
+
+    function _syncHarmonyState() {
+      const entries = [];
+      for (const m of _heldMidiNotes)       entries.push(_midiToEntry(m));
+      for (const m of _sustainedMidiNotes)  entries.push(_midiToEntry(m));
+      for (const k of _heldOnscreenKeys.values()) {
+        entries.push({ note: k.note, octave: k.octave, source: 'user', color: null });
+      }
+      HarmonyState.update({ activeNotes: entries });
+    }
+
     // ── Bootstrap ─────────────────────────────────────────────────
     (async function init() {
       await loadToneIfNeeded();
@@ -286,12 +317,12 @@
         preferredOctave: 4,
         range: { low: 'C3', high: 'C5' },   // 25 keys
         onNotePlay(noteName, octave) {
-          // Keep HarmonyState in sync so the Resonance nodes that gate
-          // FFT reads match the held note's pitch class. We update with
-          // the single pressed note; the FFT shapes the rest.
-          HarmonyState.update({
-            activeNotes: [{ note: noteName, octave, source: 'user', color: null }],
-          });
+          _heldOnscreenKeys.set(`${noteName}${octave}`, { note: noteName, octave });
+          _syncHarmonyState();
+        },
+        onNoteRelease(noteName, octave) {
+          _heldOnscreenKeys.delete(`${noteName}${octave}`);
+          _syncHarmonyState();
         },
       });
 

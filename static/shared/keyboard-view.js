@@ -1125,6 +1125,9 @@ const KeyboardView = {
     if (!this._opts.noInternalAudio) {
       _stopNote(key.noteWithOctave);
     }
+    if (this._opts.onNoteRelease) {
+      this._opts.onNoteRelease(key.noteName, key.octave);
+    }
   },
 };
 
