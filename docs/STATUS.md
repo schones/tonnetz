@@ -19,14 +19,15 @@ SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Apr
 4. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
 5. Tab-audio capture experiment: feed YouTube into `/art`
 6. Decide `/art` front-door (linked from nav, footer, hidden, or remain unlinked sandbox)
-7. Consider preserving original "starburst" Resonance aesthetic as a named baked-in preset
-8. Onset detection wired into Resonance for staccato burst behavior
-9. Business model / monetization spec
-10. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
-11. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
-12. Consolidate triplicated chord-type registries (code review finding)
-13. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
-14. User testing prep (15-20 participants)
+7. **Onboarding & tutorial UX (new)** — Build a "guided tour" / tooltip-card system for the platform: friendly intro modals on first visit (Studio, Explorer, Games, `/art`), short walkthroughs explaining what each tool is for, and dedicated tutorials for the generative-art side (e.g., why the torus is the natural representation for a Tonnetz, how chord-triangles work, what the FFT is showing). Reference inspirations: BandLab's onboarding modals (sequential cards with X to dismiss, "There's more" / "Explore more" CTAs, large preview imagery, friendly first-name greeting). Could leverage existing walkthrough infrastructure from Explorer.
+8. Consider preserving original "starburst" Resonance aesthetic as a named baked-in preset
+9. Onset detection wired into Resonance for staccato burst behavior
+10. Business model / monetization spec
+11. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
+12. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
+13. Consolidate triplicated chord-type registries (code review finding)
+14. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
+15. User testing prep (15-20 participants)
 
 **Completed this cycle (April 20):**
 
