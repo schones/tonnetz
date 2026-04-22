@@ -98,7 +98,7 @@ const HOT_PEAK_COUNT     = 6;      // every marked peak glows (match Spectrum)
 const DEFAULT_PARAMS = Object.freeze({
   // Smoothing & decay
   releaseDecay:         0.95,   // per-frame multiplier once PC leaves activeNotes
-  silentEps:            0.001,  // total energy below this → node goes dark
+  silentEps:            0.0001, // total energy below this → node goes dark
   dbFloor:              -90,    // quietest dB to render
 
   // Particle spawning
@@ -135,10 +135,12 @@ const DEFAULT_PARAMS = Object.freeze({
   // Chord triangles (Tonnetz triads). Lit when all three vertex PCs are
   // simultaneously active. Subtle by default — they sit behind the blobs
   // as scaffold/halo rather than competing for focal attention.
-  triangleFillAlphaPeak: 0.18,
-  triangleStrokeAlpha:   0.5,
-  triangleStrokeWidth:   1.5,
-  triangleGlowBlur:      12,
+  triangleFillAlphaPeak:  0.18,
+  triangleStrokeAlpha:    0.5,
+  triangleStrokeWidth:    1.5,
+  triangleGlowBlur:       12,
+  triangleIntensityScale: 100,   // multiplies avg-energy before saturation; compensates for
+                                 // Salamander sampler's low FFT magnitudes (~0.003 per PC)
 });
 
 function dbToLinear(db, dbFloor) {
@@ -596,7 +598,7 @@ export class ResonanceArtView {
       if (!sa.active || !sb.active || !sc.active) continue;
       if (sa.energy < silentEps || sb.energy < silentEps || sc.energy < silentEps) continue;
 
-      const intensity = Math.min(1, (sa.energy + sb.energy + sc.energy) / 3);
+      const intensity = Math.min(1, ((sa.energy + sb.energy + sc.energy) / 3) * this.params.triangleIntensityScale);
       const pa = this._transformedNode(this.nodes[tri.a]);
       const pb = this._transformedNode(this.nodes[tri.b]);
       const pc = this._transformedNode(this.nodes[tri.c]);
