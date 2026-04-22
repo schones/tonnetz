@@ -252,6 +252,8 @@
       from '{{ url_for("static", filename="shared/audio-input.js") }}';
     import { ResonanceArtView }
       from '{{ url_for("static", filename="shared/resonance-art-view.js") }}';
+    import { MIDIInput }
+      from '{{ url_for("static", filename="shared/midi-input.js") }}';
 
     // ── Tone.js loader (mirrors Explorer's pattern) ───────────────
     // Keyboard playback and the shared FFT analyser both need Tone.
@@ -339,6 +341,99 @@
 
       // Audio input (Hardware row).
       _initAudioInput();
+    })();
+
+    // ═══════════════════════════════════════════════════════════════
+    // MIDI INPUT — Launchkey 49 (and any Web MIDI device)
+    // Populates the shared held-notes tracker declared above, and
+    // triggers audio through KeyboardView's sampler proxy — same
+    // sampler instance on-screen clicks use, so the shared
+    // Tone.Analyser picks up MIDI audio without any extra wiring.
+    // ═══════════════════════════════════════════════════════════════
+    (async function _initMIDI() {
+      if (typeof MIDIInput === 'undefined') return;
+
+      try {
+        await MIDIInput.init();
+        if (MIDIInput.isConnected) {
+          console.log('[Art Lab] MIDI connected:', MIDIInput.activeDevice?.name);
+        } else {
+          console.log('[Art Lab] No MIDI device detected.');
+        }
+      } catch (e) {
+        console.warn('[Art Lab] MIDI init failed:', e);
+        return;
+      }
+
+      // Tone.js must be loaded before KeyboardView.getSampler resolves,
+      // and the main init IIFE is what loads it. Wait for Tone to appear
+      // on window rather than duplicating the loader.
+      while (!window.Tone) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      // Grab the shared sampler proxy once the piano soundfont is loaded.
+      // Same instance KeyboardView uses for on-screen clicks, so the
+      // shared Tone.Analyser already sees the audio.
+      let sampler = null;
+      try {
+        sampler = await KeyboardView.getSampler();
+      } catch (e) {
+        console.warn('[Art Lab] Sampler not available; MIDI will update state but not play audio.', e);
+      }
+
+      MIDIInput.onNoteOn(async (note, velocity, channel) => {
+        // Drop drum channel — Launchkey pads send on channel 10.
+        if (channel === 10) return;
+        _heldMidiNotes.add(note);
+        _sustainedMidiNotes.delete(note); // in case it was pending release from a prior pedal cycle
+        _syncHarmonyState();
+        if (sampler) {
+          const entry = _midiToEntry(note);
+          const ascii = entry.note.replace(/♯/g, '#').replace(/♭/g, 'b');
+          try {
+            if (Tone.context.state !== 'running') await Tone.start();
+            sampler.triggerAttack(ascii + entry.octave, Tone.now(), velocity / 127);
+          } catch (_) { /* transient audio errors — ignore */ }
+        }
+      });
+
+      MIDIInput.onNoteOff((note, channel) => {
+        if (channel === 10) return;
+        if (!_heldMidiNotes.has(note)) return;
+        _heldMidiNotes.delete(note);
+
+        if (_pedalDown) {
+          // Standard sampler-sustain: defer the release until the pedal
+          // lifts. Keep the note in HarmonyState so the blob stays lit.
+          _sustainedMidiNotes.add(note);
+          _syncHarmonyState();
+          return;
+        }
+
+        _releaseMidiNote(note);
+        _syncHarmonyState();
+      });
+
+      MIDIInput.onCC((cc, value /* , channel */) => {
+        if (cc !== 64) return;
+        const down = value >= 64;
+        if (down === _pedalDown) return;
+        _pedalDown = down;
+        if (!down) {
+          // Pedal lifted — flush all deferred releases.
+          for (const note of _sustainedMidiNotes) _releaseMidiNote(note);
+          _sustainedMidiNotes.clear();
+          _syncHarmonyState();
+        }
+      });
+
+      function _releaseMidiNote(note) {
+        if (!sampler) return;
+        const entry = _midiToEntry(note);
+        const ascii = entry.note.replace(/♯/g, '#').replace(/♭/g, 'b');
+        try { sampler.triggerRelease(ascii + entry.octave, Tone.now() + 0.05); } catch (_) {}
+      }
     })();
 
     // ═══════════════════════════════════════════════════════════════
