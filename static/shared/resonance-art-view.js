@@ -405,12 +405,25 @@ export class ResonanceArtView {
 
   // ── HarmonyState → role/active flags ──────────────────────────
   _readHarmonyState(state) {
+    // Clear active flags on every call. Roles persist through decay so
+    // a PC that's fading out renders in the color it had when active,
+    // not the default 'root' gold — otherwise every decay tail looks
+    // like a root note.
     for (let pc = 0; pc < 12; pc++) {
       this.pcState[pc].active = false;
-      this.pcState[pc].role   = DEFAULT_ROLE;
     }
     const notes = Array.isArray(state.activeNotes) ? state.activeNotes : [];
     if (!notes.length) return;
+
+    // Reset role only for PCs about to be re-assigned this frame. This
+    // preserves the "prefer lowest-index role" behavior below (which
+    // handles the case of a single PC appearing multiple times within
+    // one activeNotes update) while letting inactive-but-decaying PCs
+    // keep their last color.
+    for (const entry of notes) {
+      const pc = entryToPC(entry);
+      if (pc >= 0) this.pcState[pc].role = DEFAULT_ROLE;
+    }
 
     // Same classification logic as the Spectrum panel: first three non-
     // extension entries are root/third/fifth; anything tagged source:
@@ -431,7 +444,7 @@ export class ResonanceArtView {
       const s = this.pcState[pc];
       s.active = true;
       // Prefer the lowest-index role; don't overwrite root with fifth
-      // if the same PC shows up twice across octaves.
+      // if the same PC shows up twice across octaves within this frame.
       if (s.role === DEFAULT_ROLE || triadRoles.indexOf(role) < triadRoles.indexOf(s.role)) {
         s.role = role;
       }
