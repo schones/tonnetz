@@ -72,6 +72,7 @@
       letter-spacing: 0.08em;
       color: var(--text-secondary, #B5AE9F);
     }
+    .art-keyboard--hidden { display: none; }
 
     /* ── Hardware row ─────────────────────────────────────────── */
     .art-hardware {
@@ -137,6 +138,25 @@
       color: #B3D0E8;
       border-color: #3A6A8A;
       background: rgba(58, 139, 201, 0.10);
+    }
+    .art-hw-toggle {
+      margin-left: auto;
+      background: var(--bg-input, #12121A);
+      color: var(--text-secondary, #B5AE9F);
+      border: 1px solid var(--border-input, #43434F);
+      border-radius: var(--radius-md, 6px);
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: var(--font-size-xs, 0.78rem);
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .art-hw-toggle:hover { color: var(--text-primary, #F2EFE6); }
+    .art-hw-toggle[aria-pressed="true"] {
+      color: var(--text-primary, #F2EFE6);
+      background: rgba(212, 160, 60, 0.10);
+      border-color: #8A7A4A;
     }
 
     /* Art Lab debug panel (same visual system as Explorer's Resonance
@@ -219,7 +239,7 @@
            The debug panel is appended as an overlay by the script below. -->
     </section>
 
-    <section class="art-keyboard" aria-label="Keyboard">
+    <section id="art-keyboard-section" class="art-keyboard art-keyboard--hidden" aria-label="Keyboard">
       <div class="art-keyboard__header">
         <span class="art-keyboard__label">Keyboard</span>
       </div>
@@ -236,6 +256,8 @@
         <span class="art-hw-status-text">Off</span>
       </span>
       <span class="art-hw-badge" id="audio-input-badge" data-quality=""></span>
+      <button class="art-hw-toggle" id="art-keyboard-toggle" type="button" aria-pressed="false"
+              title="Show or hide the on-screen keyboard">Keyboard</button>
     </section>
   </main>
 {% endblock %}
@@ -283,6 +305,12 @@
     // scaffolding for the next prompt — leave them in place even
     // though nothing populates them in this change.
     // ═══════════════════════════════════════════════════════════════
+    // Set to true when AudioInput auto-restores a device before Tone's
+    // AudioContext is running. The MediaStreamSource gets created in a
+    // fallback context and must be recreated inside Tone's rawContext
+    // once Tone starts. _attachAudioInputToTone() handles the rewire.
+    let _audioInputNeedsToneRewire = false;
+
     const _heldOnscreenKeys = new Map();         // "C4" → { note, octave }
     const _heldMidiNotes = new Set();            // integer MIDI numbers currently pressed
     const _sustainedMidiNotes = new Set();       // released-while-pedal-down, awaiting flush
@@ -341,6 +369,30 @@
 
       // Audio input (Hardware row).
       _initAudioInput();
+
+      // ── On-screen keyboard visibility toggle ─────────────────────
+      // Default: hidden. Users who want click-to-play reveal it via
+      // the Hardware row toggle. Persisted in localStorage so the
+      // choice survives refreshes.
+      (function _initKeyboardToggle() {
+        const STORAGE_KEY = 'songlab.art.keyboardVisible';
+        const section = document.getElementById('art-keyboard-section');
+        const btn = document.getElementById('art-keyboard-toggle');
+        if (!section || !btn) return;
+
+        let visible = false;
+        try { visible = localStorage.getItem(STORAGE_KEY) === '1'; } catch (_) {}
+
+        function apply(v) {
+          visible = v;
+          section.classList.toggle('art-keyboard--hidden', !v);
+          btn.setAttribute('aria-pressed', v ? 'true' : 'false');
+          try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0'); } catch (_) {}
+        }
+
+        apply(visible);
+        btn.addEventListener('click', () => apply(!visible));
+      })();
     })();
 
     // ═══════════════════════════════════════════════════════════════
@@ -392,7 +444,7 @@
           const entry = _midiToEntry(note);
           const ascii = entry.note.replace(/♯/g, '#').replace(/♭/g, 'b');
           try {
-            if (Tone.context.state !== 'running') await Tone.start();
+            await _ensureToneStarted();
             sampler.triggerAttack(ascii + entry.octave, Tone.now(), velocity / 127);
           } catch (_) { /* transient audio errors — ignore */ }
         }
@@ -505,6 +557,33 @@
           await window.Tone.start();
         }
       } catch (_) { /* iOS requires a gesture; user interaction will retry */ }
+      // If a device was auto-restored while Tone was suspended, rewire it
+      // into Tone's context now. Idempotent — no-op after first success.
+      try { await _attachAudioInputToTone(); } catch (_) {}
+    }
+
+    // Call after Tone's AudioContext transitions to 'running'. If
+    // AudioInput auto-restored a device while Tone was suspended,
+    // re-select it so the source lives in Tone's rawContext. No-op
+    // in the common case (flag cleared after first successful rewire).
+    async function _attachAudioInputToTone() {
+      if (typeof AudioInput === 'undefined') return;
+      const analyser = (KeyboardView && KeyboardView.getAnalyser)
+        ? KeyboardView.getAnalyser()
+        : null;
+      if (!analyser) return;
+
+      if (_audioInputNeedsToneRewire && AudioInput.activeDevice) {
+        const id = AudioInput.activeDevice.deviceId;
+        _audioInputNeedsToneRewire = false;
+        try { AudioInput.setAnalyser(analyser); } catch (_) { /* cross-context — re-select fixes it */ }
+        try { await AudioInput.selectDevice(id); }
+        catch (e) { console.warn('[art] audio-input re-select failed:', e); }
+        _updateAudioInputStatus();
+      } else {
+        try { AudioInput.setAnalyser(analyser); }
+        catch (e) { console.warn('[art] setAnalyser failed:', e); }
+      }
     }
 
     async function _initAudioInput() {
@@ -520,6 +599,9 @@
       try {
         const { devices } = await AudioInput.init();
         _populateAudioDeviceDropdown(devices);
+        // If AudioInput auto-restored a device, its MediaStreamSource lives in
+        // a fallback context. Flag for rewire as soon as Tone starts.
+        if (AudioInput.isActive) _audioInputNeedsToneRewire = true;
         _updateAudioInputStatus();
       } catch (e) {
         console.warn('[art] AudioInput init failed:', e);
