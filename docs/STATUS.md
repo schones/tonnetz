@@ -1,6 +1,6 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-22 (late — 3D rendering Prompt 1)
+**Last updated:** 2026-04-22 (later — 3D rendering Prompt 2, Stage 1 complete)
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
@@ -10,10 +10,10 @@
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 22 (later session) landed Stage 1 Prompt 1 of the `/art` torus/sphere 3D rendering: `mode3D` feature flag (off by default), 12×4 lattice on a (u, v)-parameterized torus-to-sphere morphable surface, manual rotation around three world axes, debug-panel sliders for `morph` / `torusMajorR/MinorR` / `rotSpeedX/Y/Z`. Nodes + edges only this prompt — triangles, back-face alpha, and particle behavior in 3D land in Prompt 2 and later. Same session also wired real audio input into `/art`: MIDI + Launchkey 49 + sustain pedal, chord + pitch detection in parallel, fixed two latent shared-module bugs (audio-input stale-source rewire and pitch-detection autoplay-policy suspension). Approaching user testing readiness.
+SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 22 (later session) completed Stage 1 of the `/art` torus/sphere 3D rendering: `mode3D` feature flag (off by default), 12×4 lattice on a (u, v)-parameterized torus-to-sphere morphable surface, manual rotation around three world axes, plus 96 always-visible Tonnetz triads (warm major / cool minor) with continuous back-face alpha so the far side fades smoothly through the silhouette. Same session also wired real audio input into `/art`: MIDI + Launchkey 49 + sustain pedal, chord + pitch detection in parallel, fixed two latent shared-module bugs (audio-input stale-source rewire and pitch-detection autoplay-policy suspension). Approaching user testing readiness.
 
 **Next priorities:**
-1. **Torus/sphere morph 3D — Stage 1 Prompt 2:** triangle rendering in 3D (Tonnetz triads on the curved surface) with back-face alpha so triangles on the far side fade rather than overlap the front. Two-pass painter's draw, optional later proper depth-sort. Continues in `resonance-art-view.js` + `templates/art.html`. After Prompt 2: particle reactivity in 3D, then Stage 1.5 multi-torus stacking, then Stage 2 audio-reactive morph.
+1. **Torus/sphere morph 3D — Stage 1.5 (multi-torus stacking):** Stage 1 complete (lattice + triangles with back-face alpha). Next sub-step is multi-torus stacking — multiple concentric/offset toruses to give the visualization depth and let different harmonic layers (e.g., extension notes, register groups) live on their own surface. After Stage 1.5: particle reactivity in 3D (currently spawn at 3D-projected screen positions — visually wrong), painter's-algorithm depth sort if self-occlusion artifacts surface, then Stage 2 audio-reactive morph.
 2. SkratchLab polish — "Clear All" button should also reset canvas (not just blocks)
 3. Add Polyrhythm Trainer to nav dropdown and landing page
 4. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
@@ -30,6 +30,15 @@ SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Apr
 15. User testing prep (15-20 participants)
 
 **Completed this cycle (April 22):**
+
+- **Art Lab 3D rendering — Stage 1 Prompt 2 (triangles on torus/sphere):**
+  - 96 triads built on the toroidal 12×4 lattice (every cell gets one major upward + one minor downward — no boundary gaps because the lattice wraps on both axes). Each triangle entry carries `{ a, b, c, type }` with `type ∈ {'major', 'minor'}`.
+  - Winding chosen so `(p1 − p0) × (p2 − p0)` points outward at morph=0; verified at (col=0, row=0) on both major and minor (dot product ≈ 0.93–0.94 with the surface normal at the centroid).
+  - `_drawTriangles3D` recomputes rotated 3D vertex positions, derives per-triangle outward normal, and uses `n.z` (after normalize) as the facing value. Continuous back-face alpha: `alphaFactor = 0.6 + 0.4 · facing` ∈ [0.2, 1.0]. Smooth falloff through the silhouette — no hard ring artifact.
+  - Major triads tinted warm `[220, 165, 90]`; minor cool `[90, 140, 210]`. Held chords no longer the only path to a visible triangle in 3D — the scaffold is always rendered.
+  - Draw-order: 2D mode keeps grid-then-triangles (bit-for-bit identical); 3D mode reorders to triangles-then-grid so the faint lattice edges + dots remain visible on top of the filled triads.
+  - Single-pass, no painter's-algorithm sort. Self-occlusion artifacts deferred (notes in SESSION_LOG).
+  - Three new debug-panel sliders in the existing "3D Geometry" group: `triangle3DBaseAlpha`, `triangle3DStrokeAlpha`, `triangle3DStrokeWidth`. RGB tint params kept code-only.
 
 - **Art Lab 3D rendering — Stage 1 Prompt 1 (nodes + edges on torus/sphere):**
   - `mode3D` feature flag in `DEFAULT_PARAMS` (default `false`); 2D path is bit-for-bit unchanged when off.
@@ -329,7 +338,7 @@ SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Apr
 - `tonnetz-neighborhood.js` — SVG renderer with chord-quality coloring, **extension node rendering**
 - `keyboard-view.js` — real piano proportions, highlight layer, click interaction, **extension ring highlights**, shared `Tone.Analyser` owner
 - `resonance-view.js` — radial FFT Tonnetz visualization, HarmonyState-gated, chord-function coloring, Spectrum-matched particle dynamics. **April 20:** refactored to instance-based `DEFAULT_PARAMS` for live tuning; sparkler defaults; perpendicular wiggle; new tunables (`blobFillAlpha`, `peakMagThreshold`, `particleDeceleration`)
-- `resonance-art-view.js` — verbatim fork of `resonance-view.js` for the `/art` sandbox. Class `ResonanceArtView`. Adds grid motion (rotation + circular sway, lattice as rigid body) and chord-triangle highlights (gold fill on Tonnetz triangles whose vertex PCs are all active). Will diverge freely from the canonical Explorer version.
+- `resonance-art-view.js` — verbatim fork of `resonance-view.js` for the `/art` sandbox. Class `ResonanceArtView`. Adds grid motion (rotation + circular sway, lattice as rigid body), chord-triangle highlights (gold fill on Tonnetz triangles whose vertex PCs are all active), and a 3D mode (`mode3D` flag) with a 12×4 toroidal lattice on a torus-to-sphere morphable surface, manual world-axis rotation, and 96 always-visible triads tinted warm/cool with continuous back-face alpha. Will diverge freely from the canonical Explorer version.
 - `chord-wheel.js` — dual-ring circle of fifths
 - `song-examples.js` — 84 curated real-song references
 - `walkthroughs.js` — 17 guided Explorer walkthroughs with rhythm data, audience tags, category labels, extended chord types

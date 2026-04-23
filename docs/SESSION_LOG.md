@@ -4,6 +4,73 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-22 — Art Lab 3D triangles: audio-reactive overlay pass
+
+**Fix:** `_drawTriangles3D` only rendered the warm/cool scaffold — it never consulted `pcState`, so held triads didn't brighten in 3D mode. Added a second pass inside the same `save/restore` that audio-reactively overlays lit triangles on top of the scaffold.
+
+- Scaffold pass is unchanged in behavior (pixel-identical with no audio). It now also writes per-triangle screen coords, `alphaFactor`, and tint color into a lazily-allocated `_triFrameCache` so the overlay pass doesn't need to re-rotate or re-project.
+- Overlay iterates the cache, skips any entry the scaffold skipped (degenerate `|normal| < 1e-8`), and for each triangle whose three vertex PCs are all `active` and above `silentEps` draws a lit fill + shadow bloom. Same math as the 2D `_drawTriangles`:
+  - `intensity = min(1, avg(energy) · triangleIntensityScale)`
+  - `overlayAlpha = triangleFillAlphaPeak · intensity · alphaFactor`
+  - `shadowBlur = triangleGlowBlur`, `shadowColor` matches the overlay alpha
+- Back-face `alphaFactor = 0.6 + 0.4 · facing` is reused from the scaffold, so lit triangles on the far side dim consistently with the rest.
+- Major triads glow warm (`majorTriadColor`), minor cool (`minorTriadColor`) — same palette as the scaffold; only alpha and bloom differ.
+- No new params: `triangleFillAlphaPeak`, `triangleIntensityScale`, `triangleGlowBlur`, `silentEps` (which already had 2D-mode sliders) now also drive 3D mode.
+- 2D path untouched. `static/shared/resonance-view.js` untouched.
+
+---
+
+## 2026-04-22 — Art Lab 3D rendering, Stage 1 Prompt 2: triangles on the torus/sphere
+
+**Focus:** Add the always-visible triangle scaffold to the 3D path. 96 triads (12·4·2) tinted warm/cool by major/minor direction with continuous back-face alpha so the far side fades smoothly through the silhouette. The 2D path stays bit-for-bit identical when `mode3D` is off.
+
+### Triangle build (resonance-art-view.js)
+- `_build3DGrid` now populates `this.triangles` with 96 entries — every cell of the toroidal 12×4 lattice gets both an upward (major) and a downward (minor) triad. No boundary gaps because the lattice wraps on both axes. Each entry carries `{ a, b, c, type }` where `type ∈ {'major', 'minor'}`.
+- Winding chosen so `(p1 − p0) × (p2 − p0)` points outward at morph=0:
+  - **Major (upward):** v0 = (col, row), v1 = (col+1 mod 12, (row−1+4) mod 4), v2 = (col+1 mod 12, row)
+  - **Minor (downward):** v0 = (col, row), v1 = (col+1 mod 12, row), v2 = (col, (row+1) mod 4)
+- Sanity-checked offline: at (col=0, row=0) the major triangle's normal is approximately (+0.69, +0.19, −0.69); dot product with the torus surface normal at the triangle centroid is ≈ 0.94 (strongly outward). Same check for the minor triangle gives ≈ 0.93. Winding is correct on both.
+
+### Render path
+- `_drawTriangles` branches at the top: `if (mode3D) return _drawTriangles3D()`. The 2D code path is untouched.
+- `_drawTriangles3D` iterates all 96 triangles every frame:
+  - Recomputes rotated 3D positions (`_uvToXYZ → _rotate3D`) for the three vertices to derive the per-triangle normal — `_transformedNode` does roughly the same work for the lattice draw, but reusing it would mean projecting then unprojecting; 96 × 3 = 288 extra rotate calls/frame is fine. Cache later if needed.
+  - Computes `n = (p1−p0) × (p2−p0)`, normalizes, takes `n.z` as the facing value (orthographic camera looks from +z).
+  - Continuous back-face alpha: `alphaFactor = 0.6 + 0.4 · facing`, so far-side ≈ 0.2× base, near-side ≈ 1.0× base, smooth through the silhouette. No hard ring.
+  - Color: warm `[220, 165, 90]` for major, cool `[90, 140, 210]` for minor.
+  - Single-pass, build order — no painter's-algorithm sort.
+- Degenerate triangles (normal magnitude < 1e-8 — happens at the sphere poles when morph→1) are skipped to avoid divide-by-zero.
+
+### Draw order
+- 2D mode: `_drawGrid()` then `_drawTriangles()` — preserves the original chord-glow look exactly. Bit-for-bit identical to before.
+- 3D mode: `_drawTriangles()` then `_drawGrid()` — the 96-triangle scaffold is filled, so reordering keeps the faint lattice edges + dots visible on top of the triads. Done with a small `if (mode3D)` branch in `_render()`.
+
+### New tunables (DEFAULT_PARAMS + debug panel)
+- `triangle3DBaseAlpha` (0.45) — base fill alpha before back-face scaling
+- `triangle3DStrokeAlpha` (0.6) — edge stroke alpha (same back-face scaling applied)
+- `triangle3DStrokeWidth` (1.2) — edge line width
+- `majorTriadColor` `[220, 165, 90]` — code-only, not in debug panel (RGB triple, not a single scalar)
+- `minorTriadColor` `[90, 140, 210]` — code-only
+
+Three sliders added to the existing "3D Geometry" debug-panel group. Color params intentionally omitted from the panel — RGB sliders bloat the UI; tune in code for now.
+
+### Self-occlusion / known visual notes
+- Single-pass, no depth sort. As the torus rotates the back-face alpha falloff handles most of the visual layering — far-side triangles fade to ~20%. Where the surface curves so two front-facing triangles overlap on the projection, the later-drawn one wins (build order). Hasn't looked bad in initial inspection but if it ever looks chunky, a painter's-algorithm pass (sort by centroid `z`, draw far→near) is the next step. Two-pass back-then-front is also an option. Deferred.
+- At morph = 1 (pure sphere), the (u, v) parameterization double-covers the surface (same surface point reached by `(u, v)` and `(u+π, π−v)` after the morph collapses the tube radius). Result is an interleaved front/back pattern of triangles. Known and expected — do not "fix" by changing the sphere equation.
+
+### Explicitly deferred
+- Painter's-algorithm sort / two-pass back-then-front rendering.
+- RGB tint sliders in debug panel.
+- Particles / audio-reactive blobs in 3D mode (still spawn at 3D-projected screen positions — wrong; later stage).
+- Multi-torus stacking (Stage 1.5), audio-reactive morph (Stage 2).
+
+### Notes
+- `static/shared/resonance-view.js` (Explorer's Resonance tab) untouched.
+- 2D triangle build / render path untouched. Existing `triangleFillAlphaPeak`, `triangleStrokeAlpha`, etc. continue to drive the 2D audio-reactive triangles.
+- No git activity — Dustin commits.
+
+---
+
 ## 2026-04-22 — Art Lab 3D rendering, Stage 1 Prompt 1: torus/sphere lattice (nodes + edges)
 
 **Focus:** Add a 3D rendering path to `/art` behind a `mode3D` feature flag. Lattice projects onto a torus-to-sphere morphable surface with manual rotation and morph sliders; rendered as nodes + edges only. The 2D path stays unchanged when the flag is off (default). Triangles, back-face alpha, particles-in-3D, and audio reactivity are explicitly deferred.

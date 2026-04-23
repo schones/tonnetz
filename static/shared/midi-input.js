@@ -152,8 +152,12 @@ function _handleStateChange(event) {
       const match = preferred ? inputs.find((i) => i.id === preferred) : null;
       if (match) {
         _attach(match);
-      } else if (inputs.length === 1) {
-        _attach(inputs[0]);
+      } else if (inputs.length >= 1) {
+        // Multi-port devices (Launchkey MK4 etc.) enumerate as separate
+        // "MIDI Out" and "DAW Out" ports. Prefer the keys/pads port; the
+        // DAW port sends transport/mixer messages we don't want here.
+        const keysPort = inputs.find((i) => !/\bDAW\b/i.test(i.name)) || inputs[0];
+        _attach(keysPort);
       }
     }
   }

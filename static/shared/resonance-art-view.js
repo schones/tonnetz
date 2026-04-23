@@ -149,6 +149,18 @@ const DEFAULT_PARAMS = Object.freeze({
   rotSpeedY:            8,      // degrees / second around world Y
   rotSpeedZ:            0,      // degrees / second around world Z
 
+  // 3D triangles (mode3D=true). Always-visible scaffold of 96 triads
+  // (12·4·2) on the curved surface, tinted warm/cool by major/minor
+  // direction. Continuous back-face alpha — far-side triangles fade to
+  // ~20% of base, near-side render at full base, smooth through the
+  // silhouette. Distinct from the 2D triangleFillAlphaPeak path, which
+  // remains audio-reactive and only lights when triads are held.
+  triangle3DBaseAlpha:   0.45,  // base fill alpha before back-face scaling
+  triangle3DStrokeAlpha: 0.6,   // edge stroke alpha (same back-face scaling applied)
+  triangle3DStrokeWidth: 1.2,
+  majorTriadColor:      [220, 165,  90],  // warm — gold / amber
+  minorTriadColor:      [ 90, 140, 210],  // cool — blue / indigo
+
   // Chord triangles (Tonnetz triads). Lit when all three vertex PCs are
   // simultaneously active. Subtle by default — they sit behind the blobs
   // as scaffold/halo rather than competing for focal attention.
@@ -489,8 +501,40 @@ export class ResonanceArtView {
       }
     }
 
-    // No triangles in Prompt 1 — added with back-face/winding in Prompt 2.
+    // 96 triangles total: every cell gets both an upward (major) and a
+    // downward (minor) triad, no boundary gaps because the lattice wraps
+    // toroidally on both axes. Winding is chosen so the cross product
+    // (p1 − p0) × (p2 − p0) points outward from the surface at morph=0.
+    //   Upward (major):
+    //     v0 = (col,           row)
+    //     v1 = (col+1 mod 12, (row−1+4) mod 4)
+    //     v2 = (col+1 mod 12,  row)
+    //   Downward (minor):
+    //     v0 = (col,           row)
+    //     v1 = (col+1 mod 12,  row)
+    //     v2 = (col,          (row+1) mod 4)
     this.triangles = [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const cNext = (col + 1) % COLS;
+        const rPrev = (row - 1 + ROWS) % ROWS;
+        const rNext = (row + 1) % ROWS;
+        // Major (upward)
+        this.triangles.push({
+          a: nodeIdxAt(col,   row),
+          b: nodeIdxAt(cNext, rPrev),
+          c: nodeIdxAt(cNext, row),
+          type: 'major',
+        });
+        // Minor (downward)
+        this.triangles.push({
+          a: nodeIdxAt(col,   row),
+          b: nodeIdxAt(cNext, row),
+          c: nodeIdxAt(col,   rNext),
+          type: 'minor',
+        });
+      }
+    }
 
     // Approximate node-radius scaling for blob rendering. Blobs come up
     // in a later prompt; pick a sensible default off projection scale so
@@ -619,14 +663,23 @@ export class ResonanceArtView {
     // rotation/sway simply runs slightly slower/faster — visually fine).
     this._updateGridTransform(1 / 60);
 
-    this._drawGrid();
-
     // HarmonyState picks WHICH PCs can light up (activeNotes); the FFT
     // shapes HOW they look. Released PCs skip the FFT read and decay
     // out. No audio at an active PC → no blob; active flag alone is
     // never enough to render.
     this._updateHarmonicsFromFFT();
-    this._drawTriangles();
+
+    // Draw order: in 2D, grid first then audio-reactive triangles on top
+    // (preserves the original chord-glow look bit-for-bit). In 3D, the
+    // 96-triangle scaffold renders first so the faint lattice edges + dots
+    // remain visible on top of the filled triads.
+    if (this.params.mode3D) {
+      this._drawTriangles();
+      this._drawGrid();
+    } else {
+      this._drawGrid();
+      this._drawTriangles();
+    }
     this._drawBlobs();
     this._updateAndDrawParticles();
   }
@@ -761,6 +814,10 @@ export class ResonanceArtView {
   // adjacent triangles sharing an edge — geometric truth, no special-
   // cased chord logic.
   _drawTriangles() {
+    if (this.params.mode3D) {
+      this._drawTriangles3D();
+      return;
+    }
     const tris = this.triangles;
     if (!tris || !tris.length) return;
     const ctx = this.ctx;
@@ -799,6 +856,145 @@ export class ResonanceArtView {
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  // 3D triangle scaffold. All 96 triads render every frame, tinted warm
+  // (major) or cool (minor). Per-triangle outward-normal computed from
+  // the rotated vertex positions; n.z (after normalize) is the facing
+  // value because the orthographic camera looks from +z toward origin.
+  // Continuous back-face alpha:
+  //     alphaFactor = 0.6 + 0.4 * facing       // [0.2, 1.0]
+  // Smooth falloff through the silhouette — no hard ring artifact.
+  // Single-pass, no painter's-algorithm sort: self-occlusion artifacts
+  // (if any) are noted in SESSION_LOG and deferred.
+  //
+  // Two passes inside one save/restore: (1) scaffold — pixel-identical
+  // to the pre-overlay behavior when no audio plays; (2) overlay —
+  // audio-reactive glow on any triad whose 3 PCs are all active, matching
+  // the 2D chord-triangle treatment (intensity, shadow bloom, fill peak).
+  _drawTriangles3D() {
+    const tris = this.triangles;
+    if (!tris || !tris.length) return;
+    const ctx = this.ctx;
+    const morph = this.params.morph;
+    const majorC = this.params.majorTriadColor;
+    const minorC = this.params.minorTriadColor;
+    const baseA  = this.params.triangle3DBaseAlpha;
+    const strokeA = this.params.triangle3DStrokeAlpha;
+    const lw = this.params.triangle3DStrokeWidth;
+
+    // Per-frame cache so the overlay pass doesn't re-rotate. Lazily
+    // allocated; resized if the triangle count ever changes.
+    if (!this._triFrameCache || this._triFrameCache.length !== tris.length) {
+      this._triFrameCache = new Array(tris.length);
+      for (let i = 0; i < tris.length; i++) {
+        this._triFrameCache[i] = {
+          live: false,
+          x0: 0, y0: 0, x1: 0, y1: 0, x2: 0, y2: 0,
+          alphaFactor: 0,
+          color: null,
+        };
+      }
+    }
+    const cache = this._triFrameCache;
+
+    ctx.save();
+    ctx.lineWidth = lw;
+
+    // ── Scaffold pass ────────────────────────────────────────────
+    for (let i = 0; i < tris.length; i++) {
+      const t = tris[i];
+      const n0 = this.nodes[t.a];
+      const n1 = this.nodes[t.b];
+      const n2 = this.nodes[t.c];
+
+      // Rotated 3D positions — needed explicitly here for the normal.
+      // _transformedNode also recomputes morph+rotate+project for the
+      // lattice draw; the duplication is 96·3 = 288 calls/frame, fine.
+      const p0r = this._rotate3D(this._uvToXYZ(n0.u, n0.v, morph));
+      const p1r = this._rotate3D(this._uvToXYZ(n1.u, n1.v, morph));
+      const p2r = this._rotate3D(this._uvToXYZ(n2.u, n2.v, morph));
+
+      const e1x = p1r.x - p0r.x;
+      const e1y = p1r.y - p0r.y;
+      const e1z = p1r.z - p0r.z;
+      const e2x = p2r.x - p0r.x;
+      const e2y = p2r.y - p0r.y;
+      const e2z = p2r.z - p0r.z;
+      const nx = e1y * e2z - e1z * e2y;
+      const ny = e1z * e2x - e1x * e2z;
+      const nz = e1x * e2y - e1y * e2x;
+      const nlen = Math.hypot(nx, ny, nz);
+      if (nlen < 1e-8) {
+        cache[i].live = false;       // degenerate — skip in overlay too
+        continue;
+      }
+      const facing = nz / nlen;        // n.z after normalize, ∈ [-1, 1]
+      const alphaFactor = 0.6 + 0.4 * facing;  // ∈ [0.2, 1.0]
+      const color = (t.type === 'major') ? majorC : minorC;
+
+      const s0 = this._projectOrtho(p0r);
+      const s1 = this._projectOrtho(p1r);
+      const s2 = this._projectOrtho(p2r);
+
+      ctx.beginPath();
+      ctx.moveTo(s0.screenX, s0.screenY);
+      ctx.lineTo(s1.screenX, s1.screenY);
+      ctx.lineTo(s2.screenX, s2.screenY);
+      ctx.closePath();
+
+      ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${baseA * alphaFactor})`;
+      ctx.fill();
+
+      ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${strokeA * alphaFactor})`;
+      ctx.stroke();
+
+      const c = cache[i];
+      c.live = true;
+      c.x0 = s0.screenX; c.y0 = s0.screenY;
+      c.x1 = s1.screenX; c.y1 = s1.screenY;
+      c.x2 = s2.screenX; c.y2 = s2.screenY;
+      c.alphaFactor = alphaFactor;
+      c.color = color;
+    }
+
+    // ── Audio-reactive overlay pass ──────────────────────────────
+    // Brightens any triangle whose 3 vertex PCs are all active and above
+    // silentEps. Same intensity formula and shadow-bloom treatment as
+    // the 2D _drawTriangles path. Back-face alphaFactor is still applied
+    // so far-side lit triangles dim with the scaffold.
+    const silentEps      = this.params.silentEps;
+    const fillAlphaPeak  = this.params.triangleFillAlphaPeak;
+    const intensityScale = this.params.triangleIntensityScale;
+    const glowBlur       = this.params.triangleGlowBlur;
+
+    for (let i = 0; i < cache.length; i++) {
+      const c = cache[i];
+      if (!c.live) continue;
+      const tri = tris[i];
+      const sa = this.pcState[this.nodes[tri.a].pc];
+      const sb = this.pcState[this.nodes[tri.b].pc];
+      const sc = this.pcState[this.nodes[tri.c].pc];
+      if (!sa.active || !sb.active || !sc.active) continue;
+      if (sa.energy < silentEps || sb.energy < silentEps || sc.energy < silentEps) continue;
+
+      const intensity = Math.min(1,
+        ((sa.energy + sb.energy + sc.energy) / 3) * intensityScale);
+      const overlayAlpha = fillAlphaPeak * intensity * c.alphaFactor;
+      const color = c.color;
+
+      ctx.shadowBlur = glowBlur;
+      ctx.shadowColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${overlayAlpha})`;
+      ctx.beginPath();
+      ctx.moveTo(c.x0, c.y0);
+      ctx.lineTo(c.x1, c.y1);
+      ctx.lineTo(c.x2, c.y2);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${overlayAlpha})`;
+      ctx.fill();
+    }
+
+    ctx.restore();
   }
 
   // ── Node rendering (radial spectrum analyzer) ────────────────
