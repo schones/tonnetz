@@ -238,6 +238,12 @@ export function createPitchDetector(options = {}) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)({
       sampleRate,
     });
+    // Chrome's autoplay policy starts programmatically-created AudioContexts
+    // in 'suspended' state. While suspended, ScriptProcessorNode.onaudioprocess
+    // never fires. resume() is a no-op on a context that's already running,
+    // so this is safe for callers that create the detector inside a user
+    // gesture (where the context would otherwise start 'running').
+    try { await audioContext.resume(); } catch (_) { /* non-fatal */ }
     sourceNode = audioContext.createMediaStreamSource(micStream);
 
     // ScriptProcessorNode for per-buffer processing
@@ -248,6 +254,8 @@ export function createPitchDetector(options = {}) {
       if (!running) return;
 
       const buffer = e.inputBuffer.getChannelData(0);
+
+
 
       // Quick silence check — skip YIN on quiet input
       let energy = 0;
@@ -331,7 +339,7 @@ export function createPitchDetector(options = {}) {
     }
 
     if (audioContext) {
-      audioContext.close().catch(() => {});
+      audioContext.close().catch(() => { });
       audioContext = null;
     }
 
