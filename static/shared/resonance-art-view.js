@@ -63,6 +63,12 @@ import { HarmonyState } from './harmony-state.js';
 const GRID_COLS = 7;
 const GRID_ROWS = 5;
 
+// 3D mode: P5 → u (12-step cycle around the big ring), m3 → v (4-step
+// cycle around the tube). 12·4 = 48 nodes; each PC appears 4 times on
+// the surface (one per row).
+const GRID_COLS_3D = 12;
+const GRID_ROWS_3D = 4;
+
 // Offsets of a node's six Tonnetz neighbors (dcol, drow):
 //   [ +P5, −P5, +M3, −M3, +m3, −m3 ]
 const NEIGHBOR_OFFSETS = [
@@ -131,6 +137,17 @@ const DEFAULT_PARAMS = Object.freeze({
   gridRotationSpeed:    0,      // degrees / second (negative = CCW)
   gridSwaySpeed:        0,      // Hz — cycles / second of the circular sway
   gridSwayAmplitude:    0,      // px — radius of the circular sway path
+
+  // 3D geometry (mode3D=true). When mode3D is false the renderer keeps
+  // its existing 2D path; flipping it on switches the lattice to a
+  // torus-to-sphere morphable surface with manual rotation.
+  mode3D:               false,  // master toggle for 3D rendering path
+  torusMajorR:          1.0,    // R — big radius (donut hole size)
+  torusMinorR:          0.4,    // r — small radius (tube thickness)
+  morph:                0.0,    // 0 = pure torus, 1 = pure sphere
+  rotSpeedX:            0,      // degrees / second around world X
+  rotSpeedY:            8,      // degrees / second around world Y
+  rotSpeedZ:            0,      // degrees / second around world Z
 
   // Chord triangles (Tonnetz triads). Lit when all three vertex PCs are
   // simultaneously active. Subtle by default — they sit behind the blobs
@@ -217,6 +234,13 @@ export class ResonanceArtView {
     this._gridOffsetX = 0;     // current applied offset (computed from sway)
     this._gridOffsetY = 0;
 
+    // 3D rotation state (mode3D). Accumulated radians around each world
+    // axis; advanced in _updateGridTransform when mode3D is on.
+    this._rotX = 0;
+    this._rotY = 0;
+    this._rotZ = 0;
+    this._projScale = 1;       // k — orthographic scale, set in _resize
+
     this._rafId = null;
     this._running = false;
     this._unsubscribe = null;
@@ -267,6 +291,11 @@ export class ResonanceArtView {
     this._gridOffsetX = 0;
     this._gridOffsetY = 0;
 
+    // 3D rotation resets too — fresh mount begins at identity rotation.
+    this._rotX = 0;
+    this._rotY = 0;
+    this._rotZ = 0;
+
     // Seed with current state so a chord held before the tab mounts is
     // reflected immediately; HarmonyState.on doesn't fire an initial snapshot.
     this._readHarmonyState(HarmonyState.get());
@@ -307,16 +336,22 @@ export class ResonanceArtView {
   setParam(key, value) {
     if (Object.prototype.hasOwnProperty.call(DEFAULT_PARAMS, key)) {
       this.params[key] = value;
+      // mode3D switches lattice topology (7×5 vs 12×4) — rebuild so node
+      // count, neighbors, and triangles match the new mode.
+      if (key === 'mode3D') this._buildGrid();
     }
   }
 
   setParams(obj) {
     if (!obj || typeof obj !== 'object') return;
+    let modeChanged = false;
     for (const key of Object.keys(obj)) {
       if (Object.prototype.hasOwnProperty.call(DEFAULT_PARAMS, key)) {
+        if (key === 'mode3D' && this.params.mode3D !== obj[key]) modeChanged = true;
         this.params[key] = obj[key];
       }
     }
+    if (modeChanged) this._buildGrid();
   }
 
   // ── Geometry ──────────────────────────────────────────────────
@@ -329,10 +364,20 @@ export class ResonanceArtView {
     this.canvas.width  = Math.floor(this.width  * this.dpr);
     this.canvas.height = Math.floor(this.height * this.dpr);
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    // Orthographic scale used by mode3D. Fits a torus of (R + r) into
+    // ~70% of the smaller canvas dimension. The divisor uses torus radii
+    // even when morphing toward a sphere — the sphere has radius R ≤ R + r,
+    // so the shape never grows past the initial fit as morph rises.
+    const fit = Math.min(this.width, this.height) * 0.35;
+    this._projScale = fit / (this.params.torusMajorR + this.params.torusMinorR);
     this._buildGrid();
   }
 
   _buildGrid() {
+    if (this.params.mode3D) {
+      this._build3DGrid();
+      return;
+    }
     const W = this.width, H = this.height;
     // Horizontal extent is 8·dx (col span 0..6 plus row skew 0..4 × ½),
     // vertical extent is 4·dy.
@@ -401,6 +446,113 @@ export class ResonanceArtView {
     // Node radius scales with grid density
     this._nodeBaseR = Math.max(8, Math.min(dx, dy) * 0.18);
     this._nodeMaxR  = Math.min(dx, dy) * 0.55 * 1.3;
+  }
+
+  // 3D lattice: 12 cols × 4 rows on a torus-to-sphere morphable surface.
+  // Nodes carry (u, v) parametric coords instead of static (x, y) — canvas
+  // positions are computed per-frame in _transformedNode. Edges wrap
+  // toroidally so every node has all six Tonnetz neighbors. Triangles are
+  // intentionally left empty in this prompt; they arrive in Stage 1
+  // Prompt 2 (with back-face / winding handling).
+  _build3DGrid() {
+    const COLS = GRID_COLS_3D;
+    const ROWS = GRID_ROWS_3D;
+    const dU = (Math.PI * 2) / COLS;
+    const dV = (Math.PI * 2) / ROWS;
+
+    this.nodes = [];
+    this.nodesByPC = Array.from({ length: 12 }, () => []);
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const u = col * dU;
+        const v = row * dV;
+        const pc = ((7 * col + 3 * row) % 12 + 12) % 12;
+        const idx = this.nodes.length;
+        this.nodes.push({ col, row, u, v, pc });
+        this.nodesByPC[pc].push(idx);
+      }
+    }
+
+    const nodeIdxAt = (col, row) => row * COLS + col;
+    const seen = new Set();
+    this.edges = [];
+    for (const n of this.nodes) {
+      const a = nodeIdxAt(n.col, n.row);
+      for (const [dc, dr] of NEIGHBOR_OFFSETS) {
+        const c2 = ((n.col + dc) % COLS + COLS) % COLS;
+        const r2 = ((n.row + dr) % ROWS + ROWS) % ROWS;
+        const b = nodeIdxAt(c2, r2);
+        const key = a < b ? (a + ',' + b) : (b + ',' + a);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        this.edges.push([a, b]);
+      }
+    }
+
+    // No triangles in Prompt 1 — added with back-face/winding in Prompt 2.
+    this.triangles = [];
+
+    // Approximate node-radius scaling for blob rendering. Blobs come up
+    // in a later prompt; pick a sensible default off projection scale so
+    // _drawBlobs (if it runs in 3D) doesn't divide by zero.
+    const k = this._projScale;
+    this._nodeBaseR = Math.max(6, k * 0.05);
+    this._nodeMaxR  = Math.max(12, k * 0.18);
+  }
+
+  // ── 3D math helpers ───────────────────────────────────────────
+  // Linearly interpolate between the torus and sphere vertex positions
+  // sharing the same (u, v) parameterization. morph ∈ [0, 1].
+  _uvToXYZ(u, v, morph) {
+    const R = this.params.torusMajorR;
+    const r = this.params.torusMinorR;
+    const cu = Math.cos(u), su = Math.sin(u);
+    const cv = Math.cos(v), sv = Math.sin(v);
+    const tx = (R + r * cv) * cu;
+    const ty = (R + r * cv) * su;
+    const tz = r * sv;
+    const sx = R * cv * cu;
+    const sy = R * cv * su;
+    const sz = R * sv;
+    const m = morph;
+    const im = 1 - m;
+    return {
+      x: tx * im + sx * m,
+      y: ty * im + sy * m,
+      z: tz * im + sz * m,
+    };
+  }
+
+  // Apply rotations around world X, then Y, then Z (Euler XYZ).
+  _rotate3D(p) {
+    let x = p.x, y = p.y, z = p.z;
+    // X
+    const cx = Math.cos(this._rotX), sx = Math.sin(this._rotX);
+    let y1 = y * cx - z * sx;
+    let z1 = y * sx + z * cx;
+    y = y1; z = z1;
+    // Y
+    const cy = Math.cos(this._rotY), sy = Math.sin(this._rotY);
+    let x2 = x * cy + z * sy;
+    let z2 = -x * sy + z * cy;
+    x = x2; z = z2;
+    // Z
+    const cz = Math.cos(this._rotZ), sz = Math.sin(this._rotZ);
+    let x3 = x * cz - y * sz;
+    let y3 = x * sz + y * cz;
+    x = x3; y = y3;
+    return { x, y, z };
+  }
+
+  // Orthographic projection: drop z, scale by k, center on canvas. Y is
+  // flipped so +y points up in world space.
+  _projectOrtho(p) {
+    const k = this._projScale;
+    return {
+      screenX: this.width / 2 + k * p.x,
+      screenY: this.height / 2 - k * p.y,
+      depth: p.z,
+    };
   }
 
   // ── HarmonyState → role/active flags ──────────────────────────
@@ -531,6 +683,13 @@ export class ResonanceArtView {
   // whole grid around a small circle. Both are independent and compose
   // additively. Both default to 0 — baseline visualization is static.
   _updateGridTransform(dt) {
+    if (this.params.mode3D) {
+      const k = (Math.PI / 180) * dt;
+      this._rotX += this.params.rotSpeedX * k;
+      this._rotY += this.params.rotSpeedY * k;
+      this._rotZ += this.params.rotSpeedZ * k;
+      return;
+    }
     this._gridAngle += this.params.gridRotationSpeed * (Math.PI / 180) * dt;
     this._gridTime  += dt;
     const phase = this._gridTime * this.params.gridSwaySpeed * 2 * Math.PI;
@@ -542,7 +701,16 @@ export class ResonanceArtView {
   // transform: rotate about canvas center, then translate by the sway
   // offset. Nodes are stored in their static layout positions; this is
   // the single place where motion is applied.
+  //
+  // In mode3D, nodes carry (u, v) instead of (x, y); compute the canvas
+  // position by mapping (u, v) → 3D, rotating, then projecting.
   _transformedNode(n) {
+    if (this.params.mode3D) {
+      const p3 = this._uvToXYZ(n.u, n.v, this.params.morph);
+      const rot = this._rotate3D(p3);
+      const proj = this._projectOrtho(rot);
+      return { x: proj.screenX, y: proj.screenY };
+    }
     const cx = this.width / 2;
     const cy = this.height / 2;
     const dx = n.x - cx;

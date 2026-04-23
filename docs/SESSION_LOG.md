@@ -4,6 +4,38 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-22 — Art Lab 3D rendering, Stage 1 Prompt 1: torus/sphere lattice (nodes + edges)
+
+**Focus:** Add a 3D rendering path to `/art` behind a `mode3D` feature flag. Lattice projects onto a torus-to-sphere morphable surface with manual rotation and morph sliders; rendered as nodes + edges only. The 2D path stays unchanged when the flag is off (default). Triangles, back-face alpha, particles-in-3D, and audio reactivity are explicitly deferred.
+
+### Geometry & math (resonance-art-view.js)
+- New module constants `GRID_COLS_3D = 12` (P5 → u, wraps the big circle) and `GRID_ROWS_3D = 4` (m3 → v, wraps the tube). `(u, v)` parameterization shared by torus and sphere; PC formula unchanged: `(7·col + 3·row) mod 12`. Each PC appears 4× on the surface.
+- Parametric surfaces: torus `((R + r·cos v)·cos u, (R + r·cos v)·sin u, r·sin v)` and sphere `(R·cos v·cos u, R·cos v·sin u, R·sin v)`. Linear `morph ∈ [0, 1]` interpolates vertex positions.
+- Rotation: three independent angular velocities `rotSpeedX/Y/Z` around world axes, accumulated as radians per frame in `_updateGridTransform`. Euler order XYZ.
+- Projection: orthographic via `_projectOrtho`. `_projScale` recomputed in `_resize` to fit `(R + r)` into ~70 % of the smaller canvas dimension; deliberately not recomputed when `morph` / radii sliders move (good enough for Stage 1, revisit if it clips).
+
+### Mode-aware path (no behavior change with mode3D=false)
+- `_buildGrid` branches: mode3D off keeps the existing 7×5 layout intact; mode3D on calls `_build3DGrid` which builds 48 nodes carrying `(col, row, u, v, pc)` and toroidally-wrapped edges (every node has all six Tonnetz neighbors). Triangles intentionally `[]` until Prompt 2.
+- `_transformedNode` branches the same way: 2D mode keeps its rigid-body rotate-and-sway transform; 3D mode runs `_uvToXYZ → _rotate3D → _projectOrtho` per node per frame. `_drawGrid` (edges + dots) reuses these projected coords without modification.
+- `setParam`/`setParams` rebuild the lattice when `mode3D` flips (topology change — node count and neighbors differ). Other 3D params take effect immediately without rebuild.
+
+### Debug panel additions (templates/art.html)
+- New SLIDER_GROUPS section "3D Geometry" after "Grid Motion": `mode3D` (checkbox), `morph`, `torusMajorR`, `torusMinorR`, `rotSpeedX/Y/Z`.
+- Row builder extended to support `kind: 'toggle'` — checkbox in the slider column, "on"/"off" readout in the value column. Layout matches the existing slider rows (no CSS tweaks needed). `_syncSlidersFromView` updated to handle toggle refs.
+- Default `rotSpeedY = 8 deg/s` so flipping mode3D on produces an obviously-3D rotating shape on first render — no need to dial in a speed before it looks alive.
+
+### Explicitly deferred to Prompt 2 / later stages
+- Triangle rendering in 3D (Prompt 2).
+- Back-face alpha + winding-based occlusion (Prompt 2).
+- Particles in 3D (currently spawn at 3D-projected screen positions — functional but visually wrong; later stage).
+- Multi-torus stacking (Stage 1.5), audio-reactive morph (Stage 2).
+
+### Notes
+- `static/shared/resonance-view.js` (Explorer's Resonance tab) intentionally untouched — Art Lab's fork continues to diverge in `resonance-art-view.js` only.
+- No git activity — Dustin commits.
+
+---
+
 ## 2026-04-22 — Art Lab audio infrastructure: MIDI, mic, chord + pitch detection
 
 **Focus:** Wire real audio input into `/art` end-to-end so the visualization responds to actual performance (MIDI keyboard, microphone, sustain pedal) — not just on-screen keyboard clicks. Long session; five-plus hours deep in audio plumbing that uncovered two latent bugs neither of which were in today's new code.

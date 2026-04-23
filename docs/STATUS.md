@@ -1,6 +1,6 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-22
+**Last updated:** 2026-04-22 (late — 3D rendering Prompt 1)
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
@@ -10,10 +10,10 @@
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 22 session wired real audio input into `/art`: MIDI + Launchkey 49 + sustain pedal, on-screen keyboard visibility toggle, chord detection and pitch detection running in parallel with automatic handoff (pitch wins when confident, chord takes over polyphonic). Fixed a latent audio-input routing bug that was causing mic audio to silently not reach the Tone.Analyser — resolves the April 19 Scarlett verification issue. Fixed a latent autoplay-policy bug in shared `pitch-detection.js` that prevented detectors from emitting when created outside a user gesture scope. Role preservation through decay tails (PCs keep their last-active color while decaying). Approaching user testing readiness.
+SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 22 (later session) landed Stage 1 Prompt 1 of the `/art` torus/sphere 3D rendering: `mode3D` feature flag (off by default), 12×4 lattice on a (u, v)-parameterized torus-to-sphere morphable surface, manual rotation around three world axes, debug-panel sliders for `morph` / `torusMajorR/MinorR` / `rotSpeedX/Y/Z`. Nodes + edges only this prompt — triangles, back-face alpha, and particle behavior in 3D land in Prompt 2 and later. Same session also wired real audio input into `/art`: MIDI + Launchkey 49 + sustain pedal, chord + pitch detection in parallel, fixed two latent shared-module bugs (audio-input stale-source rewire and pitch-detection autoplay-policy suspension). Approaching user testing readiness.
 
 **Next priorities:**
-1. **Torus/sphere morph 3D rendering in `/art`** — lattice → (u, v) parametric coords, `morph` parameter (0 = torus, 1 = sphere), manual slider Stage 1, audio-reactive morph Stage 2. Design-doc pass first (non-trivial choices in parameterization, projection, back-face alpha, triangle orientation on curved surface). Work happens in `resonance-art-view.js` + `templates/art.html`; Explorer's `resonance-view.js` stays untouched.
+1. **Torus/sphere morph 3D — Stage 1 Prompt 2:** triangle rendering in 3D (Tonnetz triads on the curved surface) with back-face alpha so triangles on the far side fade rather than overlap the front. Two-pass painter's draw, optional later proper depth-sort. Continues in `resonance-art-view.js` + `templates/art.html`. After Prompt 2: particle reactivity in 3D, then Stage 1.5 multi-torus stacking, then Stage 2 audio-reactive morph.
 2. SkratchLab polish — "Clear All" button should also reset canvas (not just blocks)
 3. Add Polyrhythm Trainer to nav dropdown and landing page
 4. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
@@ -30,6 +30,16 @@ SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Apr
 15. User testing prep (15-20 participants)
 
 **Completed this cycle (April 22):**
+
+- **Art Lab 3D rendering — Stage 1 Prompt 1 (nodes + edges on torus/sphere):**
+  - `mode3D` feature flag in `DEFAULT_PARAMS` (default `false`); 2D path is bit-for-bit unchanged when off.
+  - 3D lattice: 12 cols × 4 rows, nodes carry `(col, row, u, v, pc)` with `u = col·2π/12`, `v = row·2π/4`, PC formula unchanged. Each PC appears 4× on the surface. Edges wrap toroidally — every node has all six Tonnetz neighbors.
+  - Parametric surfaces share `(u, v)`: torus `((R + r cos v) cos u, (R + r cos v) sin u, r sin v)` and sphere `(R cos v cos u, R cos v sin u, R sin v)`. Linear `morph ∈ [0, 1]` interpolates vertex positions.
+  - World-axis rotation around X/Y/Z (Euler XYZ), three independent angular velocities. Default `rotSpeedY = 8 deg/s` so the shape is obviously 3D on first toggle.
+  - Orthographic projection, scale fit `(R + r) → 70 %` of smaller canvas dim, computed in `_resize`.
+  - `_buildGrid` and `_transformedNode` branch on `mode3D`; `_drawGrid` is unchanged. `setParam`/`setParams` rebuild the lattice when `mode3D` toggles.
+  - Debug panel: new "3D Geometry" group with `mode3D` toggle, `morph`, torus radii, rotation speeds. Row builder extended to support `kind: 'toggle'` (checkbox + on/off readout).
+  - Triangles deliberately empty in 3D mode — Prompt 2 adds them with back-face alpha. Particles in 3D look wrong (still spawn in 3D-projected screen space) — addressed in a later stage.
 
 - **Art Lab audio infrastructure — real MIDI + mic input wired end-to-end:**
   - Unified held-notes tracker in `templates/art.html` merging four sources: on-screen keyboard, MIDI held notes, MIDI sustained notes, and detected chord/pitch events. Replaces prior source-agnostic append path with an additive multi-source model.

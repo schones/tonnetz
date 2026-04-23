@@ -878,6 +878,18 @@
           ],
         },
         {
+          title: '3D Geometry',
+          rows: [
+            { key: 'mode3D',       kind: 'toggle' },
+            { key: 'morph',        min: 0,    max: 1,   step: 0.01, kind: 'linear' },
+            { key: 'torusMajorR',  min: 0.5,  max: 2.0, step: 0.05, kind: 'linear' },
+            { key: 'torusMinorR',  min: 0.1,  max: 0.8, step: 0.02, kind: 'linear' },
+            { key: 'rotSpeedX',    min: -60,  max: 60,  step: 1,    kind: 'linear' },
+            { key: 'rotSpeedY',    min: -60,  max: 60,  step: 1,    kind: 'linear' },
+            { key: 'rotSpeedZ',    min: -60,  max: 60,  step: 1,    kind: 'linear' },
+          ],
+        },
+        {
           title: 'Chord Triangles',
           rows: [
             { key: 'triangleIntensityScale', min: 1,   max: 500, step: 5,    kind: 'linear' },
@@ -995,28 +1007,46 @@
           const label = document.createElement('label');
           label.textContent = row.key;
           label.title = row.key;
-          const range = document.createElement('input');
-          range.type = 'range';
-          if (row.kind === 'log') {
-            range.min = '0'; range.max = '100'; range.step = '1';
-          } else {
-            range.min = String(row.min);
-            range.max = String(row.max);
-            range.step = String(row.step);
-          }
-          const readout = document.createElement('span');
-          readout.className = 'sl-adbg__val';
           rowEl.appendChild(label);
-          rowEl.appendChild(range);
-          rowEl.appendChild(readout);
-          section.appendChild(rowEl);
 
-          rowRefs[row.key] = { range, readout, meta: row };
-          range.addEventListener('input', () => {
-            const v = _readSliderValue(row, range.value);
-            view.setParam(row.key, v);
-            readout.textContent = _formatVal(row.key, v);
-          });
+          if (row.kind === 'toggle') {
+            // Checkbox sits in the slider column so the readout slot can
+            // still show "on" / "off" — keeps the grid layout consistent.
+            const check = document.createElement('input');
+            check.type = 'checkbox';
+            check.style.justifySelf = 'start';
+            const readout = document.createElement('span');
+            readout.className = 'sl-adbg__val';
+            rowEl.appendChild(check);
+            rowEl.appendChild(readout);
+            section.appendChild(rowEl);
+            rowRefs[row.key] = { check, readout, meta: row };
+            check.addEventListener('change', () => {
+              view.setParam(row.key, check.checked);
+              readout.textContent = check.checked ? 'on' : 'off';
+            });
+          } else {
+            const range = document.createElement('input');
+            range.type = 'range';
+            if (row.kind === 'log') {
+              range.min = '0'; range.max = '100'; range.step = '1';
+            } else {
+              range.min = String(row.min);
+              range.max = String(row.max);
+              range.step = String(row.step);
+            }
+            const readout = document.createElement('span');
+            readout.className = 'sl-adbg__val';
+            rowEl.appendChild(range);
+            rowEl.appendChild(readout);
+            section.appendChild(rowEl);
+            rowRefs[row.key] = { range, readout, meta: row };
+            range.addEventListener('input', () => {
+              const v = _readSliderValue(row, range.value);
+              view.setParam(row.key, v);
+              readout.textContent = _formatVal(row.key, v);
+            });
+          }
         }
         scroll.appendChild(section);
       }
@@ -1049,11 +1079,17 @@
       function _syncSlidersFromView() {
         const current = view.getParams();
         for (const key of Object.keys(rowRefs)) {
-          const { range, readout, meta } = rowRefs[key];
+          const ref = rowRefs[key];
           const v = current[key];
+          if (ref.meta.kind === 'toggle') {
+            const checked = !!v;
+            ref.check.checked = checked;
+            ref.readout.textContent = checked ? 'on' : 'off';
+            continue;
+          }
           if (typeof v !== 'number') continue;
-          range.value = _writeSliderValue(meta, v);
-          readout.textContent = _formatVal(key, v);
+          ref.range.value = _writeSliderValue(ref.meta, v);
+          ref.readout.textContent = _formatVal(key, v);
         }
       }
 
