@@ -150,16 +150,19 @@ const DEFAULT_PARAMS = Object.freeze({
   rotSpeedZ:            0,      // degrees / second around world Z
 
   // 3D triangles (mode3D=true). Always-visible scaffold of 96 triads
-  // (12·4·2) on the curved surface, tinted warm/cool by major/minor
-  // direction. Continuous back-face alpha — far-side triangles fade to
-  // ~20% of base, near-side render at full base, smooth through the
-  // silhouette. Distinct from the 2D triangleFillAlphaPeak path, which
-  // remains audio-reactive and only lights when triads are held.
+  // (12·4·2) on the curved surface, rendered in grayscale for clean
+  // depth perception. Continuous back-face alpha — far-side triangles
+  // fade to ~20% of base, near-side render at full base, smooth through
+  // the silhouette. The audio-reactive overlay (held triads) uses the
+  // warm/cool majorTriadColor / minorTriadColor so lit chords pop
+  // against the neutral surface.
   triangle3DBaseAlpha:   0.45,  // base fill alpha before back-face scaling
   triangle3DStrokeAlpha: 0.6,   // edge stroke alpha (same back-face scaling applied)
   triangle3DStrokeWidth: 1.2,
-  majorTriadColor:      [220, 165,  90],  // warm — gold / amber
-  minorTriadColor:      [ 90, 140, 210],  // cool — blue / indigo
+  scaffoldMajorColor:   [170, 170, 170],  // light gray — scaffold only
+  scaffoldMinorColor:   [115, 115, 115],  // mid gray  — scaffold only
+  majorTriadColor:      [220, 165,  90],  // warm — overlay only
+  minorTriadColor:      [ 90, 140, 210],  // cool — overlay only
 
   // Chord triangles (Tonnetz triads). Lit when all three vertex PCs are
   // simultaneously active. Subtle by default — they sit behind the blobs
@@ -877,6 +880,8 @@ export class ResonanceArtView {
     if (!tris || !tris.length) return;
     const ctx = this.ctx;
     const morph = this.params.morph;
+    const scaffoldMajorC = this.params.scaffoldMajorColor;
+    const scaffoldMinorC = this.params.scaffoldMinorColor;
     const majorC = this.params.majorTriadColor;
     const minorC = this.params.minorTriadColor;
     const baseA  = this.params.triangle3DBaseAlpha;
@@ -931,7 +936,9 @@ export class ResonanceArtView {
       }
       const facing = nz / nlen;        // n.z after normalize, ∈ [-1, 1]
       const alphaFactor = 0.6 + 0.4 * facing;  // ∈ [0.2, 1.0]
-      const color = (t.type === 'major') ? majorC : minorC;
+      const isMajor = (t.type === 'major');
+      const scaffoldColor = isMajor ? scaffoldMajorC : scaffoldMinorC;
+      const overlayColor  = isMajor ? majorC         : minorC;
 
       const s0 = this._projectOrtho(p0r);
       const s1 = this._projectOrtho(p1r);
@@ -943,10 +950,10 @@ export class ResonanceArtView {
       ctx.lineTo(s2.screenX, s2.screenY);
       ctx.closePath();
 
-      ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${baseA * alphaFactor})`;
+      ctx.fillStyle = `rgba(${scaffoldColor[0]}, ${scaffoldColor[1]}, ${scaffoldColor[2]}, ${baseA * alphaFactor})`;
       ctx.fill();
 
-      ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${strokeA * alphaFactor})`;
+      ctx.strokeStyle = `rgba(${scaffoldColor[0]}, ${scaffoldColor[1]}, ${scaffoldColor[2]}, ${strokeA * alphaFactor})`;
       ctx.stroke();
 
       const c = cache[i];
@@ -955,7 +962,7 @@ export class ResonanceArtView {
       c.x1 = s1.screenX; c.y1 = s1.screenY;
       c.x2 = s2.screenX; c.y2 = s2.screenY;
       c.alphaFactor = alphaFactor;
-      c.color = color;
+      c.color = overlayColor;
     }
 
     // ── Audio-reactive overlay pass ──────────────────────────────

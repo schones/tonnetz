@@ -4,6 +4,12 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-22 — Art Lab 3D triangles: grayscale scaffold, colored overlay
+
+Separated 3D triangle scaffold color (grayscale) from audio-reactive overlay color (warm/cool) so held chords pop against a neutral surface. New code-only params `scaffoldMajorColor` / `scaffoldMinorColor` drive the always-visible pass; `majorTriadColor` / `minorTriadColor` are now overlay-only. Scaffold pass caches the per-triangle overlay color so the overlay pass still finds warm/cool tints without recomputing. Back-face `alphaFactor` still applies to both passes; no changes to 2D `_drawTriangles` or to `resonance-view.js`.
+
+---
+
 ## 2026-04-22 — Art Lab 3D triangles: audio-reactive overlay pass
 
 **Fix:** `_drawTriangles3D` only rendered the warm/cool scaffold — it never consulted `pcState`, so held triads didn't brighten in 3D mode. Added a second pass inside the same `save/restore` that audio-reactively overlays lit triangles on top of the scaffold.
