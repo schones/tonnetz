@@ -3,1203 +3,1388 @@
 {% block title %}Art Lab — Resonance Sandbox · SongLab{% endblock %}
 
 {% block head %}
-  <style>
-    /* ── Page frame ───────────────────────────────────────────── */
-    .art-page {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-md, 12px);
-      padding: var(--space-lg, 16px) var(--space-xl, 24px);
-      /* Fill viewport below the global SongLab nav (~72px incl. borders). */
-      min-height: calc(100vh - 72px);
-      box-sizing: border-box;
-      background: var(--bg-primary, #15151B);
-      color: var(--text-primary, #F2EFE6);
-    }
+<style>
+  /* ── Page frame ───────────────────────────────────────────── */
+  .art-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md, 12px);
+    padding: var(--space-lg, 16px) var(--space-xl, 24px);
+    /* Fill viewport below the global SongLab nav (~72px incl. borders). */
+    min-height: calc(100vh - 72px);
+    box-sizing: border-box;
+    background: var(--bg-primary, #15151B);
+    color: var(--text-primary, #F2EFE6);
+  }
 
-    .art-header {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: var(--space-md, 12px);
-    }
-    .art-title {
-      margin: 0;
-      font-family: var(--font-family-display, var(--font-main));
-      font-size: var(--font-size-xl, 1.5rem);
-      font-weight: var(--font-weight-medium, 500);
-      letter-spacing: -0.01em;
-      color: var(--text-primary, #F2EFE6);
-    }
-    .art-subtitle {
-      margin: 0;
-      font-size: var(--font-size-sm, 0.9rem);
-      color: var(--text-secondary, #B5AE9F);
-    }
+  .art-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-md, 12px);
+  }
 
-    /* ── Canvas stage (dominant visual element) ───────────────── */
-    .art-stage {
-      position: relative;
-      width: 100%;
-      flex: 1 1 auto;
-      min-height: 420px;
-      /* Cap so the keyboard + hardware row stay visible on short viewports. */
-      height: calc(100vh - 360px);
-      border-radius: var(--radius-lg, 10px);
-      border: 1px solid var(--border, #2E2E3A);
-      background: #080808;
-      overflow: hidden;
-    }
+  .art-title {
+    margin: 0;
+    font-family: var(--font-family-display, var(--font-main));
+    font-size: var(--font-size-xl, 1.5rem);
+    font-weight: var(--font-weight-medium, 500);
+    letter-spacing: -0.01em;
+    color: var(--text-primary, #F2EFE6);
+  }
 
-    /* ── Keyboard panel ───────────────────────────────────────── */
-    .art-keyboard {
-      background: var(--bg-card, #1C1C24);
-      border: 1px solid var(--border, #2E2E3A);
-      border-radius: var(--radius-lg, 10px);
-      padding: var(--space-md, 12px) var(--space-lg, 16px);
-    }
-    .art-keyboard__header {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md, 12px);
-      margin-bottom: var(--space-sm, 8px);
-      flex-wrap: wrap;
-    }
-    .art-keyboard__label {
-      font-size: var(--font-size-xs, 0.78rem);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-secondary, #B5AE9F);
-    }
-    .art-keyboard--hidden { display: none; }
+  .art-subtitle {
+    margin: 0;
+    font-size: var(--font-size-sm, 0.9rem);
+    color: var(--text-secondary, #B5AE9F);
+  }
 
-    /* ── Hardware row ─────────────────────────────────────────── */
-    .art-hardware {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md, 12px);
-      padding: var(--space-sm, 8px) var(--space-lg, 16px);
-      background: var(--bg-card, #1C1C24);
-      border: 1px solid var(--border, #2E2E3A);
-      border-radius: var(--radius-lg, 10px);
-      flex-wrap: wrap;
-    }
-    .art-hardware__label {
-      font-size: var(--font-size-xs, 0.78rem);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-secondary, #B5AE9F);
-      margin-right: var(--space-sm, 8px);
-    }
-    .art-hw-select {
-      background: var(--bg-input, #12121A);
-      color: var(--text-primary, #F2EFE6);
-      border: 1px solid var(--border-input, #43434F);
-      border-radius: var(--radius-md, 6px);
-      padding: 6px 10px;
-      font-family: inherit;
-      font-size: var(--font-size-sm, 0.88rem);
-      min-width: 240px;
-    }
-    .art-hw-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: var(--font-size-xs, 0.78rem);
-      color: var(--text-secondary, #B5AE9F);
-    }
-    .art-hw-status[data-state="active"] { color: var(--text-primary, #F2EFE6); }
-    .art-hw-status[data-state="error"]  { color: #E28A8A; }
-    .art-hw-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #555;
-    }
-    .art-hw-status[data-state="active"] .art-hw-dot { background: #4CAF50; box-shadow: 0 0 6px rgba(76,175,80,0.6); }
-    .art-hw-status[data-state="error"]  .art-hw-dot { background: #E28A8A; }
-    .art-hw-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 10px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      background: transparent;
-      color: var(--text-secondary, #B5AE9F);
-      border: 1px solid var(--border, #2E2E3A);
-    }
-    .art-hw-badge[data-quality="interface"] {
-      color: #EAD7A3;
-      border-color: #8A7A4A;
-      background: rgba(212, 160, 60, 0.10);
-    }
-    .art-hw-badge[data-quality="mic"] {
-      color: #B3D0E8;
-      border-color: #3A6A8A;
-      background: rgba(58, 139, 201, 0.10);
-    }
-    .art-hw-toggle {
-      margin-left: auto;
-      background: var(--bg-input, #12121A);
-      color: var(--text-secondary, #B5AE9F);
-      border: 1px solid var(--border-input, #43434F);
-      border-radius: var(--radius-md, 6px);
-      padding: 6px 12px;
-      font-family: inherit;
-      font-size: var(--font-size-xs, 0.78rem);
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-    .art-hw-toggle:hover { color: var(--text-primary, #F2EFE6); }
-    .art-hw-toggle[aria-pressed="true"] {
-      color: var(--text-primary, #F2EFE6);
-      background: rgba(212, 160, 60, 0.10);
-      border-color: #8A7A4A;
-    }
+  /* ── Canvas stage (dominant visual element) ───────────────── */
+  .art-stage {
+    position: relative;
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 420px;
+    /* Cap so the keyboard + hardware row stay visible on short viewports. */
+    height: calc(100vh - 360px);
+    border-radius: var(--radius-lg, 10px);
+    border: 1px solid var(--border, #2E2E3A);
+    background: #080808;
+    overflow: hidden;
+  }
 
-    /* Art Lab debug panel (same visual system as Explorer's Resonance
+  /* ── Keyboard panel ───────────────────────────────────────── */
+  .art-keyboard {
+    background: var(--bg-card, #1C1C24);
+    border: 1px solid var(--border, #2E2E3A);
+    border-radius: var(--radius-lg, 10px);
+    padding: var(--space-md, 12px) var(--space-lg, 16px);
+  }
+
+  .art-keyboard__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md, 12px);
+    margin-bottom: var(--space-sm, 8px);
+    flex-wrap: wrap;
+  }
+
+  .art-keyboard__label {
+    font-size: var(--font-size-xs, 0.78rem);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary, #B5AE9F);
+  }
+
+  .art-keyboard--hidden {
+    display: none;
+  }
+
+  /* ── Hardware row ─────────────────────────────────────────── */
+  .art-hardware {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md, 12px);
+    padding: var(--space-sm, 8px) var(--space-lg, 16px);
+    background: var(--bg-card, #1C1C24);
+    border: 1px solid var(--border, #2E2E3A);
+    border-radius: var(--radius-lg, 10px);
+    flex-wrap: wrap;
+  }
+
+  .art-hardware__label {
+    font-size: var(--font-size-xs, 0.78rem);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary, #B5AE9F);
+    margin-right: var(--space-sm, 8px);
+  }
+
+  .art-hw-select {
+    background: var(--bg-input, #12121A);
+    color: var(--text-primary, #F2EFE6);
+    border: 1px solid var(--border-input, #43434F);
+    border-radius: var(--radius-md, 6px);
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: var(--font-size-sm, 0.88rem);
+    min-width: 240px;
+  }
+
+  .art-hw-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-size-xs, 0.78rem);
+    color: var(--text-secondary, #B5AE9F);
+  }
+
+  .art-hw-status[data-state="active"] {
+    color: var(--text-primary, #F2EFE6);
+  }
+
+  .art-hw-status[data-state="error"] {
+    color: #E28A8A;
+  }
+
+  .art-hw-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #555;
+  }
+
+  .art-hw-status[data-state="active"] .art-hw-dot {
+    background: #4CAF50;
+    box-shadow: 0 0 6px rgba(76, 175, 80, 0.6);
+  }
+
+  .art-hw-status[data-state="error"] .art-hw-dot {
+    background: #E28A8A;
+  }
+
+  .art-hw-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--text-secondary, #B5AE9F);
+    border: 1px solid var(--border, #2E2E3A);
+  }
+
+  .art-hw-badge[data-quality="interface"] {
+    color: #EAD7A3;
+    border-color: #8A7A4A;
+    background: rgba(212, 160, 60, 0.10);
+  }
+
+  .art-hw-badge[data-quality="mic"] {
+    color: #B3D0E8;
+    border-color: #3A6A8A;
+    background: rgba(58, 139, 201, 0.10);
+  }
+
+  .art-hw-toggle {
+    margin-left: auto;
+    background: var(--bg-input, #12121A);
+    color: var(--text-secondary, #B5AE9F);
+    border: 1px solid var(--border-input, #43434F);
+    border-radius: var(--radius-md, 6px);
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: var(--font-size-xs, 0.78rem);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .art-hw-toggle:hover {
+    color: var(--text-primary, #F2EFE6);
+  }
+
+  .art-hw-toggle[aria-pressed="true"] {
+    color: var(--text-primary, #F2EFE6);
+    background: rgba(212, 160, 60, 0.10);
+    border-color: #8A7A4A;
+  }
+
+  /* Art Lab debug panel (same visual system as Explorer's Resonance
        tuning panel, re-themed via the .sl-adbg- prefix so art presets
        never collide with Explorer ones.) */
-    .sl-adbg { position: absolute; right: 16px; top: 16px; bottom: 16px; z-index: 40;
-      display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-end;
-      pointer-events: none;
-      font-family: var(--font-family-base, var(--font-main)); color: var(--text-primary, #F2EFE6); }
-    .sl-adbg__launcher { background: rgba(20, 20, 24, 0.92); color: inherit;
-      border: 1px solid var(--border, #2E2E3A); border-radius: var(--radius-md, 6px);
-      padding: 6px 10px; font-size: 12px; cursor: pointer;
-      pointer-events: auto;
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-    .sl-adbg__launcher:hover { background: rgba(35, 35, 46, 0.95); }
-    .sl-adbg__panel { width: 280px;
-      flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
-      pointer-events: auto; overflow: hidden;
-      background: rgba(20, 20, 24, 0.92); border: 1px solid var(--border, #2E2E3A);
-      border-radius: var(--radius-lg, 8px);
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.45); font-size: 11px; }
-    .sl-adbg__header { flex-shrink: 0;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 10px; border-bottom: 1px solid var(--border-subtle, #23232E);
-      font-weight: 500; font-size: 12px; }
-    .sl-adbg__close { background: none; border: none; color: var(--text-secondary, #C7C2B5);
-      cursor: pointer; font-size: 14px; padding: 0 4px; line-height: 1; }
-    .sl-adbg__close:hover { color: var(--text-primary, #F2EFE6); }
-    .sl-adbg__preset-bar { flex-shrink: 0;
-      padding: 8px 10px; border-bottom: 1px solid var(--border-subtle, #23232E);
-      display: grid; grid-template-columns: 1fr; gap: 6px; }
-    .sl-adbg__scroll { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
-    .sl-adbg__preset-select { width: 100%; background: var(--bg-input, #12121A);
-      color: var(--text-primary, #F2EFE6); border: 1px solid var(--border, #2E2E3A);
-      border-radius: var(--radius-sm, 4px); padding: 4px 6px; font-size: 11px; }
-    .sl-adbg__btn-row { display: flex; gap: 6px; }
-    .sl-adbg__btn { flex: 1; background: var(--bg-raised, #23232E); color: inherit;
-      border: 1px solid var(--border, #2E2E3A); border-radius: var(--radius-sm, 4px);
-      padding: 5px 8px; font-size: 11px; cursor: pointer; }
-    .sl-adbg__btn:hover { background: var(--border-strong, #43434F); }
-    .sl-adbg__save-row { display: flex; gap: 6px; align-items: center; }
-    .sl-adbg__save-row .sl-adbg__btn { flex: 0 0 auto; padding: 5px 10px; }
-    .sl-adbg__save-input { flex: 1 1 auto; min-width: 0;
-      background: var(--bg-input, #12121A); color: var(--text-primary, #F2EFE6);
-      border: 1px solid var(--border, #2E2E3A); border-radius: var(--radius-sm, 4px);
-      padding: 4px 6px; font-size: 11px; }
-    .sl-adbg__save-input:focus { outline: none; border-color: var(--border-strong, #43434F); }
-    .sl-adbg__section { border-bottom: 1px solid var(--border-subtle, #23232E); }
-    .sl-adbg__section:last-child { border-bottom: none; }
-    .sl-adbg__section > summary { padding: 6px 10px; cursor: pointer;
-      font-size: 11px; font-weight: 500; color: var(--text-secondary, #C7C2B5);
-      list-style: none; }
-    .sl-adbg__section > summary::-webkit-details-marker { display: none; }
-    .sl-adbg__section > summary::before { content: '▸'; display: inline-block;
-      margin-right: 6px; transition: transform 120ms ease; }
-    .sl-adbg__section[open] > summary::before { transform: rotate(90deg); }
-    .sl-adbg__row { display: grid; grid-template-columns: 1fr 90px 44px;
-      gap: 6px; align-items: center; padding: 3px 10px; font-size: 10px; }
-    .sl-adbg__row label { color: var(--text-muted, #9A9486); font-family: ui-monospace, Menlo, monospace;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sl-adbg__row input[type="range"] { width: 100%; margin: 0; }
-    .sl-adbg__val { text-align: right; font-family: ui-monospace, Menlo, monospace;
-      color: var(--text-primary, #F2EFE6); font-size: 10px; }
-    .sl-adbg--hidden { display: none; }
-  </style>
+  .sl-adbg {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    bottom: 16px;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-end;
+    pointer-events: none;
+    font-family: var(--font-family-base, var(--font-main));
+    color: var(--text-primary, #F2EFE6);
+  }
+
+  .sl-adbg__launcher {
+    background: rgba(20, 20, 24, 0.92);
+    color: inherit;
+    border: 1px solid var(--border, #2E2E3A);
+    border-radius: var(--radius-md, 6px);
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    pointer-events: auto;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .sl-adbg__launcher:hover {
+    background: rgba(35, 35, 46, 0.95);
+  }
+
+  .sl-adbg__panel {
+    width: 280px;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    overflow: hidden;
+    background: rgba(20, 20, 24, 0.92);
+    border: 1px solid var(--border, #2E2E3A);
+    border-radius: var(--radius-lg, 8px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    font-size: 11px;
+  }
+
+  .sl-adbg__header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-subtle, #23232E);
+    font-weight: 500;
+    font-size: 12px;
+  }
+
+  .sl-adbg__close {
+    background: none;
+    border: none;
+    color: var(--text-secondary, #C7C2B5);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+    line-height: 1;
+  }
+
+  .sl-adbg__close:hover {
+    color: var(--text-primary, #F2EFE6);
+  }
+
+  .sl-adbg__preset-bar {
+    flex-shrink: 0;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-subtle, #23232E);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .sl-adbg__scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .sl-adbg__preset-select {
+    width: 100%;
+    background: var(--bg-input, #12121A);
+    color: var(--text-primary, #F2EFE6);
+    border: 1px solid var(--border, #2E2E3A);
+    border-radius: var(--radius-sm, 4px);
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .sl-adbg__btn-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .sl-adbg__btn {
+    flex: 1;
+    background: var(--bg-raised, #23232E);
+    color: inherit;
+    border: 1px solid var(--border, #2E2E3A);
+    border-radius: var(--radius-sm, 4px);
+    padding: 5px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .sl-adbg__btn:hover {
+    background: var(--border-strong, #43434F);
+  }
+
+  .sl-adbg__save-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .sl-adbg__save-row .sl-adbg__btn {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+  }
+
+  .sl-adbg__save-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: var(--bg-input, #12121A);
+    color: var(--text-primary, #F2EFE6);
+    border: 1px solid var(--border, #2E2E3A);
+    border-radius: var(--radius-sm, 4px);
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .sl-adbg__save-input:focus {
+    outline: none;
+    border-color: var(--border-strong, #43434F);
+  }
+
+  .sl-adbg__section {
+    border-bottom: 1px solid var(--border-subtle, #23232E);
+  }
+
+  .sl-adbg__section:last-child {
+    border-bottom: none;
+  }
+
+  .sl-adbg__section>summary {
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary, #C7C2B5);
+    list-style: none;
+  }
+
+  .sl-adbg__section>summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .sl-adbg__section>summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 6px;
+    transition: transform 120ms ease;
+  }
+
+  .sl-adbg__section[open]>summary::before {
+    transform: rotate(90deg);
+  }
+
+  .sl-adbg__row {
+    display: grid;
+    grid-template-columns: 1fr 90px 44px;
+    gap: 6px;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 10px;
+  }
+
+  .sl-adbg__row label {
+    color: var(--text-muted, #9A9486);
+    font-family: ui-monospace, Menlo, monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sl-adbg__row input[type="range"] {
+    width: 100%;
+    margin: 0;
+  }
+
+  .sl-adbg__val {
+    text-align: right;
+    font-family: ui-monospace, Menlo, monospace;
+    color: var(--text-primary, #F2EFE6);
+    font-size: 10px;
+  }
+
+  .sl-adbg--hidden {
+    display: none;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-  <main class="art-page">
-    <header class="art-header">
-      <div>
-        <h1 class="art-title">Art Lab — Resonance Sandbox</h1>
-        <p class="art-subtitle">Experimental fork of the Resonance visualization. Play notes to feed it.</p>
-      </div>
-    </header>
+<main class="art-page">
+  <header class="art-header">
+    <div>
+      <h1 class="art-title">Art Lab — Resonance Sandbox</h1>
+      <p class="art-subtitle">Experimental fork of the Resonance visualization. Play notes to feed it.</p>
+    </div>
+  </header>
 
-    <section id="art-stage" class="art-stage" aria-label="Resonance visualization">
-      <!-- ResonanceArtView mounts its canvas here on DOMContentLoaded.
+  <section id="art-stage" class="art-stage" aria-label="Resonance visualization">
+    <!-- ResonanceArtView mounts its canvas here on DOMContentLoaded.
            The debug panel is appended as an overlay by the script below. -->
-    </section>
+  </section>
 
-    <section id="art-keyboard-section" class="art-keyboard art-keyboard--hidden" aria-label="Keyboard">
-      <div class="art-keyboard__header">
-        <span class="art-keyboard__label">Keyboard</span>
-      </div>
-      <div id="art-keyboard-container"></div>
-    </section>
+  <section id="art-keyboard-section" class="art-keyboard art-keyboard--hidden" aria-label="Keyboard">
+    <div class="art-keyboard__header">
+      <span class="art-keyboard__label">Keyboard</span>
+    </div>
+    <div id="art-keyboard-container"></div>
+  </section>
 
-    <section class="art-hardware" aria-label="Audio hardware">
-      <span class="art-hardware__label">Hardware</span>
-      <select class="art-hw-select" id="audio-input-device" title="Audio input device">
-        <option value="">No audio input</option>
-      </select>
-      <span class="art-hw-status" id="audio-input-status" data-state="idle" title="Audio input status">
-        <span class="art-hw-dot"></span>
-        <span class="art-hw-status-text">Off</span>
-      </span>
-      <span class="art-hw-badge" id="audio-input-badge" data-quality=""></span>
-      <button class="art-hw-toggle" id="art-keyboard-toggle" type="button" aria-pressed="false"
-              title="Show or hide the on-screen keyboard">Keyboard</button>
-    </section>
-  </main>
+  <section class="art-hardware" aria-label="Audio hardware">
+    <span class="art-hardware__label">Hardware</span>
+    <select class="art-hw-select" id="audio-input-device" title="Audio input device">
+      <option value="">No audio input</option>
+    </select>
+    <span class="art-hw-status" id="audio-input-status" data-state="idle" title="Audio input status">
+      <span class="art-hw-dot"></span>
+      <span class="art-hw-status-text">Off</span>
+    </span>
+    <span class="art-hw-badge" id="audio-input-badge" data-quality=""></span>
+    <button class="art-hw-toggle" id="art-keyboard-toggle" type="button" aria-pressed="false"
+      title="Show or hide the on-screen keyboard">Keyboard</button>
+  </section>
+</main>
 {% endblock %}
 
 {% block scripts %}
-  <script type="module">
-    import { HarmonyState }
-      from '{{ url_for("static", filename="shared/harmony-state.js") }}';
-    import { noteToPC, NOTE_NAMES }
-      from '{{ url_for("static", filename="shared/transforms.js") }}';
-    import { KeyboardView }
-      from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
-    import { AudioInput }
-      from '{{ url_for("static", filename="shared/audio-input.js") }}';
-    import { ResonanceArtView }
-      from '{{ url_for("static", filename="shared/resonance-art-view.js") }}';
-    import { MIDIInput }
-      from '{{ url_for("static", filename="shared/midi-input.js") }}';
-    import { create as createChordDetector }
-      from '{{ url_for("static", filename="shared/chord-detection.js") }}';
-    import { createPitchDetector }
-      from '{{ url_for("static", filename="shared/pitch-detection.js") }}';
+<script type="module">
+  import { HarmonyState }
+    from '{{ url_for("static", filename="shared/harmony-state.js") }}';
+  import { noteToPC, NOTE_NAMES }
+    from '{{ url_for("static", filename="shared/transforms.js") }}';
+  import { KeyboardView }
+    from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
+  import { AudioInput }
+    from '{{ url_for("static", filename="shared/audio-input.js") }}';
+  import { ResonanceArtView }
+    from '{{ url_for("static", filename="shared/resonance-art-view.js") }}';
+  import { MIDIInput }
+    from '{{ url_for("static", filename="shared/midi-input.js") }}';
+  import { create as createChordDetector }
+    from '{{ url_for("static", filename="shared/chord-detection.js") }}';
+  import { createPitchDetector }
+    from '{{ url_for("static", filename="shared/pitch-detection.js") }}';
 
-    // ── Tone.js loader (mirrors Explorer's pattern) ───────────────
-    // Keyboard playback and the shared FFT analyser both need Tone.
-    // Load it once up-front; the AudioContext stays suspended until
-    // the first user gesture (keyboard click), which is fine.
-    let _toneLoadPromise = null;
-    function loadToneIfNeeded() {
-      if (window.Tone) return Promise.resolve();
-      if (_toneLoadPromise) return _toneLoadPromise;
-      _toneLoadPromise = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('Tone.js failed to load'));
-        document.head.appendChild(s);
+  // ── Tone.js loader (mirrors Explorer's pattern) ───────────────
+  // Keyboard playback and the shared FFT analyser both need Tone.
+  // Load it once up-front; the AudioContext stays suspended until
+  // the first user gesture (keyboard click), which is fine.
+  let _toneLoadPromise = null;
+  function loadToneIfNeeded() {
+    if (window.Tone) return Promise.resolve();
+    if (_toneLoadPromise) return _toneLoadPromise;
+    _toneLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Tone.js failed to load'));
+      document.head.appendChild(s);
+    });
+    return _toneLoadPromise;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // HELD-NOTES TRACKER — merges multiple input sources (on-screen
+  // keyboard now, MIDI in the next prompt) into a single
+  // HarmonyState.activeNotes update. Prevents sources from
+  // clobbering each other.
+  //
+  // The MIDI-related sets and _midiToEntry helper are intentional
+  // scaffolding for the next prompt — leave them in place even
+  // though nothing populates them in this change.
+  // ═══════════════════════════════════════════════════════════════
+  // Set to true when AudioInput auto-restores a device before Tone's
+  // AudioContext is running. The MediaStreamSource gets created in a
+  // fallback context and must be recreated inside Tone's rawContext
+  // once Tone starts. _attachAudioInputToTone() handles the rewire.
+  let _audioInputNeedsToneRewire = false;
+
+  // Audio-driven chord detection state. Populated by chord-detection.js
+  // when audio input is active; cleared by a silence watcher after the
+  // signal goes quiet (the detector only emits on chord *change*, so
+  // without a silence gate the last detected chord would stick forever).
+  let _chordDetector = null;
+  let _detectedChord = null;      // Array<{note, octave, source, color}> | null
+  let _silenceWatcherId = null;
+  let _silenceCounter = 0;
+
+  // Monophonic pitch detection. Runs in parallel with chord detection
+  // and takes precedence when confident — see _syncHarmonyState below.
+  // Uses YIN on raw PCM via ScriptProcessorNode (separate AudioContext
+  // from Tone's). Built-in confidence gate emits frequency=0 when the
+  // signal isn't clearly monophonic, so no external silence watcher.
+  let _pitchDetector = null;
+  let _detectedPitch = null;      // { pc: number, octave: number } | null
+
+  const _heldOnscreenKeys = new Map();         // "C4" → { note, octave }
+  const _heldMidiNotes = new Set();            // integer MIDI numbers currently pressed
+  const _sustainedMidiNotes = new Set();       // released-while-pedal-down, awaiting flush
+  let _pedalDown = false;
+
+  function _midiToEntry(midi) {
+    const pc = midi % 12;
+    const octave = Math.floor(midi / 12) - 1;
+    return { note: NOTE_NAMES[pc], octave, source: 'user', color: null };
+  }
+
+  function _syncHarmonyState() {
+    const entries = [];
+    for (const m of _heldMidiNotes) entries.push(_midiToEntry(m));
+    for (const m of _sustainedMidiNotes) entries.push(_midiToEntry(m));
+    for (const k of _heldOnscreenKeys.values()) {
+      entries.push({ note: k.note, octave: k.octave, source: 'user', color: null });
+    }
+    // Audio-driven detection: prefer monophonic pitch over polyphonic
+    // chord. Pitch detector gates on confidence internally, signaling
+    // "no clear pitch" with frequency=0 — so when the signal becomes
+    // polyphonic or ambiguous, _detectedPitch clears and chord takes over.
+    if (_detectedPitch) {
+      entries.push({
+        note: NOTE_NAMES[_detectedPitch.pc],
+        octave: _detectedPitch.octave,
+        source: 'user',
+        color: null,
       });
-      return _toneLoadPromise;
+    } else if (_detectedChord) {
+      for (const entry of _detectedChord) entries.push(entry);
     }
+    HarmonyState.update({ activeNotes: entries });
+  }
 
-    // ═══════════════════════════════════════════════════════════════
-    // HELD-NOTES TRACKER — merges multiple input sources (on-screen
-    // keyboard now, MIDI in the next prompt) into a single
-    // HarmonyState.activeNotes update. Prevents sources from
-    // clobbering each other.
-    //
-    // The MIDI-related sets and _midiToEntry helper are intentional
-    // scaffolding for the next prompt — leave them in place even
-    // though nothing populates them in this change.
-    // ═══════════════════════════════════════════════════════════════
-    // Set to true when AudioInput auto-restores a device before Tone's
-    // AudioContext is running. The MediaStreamSource gets created in a
-    // fallback context and must be recreated inside Tone's rawContext
-    // once Tone starts. _attachAudioInputToTone() handles the rewire.
-    let _audioInputNeedsToneRewire = false;
+  // ── Bootstrap ─────────────────────────────────────────────────
+  (async function init() {
+    await loadToneIfNeeded();
 
-    // Audio-driven chord detection state. Populated by chord-detection.js
-    // when audio input is active; cleared by a silence watcher after the
-    // signal goes quiet (the detector only emits on chord *change*, so
-    // without a silence gate the last detected chord would stick forever).
-    let _chordDetector = null;
-    let _detectedChord = null;      // Array<{note, octave, source, color}> | null
-    let _silenceWatcherId = null;
-    let _silenceCounter = 0;
+    // Keyboard — mode 'both' means click-to-play with internal audio.
+    // KeyboardView owns the shared Tone.Analyser; ResonanceArtView
+    // reads through it. Matching Explorer's keyboard config (cream
+    // keys, 25-key default, preferredOctave 4).
+    KeyboardView.init('art-keyboard-container', {
+      showLabels: true,
+      mode: 'both',
+      singleOctaveHighlight: true,
+      preferredOctave: 4,
+      range: { low: 'C3', high: 'C5' },   // 25 keys
+      onNotePlay(noteName, octave) {
+        _heldOnscreenKeys.set(`${noteName}${octave}`, { note: noteName, octave });
+        _syncHarmonyState();
+      },
+      onNoteRelease(noteName, octave) {
+        _heldOnscreenKeys.delete(`${noteName}${octave}`);
+        _syncHarmonyState();
+      },
+    });
 
-    // Monophonic pitch detection. Runs in parallel with chord detection
-    // and takes precedence when confident — see _syncHarmonyState below.
-    // Uses YIN on raw PCM via ScriptProcessorNode (separate AudioContext
-    // from Tone's). Built-in confidence gate emits frequency=0 when the
-    // signal isn't clearly monophonic, so no external silence watcher.
-    let _pitchDetector = null;
-    let _detectedPitch = null;      // { pc: number, octave: number } | null
+    // Resonance art view — full-stage canvas, runs continuously.
+    const artView = new ResonanceArtView();
+    artView.init('art-stage');
+    artView.setAnalyser(KeyboardView.getAnalyser());
+    artView.start();
+    window.__artView = artView;   // debug convenience
 
-    const _heldOnscreenKeys = new Map();         // "C4" → { note, octave }
-    const _heldMidiNotes = new Set();            // integer MIDI numbers currently pressed
-    const _sustainedMidiNotes = new Set();       // released-while-pedal-down, awaiting flush
-    let _pedalDown = false;
+    // Debug panel — always on, no URL gate.
+    _buildArtDebugPanel(document.getElementById('art-stage'), artView);
+    console.log('[Art Lab] Tuning panel active.');
 
-    function _midiToEntry(midi) {
-      const pc = midi % 12;
-      const octave = Math.floor(midi / 12) - 1;
-      return { note: NOTE_NAMES[pc], octave, source: 'user', color: null };
-    }
+    // Audio input (Hardware row).
+    _initAudioInput();
 
-    function _syncHarmonyState() {
-      const entries = [];
-      for (const m of _heldMidiNotes)       entries.push(_midiToEntry(m));
-      for (const m of _sustainedMidiNotes)  entries.push(_midiToEntry(m));
-      for (const k of _heldOnscreenKeys.values()) {
-        entries.push({ note: k.note, octave: k.octave, source: 'user', color: null });
+    // ── On-screen keyboard visibility toggle ─────────────────────
+    // Default: hidden. Users who want click-to-play reveal it via
+    // the Hardware row toggle. Persisted in localStorage so the
+    // choice survives refreshes.
+    (function _initKeyboardToggle() {
+      const STORAGE_KEY = 'songlab.art.keyboardVisible';
+      const section = document.getElementById('art-keyboard-section');
+      const btn = document.getElementById('art-keyboard-toggle');
+      if (!section || !btn) return;
+
+      let visible = false;
+      try { visible = localStorage.getItem(STORAGE_KEY) === '1'; } catch (_) { }
+
+      function apply(v) {
+        visible = v;
+        section.classList.toggle('art-keyboard--hidden', !v);
+        btn.setAttribute('aria-pressed', v ? 'true' : 'false');
+        try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0'); } catch (_) { }
       }
-      // Audio-driven detection: prefer monophonic pitch over polyphonic
-      // chord. Pitch detector gates on confidence internally, signaling
-      // "no clear pitch" with frequency=0 — so when the signal becomes
-      // polyphonic or ambiguous, _detectedPitch clears and chord takes over.
-      if (_detectedPitch) {
-        entries.push({
-          note: NOTE_NAMES[_detectedPitch.pc],
-          octave: _detectedPitch.octave,
-          source: 'user',
-          color: null,
-        });
-      } else if (_detectedChord) {
-        for (const entry of _detectedChord) entries.push(entry);
-      }
-      HarmonyState.update({ activeNotes: entries });
-    }
 
-    // ── Bootstrap ─────────────────────────────────────────────────
-    (async function init() {
-      await loadToneIfNeeded();
-
-      // Keyboard — mode 'both' means click-to-play with internal audio.
-      // KeyboardView owns the shared Tone.Analyser; ResonanceArtView
-      // reads through it. Matching Explorer's keyboard config (cream
-      // keys, 25-key default, preferredOctave 4).
-      KeyboardView.init('art-keyboard-container', {
-        showLabels: true,
-        mode: 'both',
-        singleOctaveHighlight: true,
-        preferredOctave: 4,
-        range: { low: 'C3', high: 'C5' },   // 25 keys
-        onNotePlay(noteName, octave) {
-          _heldOnscreenKeys.set(`${noteName}${octave}`, { note: noteName, octave });
-          _syncHarmonyState();
-        },
-        onNoteRelease(noteName, octave) {
-          _heldOnscreenKeys.delete(`${noteName}${octave}`);
-          _syncHarmonyState();
-        },
-      });
-
-      // Resonance art view — full-stage canvas, runs continuously.
-      const artView = new ResonanceArtView();
-      artView.init('art-stage');
-      artView.setAnalyser(KeyboardView.getAnalyser());
-      artView.start();
-      window.__artView = artView;   // debug convenience
-
-      // Debug panel — always on, no URL gate.
-      _buildArtDebugPanel(document.getElementById('art-stage'), artView);
-      console.log('[Art Lab] Tuning panel active.');
-
-      // Audio input (Hardware row).
-      _initAudioInput();
-
-      // ── On-screen keyboard visibility toggle ─────────────────────
-      // Default: hidden. Users who want click-to-play reveal it via
-      // the Hardware row toggle. Persisted in localStorage so the
-      // choice survives refreshes.
-      (function _initKeyboardToggle() {
-        const STORAGE_KEY = 'songlab.art.keyboardVisible';
-        const section = document.getElementById('art-keyboard-section');
-        const btn = document.getElementById('art-keyboard-toggle');
-        if (!section || !btn) return;
-
-        let visible = false;
-        try { visible = localStorage.getItem(STORAGE_KEY) === '1'; } catch (_) {}
-
-        function apply(v) {
-          visible = v;
-          section.classList.toggle('art-keyboard--hidden', !v);
-          btn.setAttribute('aria-pressed', v ? 'true' : 'false');
-          try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0'); } catch (_) {}
-        }
-
-        apply(visible);
-        btn.addEventListener('click', () => apply(!visible));
-      })();
+      apply(visible);
+      btn.addEventListener('click', () => apply(!visible));
     })();
+  })();
 
-    // ═══════════════════════════════════════════════════════════════
-    // MIDI INPUT — Launchkey 49 (and any Web MIDI device)
-    // Populates the shared held-notes tracker declared above, and
-    // triggers audio through KeyboardView's sampler proxy — same
-    // sampler instance on-screen clicks use, so the shared
-    // Tone.Analyser picks up MIDI audio without any extra wiring.
-    // ═══════════════════════════════════════════════════════════════
-    (async function _initMIDI() {
-      if (typeof MIDIInput === 'undefined') return;
+  // ═══════════════════════════════════════════════════════════════
+  // MIDI INPUT — Launchkey 49 (and any Web MIDI device)
+  // Populates the shared held-notes tracker declared above, and
+  // triggers audio through KeyboardView's sampler proxy — same
+  // sampler instance on-screen clicks use, so the shared
+  // Tone.Analyser picks up MIDI audio without any extra wiring.
+  // ═══════════════════════════════════════════════════════════════
+  (async function _initMIDI() {
+    if (typeof MIDIInput === 'undefined') return;
 
-      try {
-        await MIDIInput.init();
-        if (MIDIInput.isConnected) {
-          console.log('[Art Lab] MIDI connected:', MIDIInput.activeDevice?.name);
-        } else {
-          console.log('[Art Lab] No MIDI device detected.');
-        }
-      } catch (e) {
-        console.warn('[Art Lab] MIDI init failed:', e);
+    try {
+      await MIDIInput.init();
+      if (MIDIInput.isConnected) {
+        console.log('[Art Lab] MIDI connected:', MIDIInput.activeDevice?.name);
+      } else {
+        console.log('[Art Lab] No MIDI device detected.');
+      }
+    } catch (e) {
+      console.warn('[Art Lab] MIDI init failed:', e);
+      return;
+    }
+
+    // Tone.js must be loaded before KeyboardView.getSampler resolves,
+    // and the main init IIFE is what loads it. Wait for Tone to appear
+    // on window rather than duplicating the loader.
+    while (!window.Tone) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    // Grab the shared sampler proxy once the piano soundfont is loaded.
+    // Same instance KeyboardView uses for on-screen clicks, so the
+    // shared Tone.Analyser already sees the audio.
+    let sampler = null;
+    try {
+      sampler = await KeyboardView.getSampler();
+    } catch (e) {
+      console.warn('[Art Lab] Sampler not available; MIDI will update state but not play audio.', e);
+    }
+
+    MIDIInput.onNoteOn(async (note, velocity, channel) => {
+      // Drop drum channel — Launchkey pads send on channel 10.
+      if (channel === 10) return;
+      _heldMidiNotes.add(note);
+      _sustainedMidiNotes.delete(note); // in case it was pending release from a prior pedal cycle
+      _syncHarmonyState();
+      if (sampler) {
+        const entry = _midiToEntry(note);
+        const ascii = entry.note.replace(/♯/g, '#').replace(/♭/g, 'b');
+        try {
+          await _ensureToneStarted();
+          sampler.triggerAttack(ascii + entry.octave, Tone.now(), velocity / 127);
+        } catch (_) { /* transient audio errors — ignore */ }
+      }
+    });
+
+    MIDIInput.onNoteOff((note, channel) => {
+      if (channel === 10) return;
+      if (!_heldMidiNotes.has(note)) return;
+      _heldMidiNotes.delete(note);
+
+      if (_pedalDown) {
+        // Standard sampler-sustain: defer the release until the pedal
+        // lifts. Keep the note in HarmonyState so the blob stays lit.
+        _sustainedMidiNotes.add(note);
+        _syncHarmonyState();
         return;
       }
 
-      // Tone.js must be loaded before KeyboardView.getSampler resolves,
-      // and the main init IIFE is what loads it. Wait for Tone to appear
-      // on window rather than duplicating the loader.
-      while (!window.Tone) {
-        await new Promise((r) => setTimeout(r, 50));
-      }
+      _releaseMidiNote(note);
+      _syncHarmonyState();
+    });
 
-      // Grab the shared sampler proxy once the piano soundfont is loaded.
-      // Same instance KeyboardView uses for on-screen clicks, so the
-      // shared Tone.Analyser already sees the audio.
-      let sampler = null;
+    MIDIInput.onCC((cc, value /* , channel */) => {
+      if (cc !== 64) return;
+      const down = value >= 64;
+      if (down === _pedalDown) return;
+      _pedalDown = down;
+      if (!down) {
+        // Pedal lifted — flush all deferred releases.
+        for (const note of _sustainedMidiNotes) _releaseMidiNote(note);
+        _sustainedMidiNotes.clear();
+        _syncHarmonyState();
+      }
+    });
+
+    function _releaseMidiNote(note) {
+      if (!sampler) return;
+      const entry = _midiToEntry(note);
+      const ascii = entry.note.replace(/♯/g, '#').replace(/♭/g, 'b');
+      try { sampler.triggerRelease(ascii + entry.octave, Tone.now() + 0.05); } catch (_) { }
+    }
+  })();
+
+  // ═══════════════════════════════════════════════════════════════
+  // AUDIO INPUT — Scarlett/mic picker wired into the shared analyser
+  // ═══════════════════════════════════════════════════════════════
+  function _hwEls() {
+    return {
+      select: document.getElementById('audio-input-device'),
+      status: document.getElementById('audio-input-status'),
+      statusText: document.querySelector('#audio-input-status .art-hw-status-text'),
+      badge: document.getElementById('audio-input-badge'),
+    };
+  }
+
+  function _populateAudioDeviceDropdown(devices) {
+    const { select } = _hwEls();
+    if (!select) return;
+    const previous = select.value;
+    const activeId = AudioInput.activeDevice ? AudioInput.activeDevice.deviceId : '';
+    select.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'No audio input';
+    select.appendChild(placeholder);
+
+    for (const d of devices) {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = (d.isInterface ? '🎚 ' : '🎤 ') + d.label;
+      select.appendChild(opt);
+    }
+
+    const desired = activeId || previous || '';
+    if (desired && [...select.options].some(o => o.value === desired)) {
+      select.value = desired;
+    }
+  }
+
+  function _updateAudioInputStatus() {
+    const { status, statusText, badge } = _hwEls();
+    if (!status) return;
+    const active = AudioInput.isActive && AudioInput.activeDevice;
+    const quality = AudioInput.getSourceQuality();
+
+    status.dataset.state = active ? 'active' : 'idle';
+    if (active) {
+      const label = AudioInput.activeDevice.label || 'Connected';
+      statusText.textContent = label.length > 28 ? label.slice(0, 25) + '…' : label;
+    } else {
+      statusText.textContent = 'Off';
+    }
+
+    if (badge) {
+      if (active && quality) {
+        badge.dataset.quality = quality;
+        badge.textContent = quality === 'interface' ? 'Interface' : 'Mic';
+      } else {
+        badge.dataset.quality = '';
+        badge.textContent = '';
+      }
+    }
+
+    // Reconcile audio-driven detection with audio-input + Tone state.
+    // Chord and pitch detectors start/stop together — both observe the
+    // same stream but differ in how they interpret it (chord = chroma
+    // template match, pitch = YIN on raw PCM). Idempotent.
+    const toneRunning = window.Tone && window.Tone.context
+      && window.Tone.context.state === 'running';
+    const shouldDetect = AudioInput.isActive && toneRunning;
+    const isChordDetecting = _silenceWatcherId != null;
+    const isPitchDetecting = _pitchDetector != null;
+    if (shouldDetect) {
+      if (!isChordDetecting) _startChordDetection();
+      if (!isPitchDetecting) _startPitchDetection();
+    } else {
+      if (isChordDetecting) _stopChordDetection();
+      if (isPitchDetecting) _stopPitchDetection();
+    }
+  }
+
+  async function _ensureToneStarted() {
+    if (!window.Tone) return;
+    try {
+      if (window.Tone.context && window.Tone.context.state !== 'running') {
+        await window.Tone.start();
+      }
+    } catch (_) { /* iOS requires a gesture; user interaction will retry */ }
+    // If a device was auto-restored while Tone was suspended, rewire it
+    // into Tone's context now. Idempotent — no-op after first success.
+    try { await _attachAudioInputToTone(); } catch (_) { }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // AUDIO-DRIVEN CHORD DETECTION
+  // Populates _detectedChord from chord-detection.js events. The
+  // detector is lazy-created on first successful audio-input
+  // activation and reused across reconnects.
+  // ═══════════════════════════════════════════════════════════════
+  const CHORD_DETECT_NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+
+  function _chordEventToEntries(event) {
+    // chord-detection.js returns root names with ASCII '#'. Normalize to
+    // the Unicode sharps used throughout SongLab's HarmonyState entries.
+    const rootName = event.root.replace(/#/g, '♯');
+    const rootPC = CHORD_DETECT_NOTE_NAMES.indexOf(rootName);
+    const entries = [];
+    // Root first — _readHarmonyState assigns roles in insertion order.
+    if (rootPC >= 0) {
+      entries.push({ note: rootName, octave: 4, source: 'user', color: null });
+    }
+    for (const pc of event.pitchClasses) {
+      if (pc === rootPC) continue;
+      entries.push({ note: CHORD_DETECT_NOTE_NAMES[pc], octave: 4, source: 'user', color: null });
+    }
+    return entries;
+  }
+
+  function _startChordDetection() {
+    const analyser = (KeyboardView && KeyboardView.getAnalyser)
+      ? KeyboardView.getAnalyser() : null;
+    if (!analyser) return;
+
+    if (!_chordDetector) {
+      const sourceQuality = AudioInput.getSourceQuality() || 'mic';
       try {
-        sampler = await KeyboardView.getSampler();
+        _chordDetector = createChordDetector({ analyser, sourceQuality });
       } catch (e) {
-        console.warn('[Art Lab] Sampler not available; MIDI will update state but not play audio.', e);
-      }
-
-      MIDIInput.onNoteOn(async (note, velocity, channel) => {
-        // Drop drum channel — Launchkey pads send on channel 10.
-        if (channel === 10) return;
-        _heldMidiNotes.add(note);
-        _sustainedMidiNotes.delete(note); // in case it was pending release from a prior pedal cycle
-        _syncHarmonyState();
-        if (sampler) {
-          const entry = _midiToEntry(note);
-          const ascii = entry.note.replace(/♯/g, '#').replace(/♭/g, 'b');
-          try {
-            await _ensureToneStarted();
-            sampler.triggerAttack(ascii + entry.octave, Tone.now(), velocity / 127);
-          } catch (_) { /* transient audio errors — ignore */ }
-        }
-      });
-
-      MIDIInput.onNoteOff((note, channel) => {
-        if (channel === 10) return;
-        if (!_heldMidiNotes.has(note)) return;
-        _heldMidiNotes.delete(note);
-
-        if (_pedalDown) {
-          // Standard sampler-sustain: defer the release until the pedal
-          // lifts. Keep the note in HarmonyState so the blob stays lit.
-          _sustainedMidiNotes.add(note);
-          _syncHarmonyState();
-          return;
-        }
-
-        _releaseMidiNote(note);
-        _syncHarmonyState();
-      });
-
-      MIDIInput.onCC((cc, value /* , channel */) => {
-        if (cc !== 64) return;
-        const down = value >= 64;
-        if (down === _pedalDown) return;
-        _pedalDown = down;
-        if (!down) {
-          // Pedal lifted — flush all deferred releases.
-          for (const note of _sustainedMidiNotes) _releaseMidiNote(note);
-          _sustainedMidiNotes.clear();
-          _syncHarmonyState();
-        }
-      });
-
-      function _releaseMidiNote(note) {
-        if (!sampler) return;
-        const entry = _midiToEntry(note);
-        const ascii = entry.note.replace(/♯/g, '#').replace(/♭/g, 'b');
-        try { sampler.triggerRelease(ascii + entry.octave, Tone.now() + 0.05); } catch (_) {}
-      }
-    })();
-
-    // ═══════════════════════════════════════════════════════════════
-    // AUDIO INPUT — Scarlett/mic picker wired into the shared analyser
-    // ═══════════════════════════════════════════════════════════════
-    function _hwEls() {
-      return {
-        select: document.getElementById('audio-input-device'),
-        status: document.getElementById('audio-input-status'),
-        statusText: document.querySelector('#audio-input-status .art-hw-status-text'),
-        badge: document.getElementById('audio-input-badge'),
-      };
-    }
-
-    function _populateAudioDeviceDropdown(devices) {
-      const { select } = _hwEls();
-      if (!select) return;
-      const previous = select.value;
-      const activeId = AudioInput.activeDevice ? AudioInput.activeDevice.deviceId : '';
-      select.innerHTML = '';
-
-      const placeholder = document.createElement('option');
-      placeholder.value = '';
-      placeholder.textContent = 'No audio input';
-      select.appendChild(placeholder);
-
-      for (const d of devices) {
-        const opt = document.createElement('option');
-        opt.value = d.deviceId;
-        opt.textContent = (d.isInterface ? '🎚 ' : '🎤 ') + d.label;
-        select.appendChild(opt);
-      }
-
-      const desired = activeId || previous || '';
-      if (desired && [...select.options].some(o => o.value === desired)) {
-        select.value = desired;
+        console.warn('[Art Lab] chord-detection create failed:', e);
+        return;
       }
     }
 
-    function _updateAudioInputStatus() {
-      const { status, statusText, badge } = _hwEls();
-      if (!status) return;
-      const active = AudioInput.isActive && AudioInput.activeDevice;
-      const quality = AudioInput.getSourceQuality();
+    _chordDetector.start((event) => {
+      _detectedChord = _chordEventToEntries(event);
+      _syncHarmonyState();
+    });
 
-      status.dataset.state = active ? 'active' : 'idle';
-      if (active) {
-        const label = AudioInput.activeDevice.label || 'Connected';
-        statusText.textContent = label.length > 28 ? label.slice(0, 25) + '…' : label;
-      } else {
-        statusText.textContent = 'Off';
+    // Silence watcher: chord-detection.js only emits on chord *change*,
+    // not on silence. Without this, the last detected chord would stick
+    // forever once input goes quiet. 100 ms poll, 5 consecutive quiet
+    // samples (~500 ms) clears the detected state.
+    if (_silenceWatcherId != null) clearInterval(_silenceWatcherId);
+    _silenceCounter = 0;
+    _silenceWatcherId = setInterval(() => {
+      const data = analyser.getValue();
+      if (!data) return;
+      const arr = data[0] instanceof Float32Array ? data[0] : data;
+      // Quick-and-dirty energy sum — only count bins above -60 dB to
+      // avoid counting quantization noise as signal.
+      let sum = 0;
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] > -60) sum += Math.pow(10, arr[i] / 20);
       }
-
-      if (badge) {
-        if (active && quality) {
-          badge.dataset.quality = quality;
-          badge.textContent = quality === 'interface' ? 'Interface' : 'Mic';
-        } else {
-          badge.dataset.quality = '';
-          badge.textContent = '';
-        }
-      }
-
-      // Reconcile audio-driven detection with audio-input + Tone state.
-      // Chord and pitch detectors start/stop together — both observe the
-      // same stream but differ in how they interpret it (chord = chroma
-      // template match, pitch = YIN on raw PCM). Idempotent.
-      const toneRunning = window.Tone && window.Tone.context
-        && window.Tone.context.state === 'running';
-      const shouldDetect = AudioInput.isActive && toneRunning;
-      const isChordDetecting = _silenceWatcherId != null;
-      const isPitchDetecting = _pitchDetector != null;
-      if (shouldDetect) {
-        if (!isChordDetecting) _startChordDetection();
-        if (!isPitchDetecting) _startPitchDetection();
-      } else {
-        if (isChordDetecting) _stopChordDetection();
-        if (isPitchDetecting) _stopPitchDetection();
-      }
-    }
-
-    async function _ensureToneStarted() {
-      if (!window.Tone) return;
-      try {
-        if (window.Tone.context && window.Tone.context.state !== 'running') {
-          await window.Tone.start();
-        }
-      } catch (_) { /* iOS requires a gesture; user interaction will retry */ }
-      // If a device was auto-restored while Tone was suspended, rewire it
-      // into Tone's context now. Idempotent — no-op after first success.
-      try { await _attachAudioInputToTone(); } catch (_) {}
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // AUDIO-DRIVEN CHORD DETECTION
-    // Populates _detectedChord from chord-detection.js events. The
-    // detector is lazy-created on first successful audio-input
-    // activation and reused across reconnects.
-    // ═══════════════════════════════════════════════════════════════
-    const CHORD_DETECT_NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
-
-    function _chordEventToEntries(event) {
-      // chord-detection.js returns root names with ASCII '#'. Normalize to
-      // the Unicode sharps used throughout SongLab's HarmonyState entries.
-      const rootName = event.root.replace(/#/g, '♯');
-      const rootPC = CHORD_DETECT_NOTE_NAMES.indexOf(rootName);
-      const entries = [];
-      // Root first — _readHarmonyState assigns roles in insertion order.
-      if (rootPC >= 0) {
-        entries.push({ note: rootName, octave: 4, source: 'user', color: null });
-      }
-      for (const pc of event.pitchClasses) {
-        if (pc === rootPC) continue;
-        entries.push({ note: CHORD_DETECT_NOTE_NAMES[pc], octave: 4, source: 'user', color: null });
-      }
-      return entries;
-    }
-
-    function _startChordDetection() {
-      const analyser = (KeyboardView && KeyboardView.getAnalyser)
-        ? KeyboardView.getAnalyser() : null;
-      if (!analyser) return;
-
-      if (!_chordDetector) {
-        const sourceQuality = AudioInput.getSourceQuality() || 'mic';
-        try {
-          _chordDetector = createChordDetector({ analyser, sourceQuality });
-        } catch (e) {
-          console.warn('[Art Lab] chord-detection create failed:', e);
-          return;
-        }
-      }
-
-      _chordDetector.start((event) => {
-        _detectedChord = _chordEventToEntries(event);
-        _syncHarmonyState();
-      });
-
-      // Silence watcher: chord-detection.js only emits on chord *change*,
-      // not on silence. Without this, the last detected chord would stick
-      // forever once input goes quiet. 100 ms poll, 5 consecutive quiet
-      // samples (~500 ms) clears the detected state.
-      if (_silenceWatcherId != null) clearInterval(_silenceWatcherId);
-      _silenceCounter = 0;
-      _silenceWatcherId = setInterval(() => {
-        const data = analyser.getValue();
-        if (!data) return;
-        const arr = data[0] instanceof Float32Array ? data[0] : data;
-        // Quick-and-dirty energy sum — only count bins above -60 dB to
-        // avoid counting quantization noise as signal.
-        let sum = 0;
-        for (let i = 0; i < arr.length; i++) {
-          if (arr[i] > -60) sum += Math.pow(10, arr[i] / 20);
-        }
-        if (sum < 0.02) _silenceCounter++;
-        else _silenceCounter = 0;
-        if (_silenceCounter >= 5 && _detectedChord) {
-          _detectedChord = null;
-          _syncHarmonyState();
-        }
-      }, 100);
-    }
-
-    function _stopChordDetection() {
-      if (_chordDetector) {
-        try { _chordDetector.stop(); } catch (_) {}
-      }
-      if (_silenceWatcherId != null) {
-        clearInterval(_silenceWatcherId);
-        _silenceWatcherId = null;
-      }
-      _silenceCounter = 0;
-      if (_detectedChord) {
+      if (sum < 0.02) _silenceCounter++;
+      else _silenceCounter = 0;
+      if (_silenceCounter >= 5 && _detectedChord) {
         _detectedChord = null;
         _syncHarmonyState();
       }
+    }, 100);
+  }
+
+  function _stopChordDetection() {
+    if (_chordDetector) {
+      try { _chordDetector.stop(); } catch (_) { }
+    }
+    if (_silenceWatcherId != null) {
+      clearInterval(_silenceWatcherId);
+      _silenceWatcherId = null;
+    }
+    _silenceCounter = 0;
+    if (_detectedChord) {
+      _detectedChord = null;
+      _syncHarmonyState();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // AUDIO-DRIVEN PITCH DETECTION (monophonic)
+  // Runs alongside chord detection. Reuses AudioInput's MediaStream
+  // rather than prompting for mic access again. Takes precedence over
+  // chord output when confident — see _syncHarmonyState.
+  // ═══════════════════════════════════════════════════════════════
+  function _startPitchDetection() {
+    if (_pitchDetector) return;             // already running
+    const stream = AudioInput.getStream();
+    if (!stream) return;
+
+    try {
+      _pitchDetector = createPitchDetector({
+        stream,
+        engine: 'yin',
+        confidenceThreshold: 0.85,          // raise for more "silence", lower for more detection
+      });
+    } catch (e) {
+      console.warn('[Art Lab] pitch-detection create failed:', e);
+      _pitchDetector = null;
+      return;
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // AUDIO-DRIVEN PITCH DETECTION (monophonic)
-    // Runs alongside chord detection. Reuses AudioInput's MediaStream
-    // rather than prompting for mic access again. Takes precedence over
-    // chord output when confident — see _syncHarmonyState.
-    // ═══════════════════════════════════════════════════════════════
-    function _startPitchDetection() {
-      if (_pitchDetector) return;             // already running
-      const stream = AudioInput.getStream();
-      if (!stream) return;
+    // start() is async — fire-and-forget with a .catch since the outer
+    // reconciliation is synchronous.
+    _pitchDetector.start((result) => {
+      if (result.frequency > 0) {
+        // audio.js returns note names with ASCII '#'; HarmonyState
+        // expects Unicode '♯' (matches transforms.js NOTE_NAMES).
+        const note = result.note.replace(/#/g, '♯');
+        const pc = noteToPC(note);
+        if (pc < 0) return;
 
-      try {
-        _pitchDetector = createPitchDetector({
-          stream,
-          engine: 'yin',
-          confidenceThreshold: 0.85,          // raise for more "silence", lower for more detection
-        });
-      } catch (e) {
-        console.warn('[Art Lab] pitch-detection create failed:', e);
-        _pitchDetector = null;
+        // Only sync on actual change — pitch callback fires every audio
+        // buffer (~46ms), which would otherwise hammer HarmonyState at
+        // 22Hz even for a steady sustained note.
+        if (!_detectedPitch || _detectedPitch.pc !== pc || _detectedPitch.octave !== result.octave) {
+          _detectedPitch = { pc, octave: result.octave };
+          _syncHarmonyState();
+        }
+      } else {
+        // Not confident → clear pitch so chord detection takes over
+        // on the next _syncHarmonyState call.
+        if (_detectedPitch) {
+          _detectedPitch = null;
+          _syncHarmonyState();
+        }
+      }
+    }).catch((e) => {
+      console.warn('[Art Lab] pitch-detection start failed:', e);
+      _pitchDetector = null;
+    });
+  }
+
+  function _stopPitchDetection() {
+    if (_pitchDetector) {
+      try { _pitchDetector.stop(); } catch (_) { }
+      _pitchDetector = null;
+    }
+    if (_detectedPitch) {
+      _detectedPitch = null;
+      _syncHarmonyState();
+    }
+  }
+
+  // Call after Tone's AudioContext transitions to 'running'. If
+  // AudioInput auto-restored a device while Tone was suspended,
+  // re-select it so the source lives in Tone's rawContext. No-op
+  // in the common case (flag cleared after first successful rewire).
+  async function _attachAudioInputToTone() {
+    if (typeof AudioInput === 'undefined') return;
+    const analyser = (KeyboardView && KeyboardView.getAnalyser)
+      ? KeyboardView.getAnalyser()
+      : null;
+    if (!analyser) return;
+
+    if (_audioInputNeedsToneRewire && AudioInput.activeDevice) {
+      const id = AudioInput.activeDevice.deviceId;
+      _audioInputNeedsToneRewire = false;
+      // Tear down the stale fallback-context source before re-wiring.
+      // Without this, setAnalyser tries to reconnect the stale source
+      // cross-context and leaves state that silently breaks the later
+      // selectDevice's fresh source-to-analyser connection.
+      AudioInput.disconnect();
+      AudioInput.setAnalyser(analyser);
+      try { await AudioInput.selectDevice(id); }
+      catch (e) { console.warn('[art] audio-input re-select failed:', e); }
+      _updateAudioInputStatus();
+    } else {
+      try { AudioInput.setAnalyser(analyser); }
+      catch (e) { console.warn('[art] setAnalyser failed:', e); }
+    }
+  }
+
+  async function _initAudioInput() {
+    if (typeof AudioInput === 'undefined') return;
+    const { select, status } = _hwEls();
+    if (!select) return;
+
+    AudioInput.onDeviceChange((devices) => {
+      _populateAudioDeviceDropdown(devices);
+      _updateAudioInputStatus();
+    });
+
+    try {
+      const { devices } = await AudioInput.init();
+      _populateAudioDeviceDropdown(devices);
+      // If AudioInput auto-restored a device, its MediaStreamSource lives in
+      // a fallback context. Flag for rewire as soon as Tone starts.
+      if (AudioInput.isActive) _audioInputNeedsToneRewire = true;
+      _updateAudioInputStatus();
+    } catch (e) {
+      console.warn('[art] AudioInput init failed:', e);
+      if (status) {
+        status.dataset.state = 'error';
+        const t = status.querySelector('.art-hw-status-text');
+        if (t) t.textContent = 'Unavailable';
+      }
+      return;
+    }
+
+    select.addEventListener('change', async (e) => {
+      const id = e.target.value;
+      if (!id) {
+        AudioInput.disconnect();
+        _updateAudioInputStatus();
         return;
       }
-
-      // start() is async — fire-and-forget with a .catch since the outer
-      // reconciliation is synchronous.
-      _pitchDetector.start((result) => {
-        if (result.frequency > 0) {
-          // audio.js returns note names with ASCII '#'; HarmonyState
-          // expects Unicode '♯' (matches transforms.js NOTE_NAMES).
-          const note = result.note.replace(/#/g, '♯');
-          const pc = noteToPC(note);
-          if (pc < 0) return;
-
-          // Only sync on actual change — pitch callback fires every audio
-          // buffer (~46ms), which would otherwise hammer HarmonyState at
-          // 22Hz even for a steady sustained note.
-          if (!_detectedPitch || _detectedPitch.pc !== pc || _detectedPitch.octave !== result.octave) {
-            _detectedPitch = { pc, octave: result.octave };
-            _syncHarmonyState();
-          }
-        } else {
-          // Not confident → clear pitch so chord detection takes over
-          // on the next _syncHarmonyState call.
-          if (_detectedPitch) {
-            _detectedPitch = null;
-            _syncHarmonyState();
-          }
-        }
-      }).catch((e) => {
-        console.warn('[Art Lab] pitch-detection start failed:', e);
-        _pitchDetector = null;
-      });
-    }
-
-    function _stopPitchDetection() {
-      if (_pitchDetector) {
-        try { _pitchDetector.stop(); } catch (_) {}
-        _pitchDetector = null;
-      }
-      if (_detectedPitch) {
-        _detectedPitch = null;
-        _syncHarmonyState();
-      }
-    }
-
-    // Call after Tone's AudioContext transitions to 'running'. If
-    // AudioInput auto-restored a device while Tone was suspended,
-    // re-select it so the source lives in Tone's rawContext. No-op
-    // in the common case (flag cleared after first successful rewire).
-    async function _attachAudioInputToTone() {
-      if (typeof AudioInput === 'undefined') return;
+      await _ensureToneStarted();
       const analyser = (KeyboardView && KeyboardView.getAnalyser)
         ? KeyboardView.getAnalyser()
         : null;
-      if (!analyser) return;
-
-      if (_audioInputNeedsToneRewire && AudioInput.activeDevice) {
-        const id = AudioInput.activeDevice.deviceId;
-        _audioInputNeedsToneRewire = false;
-        // Tear down the stale fallback-context source before re-wiring.
-        // Without this, setAnalyser tries to reconnect the stale source
-        // cross-context and leaves state that silently breaks the later
-        // selectDevice's fresh source-to-analyser connection.
-        AudioInput.disconnect();
-        AudioInput.setAnalyser(analyser);
-        try { await AudioInput.selectDevice(id); }
-        catch (e) { console.warn('[art] audio-input re-select failed:', e); }
-        _updateAudioInputStatus();
-      } else {
-        try { AudioInput.setAnalyser(analyser); }
-        catch (e) { console.warn('[art] setAnalyser failed:', e); }
-      }
-    }
-
-    async function _initAudioInput() {
-      if (typeof AudioInput === 'undefined') return;
-      const { select, status } = _hwEls();
-      if (!select) return;
-
-      AudioInput.onDeviceChange((devices) => {
-        _populateAudioDeviceDropdown(devices);
-        _updateAudioInputStatus();
-      });
-
-      try {
-        const { devices } = await AudioInput.init();
-        _populateAudioDeviceDropdown(devices);
-        // If AudioInput auto-restored a device, its MediaStreamSource lives in
-        // a fallback context. Flag for rewire as soon as Tone starts.
-        if (AudioInput.isActive) _audioInputNeedsToneRewire = true;
-        _updateAudioInputStatus();
-      } catch (e) {
-        console.warn('[art] AudioInput init failed:', e);
-        if (status) {
-          status.dataset.state = 'error';
-          const t = status.querySelector('.art-hw-status-text');
-          if (t) t.textContent = 'Unavailable';
-        }
-        return;
-      }
-
-      select.addEventListener('change', async (e) => {
-        const id = e.target.value;
-        if (!id) {
-          AudioInput.disconnect();
-          _updateAudioInputStatus();
-          return;
-        }
-        await _ensureToneStarted();
-        const analyser = (KeyboardView && KeyboardView.getAnalyser)
-          ? KeyboardView.getAnalyser()
-          : null;
-        if (analyser) { try { AudioInput.setAnalyser(analyser); } catch (_) {} }
-        const ok = await AudioInput.selectDevice(id);
-        _updateAudioInputStatus();
-        if (!ok) {
-          const els = _hwEls();
-          if (els.status) {
-            els.status.dataset.state = 'error';
-            const t = els.status.querySelector('.art-hw-status-text');
-            if (t) t.textContent = 'Permission denied';
-          }
-        }
-      });
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // ART LAB DEBUG PANEL
-    // ═══════════════════════════════════════════════════════════════
-    // Mirrors the Explorer's Resonance Tuning panel. Duplicated here
-    // (rather than shared) because the Art Lab params will diverge
-    // as the fork gains its own knobs.
-    //
-    // Differences from the Explorer version:
-    //   • Always mounted (no ?debug=resonance gate)
-    //   • localStorage key: 'songlab.art.presets' (separate from Explorer)
-    //   • Title: 'Art Lab Tuning'
-    //   • CSS prefix: .sl-adbg- (vs .sl-rdbg-)
-    // ═══════════════════════════════════════════════════════════════
-    function _buildArtDebugPanel(stage, view) {
-      const PRESET_KEY = 'songlab.art.presets';
-      const SLIDER_GROUPS = [
-        {
-          title: 'Smoothing & Decay',
-          rows: [
-            { key: 'releaseDecay', min: 0.5,    max: 0.99, step: 0.01, kind: 'linear' },
-            { key: 'silentEps',    min: 0.0001, max: 0.01, kind: 'log'    },
-            { key: 'dbFloor',      min: -120,   max: -40,  step: 1,     kind: 'linear' },
-          ],
-        },
-        {
-          title: 'Grid Motion',
-          rows: [
-            { key: 'gridRotationSpeed', min: -30, max: 30,  step: 0.5,  kind: 'linear' },
-            { key: 'gridSwaySpeed',     min: 0,   max: 0.5, step: 0.01, kind: 'linear' },
-            { key: 'gridSwayAmplitude', min: 0,   max: 200, step: 5,    kind: 'linear' },
-          ],
-        },
-        {
-          title: '3D Geometry',
-          rows: [
-            { key: 'mode3D',       kind: 'toggle' },
-            { key: 'morph',        min: 0,    max: 1,   step: 0.01, kind: 'linear' },
-            { key: 'torusMajorR',  min: 0.5,  max: 2.0, step: 0.05, kind: 'linear' },
-            { key: 'torusMinorR',  min: 0.1,  max: 0.8, step: 0.02, kind: 'linear' },
-            { key: 'rotSpeedX',    min: -60,  max: 60,  step: 1,    kind: 'linear' },
-            { key: 'rotSpeedY',    min: -60,  max: 60,  step: 1,    kind: 'linear' },
-            { key: 'rotSpeedZ',    min: -60,  max: 60,  step: 1,    kind: 'linear' },
-            { key: 'triangle3DBaseAlpha',   min: 0,   max: 1,   step: 0.02, kind: 'linear' },
-            { key: 'triangle3DStrokeAlpha', min: 0,   max: 1,   step: 0.02, kind: 'linear' },
-            { key: 'triangle3DStrokeWidth', min: 0.2, max: 4,   step: 0.1,  kind: 'linear' },
-          ],
-        },
-        {
-          title: 'Chord Triangles',
-          rows: [
-            { key: 'triangleIntensityScale', min: 1,   max: 500, step: 5,    kind: 'linear' },
-            { key: 'triangleFillAlphaPeak',  min: 0,   max: 0.6, step: 0.01, kind: 'linear' },
-            { key: 'triangleStrokeAlpha',    min: 0,   max: 1.0, step: 0.02, kind: 'linear' },
-            { key: 'triangleStrokeWidth',    min: 0.5, max: 5.0, step: 0.1,  kind: 'linear' },
-            { key: 'triangleGlowBlur',       min: 0,   max: 40,  step: 1,    kind: 'linear' },
-          ],
-        },
-        {
-          title: 'Particle Spawning',
-          rows: [
-            { key: 'spawnRateMultiplier', min: 0.2, max: 4.0,  step: 0.1,  kind: 'linear' },
-            { key: 'spawnRateCap',        min: 0.1, max: 2.0,  step: 0.05, kind: 'linear' },
-            { key: 'angularSpread',       min: 0,   max: 180,  step: 5,    kind: 'linear' },
-            { key: 'speedMin',            min: 0.1, max: 5.0,  step: 0.1,  kind: 'linear' },
-            { key: 'speedMax',            min: 0.2, max: 8.0,  step: 0.1,  kind: 'linear' },
-            { key: 'particleSizeMin',     min: 0.5, max: 8.0,  step: 0.1,  kind: 'linear' },
-            { key: 'particleSizeMax',     min: 0.5, max: 12.0, step: 0.1,  kind: 'linear' },
-            { key: 'peakMagThreshold',    min: 0.0001, max: 0.01, kind: 'log'    },
-          ],
-        },
-        {
-          title: 'Particle Lifetime & Motion',
-          rows: [
-            { key: 'lifeMin',              min: 0.1,  max: 4.0, step: 0.05,  kind: 'linear' },
-            { key: 'lifeMax',              min: 0.2,  max: 6.0, step: 0.05,  kind: 'linear' },
-            { key: 'wiggleAmplitude',      min: 0,    max: 1.0, step: 0.01,  kind: 'linear' },
-            { key: 'particleDeceleration', min: 0.85, max: 1.0, step: 0.005, kind: 'linear' },
-          ],
-        },
-        {
-          title: 'Render & Glow',
-          rows: [
-            { key: 'trailFadeAlpha',       min: 0.05, max: 0.6,  step: 0.01, kind: 'linear' },
-            { key: 'envelopeStrokeWidth',  min: 0.5,  max: 4.0,  step: 0.1,  kind: 'linear' },
-            { key: 'envelopeShadowBlur',   min: 0,    max: 30,   step: 1,    kind: 'linear' },
-            { key: 'blobFillAlpha',        min: 0,    max: 0.7,  step: 0.02, kind: 'linear' },
-            { key: 'glowAlphaInner',       min: 0.05, max: 1.0,  step: 0.05, kind: 'linear' },
-            { key: 'glowRadiusMultiplier', min: 1,    max: 12,   step: 0.5,  kind: 'linear' },
-          ],
-        },
-      ];
-
-      const root = document.createElement('div');
-      root.className = 'sl-adbg';
-
-      const launcher = document.createElement('button');
-      launcher.type = 'button';
-      launcher.className = 'sl-adbg__launcher sl-adbg--hidden';
-      launcher.textContent = '⚙ tune';
-
-      const panel = document.createElement('div');
-      panel.className = 'sl-adbg__panel';
-
-      // Header.
-      const header = document.createElement('div');
-      header.className = 'sl-adbg__header';
-      const title = document.createElement('span');
-      title.textContent = 'Art Lab Tuning';
-      const closeBtn = document.createElement('button');
-      closeBtn.type = 'button';
-      closeBtn.className = 'sl-adbg__close';
-      closeBtn.setAttribute('aria-label', 'Collapse');
-      closeBtn.textContent = '✕';
-      header.appendChild(title);
-      header.appendChild(closeBtn);
-      panel.appendChild(header);
-
-      // Preset bar.
-      const presetBar = document.createElement('div');
-      presetBar.className = 'sl-adbg__preset-bar';
-      const presetSelect = document.createElement('select');
-      presetSelect.className = 'sl-adbg__preset-select';
-      const btnRow = document.createElement('div');
-      btnRow.className = 'sl-adbg__btn-row';
-      const saveBtn   = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Save…' });
-      const exportBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Export' });
-      const resetBtn  = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Reset' });
-      btnRow.appendChild(saveBtn);
-      btnRow.appendChild(exportBtn);
-      btnRow.appendChild(resetBtn);
-      const saveRow = document.createElement('div');
-      saveRow.className = 'sl-adbg__save-row sl-adbg--hidden';
-      const saveInput = document.createElement('input');
-      saveInput.type = 'text';
-      saveInput.className = 'sl-adbg__save-input';
-      saveInput.placeholder = 'preset name…';
-      const saveConfirmBtn = Object.assign(document.createElement('button'),
-        { type: 'button', className: 'sl-adbg__btn', textContent: 'Save' });
-      const saveCancelBtn = Object.assign(document.createElement('button'),
-        { type: 'button', className: 'sl-adbg__btn', textContent: 'Cancel' });
-      saveRow.appendChild(saveInput);
-      saveRow.appendChild(saveConfirmBtn);
-      saveRow.appendChild(saveCancelBtn);
-      presetBar.appendChild(presetSelect);
-      presetBar.appendChild(btnRow);
-      presetBar.appendChild(saveRow);
-      panel.appendChild(presetBar);
-
-      // Slider sections.
-      const scroll = document.createElement('div');
-      scroll.className = 'sl-adbg__scroll';
-      const rowRefs = Object.create(null);
-      for (const group of SLIDER_GROUPS) {
-        const section = document.createElement('details');
-        section.className = 'sl-adbg__section';
-        section.open = true;
-        const summary = document.createElement('summary');
-        summary.textContent = group.title;
-        section.appendChild(summary);
-        for (const row of group.rows) {
-          const rowEl = document.createElement('div');
-          rowEl.className = 'sl-adbg__row';
-          const label = document.createElement('label');
-          label.textContent = row.key;
-          label.title = row.key;
-          rowEl.appendChild(label);
-
-          if (row.kind === 'toggle') {
-            // Checkbox sits in the slider column so the readout slot can
-            // still show "on" / "off" — keeps the grid layout consistent.
-            const check = document.createElement('input');
-            check.type = 'checkbox';
-            check.style.justifySelf = 'start';
-            const readout = document.createElement('span');
-            readout.className = 'sl-adbg__val';
-            rowEl.appendChild(check);
-            rowEl.appendChild(readout);
-            section.appendChild(rowEl);
-            rowRefs[row.key] = { check, readout, meta: row };
-            check.addEventListener('change', () => {
-              view.setParam(row.key, check.checked);
-              readout.textContent = check.checked ? 'on' : 'off';
-            });
-          } else {
-            const range = document.createElement('input');
-            range.type = 'range';
-            if (row.kind === 'log') {
-              range.min = '0'; range.max = '100'; range.step = '1';
-            } else {
-              range.min = String(row.min);
-              range.max = String(row.max);
-              range.step = String(row.step);
-            }
-            const readout = document.createElement('span');
-            readout.className = 'sl-adbg__val';
-            rowEl.appendChild(range);
-            rowEl.appendChild(readout);
-            section.appendChild(rowEl);
-            rowRefs[row.key] = { range, readout, meta: row };
-            range.addEventListener('input', () => {
-              const v = _readSliderValue(row, range.value);
-              view.setParam(row.key, v);
-              readout.textContent = _formatVal(row.key, v);
-            });
-          }
-        }
-        scroll.appendChild(section);
-      }
-      panel.appendChild(scroll);
-
-      function _readSliderValue(meta, raw) {
-        if (meta.kind === 'log') {
-          const t = Number(raw) / 100;
-          const lo = Math.log(meta.min), hi = Math.log(meta.max);
-          return Math.exp(lo + t * (hi - lo));
-        }
-        return Number(raw);
-      }
-      function _writeSliderValue(meta, value) {
-        if (meta.kind === 'log') {
-          const lo = Math.log(meta.min), hi = Math.log(meta.max);
-          const t = (Math.log(value) - lo) / (hi - lo);
-          return String(Math.max(0, Math.min(100, t * 100)));
-        }
-        return String(value);
-      }
-      function _formatVal(key, v) {
-        if (key === 'silentEps' || key === 'peakMagThreshold') return v.toExponential(1);
-        if (Number.isInteger(v)) return String(v);
-        const abs = Math.abs(v);
-        if (abs >= 10) return v.toFixed(1);
-        if (abs >= 1)  return v.toFixed(2);
-        return v.toFixed(3);
-      }
-      function _syncSlidersFromView() {
-        const current = view.getParams();
-        for (const key of Object.keys(rowRefs)) {
-          const ref = rowRefs[key];
-          const v = current[key];
-          if (ref.meta.kind === 'toggle') {
-            const checked = !!v;
-            ref.check.checked = checked;
-            ref.readout.textContent = checked ? 'on' : 'off';
-            continue;
-          }
-          if (typeof v !== 'number') continue;
-          ref.range.value = _writeSliderValue(ref.meta, v);
-          ref.readout.textContent = _formatVal(key, v);
+      if (analyser) { try { AudioInput.setAnalyser(analyser); } catch (_) { } }
+      const ok = await AudioInput.selectDevice(id);
+      _updateAudioInputStatus();
+      if (!ok) {
+        const els = _hwEls();
+        if (els.status) {
+          els.status.dataset.state = 'error';
+          const t = els.status.querySelector('.art-hw-status-text');
+          if (t) t.textContent = 'Permission denied';
         }
       }
+    });
+  }
 
-      // ── Presets (localStorage, art-scoped key) ──
-      function _loadPresets() {
-        try {
-          const raw = localStorage.getItem(PRESET_KEY);
-          if (!raw) return {};
-          const obj = JSON.parse(raw);
-          return (obj && typeof obj === 'object') ? obj : {};
-        } catch (_) { return {}; }
-      }
-      function _savePresets(obj) {
-        try { localStorage.setItem(PRESET_KEY, JSON.stringify(obj)); } catch (_) {}
-      }
-      function _refreshPresetSelect(selectName) {
-        const presets = _loadPresets();
-        presetSelect.innerHTML = '';
-        const def = document.createElement('option');
-        def.value = '__defaults__';
-        def.textContent = 'Defaults';
-        presetSelect.appendChild(def);
-        const names = Object.keys(presets).sort((a, b) => a.localeCompare(b));
-        for (const name of names) {
-          const opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = name;
-          presetSelect.appendChild(opt);
-        }
-        if (selectName && (selectName === '__defaults__' || names.includes(selectName))) {
-          presetSelect.value = selectName;
-        }
-      }
+  // ═══════════════════════════════════════════════════════════════
+  // ART LAB DEBUG PANEL
+  // ═══════════════════════════════════════════════════════════════
+  // Mirrors the Explorer's Resonance Tuning panel. Duplicated here
+  // (rather than shared) because the Art Lab params will diverge
+  // as the fork gains its own knobs.
+  //
+  // Differences from the Explorer version:
+  //   • Always mounted (no ?debug=resonance gate)
+  //   • localStorage key: 'songlab.art.presets' (separate from Explorer)
+  //   • Title: 'Art Lab Tuning'
+  //   • CSS prefix: .sl-adbg- (vs .sl-rdbg-)
+  // ═══════════════════════════════════════════════════════════════
+  function _buildArtDebugPanel(stage, view) {
+    const PRESET_KEY = 'songlab.art.presets';
+    const SLIDER_GROUPS = [
+      {
+        title: '3D Geometry',
+        rows: [
+          { key: 'mode3D', kind: 'toggle' },
+          { key: 'morph', min: 0, max: 1, step: 0.01, kind: 'linear' },
+          { key: 'torusMajorR', min: 0.5, max: 2.0, step: 0.05, kind: 'linear' },
+          { key: 'torusMinorR', min: 0.1, max: 0.8, step: 0.02, kind: 'linear' },
+          { key: 'rotSpeedX', min: -60, max: 60, step: 1, kind: 'linear' },
+          { key: 'rotSpeedY', min: -60, max: 60, step: 1, kind: 'linear' },
+          { key: 'rotSpeedZ', min: -60, max: 60, step: 1, kind: 'linear' },
+          { key: 'triangle3DBaseAlpha', min: 0, max: 1, step: 0.02, kind: 'linear' },
+          { key: 'triangle3DStrokeAlpha', min: 0, max: 1, step: 0.02, kind: 'linear' },
+          { key: 'triangle3DStrokeWidth', min: 0.2, max: 4, step: 0.1, kind: 'linear' },
+        ],
+      },
+      {
+        title: 'Smoothing & Decay',
+        rows: [
+          { key: 'releaseDecay', min: 0.5, max: 0.99, step: 0.01, kind: 'linear' },
+          { key: 'silentEps', min: 0.0001, max: 0.01, kind: 'log' },
+          { key: 'dbFloor', min: -120, max: -40, step: 1, kind: 'linear' },
+        ],
+      },
+      {
+        title: 'Grid Motion',
+        rows: [
+          { key: 'gridRotationSpeed', min: -30, max: 30, step: 0.5, kind: 'linear' },
+          { key: 'gridSwaySpeed', min: 0, max: 0.5, step: 0.01, kind: 'linear' },
+          { key: 'gridSwayAmplitude', min: 0, max: 200, step: 5, kind: 'linear' },
+        ],
+      },
 
-      presetSelect.addEventListener('change', () => {
-        const val = presetSelect.value;
-        if (val === '__defaults__') {
-          view.setParams(ResonanceArtView.DEFAULT_PARAMS);
+      {
+        title: 'Chord Triangles',
+        rows: [
+          { key: 'triangleIntensityScale', min: 1, max: 500, step: 5, kind: 'linear' },
+          { key: 'triangleFillAlphaPeak', min: 0, max: 0.6, step: 0.01, kind: 'linear' },
+          { key: 'triangleStrokeAlpha', min: 0, max: 1.0, step: 0.02, kind: 'linear' },
+          { key: 'triangleStrokeWidth', min: 0.5, max: 5.0, step: 0.1, kind: 'linear' },
+          { key: 'triangleGlowBlur', min: 0, max: 40, step: 1, kind: 'linear' },
+        ],
+      },
+      {
+        title: 'Particle Spawning',
+        rows: [
+          { key: 'spawnRateMultiplier', min: 0.2, max: 4.0, step: 0.1, kind: 'linear' },
+          { key: 'spawnRateCap', min: 0.1, max: 2.0, step: 0.05, kind: 'linear' },
+          { key: 'angularSpread', min: 0, max: 180, step: 5, kind: 'linear' },
+          { key: 'speedMin', min: 0.1, max: 5.0, step: 0.1, kind: 'linear' },
+          { key: 'speedMax', min: 0.2, max: 8.0, step: 0.1, kind: 'linear' },
+          { key: 'particleSizeMin', min: 0.5, max: 8.0, step: 0.1, kind: 'linear' },
+          { key: 'particleSizeMax', min: 0.5, max: 12.0, step: 0.1, kind: 'linear' },
+          { key: 'peakMagThreshold', min: 0.0001, max: 0.01, kind: 'log' },
+        ],
+      },
+      {
+        title: 'Particle Lifetime & Motion',
+        rows: [
+          { key: 'lifeMin', min: 0.1, max: 4.0, step: 0.05, kind: 'linear' },
+          { key: 'lifeMax', min: 0.2, max: 6.0, step: 0.05, kind: 'linear' },
+          { key: 'wiggleAmplitude', min: 0, max: 1.0, step: 0.01, kind: 'linear' },
+          { key: 'particleDeceleration', min: 0.85, max: 1.0, step: 0.005, kind: 'linear' },
+        ],
+      },
+      {
+        title: 'Render & Glow',
+        rows: [
+          { key: 'trailFadeAlpha', min: 0.05, max: 0.6, step: 0.01, kind: 'linear' },
+          { key: 'envelopeStrokeWidth', min: 0.5, max: 4.0, step: 0.1, kind: 'linear' },
+          { key: 'envelopeShadowBlur', min: 0, max: 30, step: 1, kind: 'linear' },
+          { key: 'blobFillAlpha', min: 0, max: 0.7, step: 0.02, kind: 'linear' },
+          { key: 'glowAlphaInner', min: 0.05, max: 1.0, step: 0.05, kind: 'linear' },
+          { key: 'glowRadiusMultiplier', min: 1, max: 12, step: 0.5, kind: 'linear' },
+        ],
+      },
+    ];
+
+    const root = document.createElement('div');
+    root.className = 'sl-adbg';
+
+    const launcher = document.createElement('button');
+    launcher.type = 'button';
+    launcher.className = 'sl-adbg__launcher sl-adbg--hidden';
+    launcher.textContent = '⚙ tune';
+
+    const panel = document.createElement('div');
+    panel.className = 'sl-adbg__panel';
+
+    // Header.
+    const header = document.createElement('div');
+    header.className = 'sl-adbg__header';
+    const title = document.createElement('span');
+    title.textContent = 'Art Lab Tuning';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'sl-adbg__close';
+    closeBtn.setAttribute('aria-label', 'Collapse');
+    closeBtn.textContent = '✕';
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    panel.appendChild(header);
+
+    // Preset bar.
+    const presetBar = document.createElement('div');
+    presetBar.className = 'sl-adbg__preset-bar';
+    const presetSelect = document.createElement('select');
+    presetSelect.className = 'sl-adbg__preset-select';
+    const btnRow = document.createElement('div');
+    btnRow.className = 'sl-adbg__btn-row';
+    const saveBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Save…' });
+    const exportBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Export' });
+    const resetBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Reset' });
+    btnRow.appendChild(saveBtn);
+    btnRow.appendChild(exportBtn);
+    btnRow.appendChild(resetBtn);
+    const saveRow = document.createElement('div');
+    saveRow.className = 'sl-adbg__save-row sl-adbg--hidden';
+    const saveInput = document.createElement('input');
+    saveInput.type = 'text';
+    saveInput.className = 'sl-adbg__save-input';
+    saveInput.placeholder = 'preset name…';
+    const saveConfirmBtn = Object.assign(document.createElement('button'),
+      { type: 'button', className: 'sl-adbg__btn', textContent: 'Save' });
+    const saveCancelBtn = Object.assign(document.createElement('button'),
+      { type: 'button', className: 'sl-adbg__btn', textContent: 'Cancel' });
+    saveRow.appendChild(saveInput);
+    saveRow.appendChild(saveConfirmBtn);
+    saveRow.appendChild(saveCancelBtn);
+    presetBar.appendChild(presetSelect);
+    presetBar.appendChild(btnRow);
+    presetBar.appendChild(saveRow);
+    panel.appendChild(presetBar);
+
+    // Slider sections.
+    const scroll = document.createElement('div');
+    scroll.className = 'sl-adbg__scroll';
+    const rowRefs = Object.create(null);
+    for (const group of SLIDER_GROUPS) {
+      const section = document.createElement('details');
+      section.className = 'sl-adbg__section';
+      section.open = true;
+      const summary = document.createElement('summary');
+      summary.textContent = group.title;
+      section.appendChild(summary);
+      for (const row of group.rows) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'sl-adbg__row';
+        const label = document.createElement('label');
+        label.textContent = row.key;
+        label.title = row.key;
+        rowEl.appendChild(label);
+
+        if (row.kind === 'toggle') {
+          // Checkbox sits in the slider column so the readout slot can
+          // still show "on" / "off" — keeps the grid layout consistent.
+          const check = document.createElement('input');
+          check.type = 'checkbox';
+          check.style.justifySelf = 'start';
+          const readout = document.createElement('span');
+          readout.className = 'sl-adbg__val';
+          rowEl.appendChild(check);
+          rowEl.appendChild(readout);
+          section.appendChild(rowEl);
+          rowRefs[row.key] = { check, readout, meta: row };
+          check.addEventListener('change', () => {
+            view.setParam(row.key, check.checked);
+            readout.textContent = check.checked ? 'on' : 'off';
+          });
         } else {
-          const presets = _loadPresets();
-          if (presets[val]) view.setParams(presets[val]);
+          const range = document.createElement('input');
+          range.type = 'range';
+          if (row.kind === 'log') {
+            range.min = '0'; range.max = '100'; range.step = '1';
+          } else {
+            range.min = String(row.min);
+            range.max = String(row.max);
+            range.step = String(row.step);
+          }
+          const readout = document.createElement('span');
+          readout.className = 'sl-adbg__val';
+          rowEl.appendChild(range);
+          rowEl.appendChild(readout);
+          section.appendChild(rowEl);
+          rowRefs[row.key] = { range, readout, meta: row };
+          range.addEventListener('input', () => {
+            const v = _readSliderValue(row, range.value);
+            view.setParam(row.key, v);
+            readout.textContent = _formatVal(row.key, v);
+          });
         }
-        _syncSlidersFromView();
-      });
-
-      function _openSaveEditor() {
-        saveInput.value = '';
-        btnRow.classList.add('sl-adbg--hidden');
-        saveRow.classList.remove('sl-adbg--hidden');
-        setTimeout(() => saveInput.focus(), 0);
       }
-      function _closeSaveEditor() {
-        saveRow.classList.add('sl-adbg--hidden');
-        btnRow.classList.remove('sl-adbg--hidden');
-      }
-      function _commitSave() {
-        const trimmed = (saveInput.value || '').trim();
-        if (!trimmed || trimmed === '__defaults__') { saveInput.focus(); return; }
-        const presets = _loadPresets();
-        presets[trimmed] = view.getParams();
-        _savePresets(presets);
-        _refreshPresetSelect(trimmed);
-        _closeSaveEditor();
-      }
-      saveBtn.addEventListener('click', _openSaveEditor);
-      saveConfirmBtn.addEventListener('click', _commitSave);
-      saveCancelBtn.addEventListener('click', _closeSaveEditor);
-      saveInput.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter') { ev.preventDefault(); _commitSave(); }
-        else if (ev.key === 'Escape') { ev.preventDefault(); _closeSaveEditor(); }
-      });
-
-      exportBtn.addEventListener('click', () => {
-        const presets = _loadPresets();
-        const today = new Date().toISOString().slice(0, 10);
-        const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `art-presets-${today}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 0);
-      });
-
-      resetBtn.addEventListener('click', () => {
-        view.setParams(ResonanceArtView.DEFAULT_PARAMS);
-        _syncSlidersFromView();
-        presetSelect.value = '__defaults__';
-      });
-
-      closeBtn.addEventListener('click', () => {
-        panel.classList.add('sl-adbg--hidden');
-        launcher.classList.remove('sl-adbg--hidden');
-      });
-      launcher.addEventListener('click', () => {
-        launcher.classList.add('sl-adbg--hidden');
-        panel.classList.remove('sl-adbg--hidden');
-      });
-
-      root.appendChild(launcher);
-      root.appendChild(panel);
-      stage.appendChild(root);
-
-      _refreshPresetSelect('__defaults__');
-      _syncSlidersFromView();
+      scroll.appendChild(section);
     }
-  </script>
+    panel.appendChild(scroll);
+
+    function _readSliderValue(meta, raw) {
+      if (meta.kind === 'log') {
+        const t = Number(raw) / 100;
+        const lo = Math.log(meta.min), hi = Math.log(meta.max);
+        return Math.exp(lo + t * (hi - lo));
+      }
+      return Number(raw);
+    }
+    function _writeSliderValue(meta, value) {
+      if (meta.kind === 'log') {
+        const lo = Math.log(meta.min), hi = Math.log(meta.max);
+        const t = (Math.log(value) - lo) / (hi - lo);
+        return String(Math.max(0, Math.min(100, t * 100)));
+      }
+      return String(value);
+    }
+    function _formatVal(key, v) {
+      if (key === 'silentEps' || key === 'peakMagThreshold') return v.toExponential(1);
+      if (Number.isInteger(v)) return String(v);
+      const abs = Math.abs(v);
+      if (abs >= 10) return v.toFixed(1);
+      if (abs >= 1) return v.toFixed(2);
+      return v.toFixed(3);
+    }
+    function _syncSlidersFromView() {
+      const current = view.getParams();
+      for (const key of Object.keys(rowRefs)) {
+        const ref = rowRefs[key];
+        const v = current[key];
+        if (ref.meta.kind === 'toggle') {
+          const checked = !!v;
+          ref.check.checked = checked;
+          ref.readout.textContent = checked ? 'on' : 'off';
+          continue;
+        }
+        if (typeof v !== 'number') continue;
+        ref.range.value = _writeSliderValue(ref.meta, v);
+        ref.readout.textContent = _formatVal(key, v);
+      }
+    }
+
+    // ── Presets (localStorage, art-scoped key) ──
+    function _loadPresets() {
+      try {
+        const raw = localStorage.getItem(PRESET_KEY);
+        if (!raw) return {};
+        const obj = JSON.parse(raw);
+        return (obj && typeof obj === 'object') ? obj : {};
+      } catch (_) { return {}; }
+    }
+    function _savePresets(obj) {
+      try { localStorage.setItem(PRESET_KEY, JSON.stringify(obj)); } catch (_) { }
+    }
+    function _refreshPresetSelect(selectName) {
+      const presets = _loadPresets();
+      presetSelect.innerHTML = '';
+      const def = document.createElement('option');
+      def.value = '__defaults__';
+      def.textContent = 'Defaults';
+      presetSelect.appendChild(def);
+      const names = Object.keys(presets).sort((a, b) => a.localeCompare(b));
+      for (const name of names) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        presetSelect.appendChild(opt);
+      }
+      if (selectName && (selectName === '__defaults__' || names.includes(selectName))) {
+        presetSelect.value = selectName;
+      }
+    }
+
+    presetSelect.addEventListener('change', () => {
+      const val = presetSelect.value;
+      if (val === '__defaults__') {
+        view.setParams(ResonanceArtView.DEFAULT_PARAMS);
+      } else {
+        const presets = _loadPresets();
+        if (presets[val]) view.setParams(presets[val]);
+      }
+      _syncSlidersFromView();
+    });
+
+    function _openSaveEditor() {
+      saveInput.value = '';
+      btnRow.classList.add('sl-adbg--hidden');
+      saveRow.classList.remove('sl-adbg--hidden');
+      setTimeout(() => saveInput.focus(), 0);
+    }
+    function _closeSaveEditor() {
+      saveRow.classList.add('sl-adbg--hidden');
+      btnRow.classList.remove('sl-adbg--hidden');
+    }
+    function _commitSave() {
+      const trimmed = (saveInput.value || '').trim();
+      if (!trimmed || trimmed === '__defaults__') { saveInput.focus(); return; }
+      const presets = _loadPresets();
+      presets[trimmed] = view.getParams();
+      _savePresets(presets);
+      _refreshPresetSelect(trimmed);
+      _closeSaveEditor();
+    }
+    saveBtn.addEventListener('click', _openSaveEditor);
+    saveConfirmBtn.addEventListener('click', _commitSave);
+    saveCancelBtn.addEventListener('click', _closeSaveEditor);
+    saveInput.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); _commitSave(); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); _closeSaveEditor(); }
+    });
+
+    exportBtn.addEventListener('click', () => {
+      const presets = _loadPresets();
+      const today = new Date().toISOString().slice(0, 10);
+      const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `art-presets-${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      view.setParams(ResonanceArtView.DEFAULT_PARAMS);
+      _syncSlidersFromView();
+      presetSelect.value = '__defaults__';
+    });
+
+    closeBtn.addEventListener('click', () => {
+      panel.classList.add('sl-adbg--hidden');
+      launcher.classList.remove('sl-adbg--hidden');
+    });
+    launcher.addEventListener('click', () => {
+      launcher.classList.add('sl-adbg--hidden');
+      panel.classList.remove('sl-adbg--hidden');
+    });
+
+    root.appendChild(launcher);
+    root.appendChild(panel);
+    stage.appendChild(root);
+
+    _refreshPresetSelect('__defaults__');
+    _syncSlidersFromView();
+  }
+</script>
 {% endblock %}
