@@ -2,6 +2,49 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+## 2026-04-22 — Art Lab /art: Stage 1 validated end-to-end with live instruments
+
+Wrapped the day by getting Stage 1 fully working with real instruments — piano through Scarlett 2i2 and voice through the built-in mic. Ghost torus + warm/cool chord overlays + role-colored node glows reads as a "fireworks" aesthetic: barely-there armature when idle, bright colored flashes when playing. Saved as a localStorage preset "super fun" — needs Export for persistence across browser data clears.
+
+**MIDI: Launchkey MK4 multi-port fix (`static/shared/midi-input.js`)**
+- Symptom: MK4 auto-attach silently failed; `isConnected` stayed false; `[Art Lab] No MIDI device detected.` in console despite the device being visible to the browser.
+- Root cause: auto-attach branch was `inputs.length === 1`. MK4 enumerates as **two** ports ("Launchkey MK4 49 MIDI Out" and "Launchkey MK4 49 DAW Out"), so the condition never fires. Prior Launchkey presumably enumerated as a single port, hence no regression flagged until now.
+- Fix: change the guard to `inputs.length >= 1` and pick the non-DAW port via `inputs.find((i) => !/\bDAW\b/i.test(i.name)) || inputs[0]`. DAW port carries transport/mixer CC, not the keys — selecting it would send the wrong MIDI into the sampler.
+- Applied in both `init()` (line ~202) and `_handleStateChange()` (line ~155) so hot-plug and cold-start behave identically.
+
+**Debug panel: "3D Geometry" section moved to top (`templates/art.html`)**
+- Previously buried below "Smoothing & Decay" and "Grid Motion" — required scrolling inside the 280px panel to find the `mode3D` toggle. Multiple fresh-session moments lost to "where's the toggle".
+- Fix: reordered `SLIDER_GROUPS` so "3D Geometry" is the first entry. Toggle now visible immediately on panel open.
+
+**Fireworks tuning (pure slider work, no code)**
+- `triangle3DBaseAlpha` → 0.04, `triangle3DStrokeAlpha` → 0.02: ghost-faint scaffold
+- `triangleFillAlphaPeak` → 0.47, `triangleIntensityScale` → 496, `triangleGlowBlur` → 37, `triangleStrokeWidth` → 1.5: strong colored bloom on held triads
+- `spawnRateMultiplier` → 4, `spawnRateCap` → 2, `particleSizeMax` → 6.4, `glowAlphaInner` → 1.0, `lifeMax` → 0.7: larger, brighter, longer-lived sparkle particles at each sounding node
+- Saved as preset "super fun" in `localStorage['songlab.art.presets']`. Not yet exported to a file — volatile.
+
+**Known issue discovered: audio-input feedback loop**
+- Symptom: selecting any real audio device in the Hardware dropdown (Scarlett, built-in mic) while MIDI sampler output plays through laptop speakers produces immediate feedback.
+- Cause: `AudioInput.selectDevice` appears to connect the input source into a path that routes to the destination (speakers), in addition to the analyser. Mic then picks up sampler output → loop.
+- Workarounds: (a) use "No audio input" when testing MIDI only, or (b) use headphones / mute speakers before selecting the audio input.
+- Fix deferred: `audio-input.js` should route the source only to the analyser, never to `Tone.Destination`. Refactor candidate for a later session.
+
+**End-to-end validation**
+- **Piano through Scarlett:** clean chord recognition. Held C major → 4 gold triangles bloom at the four (C, E, G) positions on the torus. Minor chords render cool blue triangles. Progressions read visually as alternating warm/cool constellations around the surface.
+- **Voice through built-in mic:** single sung note lights its 4 PC copies with harmonic-FFT blobs per node. Vocal phrases produce streaming color (gold + occasional coral/blue from pitch-detection role classification).
+- Warm/cool major-vs-minor distinction is information-bearing and legible against the neutral grayscale scaffold. The two-layer design (grayscale static + warm/cool reactive) delivered what the earlier all-colored version couldn't.
+
+### Decisions
+
+- Stage 1 declared fully complete. The five deferred items (painter's sort, particles reprojection, multi-torus stack, audio-reactive morph, audio-input refactor) are all Stage 1.5+ work.
+- Preset persistence: export `super fun` to `docs/art-presets.json` (or similar) before next major `/art` session so it survives localStorage clears. Not done today.
+- No Stage 1.5 work started today — session wrap-up after end-to-end validation.
+
+### Next session
+
+- Export the "super fun" preset to a file for persistence.
+- Start Stage 1.5 design pass: three-torus stack for register representation. Open questions (from earlier design conversation): stack spacing, one-master-morph vs per-torus-morph sliders, dynamic spacing as morph rises. Design conversation first, then prompt.
+- Later stages queued: audio-input feedback refactor, particle reprojection in 3D, painter's algorithm sort if/when self-occlusion artifacts appear.
+
 ---
 
 ## 2026-04-22 — Art Lab 3D triangles: grayscale scaffold, colored overlay

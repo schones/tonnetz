@@ -1,6 +1,6 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-22 (later — 3D rendering Prompt 2, Stage 1 complete)
+**Last updated:** 2026-04-22 (end of day — Stage 1 validated end-to-end with piano + voice)
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
@@ -10,10 +10,12 @@
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 22 (later session) completed Stage 1 of the `/art` torus/sphere 3D rendering: `mode3D` feature flag (off by default), 12×4 lattice on a (u, v)-parameterized torus-to-sphere morphable surface, manual rotation around three world axes, plus 96 always-visible Tonnetz triads (warm major / cool minor) with continuous back-face alpha so the far side fades smoothly through the silhouette. Same session also wired real audio input into `/art`: MIDI + Launchkey 49 + sustain pedal, chord + pitch detection in parallel, fixed two latent shared-module bugs (audio-input stale-source rewire and pitch-detection autoplay-policy suspension). Approaching user testing readiness.
+SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 22 closed with `/art` Stage 1 fully validated end-to-end: ghost-torus scaffold (grayscale) + warm/cool chord-triangle overlays + role-colored sparkle blobs at sounding nodes, driven by MIDI (Launchkey MK4 via multi-port fix) and by mic audio through Scarlett 2i2 and built-in mic. "Fireworks" aesthetic saved as a localStorage preset; export-to-file pending. One known issue surfaced: selecting a real audio input in the Hardware dropdown creates a feedback loop through laptop speakers — workaround is "No audio input" for MIDI-only testing or headphones for live audio. Audio-input routing refactor deferred. Approaching user testing readiness.
+
 
 **Next priorities:**
-1. **Torus/sphere morph 3D — Stage 1.5 (multi-torus stacking):** Stage 1 complete (lattice + triangles with back-face alpha). Next sub-step is multi-torus stacking — multiple concentric/offset toruses to give the visualization depth and let different harmonic layers (e.g., extension notes, register groups) live on their own surface. After Stage 1.5: particle reactivity in 3D (currently spawn at 3D-projected screen positions — visually wrong), painter's-algorithm depth sort if self-occlusion artifacts surface, then Stage 2 audio-reactive morph.
+1. **Torus/sphere morph 3D — Stage 1.5 (multi-torus stacking):** Stage 1 complete and validated end-to-end with live instruments. Next sub-step is multi-torus stacking — multiple concentric/offset toruses to give the visualization depth and let different harmonic layers (e.g., extension notes, register groups) live on their own surface. Open design questions to resolve before prompting: stack spacing, one-master-morph vs per-torus-morph sliders, dynamic spacing as morph rises. After Stage 1.5: `audio-input.js` refactor (fix feedback loop by routing source to analyser only), particle reactivity in 3D (currently spawn at 3D-projected screen positions — visually works but not designed), painter's-algorithm depth sort if self-occlusion artifacts surface, then Stage 2 audio-reactive morph.
+
 2. SkratchLab polish — "Clear All" button should also reset canvas (not just blocks)
 3. Add Polyrhythm Trainer to nav dropdown and landing page
 4. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
@@ -30,6 +32,14 @@ SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Apr
 15. User testing prep (15-20 participants)
 
 **Completed this cycle (April 22):**
+
+- **Art Lab 3D rendering — Stage 1 validated end-to-end (late-day session):**
+  - Grayscale scaffold + warm/cool chord overlay split (`scaffoldMajorColor` / `scaffoldMinorColor` in scaffold pass; `majorTriadColor` / `minorTriadColor` in overlay pass). Held chords pop against a neutral surface.
+  - `midi-input.js` multi-port fix: Launchkey MK4 enumerates as "MIDI Out" + "DAW Out"; auto-attach now picks non-DAW port. Applied in both `init()` and `_handleStateChange()`.
+  - Debug panel reordered: "3D Geometry" section now first so `mode3D` toggle is visible without scrolling.
+  - Fireworks tuning via sliders only (no code): faint scaffold, strong colored overlay bloom, larger/brighter/longer particles. Saved as localStorage preset "super fun" — **pending export to file** for persistence across browser data clears.
+  - Validated live with piano through Scarlett 2i2 (clean chord triangles), voice through built-in mic (FFT blobs per sounding PC), and Launchkey MK4 MIDI (held triads render warm/cool overlays at all 4 lattice copies).
+  - **Known issue (deferred):** selecting a real audio input in the Hardware dropdown routes input to `Tone.Destination`, producing speaker feedback when MIDI sampler plays. `audio-input.js` refactor needed — route source to analyser only. Workaround: "No audio input" for MIDI-only testing, or use headphones.
 
 - **Art Lab 3D rendering — Stage 1 Prompt 2 (triangles on torus/sphere):**
   - 96 triads built on the toroidal 12×4 lattice (every cell gets one major upward + one minor downward — no boundary gaps because the lattice wraps on both axes). Each triangle entry carries `{ a, b, c, type }` with `type ∈ {'major', 'minor'}`.
