@@ -4,6 +4,82 @@ Reverse chronological. Quick capture after each session: what happened, what was
 
 ---
 
+## 2026-04-22 — Art Lab audio infrastructure: MIDI, mic, chord + pitch detection
+
+**Focus:** Wire real audio input into `/art` end-to-end so the visualization responds to actual performance (MIDI keyboard, microphone, sustain pedal) — not just on-screen keyboard clicks. Long session; five-plus hours deep in audio plumbing that uncovered two latent bugs neither of which were in today's new code.
+
+### MIDI + Launchkey 49 + sustain pedal
+- `MIDIInput` module wired in `templates/art.html` via an IIFE in `_initMIDI`. Launchkey 49 auto-detects, drum channel 10 filtered, `noteOn` / `noteOff` routed through the shared `KeyboardView` sampler proxy.
+- Unified held-notes tracker added — four source types merged: on-screen keyboard (via `onNotePlay`/`onNoteRelease` callbacks), MIDI held notes, MIDI sustained notes, detected chord/pitch events. Replaces the prior "append everything, let it sort itself out" pattern.
+- `KeyboardView._handleKeyUp` now fires a new `onNoteRelease` callback symmetric to `onNotePlay`. Fixes a stale-highlight bug where on-screen keys glowed after being released.
+- Sustain pedal (CC 64) handled with standard piano semantics: pedal down defers `triggerRelease`; pedal up flushes all sustained notes. Hardware gotcha: the sustain pedal's switch needed to be physically flipped from "continuous" to "switch" position to send CC 64 at all.
+
+### On-screen keyboard visibility toggle
+- Hidden by default. `Keyboard` button in the Hardware row (right-aligned via `margin-left: auto`) toggles `.art-keyboard--hidden`. Preference in `localStorage['songlab.art.keyboardVisible']`.
+- Path A over Path B: `KeyboardView.init()` still runs on page load — the view owns the sampler and analyser chain that feeds the rest of `/art`. Hiding is purely a DOM concern; audio plumbing is untouched.
+- Deferred: `/art` owning its own audio chain independent of `KeyboardView` (Path B). Revisit when a concrete feature needs it (e.g., instrument palette).
+
+### Chord + pitch detection wired into `/art`
+- Both detectors start together in `_updateAudioInputStatus`'s reconciliation when `AudioInput.isActive && toneRunning`. Stop together on disconnect.
+- Parallel, not exclusive. Pitch wins on confident monophonic input (`confidence >= 0.85`); chord takes over when pitch returns `frequency=0` (polyphonic / silence / ambiguous). Handoff is automatic — no UI toggle.
+- Chord-detection is edge-triggered (emits on chord *change*), so a silence watcher (100ms poll, 500ms quiet threshold) clears the detected chord when audio stops. Pitch-detection emits continuously so it doesn't need one.
+- Root-first entry ordering in `_chordEventToEntries` so `_readHarmonyState`'s order-based role assignment colors root=gold, third=coral, fifth=blue correctly.
+
+### Audio-input routing bug (latent, predates `/art`) — FIXED
+- Symptom surfaced late in the session: holding C4 on the RD2000 with the Scarlett 2i2 as input showed `Tone.Analyser.getValue()` peak at `-120 dB` (silence) — while pitch-detection's separate `AudioContext` saw real samples (`maxAbs ~ 0.01`). Meaning: mic audio reached Chrome but never reached the analyser that the rest of `/art` reads from.
+- Every chord-detection emission earlier in the session was reading residual MIDI sampler audio (from the initial Launchkey note that armed Tone), not mic input. Hours of "it works" conclusions were wrong.
+- Root cause: when `_attachAudioInputToTone` ran post-Tone-start, `AudioInput._sourceNode` was still the stale one from the fallback-context auto-restore. `setAnalyser()` tries to disconnect and reconnect that stale source cross-context; Chrome silently refuses the reconnect; the later `selectDevice`'s fresh source-to-analyser wiring is already broken by the prior failure.
+- Fix: explicit `AudioInput.disconnect()` before `setAnalyser` in `/art`'s `_attachAudioInputToTone`. Tears down stale stream + `_sourceNode` from the fallback context; `setAnalyser` becomes a safe no-op (no source to reconnect); `selectDevice` then creates a fresh stream + source in Tone's context and wires it to the already-set analyser cleanly.
+- Manual-verification diagnostic (useful for future debug): while holding a note, `__artView.analyser.getValue()` should show peaks in `-30` to `-50` dB range (linear `0.01`–`0.05`). Anything near `-120 dB` means the source isn't wired.
+- **Resolves the April 19 "Scarlett 2i2 audio routing needs verification" known issue.**
+- Contained to `templates/art.html` only; shared `audio-input.js` untouched. A proper refactor (fixing `setAnalyser`'s stale-source side effect) is deferred — would touch Explorer's audio path too.
+
+### `pitch-detection.js` autoplay-policy fix (shared module)
+- Chrome starts programmatically-created `AudioContext` instances in `suspended` state. While suspended, `ScriptProcessorNode.onaudioprocess` does not fire at all — YIN "runs" but gets zero samples, returns `frequency: 0` on every callback, and `_detectedPitch` never populates.
+- Why Melody Match hasn't hit this: its detector is created inside a button-click handler (user gesture scope), which exempts the new `AudioContext` from suspension. `/art` creates its detector asynchronously through `_updateAudioInputStatus` reconciliation, well outside any gesture.
+- Fix: `await audioContext.resume()` after construction in `start()`. `resume()` is a no-op on already-running contexts, so all existing callers are unaffected.
+
+### Role preservation through decay tails (shared module)
+- Previously `_readHarmonyState` in `resonance-art-view.js` reset every PC's role to `'root'` on every HarmonyState update. PCs decay over 2–3 seconds; during decay they rendered in the wrong color (gold) regardless of what role they'd had when active.
+- Fix: reset role only for PCs about to be re-assigned this frame. PCs in decay tails keep their last-active color. Preserves the prefer-lowest-index-role logic for same-frame multi-octave cases.
+
+### Triangle visibility + blob duration fix
+- `silentEps` default lowered from `0.001` to `0.0001` so quieter notes can cross the activity threshold.
+- New `triangleIntensityScale` parameter (default `100`); slider added to the Chord Triangles panel. The intensity formula in `_drawTriangles` multiplies by this scale before `Math.min(1, ...)`.
+- Root cause: per-PC energy for a held triad is around `0.003`, but the prior formula was calibrated assuming ~`1.0` energy. `alpha × intensity ≈ 0.003` rendered invisible.
+
+### Hardware setup notes (for future reference)
+- RD2000 Output L/Mono → Scarlett 2i2 Input 1 via TRS. Inst **off** (line level), 48V **off** (not needed), Air **off**. Direct Monitor **on** (hardware loopback for headphones, zero latency). Scarlett gain at ~2pm on the dial for a clean line-level signal; halo steady green on held notes.
+- macOS does **not** expose an input-volume slider for audio interfaces — the Scarlett exposes hardware gain instead. This is correct pro-audio behavior; the slider's absence is not a bug.
+- Distinctive confusion point: `QTR-10` or similar Hosa cables are TS (unbalanced, "instrument") cables, not TRS. A TS cable from the RD's balanced line out will come through ~6 dB quieter than a TRS would. Roland's "Professional Audio Cable" is TRS.
+
+### Workflow / process notes
+- Container workflow held up despite the rabbit hole. All work drafted as scoped Claude Code prompts in claude.ai, verified with `node --check` between rounds.
+- Eight prompts landed during the session: held-notes tracker, MIDI wiring (two parts), triangle visibility fix, keyboard toggle, first audio-input rewire (incomplete), role preservation, chord detection, pitch detection, `pitch-detection.js` resume fix, audio-input clean-state fix.
+- Key debugging step that broke the session open: directly reading `__artView.analyser.getValue()` on the live analyser — peaks at `-120 dB` despite `isActive: true` exposed that the whole session's chord-detection output had been phantom. Lesson: don't trust "it works" visual signals alone when there's an external-audio path; always check the analyser's actual peak level against what your ears are hearing through Direct Monitor.
+
+### Decisions made
+- Chord + pitch detection run in parallel (not exclusive). Pitch wins when confident; chord takes over polyphonic / silence. No UI toggle.
+- Held-notes tracker is additive across all four sources — MIDI and detected chord/pitch can coexist.
+- On-screen keyboard toggle uses Path A (keep `KeyboardView` instantiated, hide DOM only). Path B (separate audio chain) deferred.
+- Audio-input rewire fix contained to `templates/art.html`. Shared `audio-input.js` `setAnalyser` refactor deferred — touches Explorer's path too.
+- Triads remain the geometric core of the Tonnetz; extension notes (7ths etc.) will be an additive visual layer in future work, not modifying triangle geometry.
+
+### What's next
+- **Torus/sphere morph 3D rendering in `/art`** — Dustin's stated top priority; not yet started. Design-doc pass needed first (lattice → (u, v) parameterization, projection math, back-face alpha, triangle orientation on curved surface). Stage 1 is manual `morph` slider; Stage 2 audio-reactive morph driven by harmonic complexity is a separate follow-up.
+- SkratchLab polish — "Clear All" button should also reset canvas
+- Polyrhythm Trainer → nav + landing
+- Linus and Lucy walkthrough
+- Business model / monetization spec
+- Onset detection wired into Resonance (still deferred)
+- AudioWorklet migration for `pitch-detection.js` (ScriptProcessorNode is deprecated; tracked in `docs/audio-architecture.md` Open Question 1)
+
+### Known issues from this session
+- None new. Deprecation warning from `ScriptProcessorNode` in `pitch-detection.js` is benign and pre-existing.
+- Two known issues resolved: Scarlett 2i2 audio routing verification (from April 19); `/art` visual issues from April 20 testing (the unexplained "visual problems" were the invisible-triangles bug, now fixed).
+
+---
+
 ## 2026-04-20 — Resonance Debug Panel, Sparkler Tuning, /art Sandbox
 
 **Focus:** Live-tuning debug panel for Resonance, iterative refinement of particle aesthetic from "starburst" to "sparkler", and a forked `/art` sandbox route with experimental grid motion and chord-triangle merging.

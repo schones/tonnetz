@@ -1,6 +1,6 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-04-22
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
@@ -10,16 +10,16 @@
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 20 session shipped a URL-gated debug panel for live-tuning Resonance, fixed several rendering bugs (inverted blob fill, axis-locked wiggle, hidden peak threshold), and re-baked Resonance defaults to a "sparkler" aesthetic. New `/art` sandbox route forks Resonance into an experimental playground with grid motion and chord-triangle merging. Approaching user testing readiness.
+SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 22 session wired real audio input into `/art`: MIDI + Launchkey 49 + sustain pedal, on-screen keyboard visibility toggle, chord detection and pitch detection running in parallel with automatic handoff (pitch wins when confident, chord takes over polyphonic). Fixed a latent audio-input routing bug that was causing mic audio to silently not reach the Tone.Analyser — resolves the April 19 Scarlett verification issue. Fixed a latent autoplay-policy bug in shared `pitch-detection.js` that prevented detectors from emitting when created outside a user gesture scope. Role preservation through decay tails (PCs keep their last-active color while decaying). Approaching user testing readiness.
 
 **Next priorities:**
-1. Debug visual issues identified in `/art` experiments (carry-over from April 20)
-2. Debug Scarlett audio input flow (browser sees device, audio routing needs verification)
+1. **Torus/sphere morph 3D rendering in `/art`** — lattice → (u, v) parametric coords, `morph` parameter (0 = torus, 1 = sphere), manual slider Stage 1, audio-reactive morph Stage 2. Design-doc pass first (non-trivial choices in parameterization, projection, back-face alpha, triangle orientation on curved surface). Work happens in `resonance-art-view.js` + `templates/art.html`; Explorer's `resonance-view.js` stays untouched.
+2. SkratchLab polish — "Clear All" button should also reset canvas (not just blocks)
 3. Add Polyrhythm Trainer to nav dropdown and landing page
 4. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
 5. Tab-audio capture experiment: feed YouTube into `/art`
 6. Decide `/art` front-door (linked from nav, footer, hidden, or remain unlinked sandbox)
-7. **Onboarding & tutorial UX (new)** — Build a "guided tour" / tooltip-card system for the platform: friendly intro modals on first visit (Studio, Explorer, Games, `/art`), short walkthroughs explaining what each tool is for, and dedicated tutorials for the generative-art side (e.g., why the torus is the natural representation for a Tonnetz, how chord-triangles work, what the FFT is showing). Reference inspirations: BandLab's onboarding modals (sequential cards with X to dismiss, "There's more" / "Explore more" CTAs, large preview imagery, friendly first-name greeting). Could leverage existing walkthrough infrastructure from Explorer.
+7. **Onboarding & tutorial UX** — Build a "guided tour" / tooltip-card system for the platform: friendly intro modals on first visit (Studio, Explorer, Games, `/art`), short walkthroughs explaining what each tool is for, and dedicated tutorials for the generative-art side (e.g., why the torus is the natural representation for a Tonnetz, how chord-triangles work, what the FFT is showing). Reference inspirations: BandLab's onboarding modals (sequential cards with X to dismiss, "There's more" / "Explore more" CTAs, large preview imagery, friendly first-name greeting). Could leverage existing walkthrough infrastructure from Explorer.
 8. Consider preserving original "starburst" Resonance aesthetic as a named baked-in preset
 9. Onset detection wired into Resonance for staccato burst behavior
 10. Business model / monetization spec
@@ -29,7 +29,41 @@ SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Apr
 14. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
 15. User testing prep (15-20 participants)
 
-**Completed this cycle (April 20):**
+**Completed this cycle (April 22):**
+
+- **Art Lab audio infrastructure — real MIDI + mic input wired end-to-end:**
+  - Unified held-notes tracker in `templates/art.html` merging four sources: on-screen keyboard, MIDI held notes, MIDI sustained notes, and detected chord/pitch events. Replaces prior source-agnostic append path with an additive multi-source model.
+  - `KeyboardView.onNoteRelease` callback added symmetric to `onNotePlay`, routing on-screen keyboard releases through the tracker.
+  - MIDI input via `midi-input.js` — Launchkey 49 auto-detects, drum channel 10 filtered. noteOn/noteOff routed through the sampler proxy in Tone's context.
+  - Sustain pedal (CC 64) — pedal down defers `triggerRelease`, pedal up flushes. Standard piano semantics.
+  - On-screen keyboard visibility toggle (hidden by default). `Keyboard` button in Hardware row toggles `.art-keyboard--hidden`. Preference in `localStorage['songlab.art.keyboardVisible']`. KeyboardView stays instantiated so sampler/analyser chain stays wired.
+
+- **Chord + pitch detection wired into `/art`:**
+  - `chord-detection.js` and `pitch-detection.js` both created and started together in `_updateAudioInputStatus` reconciliation (when `AudioInput.isActive && toneRunning`).
+  - Parallel operation, not mutually exclusive. Pitch wins on confident monophonic input (`confidence >= 0.85`), chord takes over when pitch returns `frequency=0` (polyphonic / silence / ambiguous).
+  - Silence watcher (100ms poll, 500ms quiet threshold) for chord-detection's edge-triggered emit model. Pitch-detection emits continuously, no watcher needed.
+  - Root-first entry ordering in `_chordEventToEntries` so `_readHarmonyState`'s order-based role assignment colors root=gold, third=coral, fifth=blue correctly.
+
+- **Audio-input routing bug fixed (latent, predates `/art`):**
+  - Symptom: chord detection "working" during earlier testing was reading residual MIDI sampler audio, not mic — because the `_sourceNode` from `AudioInput`'s auto-restore (fallback-context path) was never successfully re-wired into Tone's context despite `AudioInput.isActive` reporting true.
+  - Root cause: `setAnalyser()` tries to reconnect the stale cross-context source and silently fails, leaving state that breaks the subsequent `selectDevice`'s fresh connection.
+  - Fix: explicit `AudioInput.disconnect()` before `setAnalyser` in `/art`'s `_attachAudioInputToTone`, so rewire starts from clean state. Contained to `templates/art.html`; shared `audio-input.js` refactor deferred.
+  - **Resolves the April 19 "Scarlett 2i2 audio routing needs verification" known issue.**
+
+- **`pitch-detection.js` autoplay-policy fix (shared module):**
+  - Chrome starts programmatically-created `AudioContext` instances in `suspended` state. While suspended, `ScriptProcessorNode.onaudioprocess` does not fire — so YIN runs but sees no samples, and every callback returns `frequency: 0` below confidence.
+  - Fix: `await audioContext.resume()` after construction in `pitch-detection.js:start()`. `resume()` is a no-op on already-running contexts, so callers that create the detector inside a user gesture (Melody Match) are unaffected. Callers that create it asynchronously (Art Lab via audio-input reconciliation) now get a running context and actual emissions.
+
+- **Role preservation through decay tails (shared module):**
+  - Previously `_readHarmonyState` reset every PC's role to `'root'` on every HarmonyState update; PCs decay over 2–3 seconds, during which they rendered in the wrong color (snapping to gold).
+  - Fix: in `resonance-art-view.js`, reset role only for PCs about to be re-assigned this frame. Preserves prefer-lowest-index-role logic for same-frame multi-octave cases.
+
+- **Triangle visibility + blob duration fix:**
+  - `silentEps` default lowered from `0.001` to `0.0001` so quieter notes can cross the activity threshold.
+  - New `triangleIntensityScale` parameter (default `100`), slider added to Chord Triangles panel. Intensity formula in `_drawTriangles` multiplies by the scale before `Math.min(1, ...)`.
+  - Root cause: per-PC energy for a held triad is ~`0.003`, but the prior intensity formula assumed ~`1.0` energy so `alpha × intensity ≈ 0.003` rendered invisible.
+
+**Completed previous cycle (April 20):**
 
 - **Resonance debug panel (Explorer):**
   - URL-gated at `/explorer?debug=resonance`; production users see nothing
@@ -338,10 +372,9 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 
 ## Known Issues
 
-- **Scarlett 2i2 audio routing needs verification** — browser sees the device, Hardware UI selects it, but audio may not be flowing through to the analyser in all cases. Needs hands-on debugging with the physical hardware.
 - **Resonance defaults changed (April 20)** — Explorer's Resonance tab now renders sparkler-style by default, not the original starburst from April 19. Original aesthetic not preserved as a baked-in preset; consider adding it back as a named preset alongside "Defaults".
 - **`/art` route is unlinked** — sandbox by design; visit `/art` directly. Easy to forget the route exists. Decide on a front-door (footer link, easter egg, or remain hidden).
-- **`/art` visual issues from April 20 testing** — Dustin flagged outstanding visual problems but did not enumerate; carry-over for next session.
+- **`pitch-detection.js` uses deprecated `ScriptProcessorNode`** — Chrome logs a deprecation warning. Functional for now. AudioWorklet migration tracked in `docs/audio-architecture.md` Open Question 1.
 - **Swing Trainer 500 on production** — could not reproduce locally (April 17). Template extends base.html correctly. Likely Railway deploy state issue. Need fresh deploy + production stack trace capture. See `docs/KNOWN-ISSUES.md`.
 - **Railway cold start** — ~15s first load after inactivity (hobby tier), warn testers
 - **Rhythm Lab + Strum Patterns mic paths disabled** — dead route calls commented out, TODO points to onset-detection.js migration. Keyboard/spacebar input still works.
