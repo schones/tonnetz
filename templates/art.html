@@ -278,6 +278,8 @@
       from '{{ url_for("static", filename="shared/midi-input.js") }}';
     import { create as createChordDetector }
       from '{{ url_for("static", filename="shared/chord-detection.js") }}';
+    import { createPitchDetector }
+      from '{{ url_for("static", filename="shared/pitch-detection.js") }}';
 
     // ── Tone.js loader (mirrors Explorer's pattern) ───────────────
     // Keyboard playback and the shared FFT analyser both need Tone.
@@ -322,6 +324,14 @@
     let _silenceWatcherId = null;
     let _silenceCounter = 0;
 
+    // Monophonic pitch detection. Runs in parallel with chord detection
+    // and takes precedence when confident — see _syncHarmonyState below.
+    // Uses YIN on raw PCM via ScriptProcessorNode (separate AudioContext
+    // from Tone's). Built-in confidence gate emits frequency=0 when the
+    // signal isn't clearly monophonic, so no external silence watcher.
+    let _pitchDetector = null;
+    let _detectedPitch = null;      // { pc: number, octave: number } | null
+
     const _heldOnscreenKeys = new Map();         // "C4" → { note, octave }
     const _heldMidiNotes = new Set();            // integer MIDI numbers currently pressed
     const _sustainedMidiNotes = new Set();       // released-while-pedal-down, awaiting flush
@@ -340,7 +350,18 @@
       for (const k of _heldOnscreenKeys.values()) {
         entries.push({ note: k.note, octave: k.octave, source: 'user', color: null });
       }
-      if (_detectedChord) {
+      // Audio-driven detection: prefer monophonic pitch over polyphonic
+      // chord. Pitch detector gates on confidence internally, signaling
+      // "no clear pitch" with frequency=0 — so when the signal becomes
+      // polyphonic or ambiguous, _detectedPitch clears and chord takes over.
+      if (_detectedPitch) {
+        entries.push({
+          note: NOTE_NAMES[_detectedPitch.pc],
+          octave: _detectedPitch.octave,
+          source: 'user',
+          color: null,
+        });
+      } else if (_detectedChord) {
         for (const entry of _detectedChord) entries.push(entry);
       }
       HarmonyState.update({ activeNotes: entries });
@@ -563,15 +584,22 @@
         }
       }
 
-      // Reconcile chord detection with audio-input + Tone state. Start
-      // only when both are live; stop otherwise. Idempotent — if state
-      // hasn't changed, these are cheap no-ops.
+      // Reconcile audio-driven detection with audio-input + Tone state.
+      // Chord and pitch detectors start/stop together — both observe the
+      // same stream but differ in how they interpret it (chord = chroma
+      // template match, pitch = YIN on raw PCM). Idempotent.
       const toneRunning = window.Tone && window.Tone.context
         && window.Tone.context.state === 'running';
       const shouldDetect = AudioInput.isActive && toneRunning;
-      const isDetecting = _silenceWatcherId != null;
-      if (shouldDetect && !isDetecting) _startChordDetection();
-      else if (!shouldDetect && isDetecting) _stopChordDetection();
+      const isChordDetecting = _silenceWatcherId != null;
+      const isPitchDetecting = _pitchDetector != null;
+      if (shouldDetect) {
+        if (!isChordDetecting) _startChordDetection();
+        if (!isPitchDetecting) _startPitchDetection();
+      } else {
+        if (isChordDetecting) _stopChordDetection();
+        if (isPitchDetecting) _stopPitchDetection();
+      }
     }
 
     async function _ensureToneStarted() {
@@ -671,6 +699,71 @@
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // AUDIO-DRIVEN PITCH DETECTION (monophonic)
+    // Runs alongside chord detection. Reuses AudioInput's MediaStream
+    // rather than prompting for mic access again. Takes precedence over
+    // chord output when confident — see _syncHarmonyState.
+    // ═══════════════════════════════════════════════════════════════
+    function _startPitchDetection() {
+      if (_pitchDetector) return;             // already running
+      const stream = AudioInput.getStream();
+      if (!stream) return;
+
+      try {
+        _pitchDetector = createPitchDetector({
+          stream,
+          engine: 'yin',
+          confidenceThreshold: 0.85,          // raise for more "silence", lower for more detection
+        });
+      } catch (e) {
+        console.warn('[Art Lab] pitch-detection create failed:', e);
+        _pitchDetector = null;
+        return;
+      }
+
+      // start() is async — fire-and-forget with a .catch since the outer
+      // reconciliation is synchronous.
+      _pitchDetector.start((result) => {
+        if (result.frequency > 0) {
+          // audio.js returns note names with ASCII '#'; HarmonyState
+          // expects Unicode '♯' (matches transforms.js NOTE_NAMES).
+          const note = result.note.replace(/#/g, '♯');
+          const pc = noteToPC(note);
+          if (pc < 0) return;
+
+          // Only sync on actual change — pitch callback fires every audio
+          // buffer (~46ms), which would otherwise hammer HarmonyState at
+          // 22Hz even for a steady sustained note.
+          if (!_detectedPitch || _detectedPitch.pc !== pc || _detectedPitch.octave !== result.octave) {
+            _detectedPitch = { pc, octave: result.octave };
+            _syncHarmonyState();
+          }
+        } else {
+          // Not confident → clear pitch so chord detection takes over
+          // on the next _syncHarmonyState call.
+          if (_detectedPitch) {
+            _detectedPitch = null;
+            _syncHarmonyState();
+          }
+        }
+      }).catch((e) => {
+        console.warn('[Art Lab] pitch-detection start failed:', e);
+        _pitchDetector = null;
+      });
+    }
+
+    function _stopPitchDetection() {
+      if (_pitchDetector) {
+        try { _pitchDetector.stop(); } catch (_) {}
+        _pitchDetector = null;
+      }
+      if (_detectedPitch) {
+        _detectedPitch = null;
+        _syncHarmonyState();
+      }
+    }
+
     // Call after Tone's AudioContext transitions to 'running'. If
     // AudioInput auto-restored a device while Tone was suspended,
     // re-select it so the source lives in Tone's rawContext. No-op
@@ -685,7 +778,12 @@
       if (_audioInputNeedsToneRewire && AudioInput.activeDevice) {
         const id = AudioInput.activeDevice.deviceId;
         _audioInputNeedsToneRewire = false;
-        try { AudioInput.setAnalyser(analyser); } catch (_) { /* cross-context — re-select fixes it */ }
+        // Tear down the stale fallback-context source before re-wiring.
+        // Without this, setAnalyser tries to reconnect the stale source
+        // cross-context and leaves state that silently breaks the later
+        // selectDevice's fresh source-to-analyser connection.
+        AudioInput.disconnect();
+        AudioInput.setAnalyser(analyser);
         try { await AudioInput.selectDevice(id); }
         catch (e) { console.warn('[art] audio-input re-select failed:', e); }
         _updateAudioInputStatus();
