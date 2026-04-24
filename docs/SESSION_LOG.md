@@ -2,6 +2,35 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+## 2026-04-24 — Rename: Art Lab → Harmonograph (cosmetic)
+
+Cosmetic rename of the `/art` sandbox to `/harmonograph`. The visualization draws curves from coupled pendulums tracing harmonic ratios, echoing the Victorian harmonograph machines and connecting cleanly to the Tonnetz mathematical lineage. No functional changes.
+
+**Changes**
+- Route: `/art` → `/harmonograph` (new handler in `app.py`). Backward-compat redirect: `/art` now returns `redirect("/harmonograph")`.
+- Template: `templates/art.html` → `templates/harmonograph.html`. Page title "Art Lab — Resonance Sandbox" → "Harmonograph". H1 text likewise.
+- JS module: `static/shared/resonance-art-view.js` → `static/shared/harmonograph-view.js`. Class `ResonanceArtView` → `HarmonographView`. Canvas class `sl-resonance-art-canvas` → `sl-harmonograph-canvas`.
+- Window global: `window.__artView` → `window.__harmonograph`.
+- CSS class prefixes scoped to this view: `art-*` → `hg-*` (page, header, title, subtitle, stage, keyboard, hardware, hw-select/status/dot/badge/toggle). Debug panel prefix `sl-adbg-*` → `sl-hg-dbg-*`.
+- Debug panel title "Art Lab Tuning" → "Harmonograph Tuning"; `_buildArtDebugPanel` → `_buildHarmonographDebugPanel`.
+- Export filename: `art-presets-YYYY-MM-DD.json` → `harmonograph-presets-YYYY-MM-DD.json`.
+- Console tags `[Art Lab]` → `[Harmonograph]`, `[art]` → `[harmonograph]`.
+
+**Retained (intentionally)**
+- `localStorage['songlab.art.presets']` — keeps the "super fun" preset (and any others the user saved) readable after the rename. Renaming this key would orphan the saved presets. Documented inline in the template.
+- `localStorage['songlab.art.keyboardVisible']` — same reason.
+
+**Not touched**
+- `static/shared/resonance-view.js` (Explorer's canonical Resonance tab) — unrelated despite the similar name.
+- Prior SESSION_LOG entries — history preserved as-is per "don't rewrite history".
+
+**Acceptance**
+- `/art` → 302 → `/harmonograph` ✅
+- All UI text reads "Harmonograph" ✅
+- `window.__harmonograph` replaces `window.__artView` ✅
+
+---
+
 ## 2026-04-22 — Art Lab /art: Stage 1 validated end-to-end with live instruments
 
 Wrapped the day by getting Stage 1 fully working with real instruments — piano through Scarlett 2i2 and voice through the built-in mic. Ghost torus + warm/cool chord overlays + role-colored node glows reads as a "fireworks" aesthetic: barely-there armature when idle, bright colored flashes when playing. Saved as a localStorage preset "super fun" — needs Export for persistence across browser data clears.

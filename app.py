@@ -268,12 +268,17 @@ def explorer():
     return render_template("explorer.html")
 
 
+@app.route("/harmonograph")
+def harmonograph():
+    # Experimental Resonance sandbox (see templates/harmonograph.html and
+    # static/shared/harmonograph-view.js). Kept separate from the Explorer
+    # Resonance tab so the canonical view stays stable while this iterates.
+    return render_template("harmonograph.html")
+
+
 @app.route("/art")
 def art():
-    # Experimental Resonance sandbox (see templates/art.html and
-    # static/shared/resonance-art-view.js). Kept separate from the Explorer
-    # Resonance tab so the canonical view stays stable while this iterates.
-    return render_template("art.html")
+    return redirect("/harmonograph")
 
 
 @app.route("/tutorial")

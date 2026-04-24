@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block theme %}dark{% endblock %}
-{% block title %}Art Lab — Resonance Sandbox · SongLab{% endblock %}
+{% block title %}Harmonograph · SongLab{% endblock %}
 
 {% block head %}
 <style>
   /* ── Page frame ───────────────────────────────────────────── */
-  .art-page {
+  .hg-page {
     display: flex;
     flex-direction: column;
     gap: var(--space-md, 12px);
@@ -17,14 +17,14 @@
     color: var(--text-primary, #F2EFE6);
   }
 
-  .art-header {
+  .hg-header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: var(--space-md, 12px);
   }
 
-  .art-title {
+  .hg-title {
     margin: 0;
     font-family: var(--font-family-display, var(--font-main));
     font-size: var(--font-size-xl, 1.5rem);
@@ -33,14 +33,14 @@
     color: var(--text-primary, #F2EFE6);
   }
 
-  .art-subtitle {
+  .hg-subtitle {
     margin: 0;
     font-size: var(--font-size-sm, 0.9rem);
     color: var(--text-secondary, #B5AE9F);
   }
 
   /* ── Canvas stage (dominant visual element) ───────────────── */
-  .art-stage {
+  .hg-stage {
     position: relative;
     width: 100%;
     flex: 1 1 auto;
@@ -54,14 +54,14 @@
   }
 
   /* ── Keyboard panel ───────────────────────────────────────── */
-  .art-keyboard {
+  .hg-keyboard {
     background: var(--bg-card, #1C1C24);
     border: 1px solid var(--border, #2E2E3A);
     border-radius: var(--radius-lg, 10px);
     padding: var(--space-md, 12px) var(--space-lg, 16px);
   }
 
-  .art-keyboard__header {
+  .hg-keyboard__header {
     display: flex;
     align-items: center;
     gap: var(--space-md, 12px);
@@ -69,7 +69,7 @@
     flex-wrap: wrap;
   }
 
-  .art-keyboard__label {
+  .hg-keyboard__label {
     font-size: var(--font-size-xs, 0.78rem);
     font-weight: 500;
     text-transform: uppercase;
@@ -77,12 +77,12 @@
     color: var(--text-secondary, #B5AE9F);
   }
 
-  .art-keyboard--hidden {
+  .hg-keyboard--hidden {
     display: none;
   }
 
   /* ── Hardware row ─────────────────────────────────────────── */
-  .art-hardware {
+  .hg-hardware {
     display: flex;
     align-items: center;
     gap: var(--space-md, 12px);
@@ -93,7 +93,7 @@
     flex-wrap: wrap;
   }
 
-  .art-hardware__label {
+  .hg-hardware__label {
     font-size: var(--font-size-xs, 0.78rem);
     font-weight: 500;
     text-transform: uppercase;
@@ -102,7 +102,7 @@
     margin-right: var(--space-sm, 8px);
   }
 
-  .art-hw-select {
+  .hg-hw-select {
     background: var(--bg-input, #12121A);
     color: var(--text-primary, #F2EFE6);
     border: 1px solid var(--border-input, #43434F);
@@ -113,7 +113,7 @@
     min-width: 240px;
   }
 
-  .art-hw-status {
+  .hg-hw-status {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -121,31 +121,31 @@
     color: var(--text-secondary, #B5AE9F);
   }
 
-  .art-hw-status[data-state="active"] {
+  .hg-hw-status[data-state="active"] {
     color: var(--text-primary, #F2EFE6);
   }
 
-  .art-hw-status[data-state="error"] {
+  .hg-hw-status[data-state="error"] {
     color: #E28A8A;
   }
 
-  .art-hw-dot {
+  .hg-hw-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background: #555;
   }
 
-  .art-hw-status[data-state="active"] .art-hw-dot {
+  .hg-hw-status[data-state="active"] .hg-hw-dot {
     background: #4CAF50;
     box-shadow: 0 0 6px rgba(76, 175, 80, 0.6);
   }
 
-  .art-hw-status[data-state="error"] .art-hw-dot {
+  .hg-hw-status[data-state="error"] .hg-hw-dot {
     background: #E28A8A;
   }
 
-  .art-hw-badge {
+  .hg-hw-badge {
     display: inline-block;
     padding: 2px 8px;
     border-radius: 999px;
@@ -157,19 +157,19 @@
     border: 1px solid var(--border, #2E2E3A);
   }
 
-  .art-hw-badge[data-quality="interface"] {
+  .hg-hw-badge[data-quality="interface"] {
     color: #EAD7A3;
     border-color: #8A7A4A;
     background: rgba(212, 160, 60, 0.10);
   }
 
-  .art-hw-badge[data-quality="mic"] {
+  .hg-hw-badge[data-quality="mic"] {
     color: #B3D0E8;
     border-color: #3A6A8A;
     background: rgba(58, 139, 201, 0.10);
   }
 
-  .art-hw-toggle {
+  .hg-hw-toggle {
     margin-left: auto;
     background: var(--bg-input, #12121A);
     color: var(--text-secondary, #B5AE9F);
@@ -183,20 +183,20 @@
     transition: background 0.15s ease, color 0.15s ease;
   }
 
-  .art-hw-toggle:hover {
+  .hg-hw-toggle:hover {
     color: var(--text-primary, #F2EFE6);
   }
 
-  .art-hw-toggle[aria-pressed="true"] {
+  .hg-hw-toggle[aria-pressed="true"] {
     color: var(--text-primary, #F2EFE6);
     background: rgba(212, 160, 60, 0.10);
     border-color: #8A7A4A;
   }
 
-  /* Art Lab debug panel (same visual system as Explorer's Resonance
-       tuning panel, re-themed via the .sl-adbg- prefix so art presets
+  /* Harmonograph debug panel (same visual system as Explorer's Resonance
+       tuning panel, re-themed via the .sl-hg-dbg- prefix so presets
        never collide with Explorer ones.) */
-  .sl-adbg {
+  .sl-hg-dbg {
     position: absolute;
     right: 16px;
     top: 16px;
@@ -211,7 +211,7 @@
     color: var(--text-primary, #F2EFE6);
   }
 
-  .sl-adbg__launcher {
+  .sl-hg-dbg__launcher {
     background: rgba(20, 20, 24, 0.92);
     color: inherit;
     border: 1px solid var(--border, #2E2E3A);
@@ -224,11 +224,11 @@
     -webkit-backdrop-filter: blur(8px);
   }
 
-  .sl-adbg__launcher:hover {
+  .sl-hg-dbg__launcher:hover {
     background: rgba(35, 35, 46, 0.95);
   }
 
-  .sl-adbg__panel {
+  .sl-hg-dbg__panel {
     width: 280px;
     flex: 1 1 auto;
     min-height: 0;
@@ -245,7 +245,7 @@
     font-size: 11px;
   }
 
-  .sl-adbg__header {
+  .sl-hg-dbg__header {
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -256,7 +256,7 @@
     font-size: 12px;
   }
 
-  .sl-adbg__close {
+  .sl-hg-dbg__close {
     background: none;
     border: none;
     color: var(--text-secondary, #C7C2B5);
@@ -266,11 +266,11 @@
     line-height: 1;
   }
 
-  .sl-adbg__close:hover {
+  .sl-hg-dbg__close:hover {
     color: var(--text-primary, #F2EFE6);
   }
 
-  .sl-adbg__preset-bar {
+  .sl-hg-dbg__preset-bar {
     flex-shrink: 0;
     padding: 8px 10px;
     border-bottom: 1px solid var(--border-subtle, #23232E);
@@ -279,13 +279,13 @@
     gap: 6px;
   }
 
-  .sl-adbg__scroll {
+  .sl-hg-dbg__scroll {
     flex: 1 1 auto;
     overflow-y: auto;
     min-height: 0;
   }
 
-  .sl-adbg__preset-select {
+  .sl-hg-dbg__preset-select {
     width: 100%;
     background: var(--bg-input, #12121A);
     color: var(--text-primary, #F2EFE6);
@@ -295,12 +295,12 @@
     font-size: 11px;
   }
 
-  .sl-adbg__btn-row {
+  .sl-hg-dbg__btn-row {
     display: flex;
     gap: 6px;
   }
 
-  .sl-adbg__btn {
+  .sl-hg-dbg__btn {
     flex: 1;
     background: var(--bg-raised, #23232E);
     color: inherit;
@@ -311,22 +311,22 @@
     cursor: pointer;
   }
 
-  .sl-adbg__btn:hover {
+  .sl-hg-dbg__btn:hover {
     background: var(--border-strong, #43434F);
   }
 
-  .sl-adbg__save-row {
+  .sl-hg-dbg__save-row {
     display: flex;
     gap: 6px;
     align-items: center;
   }
 
-  .sl-adbg__save-row .sl-adbg__btn {
+  .sl-hg-dbg__save-row .sl-hg-dbg__btn {
     flex: 0 0 auto;
     padding: 5px 10px;
   }
 
-  .sl-adbg__save-input {
+  .sl-hg-dbg__save-input {
     flex: 1 1 auto;
     min-width: 0;
     background: var(--bg-input, #12121A);
@@ -337,20 +337,20 @@
     font-size: 11px;
   }
 
-  .sl-adbg__save-input:focus {
+  .sl-hg-dbg__save-input:focus {
     outline: none;
     border-color: var(--border-strong, #43434F);
   }
 
-  .sl-adbg__section {
+  .sl-hg-dbg__section {
     border-bottom: 1px solid var(--border-subtle, #23232E);
   }
 
-  .sl-adbg__section:last-child {
+  .sl-hg-dbg__section:last-child {
     border-bottom: none;
   }
 
-  .sl-adbg__section>summary {
+  .sl-hg-dbg__section>summary {
     padding: 6px 10px;
     cursor: pointer;
     font-size: 11px;
@@ -359,22 +359,22 @@
     list-style: none;
   }
 
-  .sl-adbg__section>summary::-webkit-details-marker {
+  .sl-hg-dbg__section>summary::-webkit-details-marker {
     display: none;
   }
 
-  .sl-adbg__section>summary::before {
+  .sl-hg-dbg__section>summary::before {
     content: '▸';
     display: inline-block;
     margin-right: 6px;
     transition: transform 120ms ease;
   }
 
-  .sl-adbg__section[open]>summary::before {
+  .sl-hg-dbg__section[open]>summary::before {
     transform: rotate(90deg);
   }
 
-  .sl-adbg__row {
+  .sl-hg-dbg__row {
     display: grid;
     grid-template-columns: 1fr 90px 44px;
     gap: 6px;
@@ -383,7 +383,7 @@
     font-size: 10px;
   }
 
-  .sl-adbg__row label {
+  .sl-hg-dbg__row label {
     color: var(--text-muted, #9A9486);
     font-family: ui-monospace, Menlo, monospace;
     white-space: nowrap;
@@ -391,56 +391,56 @@
     text-overflow: ellipsis;
   }
 
-  .sl-adbg__row input[type="range"] {
+  .sl-hg-dbg__row input[type="range"] {
     width: 100%;
     margin: 0;
   }
 
-  .sl-adbg__val {
+  .sl-hg-dbg__val {
     text-align: right;
     font-family: ui-monospace, Menlo, monospace;
     color: var(--text-primary, #F2EFE6);
     font-size: 10px;
   }
 
-  .sl-adbg--hidden {
+  .sl-hg-dbg--hidden {
     display: none;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<main class="art-page">
-  <header class="art-header">
+<main class="hg-page">
+  <header class="hg-header">
     <div>
-      <h1 class="art-title">Art Lab — Resonance Sandbox</h1>
-      <p class="art-subtitle">Experimental fork of the Resonance visualization. Play notes to feed it.</p>
+      <h1 class="hg-title">Harmonograph</h1>
+      <p class="hg-subtitle">Experimental fork of the Resonance visualization. Play notes to feed it.</p>
     </div>
   </header>
 
-  <section id="art-stage" class="art-stage" aria-label="Resonance visualization">
-    <!-- ResonanceArtView mounts its canvas here on DOMContentLoaded.
+  <section id="hg-stage" class="hg-stage" aria-label="Resonance visualization">
+    <!-- HarmonographView mounts its canvas here on DOMContentLoaded.
            The debug panel is appended as an overlay by the script below. -->
   </section>
 
-  <section id="art-keyboard-section" class="art-keyboard art-keyboard--hidden" aria-label="Keyboard">
-    <div class="art-keyboard__header">
-      <span class="art-keyboard__label">Keyboard</span>
+  <section id="hg-keyboard-section" class="hg-keyboard hg-keyboard--hidden" aria-label="Keyboard">
+    <div class="hg-keyboard__header">
+      <span class="hg-keyboard__label">Keyboard</span>
     </div>
-    <div id="art-keyboard-container"></div>
+    <div id="hg-keyboard-container"></div>
   </section>
 
-  <section class="art-hardware" aria-label="Audio hardware">
-    <span class="art-hardware__label">Hardware</span>
-    <select class="art-hw-select" id="audio-input-device" title="Audio input device">
+  <section class="hg-hardware" aria-label="Audio hardware">
+    <span class="hg-hardware__label">Hardware</span>
+    <select class="hg-hw-select" id="audio-input-device" title="Audio input device">
       <option value="">No audio input</option>
     </select>
-    <span class="art-hw-status" id="audio-input-status" data-state="idle" title="Audio input status">
-      <span class="art-hw-dot"></span>
-      <span class="art-hw-status-text">Off</span>
+    <span class="hg-hw-status" id="audio-input-status" data-state="idle" title="Audio input status">
+      <span class="hg-hw-dot"></span>
+      <span class="hg-hw-status-text">Off</span>
     </span>
-    <span class="art-hw-badge" id="audio-input-badge" data-quality=""></span>
-    <button class="art-hw-toggle" id="art-keyboard-toggle" type="button" aria-pressed="false"
+    <span class="hg-hw-badge" id="audio-input-badge" data-quality=""></span>
+    <button class="hg-hw-toggle" id="hg-keyboard-toggle" type="button" aria-pressed="false"
       title="Show or hide the on-screen keyboard">Keyboard</button>
   </section>
 </main>
@@ -456,8 +456,8 @@
     from '{{ url_for("static", filename="shared/keyboard-view.js") }}';
   import { AudioInput }
     from '{{ url_for("static", filename="shared/audio-input.js") }}';
-  import { ResonanceArtView }
-    from '{{ url_for("static", filename="shared/resonance-art-view.js") }}';
+  import { HarmonographView }
+    from '{{ url_for("static", filename="shared/harmonograph-view.js") }}';
   import { MIDIInput }
     from '{{ url_for("static", filename="shared/midi-input.js") }}';
   import { create as createChordDetector }
@@ -556,10 +556,10 @@
     await loadToneIfNeeded();
 
     // Keyboard — mode 'both' means click-to-play with internal audio.
-    // KeyboardView owns the shared Tone.Analyser; ResonanceArtView
+    // KeyboardView owns the shared Tone.Analyser; HarmonographView
     // reads through it. Matching Explorer's keyboard config (cream
     // keys, 25-key default, preferredOctave 4).
-    KeyboardView.init('art-keyboard-container', {
+    KeyboardView.init('hg-keyboard-container', {
       showLabels: true,
       mode: 'both',
       singleOctaveHighlight: true,
@@ -575,16 +575,16 @@
       },
     });
 
-    // Resonance art view — full-stage canvas, runs continuously.
-    const artView = new ResonanceArtView();
-    artView.init('art-stage');
-    artView.setAnalyser(KeyboardView.getAnalyser());
-    artView.start();
-    window.__artView = artView;   // debug convenience
+    // Harmonograph view — full-stage canvas, runs continuously.
+    const hgView = new HarmonographView();
+    hgView.init('hg-stage');
+    hgView.setAnalyser(KeyboardView.getAnalyser());
+    hgView.start();
+    window.__harmonograph = hgView;   // debug convenience
 
     // Debug panel — always on, no URL gate.
-    _buildArtDebugPanel(document.getElementById('art-stage'), artView);
-    console.log('[Art Lab] Tuning panel active.');
+    _buildHarmonographDebugPanel(document.getElementById('hg-stage'), hgView);
+    console.log('[Harmonograph] Tuning panel active.');
 
     // Audio input (Hardware row).
     _initAudioInput();
@@ -595,8 +595,8 @@
     // choice survives refreshes.
     (function _initKeyboardToggle() {
       const STORAGE_KEY = 'songlab.art.keyboardVisible';
-      const section = document.getElementById('art-keyboard-section');
-      const btn = document.getElementById('art-keyboard-toggle');
+      const section = document.getElementById('hg-keyboard-section');
+      const btn = document.getElementById('hg-keyboard-toggle');
       if (!section || !btn) return;
 
       let visible = false;
@@ -604,7 +604,7 @@
 
       function apply(v) {
         visible = v;
-        section.classList.toggle('art-keyboard--hidden', !v);
+        section.classList.toggle('hg-keyboard--hidden', !v);
         btn.setAttribute('aria-pressed', v ? 'true' : 'false');
         try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0'); } catch (_) { }
       }
@@ -627,12 +627,12 @@
     try {
       await MIDIInput.init();
       if (MIDIInput.isConnected) {
-        console.log('[Art Lab] MIDI connected:', MIDIInput.activeDevice?.name);
+        console.log('[Harmonograph] MIDI connected:', MIDIInput.activeDevice?.name);
       } else {
-        console.log('[Art Lab] No MIDI device detected.');
+        console.log('[Harmonograph] No MIDI device detected.');
       }
     } catch (e) {
-      console.warn('[Art Lab] MIDI init failed:', e);
+      console.warn('[Harmonograph] MIDI init failed:', e);
       return;
     }
 
@@ -650,7 +650,7 @@
     try {
       sampler = await KeyboardView.getSampler();
     } catch (e) {
-      console.warn('[Art Lab] Sampler not available; MIDI will update state but not play audio.', e);
+      console.warn('[Harmonograph] Sampler not available; MIDI will update state but not play audio.', e);
     }
 
     MIDIInput.onNoteOn(async (note, velocity, channel) => {
@@ -714,7 +714,7 @@
     return {
       select: document.getElementById('audio-input-device'),
       status: document.getElementById('audio-input-status'),
-      statusText: document.querySelector('#audio-input-status .art-hw-status-text'),
+      statusText: document.querySelector('#audio-input-status .hg-hw-status-text'),
       badge: document.getElementById('audio-input-badge'),
     };
   }
@@ -833,7 +833,7 @@
       try {
         _chordDetector = createChordDetector({ analyser, sourceQuality });
       } catch (e) {
-        console.warn('[Art Lab] chord-detection create failed:', e);
+        console.warn('[Harmonograph] chord-detection create failed:', e);
         return;
       }
     }
@@ -901,7 +901,7 @@
         confidenceThreshold: 0.85,          // raise for more "silence", lower for more detection
       });
     } catch (e) {
-      console.warn('[Art Lab] pitch-detection create failed:', e);
+      console.warn('[Harmonograph] pitch-detection create failed:', e);
       _pitchDetector = null;
       return;
     }
@@ -932,7 +932,7 @@
         }
       }
     }).catch((e) => {
-      console.warn('[Art Lab] pitch-detection start failed:', e);
+      console.warn('[Harmonograph] pitch-detection start failed:', e);
       _pitchDetector = null;
     });
   }
@@ -969,11 +969,11 @@
       AudioInput.disconnect();
       AudioInput.setAnalyser(analyser);
       try { await AudioInput.selectDevice(id); }
-      catch (e) { console.warn('[art] audio-input re-select failed:', e); }
+      catch (e) { console.warn('[harmonograph] audio-input re-select failed:', e); }
       _updateAudioInputStatus();
     } else {
       try { AudioInput.setAnalyser(analyser); }
-      catch (e) { console.warn('[art] setAnalyser failed:', e); }
+      catch (e) { console.warn('[harmonograph] setAnalyser failed:', e); }
     }
   }
 
@@ -995,10 +995,10 @@
       if (AudioInput.isActive) _audioInputNeedsToneRewire = true;
       _updateAudioInputStatus();
     } catch (e) {
-      console.warn('[art] AudioInput init failed:', e);
+      console.warn('[harmonograph] AudioInput init failed:', e);
       if (status) {
         status.dataset.state = 'error';
-        const t = status.querySelector('.art-hw-status-text');
+        const t = status.querySelector('.hg-hw-status-text');
         if (t) t.textContent = 'Unavailable';
       }
       return;
@@ -1022,7 +1022,7 @@
         const els = _hwEls();
         if (els.status) {
           els.status.dataset.state = 'error';
-          const t = els.status.querySelector('.art-hw-status-text');
+          const t = els.status.querySelector('.hg-hw-status-text');
           if (t) t.textContent = 'Permission denied';
         }
       }
@@ -1030,19 +1030,20 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ART LAB DEBUG PANEL
+  // HARMONOGRAPH DEBUG PANEL
   // ═══════════════════════════════════════════════════════════════
   // Mirrors the Explorer's Resonance Tuning panel. Duplicated here
-  // (rather than shared) because the Art Lab params will diverge
+  // (rather than shared) because the Harmonograph params will diverge
   // as the fork gains its own knobs.
   //
   // Differences from the Explorer version:
   //   • Always mounted (no ?debug=resonance gate)
-  //   • localStorage key: 'songlab.art.presets' (separate from Explorer)
-  //   • Title: 'Art Lab Tuning'
-  //   • CSS prefix: .sl-adbg- (vs .sl-rdbg-)
+  //   • localStorage key: 'songlab.art.presets' (retained so existing
+  //     user presets carry over from when this view was called Art Lab)
+  //   • Title: 'Harmonograph Tuning'
+  //   • CSS prefix: .sl-hg-dbg- (vs .sl-rdbg-)
   // ═══════════════════════════════════════════════════════════════
-  function _buildArtDebugPanel(stage, view) {
+  function _buildHarmonographDebugPanel(stage, view) {
     const PRESET_KEY = 'songlab.art.presets';
     const SLIDER_GROUPS = [
       {
@@ -1123,24 +1124,24 @@
     ];
 
     const root = document.createElement('div');
-    root.className = 'sl-adbg';
+    root.className = 'sl-hg-dbg';
 
     const launcher = document.createElement('button');
     launcher.type = 'button';
-    launcher.className = 'sl-adbg__launcher sl-adbg--hidden';
+    launcher.className = 'sl-hg-dbg__launcher sl-hg-dbg--hidden';
     launcher.textContent = '⚙ tune';
 
     const panel = document.createElement('div');
-    panel.className = 'sl-adbg__panel';
+    panel.className = 'sl-hg-dbg__panel';
 
     // Header.
     const header = document.createElement('div');
-    header.className = 'sl-adbg__header';
+    header.className = 'sl-hg-dbg__header';
     const title = document.createElement('span');
-    title.textContent = 'Art Lab Tuning';
+    title.textContent = 'Harmonograph Tuning';
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.className = 'sl-adbg__close';
+    closeBtn.className = 'sl-hg-dbg__close';
     closeBtn.setAttribute('aria-label', 'Collapse');
     closeBtn.textContent = '✕';
     header.appendChild(title);
@@ -1149,27 +1150,27 @@
 
     // Preset bar.
     const presetBar = document.createElement('div');
-    presetBar.className = 'sl-adbg__preset-bar';
+    presetBar.className = 'sl-hg-dbg__preset-bar';
     const presetSelect = document.createElement('select');
-    presetSelect.className = 'sl-adbg__preset-select';
+    presetSelect.className = 'sl-hg-dbg__preset-select';
     const btnRow = document.createElement('div');
-    btnRow.className = 'sl-adbg__btn-row';
-    const saveBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Save…' });
-    const exportBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Export' });
-    const resetBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-adbg__btn', textContent: 'Reset' });
+    btnRow.className = 'sl-hg-dbg__btn-row';
+    const saveBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-hg-dbg__btn', textContent: 'Save…' });
+    const exportBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-hg-dbg__btn', textContent: 'Export' });
+    const resetBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'sl-hg-dbg__btn', textContent: 'Reset' });
     btnRow.appendChild(saveBtn);
     btnRow.appendChild(exportBtn);
     btnRow.appendChild(resetBtn);
     const saveRow = document.createElement('div');
-    saveRow.className = 'sl-adbg__save-row sl-adbg--hidden';
+    saveRow.className = 'sl-hg-dbg__save-row sl-hg-dbg--hidden';
     const saveInput = document.createElement('input');
     saveInput.type = 'text';
-    saveInput.className = 'sl-adbg__save-input';
+    saveInput.className = 'sl-hg-dbg__save-input';
     saveInput.placeholder = 'preset name…';
     const saveConfirmBtn = Object.assign(document.createElement('button'),
-      { type: 'button', className: 'sl-adbg__btn', textContent: 'Save' });
+      { type: 'button', className: 'sl-hg-dbg__btn', textContent: 'Save' });
     const saveCancelBtn = Object.assign(document.createElement('button'),
-      { type: 'button', className: 'sl-adbg__btn', textContent: 'Cancel' });
+      { type: 'button', className: 'sl-hg-dbg__btn', textContent: 'Cancel' });
     saveRow.appendChild(saveInput);
     saveRow.appendChild(saveConfirmBtn);
     saveRow.appendChild(saveCancelBtn);
@@ -1180,18 +1181,18 @@
 
     // Slider sections.
     const scroll = document.createElement('div');
-    scroll.className = 'sl-adbg__scroll';
+    scroll.className = 'sl-hg-dbg__scroll';
     const rowRefs = Object.create(null);
     for (const group of SLIDER_GROUPS) {
       const section = document.createElement('details');
-      section.className = 'sl-adbg__section';
+      section.className = 'sl-hg-dbg__section';
       section.open = true;
       const summary = document.createElement('summary');
       summary.textContent = group.title;
       section.appendChild(summary);
       for (const row of group.rows) {
         const rowEl = document.createElement('div');
-        rowEl.className = 'sl-adbg__row';
+        rowEl.className = 'sl-hg-dbg__row';
         const label = document.createElement('label');
         label.textContent = row.key;
         label.title = row.key;
@@ -1204,7 +1205,7 @@
           check.type = 'checkbox';
           check.style.justifySelf = 'start';
           const readout = document.createElement('span');
-          readout.className = 'sl-adbg__val';
+          readout.className = 'sl-hg-dbg__val';
           rowEl.appendChild(check);
           rowEl.appendChild(readout);
           section.appendChild(rowEl);
@@ -1224,7 +1225,7 @@
             range.step = String(row.step);
           }
           const readout = document.createElement('span');
-          readout.className = 'sl-adbg__val';
+          readout.className = 'sl-hg-dbg__val';
           rowEl.appendChild(range);
           rowEl.appendChild(readout);
           section.appendChild(rowEl);
@@ -1281,7 +1282,7 @@
       }
     }
 
-    // ── Presets (localStorage, art-scoped key) ──
+    // ── Presets (localStorage, harmonograph-scoped key) ──
     function _loadPresets() {
       try {
         const raw = localStorage.getItem(PRESET_KEY);
@@ -1315,7 +1316,7 @@
     presetSelect.addEventListener('change', () => {
       const val = presetSelect.value;
       if (val === '__defaults__') {
-        view.setParams(ResonanceArtView.DEFAULT_PARAMS);
+        view.setParams(HarmonographView.DEFAULT_PARAMS);
       } else {
         const presets = _loadPresets();
         if (presets[val]) view.setParams(presets[val]);
@@ -1325,13 +1326,13 @@
 
     function _openSaveEditor() {
       saveInput.value = '';
-      btnRow.classList.add('sl-adbg--hidden');
-      saveRow.classList.remove('sl-adbg--hidden');
+      btnRow.classList.add('sl-hg-dbg--hidden');
+      saveRow.classList.remove('sl-hg-dbg--hidden');
       setTimeout(() => saveInput.focus(), 0);
     }
     function _closeSaveEditor() {
-      saveRow.classList.add('sl-adbg--hidden');
-      btnRow.classList.remove('sl-adbg--hidden');
+      saveRow.classList.add('sl-hg-dbg--hidden');
+      btnRow.classList.remove('sl-hg-dbg--hidden');
     }
     function _commitSave() {
       const trimmed = (saveInput.value || '').trim();
@@ -1357,7 +1358,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `art-presets-${today}.json`;
+      a.download = `harmonograph-presets-${today}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1365,18 +1366,18 @@
     });
 
     resetBtn.addEventListener('click', () => {
-      view.setParams(ResonanceArtView.DEFAULT_PARAMS);
+      view.setParams(HarmonographView.DEFAULT_PARAMS);
       _syncSlidersFromView();
       presetSelect.value = '__defaults__';
     });
 
     closeBtn.addEventListener('click', () => {
-      panel.classList.add('sl-adbg--hidden');
-      launcher.classList.remove('sl-adbg--hidden');
+      panel.classList.add('sl-hg-dbg--hidden');
+      launcher.classList.remove('sl-hg-dbg--hidden');
     });
     launcher.addEventListener('click', () => {
-      launcher.classList.add('sl-adbg--hidden');
-      panel.classList.remove('sl-adbg--hidden');
+      launcher.classList.add('sl-hg-dbg--hidden');
+      panel.classList.remove('sl-hg-dbg--hidden');
     });
 
     root.appendChild(launcher);
