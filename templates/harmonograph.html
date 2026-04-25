@@ -279,6 +279,26 @@
     gap: 6px;
   }
 
+  /* Live readout for the audio-reactive pipeline. Mounted above the
+     preset bar when the panel is built; populated every frame. */
+  .sl-hg-dbg__readout {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-subtle, #23232E);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 8px;
+    row-gap: 2px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 10px;
+    color: var(--text-muted, #9A9486);
+  }
+
+  .sl-hg-dbg__readout-val {
+    text-align: right;
+    color: var(--text-primary, #F2EFE6);
+  }
+
   .sl-hg-dbg__scroll {
     flex: 1 1 auto;
     overflow-y: auto;
@@ -462,7 +482,7 @@
     from '{{ url_for("static", filename="shared/midi-input.js") }}';
   import { create as createChordDetector }
     from '{{ url_for("static", filename="shared/chord-detection.js") }}';
-  import { createPitchDetector }
+  import * as PitchDetection
     from '{{ url_for("static", filename="shared/pitch-detection.js") }}';
 
   // ── Tone.js loader (mirrors Explorer's pattern) ───────────────
@@ -659,6 +679,12 @@
       _heldMidiNotes.add(note);
       _sustainedMidiNotes.delete(note); // in case it was pending release from a prior pedal cycle
       _syncHarmonyState();
+      // Feed the audio-reactive onset-density driver. Safe no-op until
+      // the view is mounted; guarded so a MIDI event before init() lands
+      // doesn't error out.
+      if (window.__harmonograph && typeof window.__harmonograph.pushOnset === 'function') {
+        window.__harmonograph.pushOnset();
+      }
       if (sampler) {
         const entry = _midiToEntry(note);
         const ascii = entry.note.replace(/♯/g, '#').replace(/♭/g, 'b');
@@ -839,6 +865,18 @@
     }
 
     _chordDetector.start((event) => {
+      // Reuse pitch-detection's flatness signal to reject noise-driven
+      // phantom chord detections. Same threshold as pitch-detection's
+      // own gate.
+      const flatness = (typeof PitchDetection !== 'undefined' &&
+                        PitchDetection.getCurrentFlatness)
+        ? PitchDetection.getCurrentFlatness()
+        : 0;
+      if (flatness > 0.4) {
+        // Audio is noise-like — don't publish chord. Keep existing
+        // _detectedChord so the silence watcher can still clear it.
+        return;
+      }
       _detectedChord = _chordEventToEntries(event);
       _syncHarmonyState();
     });
@@ -895,7 +933,7 @@
     if (!stream) return;
 
     try {
-      _pitchDetector = createPitchDetector({
+      _pitchDetector = PitchDetection.createPitchDetector({
         stream,
         engine: 'yin',
         confidenceThreshold: 0.85,          // raise for more "silence", lower for more detection
@@ -982,18 +1020,10 @@
     const { select, status } = _hwEls();
     if (!select) return;
 
-    AudioInput.onDeviceChange((devices) => {
-      _populateAudioDeviceDropdown(devices);
-      _updateAudioInputStatus();
-    });
-
+    let initialDevices = [];
     try {
       const { devices } = await AudioInput.init();
-      _populateAudioDeviceDropdown(devices);
-      // If AudioInput auto-restored a device, its MediaStreamSource lives in
-      // a fallback context. Flag for rewire as soon as Tone starts.
-      if (AudioInput.isActive) _audioInputNeedsToneRewire = true;
-      _updateAudioInputStatus();
+      initialDevices = devices;
     } catch (e) {
       console.warn('[harmonograph] AudioInput init failed:', e);
       if (status) {
@@ -1004,29 +1034,131 @@
       return;
     }
 
-    select.addEventListener('change', async (e) => {
-      const id = e.target.value;
-      if (!id) {
-        AudioInput.disconnect();
-        _updateAudioInputStatus();
-        return;
-      }
-      await _ensureToneStarted();
-      const analyser = (KeyboardView && KeyboardView.getAnalyser)
-        ? KeyboardView.getAnalyser()
-        : null;
-      if (analyser) { try { AudioInput.setAnalyser(analyser); } catch (_) { } }
-      const ok = await AudioInput.selectDevice(id);
+    // AudioInput.init() may have auto-restored a saved device into a
+    // standalone (non-Tone) AudioContext. Populate the dropdown so it
+    // reflects that selection (via _populateAudioDeviceDropdown's
+    // activeId-aware fallback), then tear the stream down — we rebuild
+    // it through _switchAudioInputDevice below, the same code path
+    // user-initiated changes use, so the dropdown UI and the live
+    // stream agree from the first frame.
+    _populateAudioDeviceDropdown(initialDevices);
+    AudioInput.disconnect();
+    _audioInputNeedsToneRewire = false;
+    _updateAudioInputStatus();
+
+    // Hotplug — re-populate the dropdown when devices arrive/leave, and
+    // reconcile the current selection. If the selected device disappears,
+    // tear down its (now-dead) stream and fall back to "no input".
+    AudioInput.onDeviceChange(async (devices) => {
+      const previousSelection = select.value;
+      _populateAudioDeviceDropdown(devices);
       _updateAudioInputStatus();
-      if (!ok) {
-        const els = _hwEls();
-        if (els.status) {
-          els.status.dataset.state = 'error';
-          const t = els.status.querySelector('.hg-hw-status-text');
-          if (t) t.textContent = 'Permission denied';
-        }
+      // Edge case: user explicitly chose "No audio input" — don't auto-
+      // select a new device just because one was plugged in.
+      if (previousSelection === '') return;
+      const stillExists = [...select.options].some(o => o.value === previousSelection);
+      if (!stillExists) {
+        select.value = '';
+        console.warn('[harmonograph] selected audio device disappeared, falling back to no input');
+        await _switchAudioInputDevice(null);
       }
     });
+
+    select.addEventListener('change', (e) => _switchAudioInputDevice(e.target.value));
+
+    // Wire audio for the dropdown's selected device through the unified
+    // code path. Empty value = user preference is "no audio" — skip and
+    // leave the page silent until they pick something.
+    if (select.value) {
+      await _switchAudioInputDevice(select.value);
+    }
+  }
+
+  // Single code path for every device change — including the first one after
+  // page load. Always tears down the previous stream/source before building
+  // the new pair, and forces the AudioContext into 'running' before
+  // getUserMedia so the new MediaStreamSource lands in Tone's rawContext
+  // (avoiding the cross-context fallback that silently fails to feed the
+  // analyser).
+  async function _switchAudioInputDevice(deviceId) {
+    if (typeof AudioInput === 'undefined') return;
+    const prevStream = AudioInput.getStream();
+    console.log('[harmonograph] tearing down audio, previous stream:', !!prevStream);
+
+    // Step (a) + (b): full teardown of any previous stream + source.
+    // Do this BEFORE _ensureToneStarted — otherwise _attachAudioInputToTone
+    // would re-select the auto-restored (stale) device and clobber the
+    // user's pick.
+    AudioInput.disconnect();
+    _audioInputNeedsToneRewire = false;
+
+    // Pitch detector binds to AudioInput's MediaStream (options.stream)
+    // at start() time. After disconnect() that stream is dead, so kill
+    // the detector here — the trailing _updateAudioInputStatus() rebuild
+    // will reattach it to the new stream. (Chord detection reads from
+    // KeyboardView's AnalyserNode, which AudioInput rewires on its own.)
+    _stopPitchDetection();
+
+    if (!deviceId) {
+      _updateAudioInputStatus();
+      return;
+    }
+
+    try {
+      // Tone.start() needs a user gesture — the dropdown 'change' event
+      // qualifies. After this, Tone's rawContext should be 'running'.
+      await _ensureToneStarted();
+
+      // Step (c): explicit resume in case Tone.context.state and
+      // rawContext.state diverge (seen on some engines after Tone.start
+      // resolves but before rawContext finishes the transition). May
+      // throw without a user gesture (init-time path) — swallow and
+      // fall through; the rewire flag below will queue a retry.
+      const rawCtx = (window.Tone && window.Tone.getContext)
+        ? window.Tone.getContext().rawContext : null;
+      if (rawCtx && rawCtx.state === 'suspended') {
+        try { await rawCtx.resume(); } catch (_) { /* gesture required */ }
+      }
+
+      // Wire analyser BEFORE selectDevice so the new MediaStreamSource
+      // gets connected on creation (selectDevice does the connect step
+      // internally; without setAnalyser first the new source has nowhere
+      // to send its samples).
+      const analyser = (KeyboardView && KeyboardView.getAnalyser)
+        ? KeyboardView.getAnalyser() : null;
+      if (analyser) AudioInput.setAnalyser(analyser);
+
+      // Step (d) + (e) + (f) + (g): getUserMedia (with `exact` constraint
+      // — see audio-input.js), create MediaStreamSource in Tone's
+      // rawContext, connect to analyser, store refs.
+      const ok = await AudioInput.selectDevice(deviceId);
+      if (!ok) throw new Error('selectDevice returned false (permission denied or device unavailable)');
+
+      const stream = AudioInput.getStream();
+      console.log('[harmonograph] got stream from device:', deviceId,
+        'tracks:', stream ? stream.getTracks().length : 0);
+      console.log('[harmonograph] analyser connected, context state:',
+        rawCtx ? rawCtx.state : 'unknown');
+
+      // If Tone's context still isn't running (init-time path, no gesture
+      // yet), AudioInput fell back to a standalone AudioContext and the
+      // source won't feed Tone's analyser. Flag for rewire on the next
+      // gesture — _attachAudioInputToTone() reads this and re-selects the
+      // device inside Tone's rawContext.
+      if (!rawCtx || rawCtx.state !== 'running') {
+        _audioInputNeedsToneRewire = true;
+      }
+
+      _updateAudioInputStatus();
+    } catch (err) {
+      console.error('[harmonograph] device switch failed:', err);
+      const els = _hwEls();
+      if (els.status) {
+        els.status.dataset.state = 'error';
+        const t = els.status.querySelector('.hg-hw-status-text');
+        if (t) t.textContent = 'Permission denied';
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1059,6 +1191,26 @@
           { key: 'triangle3DBaseAlpha', min: 0, max: 1, step: 0.02, kind: 'linear' },
           { key: 'triangle3DStrokeAlpha', min: 0, max: 1, step: 0.02, kind: 'linear' },
           { key: 'triangle3DStrokeWidth', min: 0.2, max: 4, step: 0.1, kind: 'linear' },
+        ],
+      },
+      {
+        title: 'Audio Reactivity',
+        rows: [
+          { key: 'audioReactive', kind: 'toggle' },
+          { key: 'spinDriver', kind: 'select', options: ['auto', 'rms', 'onset'] },
+          { key: 'spinDriverGain', min: 0.1, max: 5, step: 0.1, kind: 'linear' },
+          { key: 'rmsDbFloor',   min: -100, max: -40, step: 1, kind: 'linear' },
+          { key: 'rmsDbCeiling', min: -50,  max: 0,   step: 1, kind: 'linear' },
+          { key: 'spinSignalExponent', min: 1, max: 5, step: 0.1, kind: 'linear' },
+          { key: 'spinMin', min: 0, max: 60, step: 1, kind: 'linear' },
+          { key: 'spinMax', min: 30, max: 360, step: 5, kind: 'linear' },
+          { key: 'morphSpinThreshold', min: 0, max: 120, step: 5, kind: 'linear' },
+          { key: 'morphK', min: 0.001, max: 0.02, step: 0.0005, kind: 'linear' },
+          { key: 'spinSmoothingTau', min: 0.5, max: 10, step: 0.5, kind: 'linear' },
+          { key: 'morphSmoothingTau', min: 0.5, max: 10, step: 0.5, kind: 'linear' },
+          { key: 'rmsSmoothingTau', min: 0.5, max: 10, step: 0.5, kind: 'linear' },
+          { key: 'syntheticDriver', kind: 'select',
+            options: ['off', 'slow', 'medium', 'fast', 'sweep'] },
         ],
       },
       {
@@ -1148,6 +1300,30 @@
     header.appendChild(closeBtn);
     panel.appendChild(header);
 
+    // Live readout — shows the resolved driver, normalized signal, current
+    // spin (deg/sec), and current morph (0..1) so the developer can see
+    // the audio-reactive pipeline responding in real time.
+    const readout = document.createElement('div');
+    readout.className = 'sl-hg-dbg__readout';
+    const readoutCells = {};
+    const _readoutLabels = [
+      ['driver', 'driver'],
+      ['signal', 'signal'],
+      ['spin',   'spin (°/s)'],
+      ['morph',  'morph'],
+    ];
+    for (const [key, label] of _readoutLabels) {
+      const l = document.createElement('span');
+      l.textContent = label;
+      const v = document.createElement('span');
+      v.className = 'sl-hg-dbg__readout-val';
+      v.textContent = '—';
+      readout.appendChild(l);
+      readout.appendChild(v);
+      readoutCells[key] = v;
+    }
+    panel.appendChild(readout);
+
     // Preset bar.
     const presetBar = document.createElement('div');
     presetBar.className = 'sl-hg-dbg__preset-bar';
@@ -1214,6 +1390,30 @@
             view.setParam(row.key, check.checked);
             readout.textContent = check.checked ? 'on' : 'off';
           });
+        } else if (row.kind === 'select') {
+          // Dropdown for enumerated-string params (spinDriver, syntheticDriver).
+          // Occupies the slider column; readout mirrors the current value so
+          // the layout grid still reads left-to-right name/input/value.
+          const sel = document.createElement('select');
+          sel.className = 'sl-hg-dbg__preset-select';
+          sel.style.fontSize = '10px';
+          sel.style.padding = '2px 4px';
+          for (const opt of row.options) {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.textContent = opt;
+            sel.appendChild(o);
+          }
+          const readout = document.createElement('span');
+          readout.className = 'sl-hg-dbg__val';
+          rowEl.appendChild(sel);
+          rowEl.appendChild(readout);
+          section.appendChild(rowEl);
+          rowRefs[row.key] = { sel, readout, meta: row };
+          sel.addEventListener('change', () => {
+            view.setParam(row.key, sel.value);
+            readout.textContent = sel.value;
+          });
         } else {
           const range = document.createElement('input');
           range.type = 'range';
@@ -1274,6 +1474,12 @@
           const checked = !!v;
           ref.check.checked = checked;
           ref.readout.textContent = checked ? 'on' : 'off';
+          continue;
+        }
+        if (ref.meta.kind === 'select') {
+          const sv = (v == null) ? '' : String(v);
+          ref.sel.value = sv;
+          ref.readout.textContent = sv;
           continue;
         }
         if (typeof v !== 'number') continue;
@@ -1386,6 +1592,22 @@
 
     _refreshPresetSelect('__defaults__');
     _syncSlidersFromView();
+
+    // Live readout tick — samples the view's audio-reactive state every
+    // frame. Cheap (four text writes) and only active while the panel is
+    // mounted; no teardown needed because the stage outlives the view.
+    (function _tickReadout() {
+      if (readoutCells.driver) {
+        readoutCells.driver.textContent = view._resolvedDriver || '—';
+        const sig = typeof view._signal === 'number' ? view._signal : 0;
+        readoutCells.signal.textContent = sig.toFixed(2);
+        const spin = typeof view._currentSpinY === 'number' ? view._currentSpinY : 0;
+        readoutCells.spin.textContent = spin.toFixed(1);
+        const m = typeof view._currentMorph === 'number' ? view._currentMorph : 0;
+        readoutCells.morph.textContent = m.toFixed(2);
+      }
+      requestAnimationFrame(_tickReadout);
+    })();
   }
 </script>
 {% endblock %}

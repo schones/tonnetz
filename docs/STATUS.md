@@ -1,6 +1,6 @@
 # SongLab Project Status
 
-**Last updated:** 2026-04-24 (cosmetic rename: Art Lab → Harmonograph, `/art` → `/harmonograph`)
+**Last updated:** 2026-04-24 (Harmonograph Stage 2 validated via test-track infrastructure; seven audio-pipeline fixes landed)
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
@@ -14,22 +14,30 @@ SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. Apr
 
 
 **Next priorities:**
-1. **Torus/sphere morph 3D — Stage 1.5 (multi-torus stacking):** Stage 1 complete and validated end-to-end with live instruments. Next sub-step is multi-torus stacking — multiple concentric/offset toruses to give the visualization depth and let different harmonic layers (e.g., extension notes, register groups) live on their own surface. Open design questions to resolve before prompting: stack spacing, one-master-morph vs per-torus-morph sliders, dynamic spacing as morph rises. After Stage 1.5: `audio-input.js` refactor (fix feedback loop by routing source to analyser only), particle reactivity in 3D (currently spawn at 3D-projected screen positions — visually works but not designed), painter's-algorithm depth sort if self-occlusion artifacts surface, then Stage 2 audio-reactive morph.
+1. **Real-audio Harmonograph tuning ("Montreal"):** Stage 2 validated end-to-end via deterministic test track (`tests/harmonograph-test-track.wav`). Seven audio-pipeline bugs found and fixed in the same session: top-16 RMS, spectral flatness gates in pitch + chord detection, initial-load device sync, hotplug listener, pitch-detection stream rebuild, heartbeat diagnostics. Next: real-music tuning against Allison Russell "Montreal" — opening-minute-to-gospel-chorus arc as the calibration target. Tune `rmsDbFloor`/`rmsDbCeiling`/`spinSignalExponent` by ear.
 
-2. SkratchLab polish — "Clear All" button should also reset canvas (not just blocks)
-3. Add Polyrhythm Trainer to nav dropdown and landing page
-4. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
-5. Tab-audio capture experiment: feed YouTube into `/art`
-6. Decide `/art` front-door (linked from nav, footer, hidden, or remain unlinked sandbox)
-7. **Onboarding & tutorial UX** — Build a "guided tour" / tooltip-card system for the platform: friendly intro modals on first visit (Studio, Explorer, Games, `/art`), short walkthroughs explaining what each tool is for, and dedicated tutorials for the generative-art side (e.g., why the torus is the natural representation for a Tonnetz, how chord-triangles work, what the FFT is showing). Reference inspirations: BandLab's onboarding modals (sequential cards with X to dismiss, "There's more" / "Explore more" CTAs, large preview imagery, friendly first-name greeting). Could leverage existing walkthrough infrastructure from Explorer.
-8. Consider preserving original "starburst" Resonance aesthetic as a named baked-in preset
-9. Onset detection wired into Resonance for staccato burst behavior
-10. Business model / monetization spec
-11. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
-12. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
-13. Consolidate triplicated chord-type registries (code review finding)
-14. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
-15. User testing prep (15-20 participants)
+2. **Harmonograph Stage 1.5 (multi-torus stacking):** multiple concentric/offset toruses to give the visualization depth and let different harmonic layers (e.g., extension notes, register groups) live on their own surface. Open design questions: stack spacing, one-master-morph vs per-torus-morph sliders, dynamic spacing as morph rises. After Stage 1.5: `audio-input.js` refactor (fix feedback loop by routing source to analyser only), particle reactivity in 3D (currently spawn at 3D-projected screen positions — visually works but not designed), painter's-algorithm depth sort if self-occlusion artifacts surface.
+
+3. SkratchLab polish — "Clear All" button should also reset canvas (not just blocks)
+4. Add Polyrhythm Trainer to nav dropdown and landing page
+5. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
+6. Tab-audio capture experiment: feed YouTube into `/art`
+7. Decide `/art` front-door (linked from nav, footer, hidden, or remain unlinked sandbox)
+8. **Onboarding & tutorial UX** — Build a "guided tour" / tooltip-card system for the platform: friendly intro modals on first visit (Studio, Explorer, Games, `/art`), short walkthroughs explaining what each tool is for, and dedicated tutorials for the generative-art side (e.g., why the torus is the natural representation for a Tonnetz, how chord-triangles work, what the FFT is showing). Reference inspirations: BandLab's onboarding modals (sequential cards with X to dismiss, "There's more" / "Explore more" CTAs, large preview imagery, friendly first-name greeting). Could leverage existing walkthrough infrastructure from Explorer.
+9. Consider preserving original "starburst" Resonance aesthetic as a named baked-in preset
+10. Onset detection wired into Resonance for staccato burst behavior
+11. Business model / monetization spec
+12. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
+13. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
+14. Consolidate triplicated chord-type registries (code review finding)
+15. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
+16. User testing prep (15-20 participants)
+- **Harmonograph Phase 2 design pass:** unified design conversation for three deferred ideas — multi-axis torus spin (Tonnetz-aware mapping of P5/M3/m3 chord-root motion to X/Y/Z), shimmer overlay (non-tonal audio → gold Chladni-pattern particles), and "music has color, noise is gray" saturation principle (flatness-driven desaturation across all visualizations). Worth `docs/multi-axis-spin.md`, `docs/shimmer-design.md`, `docs/color-confidence.md` design docs before building.
+- **AudioWorklet migration for `pitch-detection.js`:** ScriptProcessorNode is deprecated in Chrome. Tracked in `docs/audio-architecture.md` Open Question 1. Not urgent — generous deprecation timeline.
+- **Test track v2:** replace pink-noise staircase with chord-velocity staircase. Top-16 RMS is biased toward tonal content (correct for music), so noise isn't the right calibration signal.
+- **Hardware dropdown dedup:** Chrome exposes both "Default - X" alias and canonical "X". Cosmetic.
+- **Educational content idea:** Chladni patterns (Ernst Chladni 1787, founder of modern acoustics). History piece or standing-wave physics piece. Ties into shimmer design and platform-wide "music has shape" positioning.
+
 
 **Completed this cycle (April 22):**
 

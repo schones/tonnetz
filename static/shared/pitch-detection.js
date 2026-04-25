@@ -50,6 +50,55 @@ const MAX_FREQUENCY = 1100;
 /** YIN cumulative mean normalized difference threshold (standard: 0.1) */
 const YIN_THRESHOLD = 0.1;
 
+// Spectral flatness above this value rejects pitch detection.
+// Pure noise: ~0.7-0.9. Sustained tones: ~0.05-0.15.
+// 0.4 cleanly rejects noise without falsely rejecting music.
+const FLATNESS_REJECT_THRESHOLD = 0.4;
+
+let _lastHeartbeat = 0;
+
+// Most recent spectral flatness measurement from the active detector.
+// Read externally by the harmonograph chord-detection gate so a single
+// noise/tone signal can govern both pitch and chord acceptance.
+// Default 0 (pass-through): when no detector has run, callers like the
+// MIDI/keyboard chord path should not be gated by a stale or absent
+// reading. stop() resets to 0 for the same reason.
+let _lastFlatness = 0;
+
+/**
+ * Latest spectral flatness from the active pitch detector.
+ * 0.0 = pure tone, 1.0 = pure noise. Returns 0 when no detector has
+ * produced a measurement (initial state, or after stop()) so callers
+ * default to pass-through rather than reject.
+ *
+ * @returns {number}
+ */
+export function getCurrentFlatness() {
+  return _lastFlatness;
+}
+
+/**
+ * Spectral flatness — geometric mean of FFT magnitudes / arithmetic mean.
+ * Approaches 1.0 for white/pink noise, 0.0 for pure tones. Categorical
+ * noise-vs-tone discriminator that runs alongside YIN.
+ *
+ * @param {Float32Array|number[]} magnitudes - Linear magnitudes (NOT dB)
+ * @returns {number} 0.0 (pure tone) → 1.0 (pure noise)
+ */
+function spectralFlatness(magnitudes) {
+  const eps = 1e-10;
+  let logSum = 0, arithSum = 0, n = 0;
+  for (let i = 1; i < magnitudes.length; i++) {  // skip DC bin
+    const m = magnitudes[i] + eps;
+    logSum += Math.log(m);
+    arithSum += m;
+    n++;
+  }
+  const geoMean = Math.exp(logSum / n);
+  const arithMean = arithSum / n;
+  return geoMean / arithMean;
+}
+
 /* ────────────────────────────────────────────────────────────────── */
 /*  YIN Algorithm                                                    */
 /* ────────────────────────────────────────────────────────────────── */
@@ -176,6 +225,9 @@ export function createPitchDetector(options = {}) {
   let audioContext = null;
   let sourceNode = null;
   let processorNode = null;
+  let analyserNode = null;
+  let fftDb = null;     // reused dB-magnitude buffer
+  let fftLin = null;    // reused linear-magnitude buffer
   let micStream = null;
   let running = false;
   let ownsStream = false; // true if we called getUserMedia (so we release it on stop)
@@ -250,12 +302,35 @@ export function createPitchDetector(options = {}) {
     // (AudioWorklet upgrade deferred — see audio-architecture.md Open Question 1)
     processorNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
 
+    // Parallel AnalyserNode for spectral flatness (noise vs. tone gate).
+    // Reads from the same source as the ScriptProcessor — independent path,
+    // does not affect YIN's input buffer.
+    analyserNode = audioContext.createAnalyser();
+    analyserNode.fftSize = 2048;
+    analyserNode.smoothingTimeConstant = 0;
+    fftDb = new Float32Array(analyserNode.frequencyBinCount);
+    fftLin = new Float32Array(analyserNode.frequencyBinCount);
+
     processorNode.onaudioprocess = (e) => {
       if (!running) return;
 
       const buffer = e.inputBuffer.getChannelData(0);
 
+      // Compute spectral flatness up front so the heartbeat log fires
+      // every frame regardless of silence / YIN-confidence outcomes.
+      analyserNode.getFloatFrequencyData(fftDb);
+      for (let i = 0; i < fftDb.length; i++) {
+        fftLin[i] = Math.pow(10, fftDb[i] / 20);
+      }
+      const flatness = spectralFlatness(fftLin);
+      _lastFlatness = flatness;
 
+      if (Date.now() - _lastHeartbeat > 1000) {
+        console.log('[pitch-detection] tick — flatness:',
+                    flatness.toFixed(3),
+                    'gate:', (flatness > FLATNESS_REJECT_THRESHOLD ? 'REJECT' : 'pass'));
+        _lastHeartbeat = Date.now();
+      }
 
       // Quick silence check — skip YIN on quiet input
       let energy = 0;
@@ -283,6 +358,17 @@ export function createPitchDetector(options = {}) {
         return;
       }
 
+      // Spectral flatness gate — reject non-tonal input (pink noise,
+      // sibilance, breath, broadband percussion) that YIN may have
+      // hallucinated a pitch from. Flatness was computed at the top
+      // of the tick so the heartbeat log always fires.
+      if (flatness > FLATNESS_REJECT_THRESHOLD) {
+        console.log('[pitch-detection] noise rejected, flatness:',
+                    flatness.toFixed(3));
+        callback(NO_PITCH);
+        return;
+      }
+
       // Convert frequency to note info via audio.js
       const noteInfo = frequencyToNote(result.frequency);
       if (!noteInfo) {
@@ -307,6 +393,7 @@ export function createPitchDetector(options = {}) {
     };
 
     sourceNode.connect(processorNode);
+    sourceNode.connect(analyserNode);
     processorNode.connect(audioContext.destination);
     running = true;
   }
@@ -318,6 +405,9 @@ export function createPitchDetector(options = {}) {
    */
   function stop() {
     running = false;
+    // Clear flatness so external readers (e.g. chord-detection gate)
+    // don't reject on a stale reading after the detector is torn down.
+    _lastFlatness = 0;
 
     if (processorNode) {
       processorNode.onaudioprocess = null;
@@ -328,6 +418,17 @@ export function createPitchDetector(options = {}) {
       }
       processorNode = null;
     }
+
+    if (analyserNode) {
+      try {
+        analyserNode.disconnect();
+      } catch (_) {
+        /* already disconnected */
+      }
+      analyserNode = null;
+    }
+    fftDb = null;
+    fftLin = null;
 
     if (sourceNode) {
       try {

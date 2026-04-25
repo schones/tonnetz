@@ -173,6 +173,30 @@ const DEFAULT_PARAMS = Object.freeze({
   triangleGlowBlur:       12,
   triangleIntensityScale: 100,   // multiplies avg-energy before saturation; compensates for
                                  // Salamander sampler's low FFT magnitudes (~0.003 per PC)
+
+  // Audio reactivity (Stage 2). When audioReactive is false the system
+  // behaves exactly as it did before — manual sliders drive rotSpeedY
+  // and morph. When true, the Y-axis spin rate and the morph value are
+  // driven by live audio/MIDI: spin rises with signal, and morph emerges
+  // from spin via a centripetal-force-flavored coupling (faster spin →
+  // more deformation → torus closes toward sphere). Only affects mode3D.
+  audioReactive:       false,
+  spinDriver:          'auto',   // 'auto' | 'rms' | 'onset'
+  spinDriverGain:      1.0,
+  spinSignalExponent:  2.5,      // signal raised to this power before
+                                 //   mapping to spin range. 1 = linear,
+                                 //   higher = quieter quiet, sharper peaks.
+  spinMin:             5,        // deg/sec at zero signal
+  spinMax:             200,      // deg/sec at saturated signal
+  morphSpinThreshold:  30,       // deg/sec below which morph stays 0
+  morphK:              0.0056,   // ~1/180; morph hits 1 at spin=180 above threshold
+  spinSmoothingTau:    2.0,      // seconds
+  morphSmoothingTau:   3.0,      // seconds
+  rmsSmoothingTau:     4.0,      // seconds
+  rmsDbFloor:          -70,      // signal=0 at this dB or below
+  rmsDbCeiling:        -35,      // signal=1 at this dB or above
+  onsetWindowSec:      4.0,      // seconds — density window
+  syntheticDriver:     'off',    // 'off' | 'slow' | 'medium' | 'fast' | 'sweep'
 });
 
 function dbToLinear(db, dbFloor) {
@@ -256,6 +280,19 @@ export class HarmonographView {
     this._rotZ = 0;
     this._projScale = 1;       // k — orthographic scale, set in _resize
 
+    // Audio-reactive state (Stage 2). All inert until params.audioReactive
+    // flips to true. Kept on the instance so live-readouts in the debug
+    // panel can inspect them every frame.
+    this._smoothedRMS       = -60;     // dB — eased mean of FFT bins
+    this._onsetTimestamps   = [];      // ring buffer of recent onset epochs (ms)
+    this._currentSpinY      = 0;       // deg/sec, eased toward target
+    this._currentMorph      = 0;       // 0..1, eased toward target
+    this._effectiveMorph    = 0;       // what _uvToXYZ actually reads
+    this._resolvedDriver    = 'rms';   // 'rms' | 'onset' after auto-resolve
+    this._signal            = 0;       // 0..1 normalized driver value (readout)
+    this._syntheticElapsed  = 0;       // seconds — synthetic sweep clock
+    this._syntheticOnsetAccum = 0;     // fractional onset budget
+
     this._rafId = null;
     this._running = false;
     this._unsubscribe = null;
@@ -310,6 +347,17 @@ export class HarmonographView {
     this._rotX = 0;
     this._rotY = 0;
     this._rotZ = 0;
+
+    // Audio-reactive state resets so spin/morph start from zero.
+    this._smoothedRMS = -60;
+    this._onsetTimestamps.length = 0;
+    this._currentSpinY = 0;
+    this._currentMorph = 0;
+    this._effectiveMorph = this.params.morph;
+    this._resolvedDriver = 'rms';
+    this._signal = 0;
+    this._syntheticElapsed = 0;
+    this._syntheticOnsetAccum = 0;
 
     // Seed with current state so a chord held before the tab mounts is
     // reflected immediately; HarmonyState.on doesn't fire an initial snapshot.
@@ -742,15 +790,173 @@ export class HarmonographView {
     if (this.params.mode3D) {
       const k = (Math.PI / 180) * dt;
       this._rotX += this.params.rotSpeedX * k;
-      this._rotY += this.params.rotSpeedY * k;
       this._rotZ += this.params.rotSpeedZ * k;
+      if (this.params.audioReactive) {
+        this._updateAudioReactive(dt);
+        this._rotY += this._currentSpinY * k;
+      } else {
+        this._rotY += this.params.rotSpeedY * k;
+        this._effectiveMorph = this.params.morph;
+      }
       return;
     }
+    // 2D mode ignores audio reactivity entirely.
+    this._effectiveMorph = this.params.morph;
     this._gridAngle += this.params.gridRotationSpeed * (Math.PI / 180) * dt;
     this._gridTime  += dt;
     const phase = this._gridTime * this.params.gridSwaySpeed * 2 * Math.PI;
     this._gridOffsetX = Math.cos(phase) * this.params.gridSwayAmplitude;
     this._gridOffsetY = Math.sin(phase) * this.params.gridSwayAmplitude;
+  }
+
+  // Record a MIDI noteOn event for onset-density computation. Called from
+  // the template's MIDI integration — the view itself doesn't touch Web
+  // MIDI so this keeps the dependency direction clean.
+  pushOnset() {
+    this._onsetTimestamps.push(Date.now());
+  }
+
+  // ── Audio reactivity (Stage 2) ───────────────────────────────
+  // Smooths RMS from the analyser (or simulates it), prunes onset history,
+  // resolves the driver, normalizes the signal, and eases current spin
+  // and morph toward their target values. Only runs when audioReactive
+  // is true AND mode3D is on. Morph is centripetally coupled to spin.
+  _updateAudioReactive(dt) {
+    const P = this.params;
+    const sd = P.syntheticDriver;
+    const syntheticOn = sd && sd !== 'off';
+
+    if (syntheticOn) {
+      this._driveSynthetic(dt, sd);
+    } else {
+      // Top-N bin energy average, converted to dB and eased. A single
+      // peak bin saturates on any broadband musical content (sparse
+      // singer-songwriter and loud rock mix both pin near full-scale);
+      // averaging the top 16 bins in linear energy space preserves
+      // dynamic range between tracks of different loudness.
+      const data = (this.analyser && typeof this.analyser.getValue === 'function')
+        ? this.analyser.getValue() : null;
+      if (data && data.length) {
+        const N = Math.min(16, data.length);
+        // Partial selection of the top-N dB values (ordering is monotonic
+        // under dB→linear, so ranking in dB-space is equivalent).
+        const top = new Array(N).fill(-Infinity);
+        let minIdx = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i];
+          if (!isFinite(v)) continue;
+          if (v > top[minIdx]) {
+            top[minIdx] = v;
+            let m = 0;
+            for (let j = 1; j < N; j++) {
+              if (top[j] < top[m]) m = j;
+            }
+            minIdx = m;
+          }
+        }
+        let linSum = 0, cnt = 0;
+        for (let j = 0; j < N; j++) {
+          if (isFinite(top[j])) {
+            linSum += Math.pow(10, top[j] / 20);
+            cnt++;
+          }
+        }
+        if (cnt > 0) {
+          const avgDb = 20 * Math.log10(linSum / cnt);
+          const tauR = Math.max(0.01, P.rmsSmoothingTau);
+          const alphaR = 1 - Math.exp(-dt / tauR);
+          this._smoothedRMS += alphaR * (avgDb - this._smoothedRMS);
+        }
+      }
+    }
+
+    // Prune onsets older than window (synthetic + real share this buffer).
+    const now = Date.now();
+    const cutoff = now - P.onsetWindowSec * 1000;
+    while (this._onsetTimestamps.length && this._onsetTimestamps[0] < cutoff) {
+      this._onsetTimestamps.shift();
+    }
+    const onsetDensity = this._onsetTimestamps.length / P.onsetWindowSec;
+
+    // Resolve driver. 'auto' prefers onset when MIDI is connected — which
+    // on this machine means a musician playing keys, a more reliable tempo
+    // signal than RMS of sampler output bleeding back through the mic.
+    let driver = P.spinDriver;
+    if (driver === 'auto') {
+      const midi = (typeof window !== 'undefined') ? window.MIDIInput : null;
+      driver = (midi && midi.isConnected) ? 'onset' : 'rms';
+    }
+    this._resolvedDriver = driver;
+
+    // Normalize to [0, 1]. Onset scale: 8 notes/sec = saturated busy.
+    // RMS scale: map [rmsDbFloor, rmsDbCeiling] → [0, 1].
+    let signal;
+    if (driver === 'onset') {
+      signal = Math.min(1, onsetDensity / 8);
+    } else {
+      const floor = P.rmsDbFloor;
+      const ceil = P.rmsDbCeiling;
+      signal = (this._smoothedRMS - floor) / (ceil - floor);
+      if (signal < 0) signal = 0;
+      else if (signal > 1) signal = 1;
+    }
+    signal *= P.spinDriverGain;
+    if (signal < 0) signal = 0;
+    else if (signal > 1) signal = 1;
+    this._signal = signal;
+
+    // Target spin from signal, target morph from spin excess.
+    const shapedSignal = Math.pow(signal, P.spinSignalExponent);
+    const targetSpin = P.spinMin + (P.spinMax - P.spinMin) * shapedSignal;
+    const spinExcess = Math.max(0, this._currentSpinY - P.morphSpinThreshold);
+    const kM = P.morphK;
+    let targetMorph = kM * kM * spinExcess * spinExcess;
+    if (targetMorph > 1) targetMorph = 1;
+
+    // Ease current toward target. tau ≥ 0.01 so a slider-jitter to 0
+    // doesn't produce an infinite alpha.
+    const tauS = Math.max(0.01, P.spinSmoothingTau);
+    const tauM = Math.max(0.01, P.morphSmoothingTau);
+    const spinAlpha = 1 - Math.exp(-dt / tauS);
+    const morphAlpha = 1 - Math.exp(-dt / tauM);
+    this._currentSpinY  += spinAlpha  * (targetSpin  - this._currentSpinY);
+    this._currentMorph  += morphAlpha * (targetMorph - this._currentMorph);
+    this._effectiveMorph = this._currentMorph;
+  }
+
+  // Synthetic test driver — populates _smoothedRMS and _onsetTimestamps
+  // from a prescribed pattern so the visualization can be verified
+  // without live audio/MIDI. RMS is stored in dB-space so the downstream
+  // [rmsDbFloor, rmsDbCeiling] mapping produces the named signal value.
+  _driveSynthetic(dt, mode) {
+    this._syntheticElapsed += dt;
+    let signalVal, onsetsPerSec;
+    if (mode === 'slow')        { signalVal = 0.2; onsetsPerSec = 1;  }
+    else if (mode === 'medium') { signalVal = 0.5; onsetsPerSec = 4;  }
+    else if (mode === 'fast')   { signalVal = 0.9; onsetsPerSec = 10; }
+    else if (mode === 'sweep') {
+      // Triangle wave over 60 s: 0 → 1 → 0. Map amplitude into the same
+      // signal range the three fixed modes cover (0.2 → 0.9).
+      const cyclePos = (this._syntheticElapsed % 60) / 60;
+      const t = cyclePos < 0.5 ? (cyclePos * 2) : (2 - cyclePos * 2);
+      signalVal = 0.2 + t * 0.7;
+      onsetsPerSec = 1 + t * 9;
+    } else {
+      return;
+    }
+    // Inverse of the [rmsDbFloor, rmsDbCeiling] → [0, 1] mapping so the
+    // consumption code path sees the intended signal.
+    const floor = this.params.rmsDbFloor;
+    const ceil = this.params.rmsDbCeiling;
+    this._smoothedRMS = floor + signalVal * (ceil - floor);
+
+    this._syntheticOnsetAccum += onsetsPerSec * dt;
+    const toEmit = Math.floor(this._syntheticOnsetAccum);
+    if (toEmit > 0) {
+      this._syntheticOnsetAccum -= toEmit;
+      const now = Date.now();
+      for (let i = 0; i < toEmit; i++) this._onsetTimestamps.push(now);
+    }
   }
 
   // Maps a node's static (x, y) through the current rigid-body grid
@@ -762,7 +968,7 @@ export class HarmonographView {
   // position by mapping (u, v) → 3D, rotating, then projecting.
   _transformedNode(n) {
     if (this.params.mode3D) {
-      const p3 = this._uvToXYZ(n.u, n.v, this.params.morph);
+      const p3 = this._uvToXYZ(n.u, n.v, this._effectiveMorph);
       const rot = this._rotate3D(p3);
       const proj = this._projectOrtho(rot);
       return { x: proj.screenX, y: proj.screenY };
@@ -879,7 +1085,10 @@ export class HarmonographView {
     const tris = this.triangles;
     if (!tris || !tris.length) return;
     const ctx = this.ctx;
-    const morph = this.params.morph;
+    // Read the effective morph (audio-smoothed when audioReactive is on,
+    // else the manual slider value) so the scaffold tracks the same
+    // deformation the lattice uses in _transformedNode.
+    const morph = this._effectiveMorph;
     const scaffoldMajorC = this.params.scaffoldMajorColor;
     const scaffoldMinorC = this.params.scaffoldMinorColor;
     const majorC = this.params.majorTriadColor;

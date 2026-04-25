@@ -2,6 +2,108 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+## 2026-04-24 — Harmonograph audio pipeline debugging (test-track-driven)
+
+Continued the same day after Stage 2 landed. Built deterministic test-track infrastructure to systematically validate audio reactivity, then used it to find and fix seven interrelated bugs across the audio pipeline.
+
+**Test track infrastructure**
+- `tests/generate_test_track.py` — Python (numpy/scipy) generator, fixed seed for reproducibility
+- `tests/harmonograph-test-track.wav` — 2:55 deterministic audio (gitignored; regenerable from script)
+- `tests/harmonograph-test-track.md` — section-by-section timestamp guide with expected behaviors
+- Six sections: silence baseline (15 s), pink-noise loudness staircase at -50/-30/-15 dBFS (45 s), note-decay panel with three envelopes on C major (18 s), tempo cycle I-IV-V-I at 60/120/180 BPM (29 s), nine-chord vocabulary on C (45 s), realistic vi-IV-I-V progression with voice leading (12 s)
+- Each section diagnoses a different aspect of the pipeline. The test track is now reusable infrastructure for any future audio work.
+
+**Seven audio fixes (all in this session, all driven by test-track diagnostics)**
+
+1. **Top-16 RMS detection** (`harmonograph-view.js`). Replaced single peak-bin RMS with average of top-16 FFT bins (linear-energy domain). Fixes saturation where any musical content read 0.57-0.60 regardless of actual loudness. Also bumped defaults: `rmsDbFloor` -75 → -70, `rmsDbCeiling` -30 → -35.
+
+2. **Spectral flatness gate in pitch detection** (`pitch-detection.js`). Added parallel AnalyserNode (FFT 2048) alongside the existing ScriptProcessorNode. Computes spectral flatness per tick (geometric/arithmetic mean of linear FFT magnitudes, skipping DC bin). Rejects pitch detection when flatness > 0.4 (the categorical noise-vs-tone threshold). Also added `_lastFlatness` module-scoped state and `getCurrentFlatness()` export so downstream consumers can use the same noise signal. Heartbeat console log retained for ongoing diagnostics.
+
+3. **Initial-load device sync** (`harmonograph.html`). Page-load audio init was calling `getUserMedia({audio: true})` with no deviceId, while the dropdown independently rendered Loopback as selected — the two disagreed. Refactored init to populate dropdown first, then call `_switchAudioInputDevice(dropdown.value)`, so the visible selection and the actual MediaStream are guaranteed to agree from the start.
+
+4. **Hotplug listener** (`harmonograph.html`). Added `navigator.mediaDevices.ondevicechange` callback. Re-enumerates devices when audio hardware appears/disappears mid-session. Preserves selection if device still present; falls back to "no input" with a console warning if the selected device disappeared. USB interfaces, Loopback activation, etc. now register without page reload.
+
+5. **Pitch-detection rebuild on device change** (`harmonograph.html`). Pitch-detection was running on a dead MediaStream after the first device switch — `_switchAudioInputDevice` was tearing down `AudioInput` but leaving `_pitchDetector` attached to the old stream. Fix: stop the pitch detector right after `AudioInput.disconnect()`, then the existing reconciler at the end of the function rebuilds it idempotently against the fresh stream.
+
+6. **Chord-detection flatness gate** (`harmonograph.html`). Pink noise was producing phantom chord activations that lit up Tonnetz nodes. Pitch detection's gate was working — but when pitch detection rejected, control fell through to `_detectedChord`, which had no noise rejection. Fix: at the chord-detection callback site, read `PitchDetection.getCurrentFlatness()` and skip publishing when flatness > 0.4. Defensive guard preserves the MIDI/keyboard chord path when pitch-detection isn't running.
+
+7. **Heartbeat instrumentation** (`pitch-detection.js`). Added a 1-Hz console heartbeat that logs flatness + gate decision per tick. Was the diagnostic that confirmed the chord-detection gate was the missing piece (rather than the pitch-detection gate being broken). Kept in for future audio debugging.
+
+**Architecture insights surfaced**
+- `pitch-detection.js` and the visualizer's analyser now share one MediaStream via `options.stream`. Earlier suspicion about parallel `getUserMedia` calls was wrong — the bug was that pitch-detection was holding a dead stream across device switches, not grabbing its own independent device.
+- Web Audio's autoplay policy means audio analysis can't begin until the first user gesture. Page-load wiring is now correct, but a click is still required before the visualizer animates. Worth considering a "click to begin" affordance in production.
+- Chrome's `enumerateDevices()` exposes both a "Default - X" alias and the canonical "X" entry, producing apparent dropdown duplicates. Cosmetic, deferred.
+
+**Deferred (logged, not built)**
+- AudioWorklet migration for `pitch-detection.js` (Chrome's ScriptProcessorNode deprecation; tracked in `docs/audio-architecture.md` Open Question 1)
+- Multi-axis torus spin (currently only Y is RMS-driven; full design is X/Y/Z mapped to chord-root motion by P5/M3/m3 — Tonnetz-aligned, distinctive, but bigger lift)
+- Shimmer overlay for non-tonal content (gold particles, Chladni-pattern motion; spectral flatness drives emission)
+- "Music has color, noise is gray" platform-wide design principle (saturation driven by flatness across all visualizations; pairs with shimmer)
+- Hardware dropdown dedup (cosmetic; `groupId`-based deduplication of "Default - X" / "X" entries)
+- Educational content idea: Chladni patterns (1787 history piece OR standing-wave physics piece; ties into shimmer design)
+- Test track v2: replace pink-noise staircase with chord-velocity staircase (more useful RMS calibration in the algorithm's domain of interest — top-16 is biased toward tonal content over broadband noise, which is correct for music but means the noise staircase isn't a great calibration signal)
+
+**Stage 2 acceptance**
+Stage 2 (audio-reactive spin + centripetal morph) validated end-to-end through the test track. Real-audio test against Allison Russell "Montreal" still pending.
+
+**Next session**
+- Real-audio Harmonograph tuning against "Montreal" — test the opening-minute-to-gospel-chorus arc against now-stable RMS/flatness pipeline
+- Phase 2 design conversation: multi-axis spin + shimmer + color-confidence as a unified Harmonograph 2.0 design pass
+- Possibly start `docs/multi-axis-spin.md`, `docs/shimmer-design.md`, `docs/color-confidence.md`
+
+---
+
+
+## 2026-04-24 — Harmonograph Stage 2: audio-reactive spin + centripetal morph
+
+First audio-driven behavior in the 3D harmonograph. Y-axis spin and torus-to-sphere morph are no longer manual sliders — they're driven by live audio/MIDI. Off by default; flipping `audioReactive` on couples the visualization to the performance.
+
+**Signal chain**
+- Two signals exposed simultaneously, one selected per frame:
+  - `rmsEnergy` — mean of the analyser's FFT bins (dB), eased with exponential smoothing, `tau = 4 s`. Clamped to `dbFloor` per bin to keep silence on a stable floor. Mapped [-60, -10] dB → [0, 1].
+  - `onsetDensity` — rolling count of MIDI noteOn events over a 4 s window, divided by the window length to get events/sec. Saturates at 8 ev/s.
+- `spinDriver: 'auto'` (default) picks `onset` when `window.MIDIInput.isConnected`, else `rms`. User can override with `'rms'` / `'onset'`. Resolution recomputed every frame so hot-plug works.
+- `spinDriverGain` multiplies the normalized signal before clamping, so the mapping can be tightened without editing `spinMin`/`spinMax`.
+
+**Centripetal morph coupling**
+- `target_spin = spinMin + (spinMax - spinMin) * clamp(signal * gain, 0, 1)` (deg/sec).
+- `target_morph = clamp(morphK² * max(0, current_spin - morphSpinThreshold)², 0, 1)`. Squared response keeps slow songs as pure torus; busy/loud songs morph dramatically. Default `morphK = 0.0056 ≈ 1/180` hits `morph = 1` at `spin = 180` deg/sec above threshold; `morphSpinThreshold = 30` deg/sec.
+- All values are eased, not snapped:
+  - current spin eases toward target with `tau = 2 s`
+  - current morph eases toward target with `tau = 3 s`
+- The view now has `_effectiveMorph` — `_uvToXYZ` callers (`_transformedNode`, `_drawTriangles3D`) read that instead of `params.morph`. When `audioReactive` is false, `_effectiveMorph` mirrors `params.morph` so the manual slider is live.
+
+**Per-axis reactivity**
+- Only `rotSpeedY` is audio-driven (the natural "donut spinning around its hole" axis). `rotSpeedX` and `rotSpeedZ` always read their manual sliders. Makes it easy to overlay a slow tilt on top of an audio-driven spin.
+
+**MIDI onset hook**
+- New public method `HarmonographView.pushOnset()` pushes `Date.now()` onto the ring buffer. Template's `MIDIInput.onNoteOn` callback calls it alongside `_syncHarmonyState`. Keeps Web MIDI out of the view class.
+
+**Synthetic test mode**
+- New `syntheticDriver` param with values `'off' | 'slow' | 'medium' | 'fast' | 'sweep'`. When non-off, the view bypasses the analyser and MIDI buffer and populates `_smoothedRMS` and `_onsetTimestamps` from a prescribed pattern. Lets you verify the pipeline without live input. `'sweep'` triangle-waves over 60 s from signal=0.2 (1 ev/s) to 0.9 (10 ev/s) and back.
+- RMS in synthetic mode is written in dB-space (`signalVal * 50 - 60`) so the downstream mapping produces the intended signal — no special-case in the real-audio path.
+
+**Debug panel**
+- New "Audio Reactivity" section between "3D Geometry" and "Smoothing & Decay". Toggle + two dropdowns (`spinDriver`, `syntheticDriver`) + 9 sliders covering gain, min/max spin, morph threshold/K, and all three smoothing taus.
+- Row builder extended to support `kind: 'select'` — dropdown `<select>` bound to `view.setParam(key, value)`. Reuses the existing readout column so the grid layout stays consistent.
+- Live-readout block at the top of the panel shows resolved driver, normalized signal, current spin (deg/sec), current morph (0..1). Refreshed every frame via rAF. First usable development feedback loop for audio-reactivity — visible without watching the torus to know whether the pipeline is alive.
+
+**Constraints respected**
+- `static/shared/resonance-view.js` untouched (Explorer's Resonance tab).
+- Manual mode (`audioReactive=false`) behaves pixel-identically to pre-Stage-2: `_updateGridTransform` early-exits to the old `rotSpeedY` integration path, and `_effectiveMorph` mirrors `params.morph`.
+- `mode3D=false` (2D legacy path) ignores audio reactivity entirely.
+
+**Not yet tested with real audio**
+- Acceptance test with "Montreal" by Allison Russell pending a live-audio session. Synthetic `'sweep'` covers the plumbing.
+
+### Next session
+
+- Run the Allison Russell acceptance test through headphones (workaround for the known audio-input feedback loop). Tune `spinMin`/`spinMax`/`morphK` against a real musical dynamics curve.
+- If the dB mapping [-60, -10] doesn't fit typical program audio through the built-in mic, revisit the normalization — or expose the mapping endpoints as params.
+- Then: fold audio-reactivity into the 1.5 multi-torus stack design so each stack member can have its own spin/morph (or share a master).
+
+---
+
 ## 2026-04-24 — Rename: Art Lab → Harmonograph (cosmetic)
 
 Cosmetic rename of the `/art` sandbox to `/harmonograph`. The visualization draws curves from coupled pendulums tracing harmonic ratios, echoing the Victorian harmonograph machines and connecting cleanly to the Tonnetz mathematical lineage. No functional changes.
