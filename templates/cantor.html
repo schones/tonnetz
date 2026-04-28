@@ -449,8 +449,12 @@
           sampler.triggerAttack(_midiToNoteName(midiNote), Tone.now(), velocity / 127);
           // First note is the user gesture that lets the AudioContext run,
           // which is also when the analyser starts producing real samples
-          // — start chord detection here. Idempotent.
-          _startChordDetection();
+          // — start chord detection here, but only if the user has selected
+          // a Hardware audio input. Otherwise the sampler's own output would
+          // feed the analyser and override manual setTriad. Idempotent.
+          if (typeof AudioInput !== 'undefined' && AudioInput.isActive) {
+            _startChordDetection();
+          }
         } catch (_) { /* transient audio errors — ignore */ }
       }
     });
@@ -557,6 +561,27 @@
         });
       }
     }, 100);
+  }
+
+  function _stopChordDetection() {
+    if (_chordDetector) {
+      try { _chordDetector.stop(); } catch (e) { /* ok */ }
+      _chordDetector = null;
+    }
+    if (_silenceWatcherId != null) {
+      clearInterval(_silenceWatcherId);
+      _silenceWatcherId = null;
+    }
+    _silenceCounter = 0;
+    _lastChordPushed = null;
+    // Release any stuck chord highlight so manual setTriad regains control.
+    try {
+      HarmonyState.update({
+        activeTriads: [],
+        activeChord: null,
+        activeNotes: [],
+      });
+    } catch (e) { /* HarmonyState may not be ready during teardown */ }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -779,6 +804,7 @@
     }
 
     _populateAudioDeviceDropdown(initialDevices);
+    _stopChordDetection();
     AudioInput.disconnect();
     _updateAudioInputStatus();
 
@@ -789,6 +815,7 @@
 
     select.addEventListener('change', async (e) => {
       const deviceId = e.target.value;
+      _stopChordDetection();
       AudioInput.disconnect();
       if (!deviceId) {
         _updateAudioInputStatus();
@@ -805,6 +832,7 @@
           ? KeyboardView.getAnalyser() : null;
         if (analyser) AudioInput.setAnalyser(analyser);
 
+        _stopChordDetection();
         const ok = await AudioInput.selectDevice(deviceId);
         if (!ok) throw new Error('selectDevice returned false');
         _updateAudioInputStatus();

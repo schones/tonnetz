@@ -2,6 +2,41 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+## 2026-04-28 — Cantor 6A.2: chord-detection Hardware-state gating
+
+**Bug:** chord-detection callback in cantor.html ran regardless of
+Hardware (audio input) state. When Hardware was "No audio input,"
+playing MIDI on the Launchkey routed Tone.js sampler output through
+the analyser, chord-detection fired, and HarmonyState.highlightChord
+overrode any manual setTriad. This made live-play verification of the
+constellation snap impossible — activeTriads cycled clearAll → set →
+clear → set under MIDI input.
+
+**Fix:** Three targeted changes in templates/cantor.html.
+- Gated `_startChordDetection()` in the MIDI noteOn handler on
+  `AudioInput.isActive` (cantor.html:455-457).
+- Added `_stopChordDetection()` helper that tears down detector +
+  silence watcher and clears stuck HarmonyState highlight
+  (cantor.html:566-585).
+- Called `_stopChordDetection()` before each `AudioInput.disconnect`
+  / `selectDevice` site (cantor.html:807, 818, 835).
+
+No other files modified. Don't-touch list respected.
+
+**Verified:**
+- `cantorView._testSnap('E','minor',[4,7,11])` → pass: true (regression).
+- Hardware off, no manual triad, play E-G-B on Launchkey →
+  `HarmonyState.get().activeTriads` empty after decay.
+- Hardware off, `HarmonyState.setTriad('E','minor')` → wash renders;
+  play E-G-B → glyphs snap to wash vertices, activeTriads stays
+  Eminor through decay.
+- Hardware mic → "No audio input" toggle: chord-detection torn down
+  cleanly; manual setTriad holds on subsequent live-play.
+
+**Next:** 6B — per-frame drift (rotY, 1 rev / 45s) + breathing
+(±5% torusMajorR, 8s sine).
+
+
 ## 2026-04-27 (continued) — Prompt 5: input model complete
 
 ### Landed

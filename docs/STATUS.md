@@ -1,11 +1,14 @@
 # SongLab Project Status
 
 
-## Current state (April 27, 2026, end of evening session)
+## Current state (April 28, 2026)
 
-Cantor v1 build, prompts 1-5 landed. Constellation lookup fix landed
-between prompts 4 and 5. Visual prominence and default-split tuning
-landed at end of session.
+Cantor v1 build, prompts 1-5 landed plus 6A (3D torus migration), 6A.1
+(constellation wash-vertex snap fix), and 6A.2 (chord-detection
+Hardware-state gating). Live-play snap verified end-to-end with
+Launchkey: manual `HarmonyState.setTriad('E','minor')` holds through
+MIDI E-G-B input, glyphs snap to wash vertices, activeTriads stable
+through decay. Hardware mic→off toggle regression clean.
 
 ### Working
 - /cantor route, on-screen keyboard, MIDI input, Tone.js playback
@@ -19,21 +22,35 @@ landed at end of session.
   default at MIDI 72 (C5, mid-keyboard)
 - Audio chord auto-detection from MIDI input — wash + flash +
   extension hue all driven from live audio
+- 3D torus rendering (mode3D=true): static torus, rotX=30°, rotY=45°
+  baked in, 12×4 toroidal lattice, 48 nodes, 4 PC instances each.
+  No drift, no breathing yet (deferred to 6B).
+- Constellation snap to wash vertices: melody glyphs snap to the
+  wash triangle vertex matching their PC. Verified via deterministic
+  `cantorView._testSnap` and live Launchkey play.
+- 2D mode (mode3D=false) regression-free
+- Chord-detection respects Hardware state — won't run when Hardware
+  is "No audio input", so manual `setTriad` is authoritative on the
+  MIDI-only path.
 - window.cantorView exposed on localhost for dev convenience
 
 ### Next session
-Prompt 6: 3D torus rendering with steady drift (one rev / 45s,
-Y-axis only) and breathing (±5% major radius, 8s sine period).
+Prompt 6B: per-frame drift (rotY, 1 rev / 45s) + breathing
+(±5% torusMajorR, 8s sine).
 
-Open design questions to resolve before writing prompt 6:
-- Refactor harmonograph torus geometry to shared utility, or duplicate
-  into cantor-view? (Standing convention: don't touch harmonograph
-  without specific scope → duplicate for v1, flag refactor as TODO.)
-- Lattice instance handling on a torus topology — multiple PC
-  instances in 2D may simplify or change when the lattice wraps.
-- Chord wash triangles spanning front/back of torus — render as-is
-  with z-sort, don't compute geodesic surface paths.
-- Constellation z-fade vs hard occlusion on back side.
+Resolved during 6A:
+- Refactor question: duplicated `_uvToXYZ`, `_rotate3D`, `_projectOrtho`
+  from harmonograph-view.js into cantor-view.js for v1. Future shared
+  utility flagged TODO in cantor-view.js.
+- Lattice instance handling on torus: 4× PC instances on 12×4 lattice,
+  edges wrap toroidally — every node has all six Tonnetz neighbors.
+- Chord wash triangle handling: rendered with z-sort, no geodesic
+  surface paths.
+- Constellation snap: `_activeWashVertices` Map populates per-frame from
+  wash render before visibility check; constellation reads it.
+
+Open for 6B:
+- Constellation z-fade vs hard occlusion on back side (still open).
 
 ### Deferred / parked
 - Melody trails: connecting lines between consecutive constellation
@@ -53,7 +70,7 @@ Open design questions to resolve before writing prompt 6:
 - chordChange dispatch on MusicalEventStream (currently skipped as
   redundant; revisit if a use case emerges)
 
-**Last updated:** 2026-04-24 (Harmonograph Stage 2 validated via test-track infrastructure; seven audio-pipeline fixes landed)
+**Last updated:** 2026-04-28 (Cantor 6A/6A.1/6A.2 landed: 3D torus, constellation snap, chord-detection Hardware-state gating)
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
 **Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
