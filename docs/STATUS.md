@@ -3,12 +3,34 @@
 
 ## Current state (April 28, 2026)
 
-Cantor v1 build, prompts 1-5 landed plus 6A (3D torus migration), 6A.1
-(constellation wash-vertex snap fix), and 6A.2 (chord-detection
-Hardware-state gating). Live-play snap verified end-to-end with
-Launchkey: manual `HarmonyState.setTriad('E','minor')` holds through
-MIDI E-G-B input, glyphs snap to wash vertices, activeTriads stable
-through decay. Hardware mic→off toggle regression clean.
+C### Cantor v1 — current state
+
+**Landed and verified on dev:**
+- Prompts 1–5
+- 6A: 3D torus migration (rotX=30°, rotY=45° baked, 12×4 toroidal
+  lattice, 48 nodes, 4 PC instances each)
+- 6A.1: constellation wash-vertex snap fix
+- 6A.2: chord-detection Hardware-state gating
+- **6B: per-frame rotY drift (1 rev / 45s) + torusMajorR breathing
+  (±5%, 8s sine), driven by internal `_elapsed` accumulator that
+  respects `params.paused`. Static-bake pose preserved at `_elapsed = 0`
+  via `_testSnap` try/finally.**
+
+**Public surfaces (test harness / debugging):**
+- `cantorView.params.paused` — freezes drift, breathing, and rendering
+- `cantorView.renderOnce()` — single frame at current `_elapsed`,
+  does not tick time
+- `cantorView._testSnap(root, quality, pcs)` — deterministic snap
+  verification at static-bake pose
+
+**Open / deferred:**
+- Constellation z-fade vs hard occlusion on back side (design
+  question, deferred from 6B).
+- 3D math helpers (`_uvToXYZ`, `_rotate3D`, `_projectOrtho`)
+  duplicated between cantor-view.js and harmonograph-view.js;
+  shared-utility extraction TODO.
+- Breathing currently wall-clock driven; eventual goal is
+  tempo/beat-driven for musical alignment.
 
 ### Working
 - /cantor route, on-screen keyboard, MIDI input, Tone.js playback
@@ -35,8 +57,6 @@ through decay. Hardware mic→off toggle regression clean.
 - window.cantorView exposed on localhost for dev convenience
 
 ### Next session
-Prompt 6B: per-frame drift (rotY, 1 rev / 45s) + breathing
-(±5% torusMajorR, 8s sine).
 
 Resolved during 6A:
 - Refactor question: duplicated `_uvToXYZ`, `_rotate3D`, `_projectOrtho`

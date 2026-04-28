@@ -2,6 +2,55 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+## 2026-04-28 — Cantor 6B: per-frame drift + breathing
+
+**Landed:** Prompt 6B in `static/shared/cantor-view.js`.
+
+**Changes:**
+- Added `_elapsed` (seconds) accumulator, advanced per unpaused RAF tick.
+  Pause branch refreshes `_lastFrameMs` only — no time advance, no
+  accumulated jump on resume.
+- `_render()` now derives per-frame values at the top of the body:
+    - `_currentRotY = _rotY + (2π/45) * _elapsed` (1 rev / 45s)
+    - `_currentMajorR = params.torusMajorR * (1 + 0.05 * sin(2π/8 * _elapsed))`
+      (±5%, 8s sine period)
+- Baselines (`_rotY`, `params.torusMajorR`) remain pristine; per-frame
+  values are local to the render pass.
+- `_uvToXYZ` reads `_currentMajorR`; `_rotate3D` reads `_currentRotY`.
+  rotX (30°) and rotZ (0°) untouched.
+- `_testSnap` wraps body in `try { ... } finally { _elapsed = saved }`
+  with `_elapsed = 0` for the duration — deterministic static-bake pose
+  preserved.
+- `renderOnce()` does not tick `_elapsed`; repeated calls while paused
+  produce identical frames.
+
+**Verification:** all 5 acceptance criteria green.
+1. Idle drift (~1 rev / 45s) and breathing (8s, ±5%) both visible.
+2. `params.paused = true` freezes both; `false` resumes without jump.
+3. Live-play snap end-to-end clean — both `HarmonyState.setTriad` and
+   Launchkey E-G-B land on correct 3D vertices and ride the rotation.
+4. `_testSnap('E','minor',[4,7,11])` returns `pass: true`.
+5. `_elapsed` unchanged across repeated `renderOnce()` calls while
+   paused (verified at `577.5749000000071` over ~11s wall time).
+
+**Calibration note:** Mid-session I misread "glyphs in different screen
+positions across paused snapshots" as a snap-target bug. The correct
+read is that glyphs are anchored to 3D vertices and ride the rotating
+torus — which is what they're supposed to do. The ~15s apparent
+"shift cadence" is just 120° of rotation at 1 rev / 45s. Recording
+this so future-me doesn't re-investigate. Lesson: when a snap looks
+"wrong," first ask "same glyphs at new screen positions, or different
+glyphs?" before forming a hypothesis.
+
+**Standing items unchanged:**
+- 3D math helpers (`_uvToXYZ`, `_rotate3D`, `_projectOrtho`) still
+  duplicated from harmonograph; shared-utility extraction still TODO.
+- Constellation z-fade vs hard occlusion on back side: still open,
+  still deferred.
+- Future "musical" breathing (tempo/beat-driven `_elapsed`) is a
+  one-line swap from the current wall-clock-driven accumulator.
+
+
 ## 2026-04-28 — Cantor 6A.2: chord-detection Hardware-state gating
 
 **Bug:** chord-detection callback in cantor.html ran regardless of
