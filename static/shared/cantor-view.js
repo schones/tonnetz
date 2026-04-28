@@ -231,11 +231,21 @@ export class CantorView {
       paused: false,
     };
 
-    // 3D rotation state. Static for 6A; 6B introduces per-frame drift.
+    // 3D rotation baselines. _rotY is pristine; the live per-frame value
+    // is _currentRotY, derived from _elapsed in _render. Same idea for
+    // _currentMajorR: params.torusMajorR is the baseline, breathing scales
+    // it locally to each render pass.
     this._rotX = ROT_X_DEFAULT;
     this._rotY = ROT_Y_DEFAULT;
     this._rotZ = ROT_Z_DEFAULT;
+    this._currentRotY = ROT_Y_DEFAULT;
+    this._currentMajorR = TORUS_MAJOR_R;
     this._projScale = 1;     // k — orthographic scale, set in _resize
+
+    // Time accumulator for per-frame drift + breathing. Advances only
+    // in unpaused RAF ticks; renderOnce() and _testSnap don't tick it.
+    this._elapsed = 0;
+    this._lastFrameMs = null;
 
     // Tracks the lattice mode last built so a dev-console mutation of
     // `params.mode3D` can trigger a lazy rebuild on the next frame.
@@ -302,7 +312,19 @@ export class CantorView {
 
     const loop = () => {
       if (!this.ctx) return;
-      if (!this.params.paused) this._render();
+      const now = performance.now();
+      if (this.params.paused) {
+        // Don't advance elapsed; just refresh the timestamp so the next
+        // unpaused frame starts with a fresh dt and no accumulated jump.
+        this._lastFrameMs = now;
+      } else {
+        if (this._lastFrameMs != null) {
+          const dt = (now - this._lastFrameMs) / 1000;
+          this._elapsed += dt;
+        }
+        this._lastFrameMs = now;
+        this._render();
+      }
       this._rafId = requestAnimationFrame(loop);
     };
     this._rafId = requestAnimationFrame(loop);
@@ -515,7 +537,7 @@ export class CantorView {
   // _projectOrtho are byte-for-byte equivalents of harmonograph's.
 
   _uvToXYZ(u, v) {
-    const R = this.params.torusMajorR;
+    const R = this._currentMajorR;
     const r = this.params.torusMinorR;
     const cu = Math.cos(u), su = Math.sin(u);
     const cv = Math.cos(v), sv = Math.sin(v);
@@ -535,7 +557,7 @@ export class CantorView {
     let z1 = y * sx + z * cx;
     y = y1; z = z1;
     // Y
-    const cy = Math.cos(this._rotY), sy = Math.sin(this._rotY);
+    const cy = Math.cos(this._currentRotY), sy = Math.sin(this._currentRotY);
     let x2 = x * cy + z * sy;
     let z2 = -x * sy + z * cy;
     x = x2; z = z2;
@@ -683,6 +705,13 @@ export class CantorView {
    *   cantorView._testSnap('E', 'minor', [4, 7, 11])
    */
   _testSnap(triadRoot, triadQuality, notePCs) {
+    // Freeze elapsed at 0 so rotY = baseline and torusMajorR = baseline
+    // for the duration of the snap test, regardless of where the live
+    // animation is. Restore on return so the running view picks back up
+    // exactly where it left off.
+    const savedElapsed = this._elapsed;
+    this._elapsed = 0;
+    try {
     this._melodyNotes.clear();
     HarmonyState.clearAll();
     HarmonyState.setTriad(triadRoot, triadQuality);
@@ -760,6 +789,9 @@ export class CantorView {
       notes,
       pass: allPass,
     };
+    } finally {
+      this._elapsed = savedElapsed;
+    }
   }
 
   /** Pick the constellation tint from the FIRST active triad, or warm-gold default. */
@@ -1033,6 +1065,14 @@ export class CantorView {
     if (!ctx) return;
     const W = this.width, H = this.height;
     const now = Date.now();
+
+    // Derive this frame's rotY and effective torusMajorR from _elapsed.
+    // Baselines (this._rotY, this.params.torusMajorR) stay pristine —
+    // breathing and drift are local to the render pass.
+    const t = this._elapsed;
+    this._currentRotY = this._rotY + (Math.PI * 2 / 45) * t;
+    const breathFactor = 1 + 0.05 * Math.sin((Math.PI * 2 / 8) * t);
+    this._currentMajorR = this.params.torusMajorR * breathFactor;
 
     // Dev-console toggle: `cantorView.params.mode3D = false` should
     // switch to the 2D path next frame. Detect a drift from the
