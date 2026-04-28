@@ -2,6 +2,81 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+## 2026-04-27 (continued) — Prompt 5: input model complete
+
+### Landed
+Split-point UI overlay, audio chord detection wiring, on-screen
+keyboard → MusicalEventStream.
+
+### Architectural notes
+- Split-point overlay is a Cantor-specific layer over the keyboard
+  (not a keyboard-view modification). MutationObserver handles the
+  hidden-panel zero-rect issue.
+- Audio chord detection init is gated on first MIDI noteOn — the
+  user-gesture moment when Tone.js's audioContext can start producing
+  real analyser samples.
+- chord-detection routes through HarmonyState.highlightChord so both
+  activeTriads (base quality, drives wash + flash diff) and activeChord
+  (full extension, drives 7th hue shifts) populate from one path.
+- Silence watcher (100ms poll, 500ms threshold) clears state on quiet
+  rather than waiting for explicit chord change.
+
+### Verification dance
+- Initial confusion: thought constellation wasn't rendering. Actually
+  was — visible as warm gold glow blobs in screenshots — but split
+  was at MIDI 60 (leftmost C of visible keyboard), so all played
+  notes registered as melody and there was no visual contrast between
+  "above" and "below" to confirm classification was working.
+- Real issue surfaced: default split of MIDI 60 puts the line at the
+  far left of this keyboard's range, leaving no accompaniment region.
+  Drag-tested → splitPoint persisted correctly (localStorage = '60'),
+  classification logic worked, just bad default UX.
+- Chord detection observed working: F7, Dmaj7, Dsus4, Cmaj7, G7
+  detected and washed correctly.
+- window.cantorView wasn't exposed — added a debug-only assignment
+  on localhost for future debug rounds.
+
+### Tuning pass at end of session
+- Default split changed from MIDI 60 → 72 (C5, mid-keyboard)
+- Constellation visual prominence bumped: lit-node radius factor
+  1.45 → 1.7, glow halo factor 1.5 → 2.0, velocity floor 0.3 → 0.5,
+  decay τ 0.7s → 1.0s, two-pass core+halo rendering
+- Goal: glyphs read as clear played-note markers rather than ambient
+  shimmer
+- window.cantorView exposed on localhost only for dev console access
+
+### Open question raised, deferred
+The constellation currently shows un-connected fading glyphs — no
+directional or sequence information. Worth a future design doc on
+melody trails (faint connecting lines between consecutive notes,
+fading with τ) to expose phrase contour spatially. Stepwise vs
+leaping motion would become visible. Even more interesting on the
+3D torus where the melody trail would wrap around the surface.
+Defer the design pass until after prompt 6 lands so trails can be
+designed against the final torus geometry.
+
+### Deferred to later (still standing)
+- chordChange dispatch on MusicalEventStream — cantor reads HarmonyState
+  directly, dispatch is redundant for v1
+- activeTriads-clears-mid-phrase anchor snap-back grace period
+
+### Bonus discussion
+Spent some time on scales on the Tonnetz: diatonic = 7-node connected
+region, relative keys share region (Cmaj/Amin indistinguishable as
+shapes), parallel keys pivot (Cmaj→Cmin = 4 of 7 nodes shared, the
+others pivoting around the tonic-dominant axis), harmonic minor has
+a tendril reaching into parallel-major territory (raised 7th outside
+the natural-minor footprint), octatonic tiles the lattice. Not
+building, but compelling enough that it earns its own design doc
+tomorrow — `docs/scale-regions.md` — as a future Explorer panel or
+Theory Hub lesson. "Scales have shapes too" as a follow-on to
+"Harmony has a shape."
+
+### Next
+Prompt 6: 3D torus rendering with drift + breathing. Open design
+questions logged in STATUS.
+
+
 ## 2026-04-24 — Harmonograph audio pipeline debugging (test-track-driven)
 
 Continued the same day after Stage 2 landed. Built deterministic test-track infrastructure to systematically validate audio reactivity, then used it to find and fix seven interrelated bugs across the audio pipeline.

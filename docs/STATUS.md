@@ -1,5 +1,58 @@
 # SongLab Project Status
 
+
+## Current state (April 27, 2026, end of evening session)
+
+Cantor v1 build, prompts 1-5 landed. Constellation lookup fix landed
+between prompts 4 and 5. Visual prominence and default-split tuning
+landed at end of session.
+
+### Working
+- /cantor route, on-screen keyboard, MIDI input, Tone.js playback
+- MusicalEventStream singleton; on-screen keyboard publishes too
+- Tonnetz substrate (7×5 lattice, canonical orientation)
+- Chord wash with cross-fade, quality-colored fills, hue shifts for
+  7ths, (rootPC, baseQuality) diff key for flash-on-quality-change
+- Melody constellation, anchored to active wash centroid, with
+  exponential decay, velocity → brightness, chord-quality color
+- User-controllable split-point line (drag, snap, persist) with
+  default at MIDI 72 (C5, mid-keyboard)
+- Audio chord auto-detection from MIDI input — wash + flash +
+  extension hue all driven from live audio
+- window.cantorView exposed on localhost for dev convenience
+
+### Next session
+Prompt 6: 3D torus rendering with steady drift (one rev / 45s,
+Y-axis only) and breathing (±5% major radius, 8s sine period).
+
+Open design questions to resolve before writing prompt 6:
+- Refactor harmonograph torus geometry to shared utility, or duplicate
+  into cantor-view? (Standing convention: don't touch harmonograph
+  without specific scope → duplicate for v1, flag refactor as TODO.)
+- Lattice instance handling on a torus topology — multiple PC
+  instances in 2D may simplify or change when the lattice wraps.
+- Chord wash triangles spanning front/back of torus — render as-is
+  with z-sort, don't compute geodesic surface paths.
+- Constellation z-fade vs hard occlusion on back side.
+
+### Deferred / parked
+- Melody trails: connecting lines between consecutive constellation
+  glyphs to expose phrase contour. Needs its own design doc; even
+  more interesting on the 3D torus, so probably design after prompt 6.
+- activeTriads-clears-mid-phrase anchor snap-back: cosmetic, low
+  priority, fix is to keep last anchor for ~1-2× decay τ after
+  activeTriads empties.
+- Scales on the Tonnetz: separate design thread (`docs/scale-regions.md`
+  to be drafted). 7-node connected region for diatonic, relative keys
+  share region, parallel keys pivot, harmonic minor has tendril,
+  octatonic tiles. Not blocking Cantor v1.
+
+### After v1
+- v1 user testing
+- Audio chord detection silence-watcher tuning if needed
+- chordChange dispatch on MusicalEventStream (currently skipped as
+  redundant; revisit if a use case emerges)
+
 **Last updated:** 2026-04-24 (Harmonograph Stage 2 validated via test-track infrastructure; seven audio-pipeline fixes landed)
 **Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
 **Deploy:** Railway from `main`
