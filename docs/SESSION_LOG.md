@@ -1,7 +1,145 @@
 # Session Log
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
-## 2026-04-29 (morning)
+
+## 2026-04-29 (morning session) — AudioInterpreter v0 design and build
+
+### Landed
+- `docs/audio-interpreter-design.md` — new design doc, 12 sections.
+  Three-subsystem AudioInterpreter architecture (pitched-note
+  tracker, chord tracker, percussive-strike publisher), event
+  vocabulary (noteAttack, noteRelease, chordChange,
+  percussiveStrike), pitched-note state machine, onset-gating logic
+  for chord publishing, lifecycle interface, deferred features,
+  open questions, Cantor migration implications. Committed locally
+  on audio-onset-analysis; not pushed.
+- `static/shared/audio-interpreter.js` — new module. v0 build,
+  three subsystems wired, factory follows existing detector
+  conventions, all eight acceptance criteria met. No deviations
+  from design doc. Status: built but uncommitted; commit pending
+  the design-doc edit pass.
+
+### Diagnosed / decided
+- **Phase 1 framing was wrong.** Original "wire onset-detection to
+  publish noteAttack events" framing assumed onset-detection
+  carried pitch info. It doesn't — `OnsetEvent` is `{timestamp,
+  strength}`. The right architecture is AudioInterpreter (named in
+  cantor-design.md but not yet built), which correlates onset +
+  pitch + chord into musical events. Phase 0's "supplement, not
+  replace" decision still holds, but lives inside AudioInterpreter's
+  chord tracker rather than as a free-standing wiring decision.
+- **Three-subsystem architecture, dual classification.** Pitched
+  and percussive are not mutually exclusive — every onset can
+  produce both a noteAttack and a (possibly faint) percussiveStrike,
+  with strength weighting on the strike. Beat Field's "single
+  shared field" handles superposition naturally. Reasoning: a
+  strummed guitar has both pitched and percussive content; treating
+  them as exclusive would silently drop the percussive component
+  for any pitched instrument.
+- **Pitched-note state machine: transient pathway only in v0.**
+  Two states (Silent, Sustaining), debouncing at transitions,
+  semitone threshold for note-change. Emergent pathway (sustained
+  singing without a clean attack) is reserved in the architecture
+  via `attackType: 'transient' | 'emergent'` field but not
+  implemented in v0. Documented as a v0 limitation.
+- **Strike events carry pitch/spectral content, not screen
+  positions.** Beat Field's design originally had origin pre-
+  computed upstream. Moved downstream to keep AudioInterpreter
+  rendering-agnostic. Beat Field maps pitch to screen position
+  using its own torus geometry.
+- **Cantor migration sequence: v0 build first, then audit, then
+  migration build.** AudioInterpreter v0 doesn't depend on Cantor
+  (it's a new standalone module), so the migration audit is more
+  usefully written *after* v0 exists, when we know exactly what
+  we're migrating to.
+
+### Setup for next session
+- Branch: audio-onset-analysis (committed: design doc only;
+  uncommitted: audio-interpreter.js).
+- Tag pre-overtone-fix anchors pre-rebuild state on dev.
+- Working tree clean except for the uncommitted v0 module.
+- Three drafted prompts in chat:
+  1. Design-doc edit pass (4 findings to fold back). Run next.
+  2. (Future) Cantor migration audit — read-only Claude Code
+     session producing `docs/cantor-migration-audit.md`.
+  3. (Future) Cantor migration phase 1 build.
+
+### Calibration notes
+- **One question at a time held throughout this design conversation
+  and worked.** Several rounds where my hypothesis was wrong (the
+  "constellation benefit" framing; the option 3 reconciler when I
+  hadn't read what triggered Harmonograph's reconciler; the
+  assumption that onset-detection carried pitch). Each one caught
+  by your push to read code or be concrete before designing
+  further. The reset to "design from principles" after the
+  cantor-design.md re-read was the right move.
+- **Read-the-code-before-reasoning paid off concretely.** I tried
+  to design the option-3 reconciler from the audit's text without
+  asking for the call sites. Your grep + sed put the actual sites
+  on screen and confirmed it was a hybrid pattern (one
+  subscription + five defensive calls), not the pure pattern I'd
+  imagined.
+- **Design-from-principles works when the principles are explicit.**
+  Once you named "we want to support the acoustic-only returning
+  user," option 3 became obvious. Without that principle named,
+  it would have stayed a defensible-but-arbitrary choice.
+
+### Flagged for later
+- **Chord ambiguity rendering is stranded.** cantor-design.md
+  commits to rendering multiple chord candidates with confidence-
+  proportional saturation, but chord-detection.js emits only a
+  single best-fit per frame. v0's `alternatives` field is always
+  empty. Resolution requires either lift on chord-detection.js to
+  emit top-N candidates, or chord-tracker-side derivation from
+  chroma data. Defaults to v3+ unless prioritized earlier. Logged
+  as design-doc Open Question.
+- **window.AudioInput coupling pattern.** AudioInterpreter v0
+  uses `window.AudioInput?.getStream?.()` at start time to share
+  the existing MediaStream with pitch-detection. Matches
+  harmonograph's pattern but is the same window-coupling Notable D
+  flagged in the orchestration audit. Cantor migration audit
+  should decide: (a) clean up by passing AudioInput as an explicit
+  factory option, or (b) accept the precedent.
+- **Transient-sharpness `/3` divisor is empirical.** Calibration
+  item for real-audio testing during the migration phase.
+- **Spectral-flatness duplicated.** Copied from pitch-detection.js
+  rather than imported (it's a private helper there). Subsystems
+  agree on the metric. Worth promoting to a shared
+  `audio-features.js` module later — flag for the audit-style
+  refactor pass.
+- **Beat Field doc edits.** `docs/beat-field-design.md` should
+  reference percussiveStrike schema rather than its own input
+  pipeline. Deferred until Cantor migration phase 1 is complete
+  so the strike-event interface is fully stable in code, not just
+  in design.
+- **Notable A's saved-device fix.** Will land as a side effect
+  of Cantor migration phase 1 (AudioInterpreter's lifecycle is
+  reconciler-style by design). Not a separate fix.
+
+### Out of scope / deferred
+- **MIDI publishing path consolidation.** Whether MIDI events
+  eventually flow through AudioInterpreter (or a paired
+  MIDIInterpreter) is Open Question 1 in the design doc.
+  Decision deferred to the Cantor migration audit. v0 explicitly
+  leaves MIDI publishing where it is in cantor.html.
+- **Audio-derived noteRelease.** Reserved in event vocabulary;
+  v0 publishes noteRelease from MIDI only. Audio-derived
+  release detection is v3+, paired with note duration and
+  phrase detection.
+- **pitchBend event emission.** Type reserved; v0 absorbs
+  within-semitone fluctuation into the locked pitch (vibrato
+  doesn't visualize, blues bends are silently truncated).
+  Lands in v3+ as a node-moves-on-the-Tonnetz feature.
+- **Harmonograph migration to AudioInterpreter.** Out of scope.
+  Harmonograph has its own working pattern and isn't a Cantor
+  consumer. A future migration would resolve the silence-watcher
+  duplication entirely. Tracked as a follow-up; not blocked by
+  AudioInterpreter v0.
+- **Unit tests for AudioInterpreter.** Hard to test without
+  real audio. v0 ships with debug surface (`setDebug(bool)`,
+  `getState()`) for interactive verification. Test fixture
+  corpus is build-phase work for whenever testing strategy gets
+  prioritized.
 
 
 - **CLAUDE.md reference docs section is getting long**  will keep growing as new

@@ -217,7 +217,7 @@ The active chord has shifted.
 | `pitchClasses` | array of int 0–11         | yes           | the actual notes detected |
 | `bass`         | pitch class or `null`     | yes           | preserved from chord-detection (avoids audit Notable E) |
 | `confidence`   | 0–1                       | yes           |       |
-| `alternatives` | array of `{root, quality, confidence}` | yes | candidates above threshold; `[]` when unambiguous |
+| `alternatives` | array of `{root, quality, confidence}` | reserved (v0 always `[]`) | schema shape for candidates above threshold; v0 always emits `[]` because `chord-detection.js` produces a single best-fit per frame, not a top-N list. Populated in v3+ once chord-detection is enriched or the chord tracker derives candidates from chroma. |
 | `velocity`     | 0–1 normalized            | yes           | aggregate dynamic at change moment |
 | `timestamp`    | high-precision ms         | yes           |       |
 | `source`       | `'audio'` or `'midi'`     | yes           |       |
@@ -426,6 +426,18 @@ timestamps. On each chord-detection frame:
   silence-debounce window, publish a `chordChange` with `root: null`
   to signal "no harmony" so consumers can release highlights.
 
+### Onset strength as velocity source
+
+The chord tracker reads onset *strength* in addition to onset
+timestamps: the strength of the gating onset is used as the source
+for `chordChange.velocity`. The state machine description in
+Section 5 doesn't anticipate this (the tracker conceptually only
+needs timestamps for the gate), but it's a clean way to populate
+`velocity` meaningfully — the dynamic of the most recent gating
+onset is the best available proxy for "how hard the chord was hit."
+When no onset is in the buffer (defensive edge case; the gate
+already required one), velocity falls back to chord confidence.
+
 ### What this fixes
 
 The motivating bug from Phase 0: a sustained single note's overtone
@@ -550,6 +562,11 @@ Section 9).
   transient sharpness, spectral flatness, band distribution.
   Starting values: TBD against test corpus including isolated drum
   hits, sung notes, piano notes, strummed chords.
+- Transient-sharpness proxy divisor. The proxy is
+  `(currentRms / prevFrameRms − 1) / divisor`, clamped to 0–1.
+  Starting value: 3 — chosen empirically to put typical real-attack
+  RMS ratios (1.5x–4x) into the mid-range of the 0–1 output. Flag
+  for calibration during real-audio testing.
 - Band classification thresholds: where low/mid/high split. Starting
   values inherited from typical drum-frequency conventions (low
   <200Hz, mid 200–2000Hz, high >2000Hz) but tunable.
@@ -662,6 +679,26 @@ testing.
    (recorded audio clips with known expected event sequences) more
    than traditional unit tests. Out of scope for design doc; address
    in build phase.
+
+8. **Chord ambiguity rendering.** `cantor-design.md` commits to
+   rendering multiple chord candidates with confidence-proportional
+   saturation, but `chord-detection.js` emits only a single best-fit
+   per frame. v0's `alternatives` field is therefore always empty.
+   Resolution requires either lift on `chord-detection.js` to emit
+   top-N candidates, or chord-tracker-side derivation of alternatives
+   from chroma data. Decision deferred; defaults to v3+ scope unless
+   prioritized earlier.
+
+9. **Runtime coupling via `window.AudioInput`.** AudioInterpreter v0
+   looks up `window.AudioInput?.getStream?.()` at start time to share
+   the existing MediaStream with pitch-detection (avoiding a second
+   `getUserMedia`). This matches harmonograph's pattern but is the
+   same `window`-coupling Notable D in the orchestration audit
+   flagged as inconsistent with the ES-module imports used elsewhere.
+   Cantor migration audit should decide whether to: (a) clean up by
+   passing AudioInput as an explicit factory option, or (b) accept
+   the precedent. Defaults to (b) unless the migration audit makes a
+   case for (a).
 
 ## 12. Cantor migration implications (high-level)
 

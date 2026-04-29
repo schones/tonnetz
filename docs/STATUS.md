@@ -3,38 +3,63 @@
 
 ## Current state (April 28, 2026)
 
-### Cantor v1 — current state (added 2026-04-28 evening)
+
+### Cantor — current state (updated 2026-04-29)
 
 **Landed and verified on dev:**
-- Prompts 1–5
-- 6A: 3D torus migration
-- 6A.1: constellation wash-vertex snap fix
-- 6A.2: chord-detection Hardware-state gating
-- 6B: per-frame rotY drift + torusMajorR breathing
-- Test track infrastructure: `tests/generate_cantor_test_track.py` +
-  `tests/cantor-test-track.md`. WAV regenerable from script.
+- (Whatever Cantor work has already shipped to dev — preserve
+  existing entries here. The new content below is additive on
+  the audio-onset-analysis branch, not yet on dev.)
 
 **In progress:**
-- Onset-driven audio analysis rebuild (separate branch). Replaces
-  chroma-template chord detection's foundational limitation: it
-  cannot distinguish a single note's overtone series from a real
-  chord. Onsets are the primitive; chord and melody are both
-  interpretations of the onset stream.
-  - Backup: branch `chord-detection-overtone-fix`, tag
-    `pre-overtone-fix` at the pre-rebuild dev HEAD.
-  - Plan: 4-phase (read existing audio code → build onset-detection.js
-    → wire into chord-detection.js → wire into MusicalEventStream →
-    validate). Estimated 2–3 sessions.
+- **Audio analysis rebuild (branch: audio-onset-analysis).**
+  Phase 0 closed: supplement-not-replace decision. AudioInterpreter
+  v0 designed and built; commit pending the design-doc edit pass.
+  Next: design-doc edit pass (1 short Claude Code session), then
+  Cantor migration audit (1 read-only session), then Cantor
+  migration phase 1 build (1 session). Total estimated remaining:
+  ~3 sessions to land phase 1 of the migration. Phase 2
+  (single-publisher consolidation) is tentative and depends on
+  Open Question 1 resolution.
 
 **Open / deferred:**
-- Constellation z-fade vs hard occlusion on torus back side.
-- 3D math helper deduplication (cantor + harmonograph share three
-  duplicated functions).
-- Tempo/beat-driven breathing (replace wall-clock `_elapsed`).
-- Chladni backdrop dynamics (separate chat thread, brainstorming
-  phase).
-- Build plan review and consolidation across SongLab surfaces —
-  flagged as a candidate for a dedicated planning session.
+- **Chord ambiguity rendering** — stranded until chord-detection.js
+  emits top-N candidates. cantor-design.md's "render all candidates
+  with confidence-proportional saturation" can't be expressed from
+  current chord-detection output. Deferred to v3+ unless
+  prioritized.
+- **Beat Field implementation** — deferred until Cantor migration
+  phase 1 is complete. Prerequisite (percussiveStrike schema) is
+  now satisfied at the design level; waiting on the schema to
+  stabilize in code.
+- **Audio-derived noteRelease, pitchBend, emergent attacks** —
+  reserved in AudioInterpreter's schema, deferred to v3+.
+- **MIDI publishing path consolidation** — Open Question 1 in
+  audio-interpreter-design.md. Decision pending Cantor migration
+  audit.
+
+**Public surfaces (test harness / debugging):**
+- `window.__audioInterpreter` (when AudioInterpreter is started)
+  — instance handle for console inspection.
+- `interpreter.setDebug(true)` — toggles runtime logging of
+  subsystem starts/stops, locked-pitch changes, chord publishes.
+  Default off.
+- `interpreter.getState()` — returns current state snapshot
+  (locked pitch, recent onsets, last published chord, etc.).
+
+**Standing rules:**
+- AudioInterpreter v0 is built but should not be wired into
+  Cantor until the migration audit + migration build sessions
+  run. Don't add ad-hoc imports or test-call wiring in
+  cantor.html before the migration audit produces its plan.
+- The locked files in WORKING_STYLE.md (harmony-state.js,
+  audio-input.js, keyboard-view.js, chord-detection.js,
+  musical-event-stream.js) are not expected to need lift during
+  the migration. If any session turns up such a need, stop and
+  surface rather than asking for lift mid-session.
+
+
+### Cantor v1 — current state (added 2026-04-28 evening)
 
 
 ### Working
