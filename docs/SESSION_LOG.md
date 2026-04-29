@@ -1,6 +1,18 @@
 # Session Log
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
+## 2026-04-29 (morning)
+
+
+- **CLAUDE.md reference docs section is getting long**  will keep growing as new
+  surfaces ship. Worth consolidating into something more navigable
+  (grouped by surface? a separate `docs/INDEX.md` with categorized
+  links that CLAUDE.md just points to?). Not urgent — current list
+  still works — but consolidation will pay off as the doc count
+  grows.
+
+** build plan review / consolidiation / codebase review should be done soon.
+
 
 ## 2026-04-28 (afternoon/evening) — Cantor diagnostics and onset architecture planning
 

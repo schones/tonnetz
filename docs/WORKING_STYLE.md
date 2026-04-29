@@ -75,28 +75,30 @@ flagged TODO.
 
 ## End-of-session protocol
 
-Run BEFORE giving any commit guidance:
-
-1. `git status` — see the full working-tree state. Flag any stale
-   or unrelated in-progress changes; let me decide what to commit.
-2. Don't advise committing until full working-tree state is known.
-
-Then:
-
-3. Draft updates for `docs/STATUS.md` and `docs/SESSION_LOG.md`
+1. Follow End-of-session git workflow below.
+2. Draft updates for `docs/STATUS.md` and `docs/SESSION_LOG.md`
    following `docs/templates/`.
-4. Offer git commands as a paste-able sequence, not as tool calls.
-5. Default commit message format:
+3. If anything is unclear or ambiguous, ask before proceeding.
+
+
+
+## End-of-session git workflow
+
+1. Always run `git status` first; flag any unrelated working-tree
+   changes for my decision before suggesting any commits.
+2. Always offer git commands as a sequence I can paste, not as
+   tool calls Claude executes.
+3. Default commit message format:
    - First line: short imperative summary (≤72 chars)
    - Blank line
    - Body: bulleted list of what changed and why
+4. When drafting Claude Code prompts in chat, never include git
+   commands in them. Git operations are mine; Claude Code prompts
+   should focus on the build/edit task only.
+5. For binary artifacts: ask before committing. Default to
+   gitignore + regenerate-from-source.
 
-## Binary artifacts
 
-Default to gitignore + regenerate-from-source. Ask before committing
-any binary file (WAV, image, video, compiled output, etc.). The
-canonical source of truth should be the script or input that produces
-the artifact, not the artifact itself.
 
 ## When something feels off
 
