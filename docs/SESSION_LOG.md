@@ -2,6 +2,108 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+## 2026-04-29 (afternoon) — Cantor migration audit drafted; fix-prompt arc scoped
+
+### Landed
+- docs/cantor-migration-audit.md committed (separate Claude Code
+  session, read-only). Nine sections, file:line citations
+  throughout, recommend-not-decide stance on OQ1 and OQ9.
+- AudioInterpreter v0 public surface verified fresh in audit §2:
+  factory signature, idempotent start/stop, setAnalyser does
+  internal stop+restart, getState shape, noteId scheme 'audio-N',
+  window.AudioInput.getStream() coupling, window.__audioInterpreter
+  global. Matched the design doc spec; no drift.
+- Spot-check greps on consumer enumeration of chord-detection.js,
+  pitch-detection.js, onset-detection.js, and MusicalEventStream.publish
+  showed no drift since the orchestration audit was committed.
+
+### Diagnosed / decided
+- OQ1 (MIDI publishing path) — audit recommends option (b),
+  shape 1: a sibling MIDIInterpreter module rather than absorbing
+  MIDI into AudioInterpreter. Reasoning aligns with design
+  principle 7 (single producer per modality). No decision made;
+  recommendation only. Decision required before phase 2 prompt
+  can be drafted.
+- OQ9 (window.AudioInput coupling) — audit recommends (b) for
+  phase 1 (accept the precedent), (a) when the second
+  AudioInterpreter consumer lands. Trigger condition concrete
+  enough to act on later.
+- §4.2 keyboard-click path flagged as a third decision under OQ1
+  branch (b); recommended treatment is "leave it where it is"
+  (no interpretation work to wrap on the click path).
+- Melody and SkratchLab audio-bridge classified as "primitive
+  consumers" — they consume raw pitch readings, not interpreted
+  attack events. Recommended no migration. The "primitive
+  consumer" category didn't exist before this audit; flagged for
+  AudioInterpreter design doc to absorb on a future pass.
+- input-provider Notable E fix recommended in-place (option B);
+  architectural unification with AudioInterpreter (option A or C)
+  deferred until Beat Field creates real pressure.
+- Harmonograph flatness gate (Notable C) — three options laid
+  out; recommended path "discard and verify." The verification
+  step has a sharper risk than other deferred decisions: no
+  existing test corpus catches the noise-driven phantom chord
+  case the flatness gate was defending against. Harmonograph
+  migration prompt needs to call for a recorded fixture, not
+  rely on existing manual testing.
+
+### Setup for next session
+- audio-onset-analysis branch unchanged in working tree at
+  session end (audit was a separate read-only Claude Code
+  session that committed its own work).
+- Migration audit is the source of truth for fix-prompt drafting;
+  next chat session should treat the four files (WORKING_STYLE,
+  audit, design doc, orchestration audit, audio-interpreter.js)
+  as inputs and skip this thread's transcript.
+- Anticipated fix-prompt arc: (1) Cantor phase 1 — drafttable
+  now; (2) Cantor phase 2 — gated on OQ1 decision; (3)
+  Harmonograph migration; (4) input-provider Notable E in-place
+  fix; (5) OQ9 cleanup — gated on second consumer landing.
+- Handoff prompt for the next chat drafted in chat (not
+  committed); paste-ready.
+
+### Calibration notes
+- The chat-side elicitation pattern (tappable single-question
+  rounds for scope, OQ stance, structure, depth, verification
+  policy) worked well for shaping a complex prompt. Each
+  question was a clean either/or that didn't require re-reading
+  earlier context. Worth using again for prompts of comparable
+  scope.
+- Asked an unnecessary question early ("which files / symbols
+  define the old stack") that the orchestration audit already
+  enumerated. Lesson: when uploaded files explicitly cover a
+  question, read them before asking. Recovered by reading the
+  files and pivoting; the user flagged it directly.
+- The "fix prompts will modify source files; the audit didn't"
+  posture shift is worth highlighting in the next handoff —
+  file-scope rules become load-bearing differently for
+  modify-mode prompts.
+
+### Flagged for later
+- "Primitive consumer" as a category — should be absorbed into
+  audio-interpreter-design.md on a future doc pass. Currently
+  only named in the migration audit §7.2 / §7.3.
+- Harmonograph flatness-gate verification needs a recorded
+  fixture (mic noise + sustained string ringing) before the
+  harmonograph migration can call its work done. The fixture
+  doesn't exist today.
+- The keyboard-click path (cantor.html:322-338) is a third
+  MusicalEventStream producer outside both MIDIInput and the
+  future MIDIInterpreter. Today it's a non-issue; if a fourth
+  producer ever appears the "single producer per modality"
+  principle (design principle 7) needs a sharper formulation.
+
+### Out of scope / deferred
+- Beat Field implementation — unblocked by AudioInterpreter v0
+  but not started.
+- chord-detection.js top-N candidates lift — referenced in
+  design doc OQ8; deferred to v3+ unless prioritized earlier.
+- Adaptive tuning windows for the onset-gating ms values —
+  deferred per design doc §10.
+- Harmonograph migration scheduling — shape exists in audit
+  §7.1; actual when-to-do-it deferred.
+
+
 ## 2026-04-29 (morning session) — AudioInterpreter v0 design and build
 
 ### Landed

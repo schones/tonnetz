@@ -7,6 +7,63 @@
 ### Cantor — current state (updated 2026-04-29)
 
 **Landed and verified on dev:**
+- [keep existing entries]
+
+**In progress:**
+- Migration onto AudioInterpreter v0 — phase 1 drafttable now
+  from docs/cantor-migration-audit.md §3. Phase 2 gated on OQ1
+  decision (audit §6.1 recommends sibling MIDIInterpreter; user
+  decides). Estimated 1 session for phase 1 prompt drafting +
+  1 session for the Claude Code fix run, then verification.
+
+**Open / deferred:**
+- OQ1 decision (MIDI publishing path during migration). Audit
+  recommendation: sibling MIDIInterpreter. Required before
+  phase 2 prompt can be drafted.
+- OQ9 cleanup (window.AudioInput coupling). Deferred until the
+  second AudioInterpreter consumer lands; trigger is concrete.
+- Notable A (saved-device gap, audit §3) — fixes incidentally
+  during phase 1 by virtue of moving onto the consolidated
+  reconciler pattern.
+- Notable E (input-provider drops bass and pitchClasses, audit
+  §3 + §7.4) — must not be reintroduced when wiring cantor's
+  chordChange subscriber. Tracked in the input-provider section
+  as a separate in-place fix.
+
+**Standing rules — optional:**
+- [keep existing entries]
+- During the AudioInterpreter migration: harmony-state.js,
+  audio-input.js, keyboard-view.js, chord-detection.js,
+  musical-event-stream.js are off-limits without explicit lift
+  per WORKING_STYLE.md. The migration is designed to consume
+  these through their existing public surfaces.
+
+
+### Harmonograph — current state (updated 2026-04-29)
+
+**Landed and verified on dev:**
+- [keep existing entries]
+
+**Open / deferred:**
+- [keep existing entries]
+- Migration onto AudioInterpreter v0 — shape sketched in
+  cantor-migration-audit.md §7.1. Compressed depth; full
+  migration prompt drafttable after Cantor phase 1 lands.
+  Deferred indefinitely (no current pressure beyond the
+  duplicated silence watcher and the cross-detector flatness
+  coupling Notable C).
+- Flatness-gate risk on the harmonograph migration: the audit's
+  §7.1 recommendation is "discard and verify" — drop the
+  flatness gate and rely on AudioInterpreter's onset gate to
+  cover the same case. No current test corpus catches the
+  noise-driven phantom chord case the flatness gate was
+  defending against. The migration prompt needs to call for a
+  recorded fixture (mic noise + sustained string ringing)
+  before claiming verification.
+
+### Cantor — current state (updated 2026-04-29)
+
+**Landed and verified on dev:**
 - (Whatever Cantor work has already shipped to dev — preserve
   existing entries here. The new content below is additive on
   the audio-onset-analysis branch, not yet on dev.)
