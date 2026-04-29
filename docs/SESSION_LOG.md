@@ -2,6 +2,60 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+## 2026-04-28 (afternoon/evening) — Cantor diagnostics and onset architecture planning
+
+**Landed:** Cantor test track infrastructure on dev.
+- `tests/generate_cantor_test_track.py` — deterministic synthetic
+  audio generator, three diagnostic sections (chord-only, melody-only,
+  combined). Mirrors harmonograph generator pattern.
+- `tests/cantor-test-track.md` — companion doc with section guide and
+  diagnostic decision tree.
+- WAV is gitignored (`*.wav`); regenerate from script.
+
+**Diagnosed:** chord-detection.js produces false-positive chord wash
+on solo melody notes. Root cause: chroma-template matching can't
+distinguish a single note's overtone series from a real chord. A
+single sustained G5 has strong chroma energy at {G, D, B} from its
+1st/3rd/5th harmonics — exactly G major's pitch classes. Filed full
+analysis in chat history.
+
+**Decision:** rather than patch chord-detection.js (the standing
+"don't touch" rule was lifted with backup branch + tag in place),
+rebuild on onset-driven analysis. Onsets are the right primitive:
+chord and melody are both interpretations of the onset stream.
+Single sustained notes produce one onset → no chord. Distinct melody
+note onsets are visible whether or not they're chord tones.
+
+**Setup for tomorrow:**
+- Branch `chord-detection-overtone-fix` exists at dev's HEAD; planned
+  rename to `audio-onset-analysis` or similar tomorrow.
+- Tag `pre-overtone-fix` anchors current state.
+- Phase 0–4 plan in this chat's history (Phase 0: read three files
+  + decide replace vs. supplement; Phase 1: build onset-detection.js
+  module; Phase 2: wire into chord-detection.js; Phase 3: wire into
+  MusicalEventStream / cantor-view; Phase 4: validation).
+- Estimated 2–3 sessions total.
+
+**Calibration note (morning):** during 6B acceptance verification I
+prematurely concluded "snap target is drifting" when glyphs appeared
+in different screen positions across paused snapshots. Correct read
+is that glyphs anchor to 3D vertices and ride the rotating torus —
+the apparent ~15s "shift cadence" is just 120° of rotation at 1 rev
+/ 45s. Lesson: when a snap looks "wrong," first ask "same glyphs at
+new screen positions, or different glyphs?" before forming a
+hypothesis.
+
+**Flagged for separate session:** build plan review and consolidation.
+Cantor and Harmonograph integration into the broader SongLab
+educational story (scales, keys, theory) deserves a dedicated
+planning session. Output would be: updated STATUS.md across all
+surfaces, an integration map document, and a re-prioritized roadmap.
+Not urgent but easy to lose sight of.
+
+**Chladni dynamics:** brainstorming deferred to a separate chat for
+context cleanliness. Starter handoff prompt drafted in this session.
+
+
 ## 2026-04-28 — Cantor 6B: per-frame drift + breathing
 
 **Landed:** Prompt 6B in `static/shared/cantor-view.js`.

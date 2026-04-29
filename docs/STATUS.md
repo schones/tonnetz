@@ -3,34 +3,39 @@
 
 ## Current state (April 28, 2026)
 
-C### Cantor v1 — current state
+### Cantor v1 — current state (added 2026-04-28 evening)
 
 **Landed and verified on dev:**
 - Prompts 1–5
-- 6A: 3D torus migration (rotX=30°, rotY=45° baked, 12×4 toroidal
-  lattice, 48 nodes, 4 PC instances each)
+- 6A: 3D torus migration
 - 6A.1: constellation wash-vertex snap fix
 - 6A.2: chord-detection Hardware-state gating
-- **6B: per-frame rotY drift (1 rev / 45s) + torusMajorR breathing
-  (±5%, 8s sine), driven by internal `_elapsed` accumulator that
-  respects `params.paused`. Static-bake pose preserved at `_elapsed = 0`
-  via `_testSnap` try/finally.**
+- 6B: per-frame rotY drift + torusMajorR breathing
+- Test track infrastructure: `tests/generate_cantor_test_track.py` +
+  `tests/cantor-test-track.md`. WAV regenerable from script.
 
-**Public surfaces (test harness / debugging):**
-- `cantorView.params.paused` — freezes drift, breathing, and rendering
-- `cantorView.renderOnce()` — single frame at current `_elapsed`,
-  does not tick time
-- `cantorView._testSnap(root, quality, pcs)` — deterministic snap
-  verification at static-bake pose
+**In progress:**
+- Onset-driven audio analysis rebuild (separate branch). Replaces
+  chroma-template chord detection's foundational limitation: it
+  cannot distinguish a single note's overtone series from a real
+  chord. Onsets are the primitive; chord and melody are both
+  interpretations of the onset stream.
+  - Backup: branch `chord-detection-overtone-fix`, tag
+    `pre-overtone-fix` at the pre-rebuild dev HEAD.
+  - Plan: 4-phase (read existing audio code → build onset-detection.js
+    → wire into chord-detection.js → wire into MusicalEventStream →
+    validate). Estimated 2–3 sessions.
 
 **Open / deferred:**
-- Constellation z-fade vs hard occlusion on back side (design
-  question, deferred from 6B).
-- 3D math helpers (`_uvToXYZ`, `_rotate3D`, `_projectOrtho`)
-  duplicated between cantor-view.js and harmonograph-view.js;
-  shared-utility extraction TODO.
-- Breathing currently wall-clock driven; eventual goal is
-  tempo/beat-driven for musical alignment.
+- Constellation z-fade vs hard occlusion on torus back side.
+- 3D math helper deduplication (cantor + harmonograph share three
+  duplicated functions).
+- Tempo/beat-driven breathing (replace wall-clock `_elapsed`).
+- Chladni backdrop dynamics (separate chat thread, brainstorming
+  phase).
+- Build plan review and consolidation across SongLab surfaces —
+  flagged as a candidate for a dedicated planning session.
+
 
 ### Working
 - /cantor route, on-screen keyboard, MIDI input, Tone.js playback
