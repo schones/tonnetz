@@ -97,7 +97,8 @@
     top: 0;
     bottom: 0;
     left: 0;
-    width: 0;             /* JS positions a child .cn-split-line via `left` */
+    width: 0;
+    /* JS positions a child .cn-split-line via `left` */
     pointer-events: none;
     z-index: 5;
   }
@@ -283,8 +284,8 @@
     from '{{ url_for("static", filename="shared/musical-event-stream.js") }}';
   import { NOTE_NAMES, noteToPC }
     from '{{ url_for("static", filename="shared/transforms.js") }}';
-  import { create as createChordDetector }
-    from '{{ url_for("static", filename="shared/chord-detection.js") }}';
+  import { createAudioInterpreter }
+    from '{{ url_for("static", filename="shared/audio-interpreter.js") }}';
 
   // Tone.js loader — keyboard playback needs Tone. AudioContext stays
   // suspended until first user gesture (a keyboard click), which is fine.
@@ -385,6 +386,7 @@
         await window.Tone.start();
       }
     } catch (_) { /* iOS requires a gesture; user interaction will retry */ }
+    _reconcileAudioInterpreter();
   }
 
   function _midiToNoteName(midi) {
@@ -447,14 +449,6 @@
         try {
           await _ensureToneStarted();
           sampler.triggerAttack(_midiToNoteName(midiNote), Tone.now(), velocity / 127);
-          // First note is the user gesture that lets the AudioContext run,
-          // which is also when the analyser starts producing real samples
-          // — start chord detection here, but only if the user has selected
-          // a Hardware audio input. Otherwise the sampler's own output would
-          // feed the analyser and override manual setTriad. Idempotent.
-          if (typeof AudioInput !== 'undefined' && AudioInput.isActive) {
-            _startChordDetection();
-          }
         } catch (_) { /* transient audio errors — ignore */ }
       }
     });
@@ -475,18 +469,16 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // CHORD DETECTION — drives Cantor's wash from the shared analyser
+  // AUDIO-DERIVED CHORD PUBLISHING — via AudioInterpreter v0
   //
-  // Same chain as harmonograph: KeyboardView.getAnalyser() → chord-
-  // detection.js. The MIDI sampler and any audio input are both wired
-  // into that analyser, so chord-detection works in either input mode
-  // without separate plumbing. The detector emits on chord *change*,
-  // so a silence watcher clears state when the signal goes quiet.
+  // AudioInterpreter (static/shared/audio-interpreter.js) owns the
+  // primitive detectors and publishes chordChange events to
+  // MusicalEventStream (event.root === null signals silence).
+  // Cantor subscribes here and translates to HarmonyState calls.
+  // Lifecycle is driven by _reconcileAudioInterpreter — the same
+  // reconciler pattern harmonograph uses.
   // ═══════════════════════════════════════════════════════════════
-  let _chordDetector = null;
-  let _silenceWatcherId = null;
-  let _silenceCounter = 0;
-  let _lastChordPushed = null;       // 'C-major' style key for change-detect
+  let interpreter = null;
 
   // chord-detection.js quality strings → CHORD_TYPES keys (transforms.js).
   // sus2/sus4/m7b5 don't have a major/minor third so cantor-view's
@@ -494,94 +486,55 @@
   const CHORD_TYPE_MAP = {
     'major': 'major',
     'minor': 'minor',
-    'dom7':  'dom7',
-    'maj7':  'maj7',
-    'min7':  'min7',
-    'dim':   'diminished',
-    'aug':   'augmented',
-    'sus2':  'sus2',
-    'sus4':  'sus4',
-    'm7b5':  'half-dim7',
+    'dom7': 'dom7',
+    'maj7': 'maj7',
+    'min7': 'min7',
+    'dim': 'diminished',
+    'aug': 'augmented',
+    'sus2': 'sus2',
+    'sus4': 'sus4',
+    'm7b5': 'half-dim7',
   };
 
-  function _startChordDetection() {
-    if (_chordDetector) return;       // already running
-    const analyser = (KeyboardView && KeyboardView.getAnalyser)
-      ? KeyboardView.getAnalyser() : null;
-    if (!analyser) return;
-
-    const sourceQuality = (AudioInput && AudioInput.getSourceQuality)
-      ? (AudioInput.getSourceQuality() || 'mic')
-      : 'mic';
-
-    try {
-      _chordDetector = createChordDetector({ analyser, sourceQuality });
-    } catch (e) {
-      console.warn('[cantor] chord-detection create failed:', e);
-      return;
-    }
-
-    _chordDetector.start((event) => {
-      const type = CHORD_TYPE_MAP[event.quality];
-      if (!type) return;
-      // chord-detection emits root names with ASCII '#'; HarmonyState's
-      // chord helpers go through noteToPC which accepts both.
-      const root = event.root;
-      const key = `${root}-${type}`;
-      if (key === _lastChordPushed) return;
-      _lastChordPushed = key;
-      // highlightChord populates activeTriads (base quality), activeChord
-      // (full type for the seventh), and activeNotes — exactly what
-      // cantor-view.js reads. tonnetzCenter stays put.
-      try { HarmonyState.highlightChord(root, type, 'primary'); }
-      catch (e) { console.warn('[cantor] highlightChord failed:', e); }
-    });
-
-    // Silence watcher — chord-detection only emits on change, so the
-    // last chord would stick forever once audio goes quiet. Same poll
-    // interval and threshold as harmonograph.
-    if (_silenceWatcherId != null) clearInterval(_silenceWatcherId);
-    _silenceCounter = 0;
-    _silenceWatcherId = setInterval(() => {
-      const data = analyser.getValue();
-      if (!data) return;
-      const arr = data[0] instanceof Float32Array ? data[0] : data;
-      let sum = 0;
-      for (let i = 0; i < arr.length; i++) {
-        if (arr[i] > -60) sum += Math.pow(10, arr[i] / 20);
-      }
-      if (sum < 0.02) _silenceCounter++;
-      else _silenceCounter = 0;
-      if (_silenceCounter >= 5 && _lastChordPushed) {
-        _lastChordPushed = null;
+  MusicalEventStream.subscribe((event) => {
+    if (event.type !== 'chordChange') return;
+    if (event.root === null) {
+      try {
         HarmonyState.update({
           activeTriads: [],
           activeChord: null,
           activeNotes: [],
         });
-      }
-    }, 100);
-  }
+      } catch (e) { /* HarmonyState may not be ready during teardown */ }
+      return;
+    }
+    const type = CHORD_TYPE_MAP[event.quality];
+    if (!type) return;
+    const rootName = NOTE_NAMES[event.root];
+    if (!rootName) return;
+    try { HarmonyState.highlightChord(rootName, type, 'primary'); }
+    catch (e) { console.warn('[cantor] highlightChord failed:', e); }
+  });
 
-  function _stopChordDetection() {
-    if (_chordDetector) {
-      try { _chordDetector.stop(); } catch (e) { /* ok */ }
-      _chordDetector = null;
+  function _reconcileAudioInterpreter() {
+    if (!interpreter) return;
+    const toneRunning = window.Tone && window.Tone.context
+      && window.Tone.context.state === 'running';
+    const should = AudioInput.isActive && toneRunning;
+    if (should && !interpreter.isRunning()) {
+      interpreter.start();
+    } else if (!should && interpreter.isRunning()) {
+      interpreter.stop();
+      // The interpreter does not publish a final silence event when
+      // stopped externally; reset HarmonyState so the wash clears.
+      try {
+        HarmonyState.update({
+          activeTriads: [],
+          activeChord: null,
+          activeNotes: [],
+        });
+      } catch (e) { /* HarmonyState may not be ready during teardown */ }
     }
-    if (_silenceWatcherId != null) {
-      clearInterval(_silenceWatcherId);
-      _silenceWatcherId = null;
-    }
-    _silenceCounter = 0;
-    _lastChordPushed = null;
-    // Release any stuck chord highlight so manual setTriad regains control.
-    try {
-      HarmonyState.update({
-        activeTriads: [],
-        activeChord: null,
-        activeNotes: [],
-      });
-    } catch (e) { /* HarmonyState may not be ready during teardown */ }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -804,26 +757,45 @@
     }
 
     _populateAudioDeviceDropdown(initialDevices);
-    _stopChordDetection();
-    AudioInput.disconnect();
+
+    // Construct AudioInterpreter once. KeyboardView.init() above means
+    // the shared analyser exists; if for some reason it doesn't, the
+    // interpreter stays null and the reconciler is a no-op.
+    if (!interpreter) {
+      const analyser = (KeyboardView && KeyboardView.getAnalyser)
+        ? KeyboardView.getAnalyser() : null;
+      if (analyser) {
+        try {
+          interpreter = createAudioInterpreter({
+            analyser,
+            sourceQuality: AudioInput.getSourceQuality?.() ?? 'mic',
+          });
+        } catch (e) {
+          console.warn('[cantor] audio-interpreter create failed:', e);
+        }
+      }
+    }
+
     _updateAudioInputStatus();
 
     AudioInput.onDeviceChange((devices) => {
       _populateAudioDeviceDropdown(devices);
       _updateAudioInputStatus();
+      _reconcileAudioInterpreter();
     });
 
     select.addEventListener('change', async (e) => {
       const deviceId = e.target.value;
-      _stopChordDetection();
       AudioInput.disconnect();
       if (!deviceId) {
         _updateAudioInputStatus();
+        _reconcileAudioInterpreter();
         return;
       }
       try {
         if (window.Tone && window.Tone.context && window.Tone.context.state !== 'running') {
           try { await window.Tone.start(); } catch (_) { }
+          _reconcileAudioInterpreter();
         }
         // Wire the shared analyser BEFORE selectDevice so the new
         // MediaStreamSource gets connected on creation. Without
@@ -832,11 +804,10 @@
           ? KeyboardView.getAnalyser() : null;
         if (analyser) AudioInput.setAnalyser(analyser);
 
-        _stopChordDetection();
         const ok = await AudioInput.selectDevice(deviceId);
         if (!ok) throw new Error('selectDevice returned false');
         _updateAudioInputStatus();
-        _startChordDetection();
+        _reconcileAudioInterpreter();
       } catch (err) {
         console.error('[cantor] device switch failed:', err);
         const els = _hwEls();
@@ -847,6 +818,10 @@
         }
       }
     });
+
+    // Final reconcile after init completes — picks up the saved-device
+    // auto-restore case (Notable A in the migration audit).
+    _reconcileAudioInterpreter();
   }
 </script>
 {% endblock %}

@@ -9,12 +9,24 @@
 **Landed and verified on dev:**
 - [keep existing entries]
 
+**Landed on audio-onset-analysis branch (not yet on dev):**
+- AudioInterpreter v0 phase 1 migration. templates/cantor.html
+  no longer imports chord-detection.js; the in-template chord
+  block (start/stop functions, dedupe, silence watcher) is
+  removed and replaced by a MusicalEventStream chordChange
+  subscriber and a _reconcileAudioInterpreter helper modeled on
+  harmonograph's pattern. Acceptance criteria 1, 2, 4, 5, 6, 7
+  from audit §3.4 verified. Criterion 3 (saved-device auto-
+  restore) does NOT pass — see Known Issues for the
+  characterization.
+
 **In progress:**
-- Migration onto AudioInterpreter v0 — phase 1 drafttable now
-  from docs/cantor-migration-audit.md §3. Phase 2 gated on OQ1
-  decision (audit §6.1 recommends sibling MIDIInterpreter; user
-  decides). Estimated 1 session for phase 1 prompt drafting +
-  1 session for the Claude Code fix run, then verification.
+- Phase 2 (single-publisher consolidation) — gated on OQ1
+  decision. Audit §6.1 recommends sibling MIDIInterpreter; user
+  decides.
+- Notable A complete fix — requires lifting harmonograph's
+  rewire machinery into audio-input.js. Drafttable next session
+  (see followup-notes-2026-04-29.md).
 
 **Open / deferred:**
 - OQ1 decision (MIDI publishing path during migration). Audit
@@ -22,22 +34,33 @@
   phase 2 prompt can be drafted.
 - OQ9 cleanup (window.AudioInput coupling). Deferred until the
   second AudioInterpreter consumer lands; trigger is concrete.
-- Notable A (saved-device gap, audit §3) — fixes incidentally
-  during phase 1 by virtue of moving onto the consolidated
-  reconciler pattern.
 - Notable E (input-provider drops bass and pitchClasses, audit
   §3 + §7.4) — must not be reintroduced when wiring cantor's
   chordChange subscriber. Tracked in the input-provider section
-  as a separate in-place fix.
+  as a separate in-place fix. Phase 1 subscriber reads
+  event.bass and event.pitchClasses directly off the event
+  (not yet exercised, but the pattern is preserved).
 
 **Standing rules — optional:**
 - [keep existing entries]
 - During the AudioInterpreter migration: harmony-state.js,
   audio-input.js, keyboard-view.js, chord-detection.js,
   musical-event-stream.js are off-limits without explicit lift
-  per WORKING_STYLE.md. The migration is designed to consume
-  these through their existing public surfaces.
+  per WORKING_STYLE.md. **The followup work to fully fix
+  Notable A will require explicit lift on audio-input.js** —
+  the rewire machinery currently lives in harmonograph.html
+  and needs to move into the shared module.
 
+- Calibration on the migration audit: §3 missed the
+  AudioInput.disconnect() call inside _initAudioInput at
+  pre-migration cantor.html:778, AND missed that cantor lacks
+  the rewire machinery harmonograph uses to compensate for that
+  disconnect. The audit was useful and got most of phase 1
+  right, but its model of _initAudioInput had a blind spot.
+  Subsequent fix prompts that build on this audit (especially
+  the harmonograph migration in §7.1, which involves the rewire
+  machinery directly) should be drafted with a hair more
+  scrutiny than "the audit said X."
 
 ### Harmonograph — current state (updated 2026-04-29)
 
@@ -585,6 +608,30 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 ---
 
 ## Known Issues
+
+- **Cantor saved-device auto-restore broken (Notable A, partial
+  fix on audio-onset-analysis branch).** Pre-migration the
+  saved-device case never worked because of an implicit-start-
+  trigger gap. Phase 1 migration removed the gap (the
+  reconciler picks up AudioInput state from
+  _updateAudioInputStatus), but exposed a deeper bug: cantor.html
+  inherited a fragment of harmonograph's audio-init pattern (an
+  AudioInput.disconnect() at line 778 of pre-migration
+  cantor.html) without the rewire machinery harmonograph uses
+  to compensate. Pre-migration the disconnect papered over the
+  missing rewire by ensuring no auto-restored device was ever
+  active; post-migration with the disconnect removed, the
+  saved device IS active but its stream is rooted in a
+  standalone non-Tone AudioContext (because Tone hasn't started
+  at AudioInput.init() time — no user gesture yet). The
+  interpreter starts, reads from KeyboardView's analyser, and
+  sees silence because the auto-restored stream isn't connected
+  to that analyser. Fix path: lift harmonograph's
+  _audioInputNeedsToneRewire flag and _attachAudioInputToTone
+  function into audio-input.js so both surfaces share one
+  implementation. Requires explicit lift on audio-input.js.
+  See docs/followup-notes-2026-04-29.md for the prompt-drafting
+  outline.
 
 - **Resonance defaults changed (April 20)** — Explorer's Resonance tab now renders sparkler-style by default, not the original starburst from April 19. Original aesthetic not preserved as a baked-in preset; consider adding it back as a named preset alongside "Defaults".
 - **`/harmonograph` route is unlinked** — sandbox by design; visit `/harmonograph` directly (legacy `/art` redirects). Easy to forget the route exists. Decide on a front-door (footer link, easter egg, or remain hidden).

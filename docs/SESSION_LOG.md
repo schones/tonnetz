@@ -2,6 +2,141 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+##2026-04-29 (evening) — Cantor migration phase 1 prompt drafted, run, and partially landed
+Landed
+
+Cantor migration phase 1 Claude Code prompt drafted from chat
+(per WORKING_STYLE: lead with read list, scope to one task,
+explicit file paths). One file in scope:
+templates/cantor.html. Off-limits files restated in the
+prompt itself.
+Phase 1 migration ran and reported back. What landed in
+templates/cantor.html:
+
+Removed createChordDetector import and the in-template
+chord block (start/stop functions, dedupe, local silence
+watcher, every call site).
+Added module-scoped interpreter, relocated CHORD_TYPE_MAP,
+added a chordChange subscriber on MusicalEventStream that
+reads event.bass / event.pitchClasses directly off the event
+(Notable E pattern preserved).
+Added _reconcileAudioInterpreter modeled on
+harmonograph.html:797-813. On stop it also resets
+HarmonyState (the interpreter doesn't publish a final
+silence event when stopped externally).
+Reconciler call sites at: end of _initAudioInput,
+AudioInput.onDeviceChange handler, dropdown change handler
+(None path and success path), after inline await Tone.start()
+in the dropdown handler, and inside _ensureToneStarted after
+Tone.start() resolves.
+
+
+Acceptance criteria 1, 2, 4, 5, 6, 7 from audit §3.4 verified.
+Followup edit landed: removed AudioInput.disconnect() at
+pre-migration cantor.html:778 (was inside _initAudioInput,
+before the trailing reconciler). The disconnect at line 789
+inside the dropdown change handler — the genuine "tear down
+before re-select" path — was kept.
+Nothing committed. End-of-session git deferred to next
+session (or paste-time tonight, user's call).
+
+Diagnosed / decided
+
+Criterion 3 (saved-device auto-restore) does not pass.
+Characterization (this is the durable artifact from tonight,
+more important than the code that landed):
+
+Pre-migration, the saved-device case was broken because
+AudioInput.init() auto-restored a device but no Cantor-side
+code path responded — Notable A in the orchestration audit.
+The migration audit's §3 fix path was: the reconciler
+called from _updateAudioInputStatus (already at
+cantor.html:809 pre-migration) would pick up
+AudioInput.isActive and start the interpreter. This was
+correct, but the audit missed two things: (i) an
+AudioInput.disconnect() call at pre-migration cantor.html:778
+that undid AudioInput's restore before the reconciler ran,
+and (ii) the broader structural fact that cantor.html
+inherited only a fragment of harmonograph's audio-init
+pattern — the disconnect call — without inheriting the
+rewire machinery harmonograph uses to compensate.
+The disconnect at line 778 was added in cantor.html's
+initial-add commit (a6f3d64, "Mirror harmonograph's
+chord-detection init in cantor.html"). It was always there;
+pre-migration the implicit-start triggers it papered over
+the missing rewire machinery; post-migration it became the
+visible cause of Notable A.
+Removing the disconnect (tonight's followup edit) is
+necessary but not sufficient. Without harmonograph's rewire
+machinery, the auto-restored device's stream is rooted in
+a standalone non-Tone AudioContext (because Tone hasn't
+started at AudioInput.init() time — no user gesture yet).
+When the interpreter eventually starts after the user does
+a gesture that starts Tone, it reads from KeyboardView's
+analyser, which is in Tone's context and has no source
+connected to it. Wash doesn't light up. Same observable
+failure as Notable A pre-migration; different mechanism.
+
+
+Right end-state: lift harmonograph's rewire machinery into
+audio-input.js. Both surfaces need it; any future surface
+will need it too. Requires explicit lift on audio-input.js
+(file-scope-restricted per WORKING_STYLE). Architectural
+change, not a one-line patch.
+Decision: stop here, defer fix to next session. Rationale
+— porting harmonograph's rewire pattern into cantor.html
+tonight (option 1) would be throwaway work tomorrow if the
+audio-input.js lift (option 3) is the right shape. Better to
+hold one design in mind across the gap than two
+near-duplicate patterns. Cost of waiting: one night with
+saved-device restore not working on the dev branch — same
+state as pre-migration, no observable regression.
+
+Setup for next session
+
+audio-onset-analysis branch has uncommitted changes:
+templates/cantor.html (the migration), and STATUS.md +
+SESSION_LOG.md (this update). Run git status first to
+confirm nothing else has drifted.
+Tomorrow's task: design and draft a prompt to lift the rewire
+machinery from harmonograph.html into audio-input.js. See
+docs/followup-notes-2026-04-29.md for the outline.
+The lift requires explicit lift on audio-input.js — confirm
+intent before drafting. The lift's scope is intentionally
+narrow: extract the rewire pattern into the shared module,
+then update cantor.html and harmonograph.html to consume the
+shared API. No other audio-input.js changes ride along.
+Acceptance for the lift: criterion 3 from cantor migration
+audit §3.4 passes against cantor.html, AND harmonograph.html's
+saved-device behavior is unchanged (functional equivalence).
+
+Calibration notes
+
+The migration audit had a blind spot at _initAudioInput.
+Missed both line 778's disconnect call and the absence of
+rewire machinery in cantor.html. Worth recalibrating trust
+in the audit's coverage claims for the harmonograph migration
+prompt (§7.1) — that one involves the rewire machinery
+directly. The audit's other sections (event vocabulary,
+acceptance criteria, risk register) held up well; this is
+specifically a gap in §3's _initAudioInput coverage.
+Recommended "remove line 778" without first reading
+harmonograph's three disconnect call sites. WORKING_STYLE
+flags exactly this: grep-before-guess. The diagnosis (line 778
+defeats criterion 3) was right but the prescription was made
+in ignorance of why the line existed. After reading
+harmonograph.html, the world C model emerged and changed the
+recommendation. Lesson: when removing inherited code, read
+the original site of inheritance before recommending removal.
+The "ask for a grep, then ask for the next grep" pattern
+paid off. Each grep narrowed the hypothesis space. The
+iterative shape (grep → read → next question) is what kept
+the eventual diagnosis precise. If I'd asked for a multi-step
+verification script up front, I'd have asked for the wrong
+things — the right next questions only became visible after
+each previous answer.
+
+
 ## 2026-04-29 (afternoon) — Cantor migration audit drafted; fix-prompt arc scoped
 
 ### Landed
