@@ -266,8 +266,9 @@ const AudioInput = {
         _audioContext = toneCtx;
       } else {
         console.warn(
-          '[AudioInput] Tone.js context not available/running — falling back to standalone AudioContext. '
-          + 'Mic input will NOT connect to Tone-based analysers. Call Tone.start() before selectDevice().'
+          '[AudioInput] Tone.js context not available/running — using standalone AudioContext fallback. '
+          + 'Call AudioInput.rewireForTone() after first user gesture (Tone.start) to route mic input to '
+          + 'Tone-based analysers.'
         );
         _audioContext = new (window.AudioContext || window.webkitAudioContext)();
       }
@@ -375,6 +376,44 @@ const AudioInput = {
     _selectedDeviceId = null;
     this.isActive = false;
     this.activeDevice = null;
+  },
+
+  /**
+   * Rewire the active mic input into Tone's AudioContext after a user
+   * gesture has started Tone.
+   *
+   * Mic input is initialized in two phases across the user-gesture
+   * boundary required by browser autoplay policies:
+   *   - Phase 1 — selectDevice() runs (often pre-gesture, e.g. saved-
+   *     device auto-restore at page load). If Tone's rawContext isn't
+   *     running yet, the documented fallback creates the
+   *     MediaStreamSource in a standalone AudioContext. That fallback
+   *     is intentional, not a bug — it lets selectDevice succeed and
+   *     keeps activeDevice/isActive consistent before any gesture.
+   *   - Phase 2 — rewireForTone() runs after Tone.start() resolves.
+   *     It tears down the standalone-context source and re-runs
+   *     selectDevice, which now lands on Tone's rawContext and
+   *     reconnects to the existing analyser.
+   *
+   * Call this from any code path that runs after Tone.start() resolves
+   * (e.g. the first user gesture that starts Tone). The method is
+   * self-gating: it no-ops when no device is active and when the
+   * source is already in Tone's rawContext, so callers don't need to
+   * track whether a rewire is needed.
+   *
+   * @returns {Promise<void>}
+   */
+  async rewireForTone() {
+    if (!this.activeDevice || !_selectedDeviceId) return;
+
+    const toneCtx = (typeof window !== 'undefined' && window.Tone && window.Tone.getContext)
+      ? window.Tone.getContext().rawContext
+      : null;
+    if (toneCtx && _audioContext === toneCtx) return;
+
+    const savedId = _selectedDeviceId;
+    _disconnectCurrent();
+    await this.selectDevice(savedId);
   },
 };
 

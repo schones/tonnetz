@@ -2,8 +2,197 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
-##2026-04-29 (evening) — Cantor migration phase 1 prompt drafted, run, and partially landed
-Landed
+## 2026-04-30 — Lifted rewireForTone into audio-input.js
+
+### Landed
+- `static/shared/audio-input.js`: added `async rewireForTone()`
+  method between `disconnect()` and the EXPORTS divider.
+  Self-gating: no-op if no active device, or if `_audioContext`
+  is already Tone's `rawContext`. On the rewire path: captures
+  `_selectedDeviceId`, calls `_disconnectCurrent()` (the internal
+  helper, not the public `disconnect()` — preserves
+  `activeDevice`/`isActive`/`_selectedDeviceId` through the
+  rewire), then `await this.selectDevice(savedId)` which now
+  lands in Tone's running context. JSDoc block documents the
+  two-phase init pattern. Updated the standalone-context
+  fallback `console.warn` in `selectDevice` to reference
+  `rewireForTone()` as the documented recovery.
+- `templates/harmonograph.html`: deleted
+  `_audioInputNeedsToneRewire` flag declaration (line 520),
+  `_attachAudioInputToTone()` function definition (lines
+  993-1015), and all three flag set-sites (in `_initAudioInput`
+  and `_switchAudioInputDevice`). Replaced the single call site
+  at line 824 (now line 819 after deletions) with
+  `AudioInput.rewireForTone()`. Trimmed one stale comment that
+  referenced the removed flag.
+- `templates/cantor.html`: added
+  `try { await AudioInput.rewireForTone(); } catch (_) { }` at
+  two sites — inside `_ensureToneStarted` between
+  `await window.Tone.start()` and `_reconcileAudioInterpreter()`,
+  and at the inline gesture path at line 799 (between the
+  inline `Tone.start()` and `_reconcileAudioInterpreter()`).
+- All six acceptance criteria verified manually:
+  Cantor saved-device auto-restore (audit §3.4 criterion 3)
+  passes, Cantor device switch and switch-to-none work,
+  Harmonograph regression checks (saved-device, device switch,
+  switch-to-none) all pass.
+
+### Diagnosed / decided
+- **Internal state suffices for rewire-needed detection.** The
+  harmonograph original tracked `_audioInputNeedsToneRewire`
+  as an explicit flag. Reading `selectDevice` (audio-input.js
+  220-228) showed that the standalone-context fallback is the
+  *only* path that creates a non-Tone-rooted source. So
+  `_audioContext !== toneCtx.rawContext` is computable from
+  existing state — the flag is redundant information. Lifted
+  version drops the flag entirely. Smaller surface area than
+  the followup notes' sketch anticipated.
+
+- **Lifted method uses `_disconnectCurrent()`, not public
+  `disconnect()`.** Public `disconnect()` clears
+  `activeDevice`/`isActive`/`_selectedDeviceId`. For rewire,
+  we want "device X stays active throughout the rewire," not
+  "disconnect then reconnect." The internal helper preserves
+  state correctly. This is a small departure from harmonograph's
+  pattern (which used the public method because it was external
+  code calling across the AudioInput boundary); inside AudioInput,
+  the internal helper is the right primitive.
+
+- **Module-owned analyser eliminates the analyser-passing
+  dance.** Harmonograph's `_attachAudioInputToTone` re-set the
+  analyser on every call (defensive, since `KeyboardView`'s
+  analyser was caller-owned and could in principle have changed).
+  Inside the lifted module, `_analyser` is module state that
+  `_disconnectCurrent` doesn't touch, so the rewire path doesn't
+  need to re-`setAnalyser`. The lifted method is `rewireForTone()`
+  with no args; the caller-owned analyser-passing dance
+  disappears.
+
+- **Pattern observation worth keeping:** when state moves from
+  caller-owned to module-owned during a lift, the lifted code
+  often gets simpler than its source. The harmonograph rewire
+  was three things (flag + function + analyser-passing); the
+  lifted version is one thing (function with no args). Not a
+  coincidence — it's what "the right shape for the shared
+  module" looks like.
+
+### Setup for next session
+- All work is on the `audio-onset-analysis` branch.
+- Working tree at session end: three modified files
+  (audio-input.js, harmonograph.html, cantor.html), nothing
+  unrelated. Ready to commit.
+- No `.bak` files, no in-flight branches, no half-finished
+  prompts.
+
+### Calibration notes
+- **Greps for "is this pattern duplicated?" are a different
+  question than "where does this specific machinery live?"**
+  Tonight's initial greps (open question #1 in followup notes)
+  scoped to harmonograph.html + harmonograph-view.js to confirm
+  the rewire machinery lived only in the template, not the view.
+  Those greps did not ask "does any other template have its own
+  copy of this pattern?" Explorer.html does — discovered only
+  after Claude Code's Part 2/3 spot-check turned it up. The
+  duplicate-pattern check should be its own grep, distinct from
+  the API-surface check (criterion 9 caught API regressions but
+  would not have caught a duplicate pattern in another template
+  even if it had been present).
+- **The internal-helper-vs-public-disconnect choice was
+  non-obvious and worth flagging in the prompt explicitly.**
+  An implementing agent reading the prompt could reasonably
+  match harmonograph's pattern (use public `disconnect()`) and
+  end up with subtly wrong state semantics. Calling out the
+  rationale ("we want device X to stay active throughout the
+  rewire") prevents that. Future shared-module lifts: when the
+  lifted code uses an internal helper that the source code
+  didn't have access to, document why explicitly in the prompt.
+- **Followup-notes structure from 2026-04-29 worked well.** The
+  bug-in-one-paragraph + machinery-with-line-refs +
+  shape-options + acceptance-criteria + open-questions structure
+  let tonight's prompt drafting move quickly. Worth keeping as
+  the template for between-session handoffs when work has to
+  stop mid-thread.
+- **The audit's blind spot lesson held tonight too, in
+  miniature.** My initial framing was "flag stays, function
+  lifts." Reading `_attachAudioInputToTone` carefully revealed
+  that internal-state detection makes the flag redundant.
+  Grep-before-guess applies even when the design feels clear —
+  especially when it does.
+
+### Flagged for later
+- **Explorer migration onto `AudioInput.rewireForTone()`.**
+  Same lift pattern as tonight, applied to
+  `templates/explorer.html`. Local rewire machinery is at:
+  - `_attachAudioInputToTone()` call site at line 1980
+  - `_audioInputNeedsToneRewire` declaration at line 3936
+    (preceding comment at 3935)
+  - `_attachAudioInputToTone()` function definition at line 3999
+  - Flag set-sites at lines 4004, 4008, 4032, 4048, 4057
+  Recommended approach: read-only session first to map
+  explorer's gesture path (does it have `_ensureToneStarted`?
+  How does it route to the rewire machinery?) and to check
+  whether explorer's local function differs from the
+  harmonograph version we lifted from. *Then* draft the prompt.
+  Acceptance criteria need to cover Spectrum panel and
+  Harmonic Resonance "still works" checks in addition to
+  saved-device auto-restore. Drafttable next session; smaller
+  cognitive load than tonight because `rewireForTone()` is now
+  established.
+- **Cantor.html line 797 inline `Tone.start()` pattern is a
+  duplicate of `_ensureToneStarted`.** Tonight added
+  `rewireForTone()` to both sites separately rather than
+  refactoring 797 to call `_ensureToneStarted`. The
+  inline-vs-wrapper inconsistency should be cleaned up when
+  next touching cantor's gesture path. Trivial cleanup; not
+  worth its own session.
+- **Console.warn message in audio-input.js `selectDevice` now
+  references `rewireForTone()`.** Other audio-input.js comments
+  and JSDoc may have stale references to "Call Tone.start()
+  before selectDevice()" framing that doesn't account for the
+  recovery path. Review when next touching audio-input.js.
+  - **STATUS.md structural cleanup session.** The doc has accumulated
+  drift over the past 2-3 weeks: the Cantor block appears in three
+  places (lines ~7, ~87, ~145, all within a week of each other,
+  partially overlapping); the "Current Focus" section is dated
+  April 22 and predates Cantor + audio-onset-analysis work; large
+  "Completed this cycle" sections (April 22, April 20, April 19,
+  April 9-13) have migrated into STATUS.md from SESSION_LOG.md
+  territory; "Next priorities" 1-16 includes items of unclear
+  current status. The "What's Working" section is the structurally
+  healthiest part. Recommended scope for the cleanup session:
+  (a) collapse Cantor blocks to one canonical version, merging
+  unique content; (b) refresh Current Focus against actual current
+  state; (c) move Completed cycles content to SESSION_LOG.md if not
+  already there, then delete from STATUS.md; (d) audit Next
+  priorities — kill items that are done, demote items that are
+  truly stale; (e) decide on a consistent surface-block schema
+  (Landed on dev / Landed on branch / In progress / Open).
+  Recommended NOT in scope: a full structural rewrite. The doc's
+  bones are fine; the problem is accumulated cruft, not structural
+  failure. Estimated 1 short focused session.
+
+### Out of scope / deferred
+- **Did not touch explorer.html.** Discovered mid-session that
+  explorer has the same local rewire machinery. Tightened scope
+  to "intentionally narrow" per followup notes; explorer
+  becomes its own session. Captured in Flagged for later above.
+- **Did not refactor cantor.html line 797 to call
+  `_ensureToneStarted`.** The inline duplicate of the wrapper
+  pattern is a cleanup opportunity, but ride-along
+  refactoring during a lift is exactly the calibration trap
+  that "intentionally narrow scope" is meant to avoid.
+- **Did not address OQ9 (`window.AudioInput` coupling) or
+  the device-restore refactor path.** Both explicitly out of
+  scope per followup notes; both still deferred per
+  STATUS.md.
+- **Did not update other audio-input.js comments / JSDoc
+  beyond the one console.warn change.** The console.warn was
+  in scope because the lift directly creates the recovery path
+  it now references. Other doc comments are flagged-for-later,
+  not tonight's work.
+
+
+## 2026-04-29 (evening) — Cantor migration phase 1 prompt drafted, run, and partially landed
 
 Cantor migration phase 1 Claude Code prompt drafted from chat
 (per WORKING_STYLE: lead with read list, scope to one task,

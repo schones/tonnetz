@@ -513,11 +513,6 @@
   // scaffolding for the next prompt — leave them in place even
   // though nothing populates them in this change.
   // ═══════════════════════════════════════════════════════════════
-  // Set to true when AudioInput auto-restores a device before Tone's
-  // AudioContext is running. The MediaStreamSource gets created in a
-  // fallback context and must be recreated inside Tone's rawContext
-  // once Tone starts. _attachAudioInputToTone() handles the rewire.
-  let _audioInputNeedsToneRewire = false;
 
   // Audio-driven chord detection state. Populated by chord-detection.js
   // when audio input is active; cleared by a silence watcher after the
@@ -821,7 +816,7 @@
     } catch (_) { /* iOS requires a gesture; user interaction will retry */ }
     // If a device was auto-restored while Tone was suspended, rewire it
     // into Tone's context now. Idempotent — no-op after first success.
-    try { await _attachAudioInputToTone(); } catch (_) { }
+    try { await AudioInput.rewireForTone(); } catch (_) { }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -986,35 +981,6 @@
     }
   }
 
-  // Call after Tone's AudioContext transitions to 'running'. If
-  // AudioInput auto-restored a device while Tone was suspended,
-  // re-select it so the source lives in Tone's rawContext. No-op
-  // in the common case (flag cleared after first successful rewire).
-  async function _attachAudioInputToTone() {
-    if (typeof AudioInput === 'undefined') return;
-    const analyser = (KeyboardView && KeyboardView.getAnalyser)
-      ? KeyboardView.getAnalyser()
-      : null;
-    if (!analyser) return;
-
-    if (_audioInputNeedsToneRewire && AudioInput.activeDevice) {
-      const id = AudioInput.activeDevice.deviceId;
-      _audioInputNeedsToneRewire = false;
-      // Tear down the stale fallback-context source before re-wiring.
-      // Without this, setAnalyser tries to reconnect the stale source
-      // cross-context and leaves state that silently breaks the later
-      // selectDevice's fresh source-to-analyser connection.
-      AudioInput.disconnect();
-      AudioInput.setAnalyser(analyser);
-      try { await AudioInput.selectDevice(id); }
-      catch (e) { console.warn('[harmonograph] audio-input re-select failed:', e); }
-      _updateAudioInputStatus();
-    } else {
-      try { AudioInput.setAnalyser(analyser); }
-      catch (e) { console.warn('[harmonograph] setAnalyser failed:', e); }
-    }
-  }
-
   async function _initAudioInput() {
     if (typeof AudioInput === 'undefined') return;
     const { select, status } = _hwEls();
@@ -1043,7 +1009,6 @@
     // stream agree from the first frame.
     _populateAudioDeviceDropdown(initialDevices);
     AudioInput.disconnect();
-    _audioInputNeedsToneRewire = false;
     _updateAudioInputStatus();
 
     // Hotplug — re-populate the dropdown when devices arrive/leave, and
@@ -1086,11 +1051,7 @@
     console.log('[harmonograph] tearing down audio, previous stream:', !!prevStream);
 
     // Step (a) + (b): full teardown of any previous stream + source.
-    // Do this BEFORE _ensureToneStarted — otherwise _attachAudioInputToTone
-    // would re-select the auto-restored (stale) device and clobber the
-    // user's pick.
     AudioInput.disconnect();
-    _audioInputNeedsToneRewire = false;
 
     // Pitch detector binds to AudioInput's MediaStream (options.stream)
     // at start() time. After disconnect() that stream is dead, so kill
@@ -1113,7 +1074,8 @@
       // rawContext.state diverge (seen on some engines after Tone.start
       // resolves but before rawContext finishes the transition). May
       // throw without a user gesture (init-time path) — swallow and
-      // fall through; the rewire flag below will queue a retry.
+      // fall through; the next gesture-driven _ensureToneStarted will
+      // call AudioInput.rewireForTone() to recover.
       const rawCtx = (window.Tone && window.Tone.getContext)
         ? window.Tone.getContext().rawContext : null;
       if (rawCtx && rawCtx.state === 'suspended') {
@@ -1139,15 +1101,6 @@
         'tracks:', stream ? stream.getTracks().length : 0);
       console.log('[harmonograph] analyser connected, context state:',
         rawCtx ? rawCtx.state : 'unknown');
-
-      // If Tone's context still isn't running (init-time path, no gesture
-      // yet), AudioInput fell back to a standalone AudioContext and the
-      // source won't feed Tone's analyser. Flag for rewire on the next
-      // gesture — _attachAudioInputToTone() reads this and re-selects the
-      // device inside Tone's rawContext.
-      if (!rawCtx || rawCtx.state !== 'running') {
-        _audioInputNeedsToneRewire = true;
-      }
 
       _updateAudioInputStatus();
     } catch (err) {

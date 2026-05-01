@@ -19,14 +19,21 @@
   from audit §3.4 verified. Criterion 3 (saved-device auto-
   restore) does NOT pass — see Known Issues for the
   characterization.
+  - `AudioInput.rewireForTone()` lifted into static/shared/audio-input.js
+  (2026-04-30). Single canonical implementation of the post-gesture
+  rewire that handles selectDevice's standalone-context fallback.
+  Self-gating (no-op if no active device or already on Tone's
+  rawContext). Cantor and harmonograph both consume the lifted
+  method; harmonograph's local _audioInputNeedsToneRewire flag and
+  _attachAudioInputToTone() function deleted in the same commit.
+  Acceptance criteria 1, 2, 3, 4, 5, 6 (audit §3.4 + harmonograph
+  regression checks) all verified manually.
 
 **In progress:**
 - Phase 2 (single-publisher consolidation) — gated on OQ1
   decision. Audit §6.1 recommends sibling MIDIInterpreter; user
   decides.
-- Notable A complete fix — requires lifting harmonograph's
-  rewire machinery into audio-input.js. Drafttable next session
-  (see followup-notes-2026-04-29.md).
+- 
 
 **Open / deferred:**
 - OQ1 decision (MIDI publishing path during migration). Audit
@@ -40,16 +47,27 @@
   as a separate in-place fix. Phase 1 subscriber reads
   event.bass and event.pitchClasses directly off the event
   (not yet exercised, but the pattern is preserved).
+  - Explorer migration onto AudioInput.rewireForTone() — explorer.html
+  has its own local copy of the rewire machinery (call site at line
+  1980, function and flag at lines 3935-4057) that should migrate to
+  the lifted shared implementation. Discovered during the 2026-04-30
+  lift session via cross-codebase grep. Drafttable as its own session;
+  recommended approach is read-only pass first to map explorer's
+  gesture path and check whether explorer's local function differs
+  from the harmonograph version. Acceptance criteria need to cover
+  Spectrum panel and Harmonic Resonance "still works" checks in
+  addition to saved-device auto-restore. Smaller cognitive load than
+  tonight's lift because rewireForTone() is now established. Details
+  in SESSION_LOG.md 2026-04-30 entry.
 
 **Standing rules — optional:**
 - [keep existing entries]
-- During the AudioInterpreter migration: harmony-state.js,
-  audio-input.js, keyboard-view.js, chord-detection.js,
-  musical-event-stream.js are off-limits without explicit lift
-  per WORKING_STYLE.md. **The followup work to fully fix
-  Notable A will require explicit lift on audio-input.js** —
-  the rewire machinery currently lives in harmonograph.html
-  and needs to move into the shared module.
+- File-scope-restricted files for the audio-onset-analysis branch
+  (per WORKING_STYLE.md): harmony-state.js, keyboard-view.js,
+  chord-detection.js, musical-event-stream.js. audio-input.js was
+  explicitly lifted on 2026-04-30 for the rewireForTone() lift; no
+  other audio-input.js work was permitted to ride along (OQ9 still
+  open; device-restore refactor still deferred).
 
 - Calibration on the migration audit: §3 missed the
   AudioInput.disconnect() call inside _initAudioInput at
@@ -609,29 +627,18 @@ See `docs/songlab-build-plan.md` (v4) for the full phased roadmap:
 
 ## Known Issues
 
-- **Cantor saved-device auto-restore broken (Notable A, partial
-  fix on audio-onset-analysis branch).** Pre-migration the
-  saved-device case never worked because of an implicit-start-
-  trigger gap. Phase 1 migration removed the gap (the
-  reconciler picks up AudioInput state from
-  _updateAudioInputStatus), but exposed a deeper bug: cantor.html
-  inherited a fragment of harmonograph's audio-init pattern (an
-  AudioInput.disconnect() at line 778 of pre-migration
-  cantor.html) without the rewire machinery harmonograph uses
-  to compensate. Pre-migration the disconnect papered over the
-  missing rewire by ensuring no auto-restored device was ever
-  active; post-migration with the disconnect removed, the
-  saved device IS active but its stream is rooted in a
-  standalone non-Tone AudioContext (because Tone hasn't started
-  at AudioInput.init() time — no user gesture yet). The
-  interpreter starts, reads from KeyboardView's analyser, and
-  sees silence because the auto-restored stream isn't connected
-  to that analyser. Fix path: lift harmonograph's
-  _audioInputNeedsToneRewire flag and _attachAudioInputToTone
-  function into audio-input.js so both surfaces share one
-  implementation. Requires explicit lift on audio-input.js.
-  See docs/followup-notes-2026-04-29.md for the prompt-drafting
-  outline.
+- **STATUS.md structural cleanup pending.** This document has
+> accumulated drift: the Cantor block appears in three places
+> (lines ~7, ~87, ~145, all within a week of each other and
+> partially overlapping); the "Current Focus" section is dated
+> April 22 and predates the Cantor and audio-onset-analysis
+> work; "Completed this cycle" sections have migrated into
+> STATUS.md from SESSION_LOG.md; and "Next priorities" includes
+> items of unclear current status. A restructure session is
+> flagged in SESSION_LOG.md (2026-04-30 entry, Flagged for
+> later). Until that session: trust the most recent block when
+> in doubt, and SESSION_LOG.md as the source of truth for
+> what's happened.
 
 - **Resonance defaults changed (April 20)** — Explorer's Resonance tab now renders sparkler-style by default, not the original starburst from April 19. Original aesthetic not preserved as a baked-in preset; consider adding it back as a named preset alongside "Defaults".
 - **`/harmonograph` route is unlinked** — sandbox by design; visit `/harmonograph` directly (legacy `/art` redirects). Easy to forget the route exists. Decide on a front-door (footer link, easter egg, or remain hidden).

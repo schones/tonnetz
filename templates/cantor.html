@@ -386,6 +386,7 @@
         await window.Tone.start();
       }
     } catch (_) { /* iOS requires a gesture; user interaction will retry */ }
+    try { await AudioInput.rewireForTone(); } catch (_) { }
     _reconcileAudioInterpreter();
   }
 
@@ -795,6 +796,7 @@
       try {
         if (window.Tone && window.Tone.context && window.Tone.context.state !== 'running') {
           try { await window.Tone.start(); } catch (_) { }
+          try { await AudioInput.rewireForTone(); } catch (_) { }
           _reconcileAudioInterpreter();
         }
         // Wire the shared analyser BEFORE selectDevice so the new
