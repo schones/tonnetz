@@ -1,348 +1,128 @@
 # SongLab Project Status
 
+**Last updated:** 2026-05-05
+**Branch:** `dev` (active — Cantor v1 shipped through 6B; audio-onset-analysis branch holds Phase 1 of the audio rebuild) · `main` (prod)
+**Deploy:** Railway from `main`
+**Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/cantor-design.md` + `docs/audio-architecture.md`
+**Platform name:** SongLab · SkratchLab (rebrand complete)
 
-## Current state (April 28, 2026)
 
-### Cantor v1 — current state (added 2026-04-28 evening)
+## Current state (2026-05-05)
+
+### Cantor — current state
 
 **Landed and verified on dev:**
-- Prompts 1–5
-- 6A: 3D torus migration
+- Prompts 1–5 (route, on-screen keyboard, MIDI input, MusicalEventStream singleton, split-point input model)
+- 6A: 3D torus migration (12×4 toroidal lattice, 48 nodes, 4 PC instances each)
 - 6A.1: constellation wash-vertex snap fix
 - 6A.2: chord-detection Hardware-state gating
-- 6B: per-frame rotY drift + torusMajorR breathing
+- 6B: per-frame rotY drift (1 rev / 45s) + torusMajorR breathing (±5%, 8s sine)
 - Test track infrastructure: `tests/generate_cantor_test_track.py` +
-  `tests/cantor-test-track.md`. WAV regenerable from script.
+  `tests/cantor-test-track.md`. WAV regenerable from script (gitignored).
+
+**Landed on branch `audio-onset-analysis` (not yet on dev):**
+- Additional audio work (onset-driven analysis rebuild — replaces
+  chroma-template chord detection's foundational limitation that it
+  cannot distinguish a single note's overtone series from a real
+  chord). Phase 1 of the Cantor migration is on this branch.
+- Branch state captured separately on the branch's own STATUS.md.
+  Lands on dev when ready to merge as a unit.
 
 **In progress:**
-- Onset-driven audio analysis rebuild (separate branch). Replaces
-  chroma-template chord detection's foundational limitation: it
-  cannot distinguish a single note's overtone series from a real
-  chord. Onsets are the primitive; chord and melody are both
-  interpretations of the onset stream.
-  - Backup: branch `chord-detection-overtone-fix`, tag
-    `pre-overtone-fix` at the pre-rebuild dev HEAD.
-  - Plan: 4-phase (read existing audio code → build onset-detection.js
-    → wire into chord-detection.js → wire into MusicalEventStream →
-    validate). Estimated 2–3 sessions.
+- (none on dev — Cantor work is paused on dev while
+  `audio-onset-analysis` matures.)
 
 **Open / deferred:**
 - Constellation z-fade vs hard occlusion on torus back side.
-- 3D math helper deduplication (cantor + harmonograph share three
-  duplicated functions).
-- Tempo/beat-driven breathing (replace wall-clock `_elapsed`).
-- Chladni backdrop dynamics (separate chat thread, brainstorming
-  phase).
+- 3D math helper deduplication (`_uvToXYZ`, `_rotate3D`,
+  `_projectOrtho` are duplicated between cantor-view.js and
+  harmonograph-view.js; shared-utility extraction flagged TODO).
+- Tempo/beat-driven breathing (replace wall-clock `_elapsed`
+  accumulator with a musical-time signal — one-line swap).
+- Melody trails: connecting lines between consecutive constellation
+  glyphs to expose phrase contour. Needs its own design doc; even
+  more interesting on the 3D torus.
+- `activeTriads`-clears-mid-phrase anchor snap-back: cosmetic, low
+  priority. Fix is to keep last anchor for ~1–2× decay τ after
+  `activeTriads` empties.
+- Scales on the Tonnetz: separate design thread
+  (`docs/scale-regions.md` to be drafted). Not blocking Cantor v1.
+- Chladni backdrop dynamics (separate brainstorming thread).
 - Build plan review and consolidation across SongLab surfaces —
   flagged as a candidate for a dedicated planning session.
 
+**After Cantor v1 ships:**
+- v1 user testing.
+- Audio chord-detection silence-watcher tuning if needed.
+- `chordChange` dispatch on MusicalEventStream (currently skipped
+  as redundant; revisit if a use case emerges).
 
-### Working
+
+### Cantor v1 working state
+
+Capability inventory of what's currently shipping on dev:
+
 - /cantor route, on-screen keyboard, MIDI input, Tone.js playback
 - MusicalEventStream singleton; on-screen keyboard publishes too
-- Tonnetz substrate (7×5 lattice, canonical orientation)
+- Tonnetz substrate, canonical orientation (12×4 toroidal lattice
+  in 3D mode; 7×5 lattice in 2D mode, regression-free)
 - Chord wash with cross-fade, quality-colored fills, hue shifts for
   7ths, (rootPC, baseQuality) diff key for flash-on-quality-change
 - Melody constellation, anchored to active wash centroid, with
   exponential decay, velocity → brightness, chord-quality color
-- User-controllable split-point line (drag, snap, persist) with
-  default at MIDI 72 (C5, mid-keyboard)
-- Audio chord auto-detection from MIDI input — wash + flash +
-  extension hue all driven from live audio
-- 3D torus rendering (mode3D=true): static torus, rotX=30°, rotY=45°
-  baked in, 12×4 toroidal lattice, 48 nodes, 4 PC instances each.
-  No drift, no breathing yet (deferred to 6B).
 - Constellation snap to wash vertices: melody glyphs snap to the
   wash triangle vertex matching their PC. Verified via deterministic
   `cantorView._testSnap` and live Launchkey play.
-- 2D mode (mode3D=false) regression-free
-- Chord-detection respects Hardware state — won't run when Hardware
+- User-controllable split-point line (drag, snap, persist) with
+  default at MIDI 72 (C5, mid-keyboard)
+- Audio chord auto-detection — wash + flash + extension hue all
+  driven from live audio when Hardware is active
+- Chord-detection respects Hardware state: won't run when Hardware
   is "No audio input", so manual `setTriad` is authoritative on the
-  MIDI-only path.
-- window.cantorView exposed on localhost for dev convenience
-
-### Next session
-
-Resolved during 6A:
-- Refactor question: duplicated `_uvToXYZ`, `_rotate3D`, `_projectOrtho`
-  from harmonograph-view.js into cantor-view.js for v1. Future shared
-  utility flagged TODO in cantor-view.js.
-- Lattice instance handling on torus: 4× PC instances on 12×4 lattice,
-  edges wrap toroidally — every node has all six Tonnetz neighbors.
-- Chord wash triangle handling: rendered with z-sort, no geodesic
-  surface paths.
-- Constellation snap: `_activeWashVertices` Map populates per-frame from
-  wash render before visibility check; constellation reads it.
-
-Open for 6B:
-- Constellation z-fade vs hard occlusion on back side (still open).
-
-### Deferred / parked
-- Melody trails: connecting lines between consecutive constellation
-  glyphs to expose phrase contour. Needs its own design doc; even
-  more interesting on the 3D torus, so probably design after prompt 6.
-- activeTriads-clears-mid-phrase anchor snap-back: cosmetic, low
-  priority, fix is to keep last anchor for ~1-2× decay τ after
-  activeTriads empties.
-- Scales on the Tonnetz: separate design thread (`docs/scale-regions.md`
-  to be drafted). 7-node connected region for diatonic, relative keys
-  share region, parallel keys pivot, harmonic minor has tendril,
-  octatonic tiles. Not blocking Cantor v1.
-
-### After v1
-- v1 user testing
-- Audio chord detection silence-watcher tuning if needed
-- chordChange dispatch on MusicalEventStream (currently skipped as
-  redundant; revisit if a use case emerges)
-
-**Last updated:** 2026-04-28 (Cantor 6A/6A.1/6A.2 landed: 3D torus, constellation snap, chord-detection Hardware-state gating)
-**Branch:** `dev` (active — SongLab redesign in progress) · `main` (prod)
-**Deploy:** Railway from `main`
-**Active roadmap:** `docs/songlab-build-plan.md` (v4) + `docs/game-engine-spec.md` + `docs/audio-architecture.md` + `docs/polyrhythm-trainer-spec.md`
-**Platform name:** SongLab · SkratchLab (rebrand complete)
+  MIDI-only path
+- 3D torus rendering (mode3D=true) with per-frame rotY drift
+  (1 rev / 45s) and torusMajorR breathing (±5%, 8s sine). Pause
+  freezes both; resume produces no jump.
+- `window.cantorView` exposed on localhost for dev convenience
 
 ---
 
 ## Current Focus
 
-SongLab `dev` branch is feature-rich. Phase A, A++, and initial B8 complete. April 22 closed with `/art` Stage 1 fully validated end-to-end: ghost-torus scaffold (grayscale) + warm/cool chord-triangle overlays + role-colored sparkle blobs at sounding nodes, driven by MIDI (Launchkey MK4 via multi-port fix) and by mic audio through Scarlett 2i2 and built-in mic. "Fireworks" aesthetic saved as a localStorage preset; export-to-file pending. One known issue surfaced: selecting a real audio input in the Hardware dropdown creates a feedback loop through laptop speakers — workaround is "No audio input" for MIDI-only testing or headphones for live audio. Audio-input routing refactor deferred. Approaching user testing readiness.
+The active workstream on `dev` is **Cantor v1**. Through April 27–28, prompts 1–6B landed and are verified end-to-end on dev: 3D torus surface, per-frame rotY drift + torusMajorR breathing, chord-detection Hardware-state gating, and constellation snap to wash vertices. A deterministic test-track generator (`tests/generate_cantor_test_track.py`) and section-by-section diagnostic doc were also landed for ongoing audio-pipeline validation.
+
+Cantor surfaced a foundational limitation in `chord-detection.js`: chroma-template matching cannot distinguish a single sustained note's overtone series from a real chord, producing false-positive chord washes on solo melody. Rather than patch in place, we forked off `audio-onset-analysis` to rebuild on onset-driven analysis — onsets are the right primitive, since chord and melody are both interpretations of the onset stream. That branch holds Phase 1 of the rebuild and is intentionally not on `dev` yet; it lands when ready to merge as a unit. Phase 2 of the Cantor migration is the next active priority on `dev`, gated on that merge.
+
+Harmonograph (`/harmonograph`, formerly `/art`) is parked on dev at Stage 2: audio-reactive Y-spin and centripetal morph are wired and validated end-to-end against a deterministic test track (`tests/harmonograph-test-track.wav`), with seven audio-pipeline bugs fixed in the same April 24 session. Real-music tuning ("Montreal") and Stage 1.5 multi-torus stacking are deferred while Cantor takes focus.
+
+Approaching Cantor v1 user-testing readiness once the audio-onset-analysis branch lands and Phase 2 ships.
 
 
-**Next priorities:**
-1. **Real-audio Harmonograph tuning ("Montreal"):** Stage 2 validated end-to-end via deterministic test track (`tests/harmonograph-test-track.wav`). Seven audio-pipeline bugs found and fixed in the same session: top-16 RMS, spectral flatness gates in pitch + chord detection, initial-load device sync, hotplug listener, pitch-detection stream rebuild, heartbeat diagnostics. Next: real-music tuning against Allison Russell "Montreal" — opening-minute-to-gospel-chorus arc as the calibration target. Tune `rmsDbFloor`/`rmsDbCeiling`/`spinSignalExponent` by ear.
+**Next priorities (active):**
+1. **Cantor Phase 2 migration** — onset-driven chord/melody analysis. Currently being built on branch `audio-onset-analysis`; lands on `dev` when the branch is ready to merge as a unit. Gates Cantor v1 user testing.
+2. **SkratchLab "Clear All"** — should also reset canvas (not just blocks).
+3. **Polyrhythm Trainer → nav dropdown + landing page.**
 
-2. **Harmonograph Stage 1.5 (multi-torus stacking):** multiple concentric/offset toruses to give the visualization depth and let different harmonic layers (e.g., extension notes, register groups) live on their own surface. Open design questions: stack spacing, one-master-morph vs per-torus-morph sliders, dynamic spacing as morph rises. After Stage 1.5: `audio-input.js` refactor (fix feedback loop by routing source to analyser only), particle reactivity in 3D (currently spawn at 3D-projected screen positions — visually works but not designed), painter's-algorithm depth sort if self-occlusion artifacts surface.
-
-3. SkratchLab polish — "Clear All" button should also reset canvas (not just blocks)
-4. Add Polyrhythm Trainer to nav dropdown and landing page
-5. Linus and Lucy walkthrough (connects from Polyrhythm Trainer)
-6. Tab-audio capture experiment: feed YouTube into `/art`
-7. Decide `/art` front-door (linked from nav, footer, hidden, or remain unlinked sandbox)
-8. **Onboarding & tutorial UX** — Build a "guided tour" / tooltip-card system for the platform: friendly intro modals on first visit (Studio, Explorer, Games, `/art`), short walkthroughs explaining what each tool is for, and dedicated tutorials for the generative-art side (e.g., why the torus is the natural representation for a Tonnetz, how chord-triangles work, what the FFT is showing). Reference inspirations: BandLab's onboarding modals (sequential cards with X to dismiss, "There's more" / "Explore more" CTAs, large preview imagery, friendly first-name greeting). Could leverage existing walkthrough infrastructure from Explorer.
-9. Consider preserving original "starburst" Resonance aesthetic as a named baked-in preset
-10. Onset detection wired into Resonance for staccato burst behavior
-11. Business model / monetization spec
-12. game-flow.js + adaptive engine extraction (spec: `docs/game-engine-spec.md`)
-13. SkratchLab lightweight DAW — song presets, chord loops + rhythm, melody play-over
-14. Consolidate triplicated chord-type registries (code review finding)
-15. Replace `_suppressAutoPlay` with source-tagged HarmonyState.update() (code review finding)
-16. User testing prep (15-20 participants)
+**Backlog:**
+- **Real-audio Harmonograph tuning ("Montreal"):** tune `rmsDbFloor` / `rmsDbCeiling` / `spinSignalExponent` against Allison Russell "Montreal" — opening-minute-to-gospel-chorus arc as the calibration target.
+- **Harmonograph Stage 1.5 (multi-torus stacking):** multiple concentric/offset toruses for harmonic-layer depth. Open design questions: stack spacing, master-vs-per-torus morph sliders, dynamic spacing as morph rises. After Stage 1.5: `audio-input.js` refactor (fix feedback loop by routing source to analyser only), particle reactivity in 3D, painter's-algorithm depth sort if self-occlusion artifacts surface.
 - **Harmonograph Phase 2 design pass:** unified design conversation for three deferred ideas — multi-axis torus spin (Tonnetz-aware mapping of P5/M3/m3 chord-root motion to X/Y/Z), shimmer overlay (non-tonal audio → gold Chladni-pattern particles), and "music has color, noise is gray" saturation principle (flatness-driven desaturation across all visualizations). Worth `docs/multi-axis-spin.md`, `docs/shimmer-design.md`, `docs/color-confidence.md` design docs before building.
+- **Linus and Lucy walkthrough** (connects from Polyrhythm Trainer).
+- **Tab-audio capture experiment:** feed YouTube into `/harmonograph`.
+- **Decide `/harmonograph` front-door** (linked from nav, footer, hidden, or remain unlinked sandbox).
+- **Onboarding & tutorial UX** — guided tour / tooltip-card system: friendly intro modals on first visit (Studio, Explorer, Games, `/harmonograph`), short walkthroughs explaining what each tool is for, dedicated tutorials for the generative-art side (why the torus is the natural representation for a Tonnetz, how chord-triangles work, what the FFT is showing). Reference inspirations: BandLab's onboarding modals. Could leverage existing walkthrough infrastructure from Explorer.
+- **Original starburst Resonance preset** — preserve original April 19 aesthetic as a named baked-in preset alongside the sparkler defaults.
+- **Onset detection wired into Resonance** for staccato burst behavior (separate from Cantor's onset rebuild).
+- **Business model / monetization spec.**
+- **game-flow.js + adaptive engine extraction** (spec: `docs/game-engine-spec.md`).
+- **SkratchLab lightweight DAW** — song presets, chord loops + rhythm, melody play-over.
+- **Code review follow-ups:** consolidate triplicated chord-type registries (transforms.js / chord-resolver.js / chord-detection.js); replace `_suppressAutoPlay` with source-tagged HarmonyState.update().
 - **AudioWorklet migration for `pitch-detection.js`:** ScriptProcessorNode is deprecated in Chrome. Tracked in `docs/audio-architecture.md` Open Question 1. Not urgent — generous deprecation timeline.
 - **Test track v2:** replace pink-noise staircase with chord-velocity staircase. Top-16 RMS is biased toward tonal content (correct for music), so noise isn't the right calibration signal.
 - **Hardware dropdown dedup:** Chrome exposes both "Default - X" alias and canonical "X". Cosmetic.
+- **User testing prep (15–20 participants).**
 - **Educational content idea:** Chladni patterns (Ernst Chladni 1787, founder of modern acoustics). History piece or standing-wave physics piece. Ties into shimmer design and platform-wide "music has shape" positioning.
-
-
-**Completed this cycle (April 22):**
-
-- **Art Lab 3D rendering — Stage 1 validated end-to-end (late-day session):**
-  - Grayscale scaffold + warm/cool chord overlay split (`scaffoldMajorColor` / `scaffoldMinorColor` in scaffold pass; `majorTriadColor` / `minorTriadColor` in overlay pass). Held chords pop against a neutral surface.
-  - `midi-input.js` multi-port fix: Launchkey MK4 enumerates as "MIDI Out" + "DAW Out"; auto-attach now picks non-DAW port. Applied in both `init()` and `_handleStateChange()`.
-  - Debug panel reordered: "3D Geometry" section now first so `mode3D` toggle is visible without scrolling.
-  - Fireworks tuning via sliders only (no code): faint scaffold, strong colored overlay bloom, larger/brighter/longer particles. Saved as localStorage preset "super fun" — **pending export to file** for persistence across browser data clears.
-  - Validated live with piano through Scarlett 2i2 (clean chord triangles), voice through built-in mic (FFT blobs per sounding PC), and Launchkey MK4 MIDI (held triads render warm/cool overlays at all 4 lattice copies).
-  - **Known issue (deferred):** selecting a real audio input in the Hardware dropdown routes input to `Tone.Destination`, producing speaker feedback when MIDI sampler plays. `audio-input.js` refactor needed — route source to analyser only. Workaround: "No audio input" for MIDI-only testing, or use headphones.
-
-- **Art Lab 3D rendering — Stage 1 Prompt 2 (triangles on torus/sphere):**
-  - 96 triads built on the toroidal 12×4 lattice (every cell gets one major upward + one minor downward — no boundary gaps because the lattice wraps on both axes). Each triangle entry carries `{ a, b, c, type }` with `type ∈ {'major', 'minor'}`.
-  - Winding chosen so `(p1 − p0) × (p2 − p0)` points outward at morph=0; verified at (col=0, row=0) on both major and minor (dot product ≈ 0.93–0.94 with the surface normal at the centroid).
-  - `_drawTriangles3D` recomputes rotated 3D vertex positions, derives per-triangle outward normal, and uses `n.z` (after normalize) as the facing value. Continuous back-face alpha: `alphaFactor = 0.6 + 0.4 · facing` ∈ [0.2, 1.0]. Smooth falloff through the silhouette — no hard ring artifact.
-  - Major triads tinted warm `[220, 165, 90]`; minor cool `[90, 140, 210]`. Held chords no longer the only path to a visible triangle in 3D — the scaffold is always rendered.
-  - Draw-order: 2D mode keeps grid-then-triangles (bit-for-bit identical); 3D mode reorders to triangles-then-grid so the faint lattice edges + dots remain visible on top of the filled triads.
-  - Single-pass, no painter's-algorithm sort. Self-occlusion artifacts deferred (notes in SESSION_LOG).
-  - Three new debug-panel sliders in the existing "3D Geometry" group: `triangle3DBaseAlpha`, `triangle3DStrokeAlpha`, `triangle3DStrokeWidth`. RGB tint params kept code-only.
-
-- **Art Lab 3D rendering — Stage 1 Prompt 1 (nodes + edges on torus/sphere):**
-  - `mode3D` feature flag in `DEFAULT_PARAMS` (default `false`); 2D path is bit-for-bit unchanged when off.
-  - 3D lattice: 12 cols × 4 rows, nodes carry `(col, row, u, v, pc)` with `u = col·2π/12`, `v = row·2π/4`, PC formula unchanged. Each PC appears 4× on the surface. Edges wrap toroidally — every node has all six Tonnetz neighbors.
-  - Parametric surfaces share `(u, v)`: torus `((R + r cos v) cos u, (R + r cos v) sin u, r sin v)` and sphere `(R cos v cos u, R cos v sin u, R sin v)`. Linear `morph ∈ [0, 1]` interpolates vertex positions.
-  - World-axis rotation around X/Y/Z (Euler XYZ), three independent angular velocities. Default `rotSpeedY = 8 deg/s` so the shape is obviously 3D on first toggle.
-  - Orthographic projection, scale fit `(R + r) → 70 %` of smaller canvas dim, computed in `_resize`.
-  - `_buildGrid` and `_transformedNode` branch on `mode3D`; `_drawGrid` is unchanged. `setParam`/`setParams` rebuild the lattice when `mode3D` toggles.
-  - Debug panel: new "3D Geometry" group with `mode3D` toggle, `morph`, torus radii, rotation speeds. Row builder extended to support `kind: 'toggle'` (checkbox + on/off readout).
-  - Triangles deliberately empty in 3D mode — Prompt 2 adds them with back-face alpha. Particles in 3D look wrong (still spawn in 3D-projected screen space) — addressed in a later stage.
-
-- **Art Lab audio infrastructure — real MIDI + mic input wired end-to-end:**
-  - Unified held-notes tracker in `templates/art.html` merging four sources: on-screen keyboard, MIDI held notes, MIDI sustained notes, and detected chord/pitch events. Replaces prior source-agnostic append path with an additive multi-source model.
-  - `KeyboardView.onNoteRelease` callback added symmetric to `onNotePlay`, routing on-screen keyboard releases through the tracker.
-  - MIDI input via `midi-input.js` — Launchkey 49 auto-detects, drum channel 10 filtered. noteOn/noteOff routed through the sampler proxy in Tone's context.
-  - Sustain pedal (CC 64) — pedal down defers `triggerRelease`, pedal up flushes. Standard piano semantics.
-  - On-screen keyboard visibility toggle (hidden by default). `Keyboard` button in Hardware row toggles `.art-keyboard--hidden`. Preference in `localStorage['songlab.art.keyboardVisible']`. KeyboardView stays instantiated so sampler/analyser chain stays wired.
-
-- **Chord + pitch detection wired into `/art`:**
-  - `chord-detection.js` and `pitch-detection.js` both created and started together in `_updateAudioInputStatus` reconciliation (when `AudioInput.isActive && toneRunning`).
-  - Parallel operation, not mutually exclusive. Pitch wins on confident monophonic input (`confidence >= 0.85`), chord takes over when pitch returns `frequency=0` (polyphonic / silence / ambiguous).
-  - Silence watcher (100ms poll, 500ms quiet threshold) for chord-detection's edge-triggered emit model. Pitch-detection emits continuously, no watcher needed.
-  - Root-first entry ordering in `_chordEventToEntries` so `_readHarmonyState`'s order-based role assignment colors root=gold, third=coral, fifth=blue correctly.
-
-- **Audio-input routing bug fixed (latent, predates `/art`):**
-  - Symptom: chord detection "working" during earlier testing was reading residual MIDI sampler audio, not mic — because the `_sourceNode` from `AudioInput`'s auto-restore (fallback-context path) was never successfully re-wired into Tone's context despite `AudioInput.isActive` reporting true.
-  - Root cause: `setAnalyser()` tries to reconnect the stale cross-context source and silently fails, leaving state that breaks the subsequent `selectDevice`'s fresh connection.
-  - Fix: explicit `AudioInput.disconnect()` before `setAnalyser` in `/art`'s `_attachAudioInputToTone`, so rewire starts from clean state. Contained to `templates/art.html`; shared `audio-input.js` refactor deferred.
-  - **Resolves the April 19 "Scarlett 2i2 audio routing needs verification" known issue.**
-
-- **`pitch-detection.js` autoplay-policy fix (shared module):**
-  - Chrome starts programmatically-created `AudioContext` instances in `suspended` state. While suspended, `ScriptProcessorNode.onaudioprocess` does not fire — so YIN runs but sees no samples, and every callback returns `frequency: 0` below confidence.
-  - Fix: `await audioContext.resume()` after construction in `pitch-detection.js:start()`. `resume()` is a no-op on already-running contexts, so callers that create the detector inside a user gesture (Melody Match) are unaffected. Callers that create it asynchronously (Art Lab via audio-input reconciliation) now get a running context and actual emissions.
-
-- **Role preservation through decay tails (shared module):**
-  - Previously `_readHarmonyState` reset every PC's role to `'root'` on every HarmonyState update; PCs decay over 2–3 seconds, during which they rendered in the wrong color (snapping to gold).
-  - Fix: in `resonance-art-view.js`, reset role only for PCs about to be re-assigned this frame. Preserves prefer-lowest-index-role logic for same-frame multi-octave cases.
-
-- **Triangle visibility + blob duration fix:**
-  - `silentEps` default lowered from `0.001` to `0.0001` so quieter notes can cross the activity threshold.
-  - New `triangleIntensityScale` parameter (default `100`), slider added to Chord Triangles panel. Intensity formula in `_drawTriangles` multiplies by the scale before `Math.min(1, ...)`.
-  - Root cause: per-PC energy for a held triad is ~`0.003`, but the prior intensity formula assumed ~`1.0` energy so `alpha × intensity ≈ 0.003` rendered invisible.
-
-**Completed previous cycle (April 20):**
-
-- **Resonance debug panel (Explorer):**
-  - URL-gated at `/explorer?debug=resonance`; production users see nothing
-  - Refactored `resonance-view.js` constants → `DEFAULT_PARAMS` instance object with `getParams()` / `setParam()` / `setParams()` API; per-frame reads enable live tuning without reload
-  - 22 tunable parameters across four sections (Smoothing & Decay, Particle Spawning, Particle Lifetime & Motion, Render & Glow)
-  - Save / Export / Reset preset system with `localStorage['songlab.resonance.presets']`; export downloads dated JSON
-  - Inline name-entry input replacing native `window.prompt()` (Chrome's narrow URL-bar prompt was unusable)
-  - Viewport-fit panel layout with sticky header and internal slider scroll
-
-- **Resonance bug fixes:**
-  - Inverted blob fill (gradient was hollow at center) → center-bright with new `blobFillAlpha` tunable
-  - Wiggle direction was global X/Y axes → now perpendicular to particle velocity
-  - `PEAK_MAG_THRESHOLD` promoted from module constant to log-scale `peakMagThreshold` slider
-
-- **Resonance default tuning baked in (sparkler aesthetic):**
-  - New `particleDeceleration` parameter (default `0.95`)
-  - 12 baseline values updated for short-life, low-velocity, high-spawn-rate, decelerating sparkler look
-  - **Behavior change for end users:** Explorer's Resonance now renders sparkler-style by default, not starburst
-
-- **`/art` sandbox route:**
-  - New Flask route, new `templates/art.html`, new `static/shared/resonance-art-view.js` (verbatim fork of `resonance-view.js`, class `ResonanceArtView`)
-  - Always-visible debug panel (Art Lab Tuning), independent preset namespace `localStorage['songlab.art.presets']`
-  - Explorer's Resonance tab and `resonance-view.js` fully untouched by the fork
-
-- **`/art` grid motion:**
-  - Lattice rotates and sways as a rigid body around canvas center
-  - Three tunables (`gridRotationSpeed`, `gridSwaySpeed`, `gridSwayAmplitude`), all default `0` so baseline unchanged until dialed in
-  - Particles live in screen space — comet-trail effect on slow rotation
-
-- **`/art` chord triangle highlights:**
-  - Triangle list built at lattice setup (~48 triangles in 7×5 grid)
-  - For each triangle, if all three vertex PCs are simultaneously active, render a gold fill + stroked outline with shadowBlur glow
-  - Geometric truth emerges naturally: triads light one triangle, 7th chords light two adjacent triangles sharing an edge
-  - Four tunables for fill/stroke/glow
-
-- **`audio-input.js` cleanup (committed at session start):**
-  - Extracted `_connectToAnalyser()` helper that prefers `Tone.connect()` for native-to-Tone wiring with a manual fallback
-  - DRY'd up the analyser-swap path in the Hardware UI
-
-**Completed previous cycle (April 19):**
-
-- **Resonance tab (new Explorer panel):**
-  - 6th Explorer stage tab: radial FFT spectrum visualization on Tonnetz grid
-  - `static/shared/resonance-view.js` — ResonanceView class, 7×5 Tonnetz lattice
-  - Each active node renders the FFT spectrum wrapped in a circle — frequency → angle, magnitude → radius
-  - HarmonyState gates which nodes render, FFT drives how they look. No synthetic fallback — pure audio-driven.
-  - Chord-function coloring: gold (root), coral (third), blue (fifth), green (seventh)
-  - Particles spawn from FFT peaks, radiate outward, dynamics matched to Spectrum panel
-  - Fullscreen toggle on both Spectrum and Resonance tabs
-
-- **Audio interface wiring (Explorer):**
-  - `audio-input.js` connected to Explorer with Hardware UI (device dropdown, status, quality badge)
-  - Scarlett 2i2 auto-detect, MediaStreamSource feeds shared `Tone.Analyser`
-  - Both Spectrum and Resonance read live external audio
-  - Fixed Tone.js cross-context node connection error
-
-- **Polyrhythm Trainer tweaks:**
-  - Hit zone moved up (HIT_Y 370→280), post-hit effects area below
-  - Audio gain chain (layerGain → masterGain) eliminates overlap on changes
-  - Lane waves + missed notes extend below hit zone with fade-out
-
-- **Bug fixes:**
-  - Quality name mismatch between chord-resolver.js and transforms.js (dim→diminished, aug→augmented, etc.)
-  - TypeError in _notesFromTriad when triadNotes returned null for unrecognized qualities
-  - Tonnetz crash (buildNeighborhood) on unrecognized chord types — try/catch guard added
-  - kv-key--midi missing CSS → changed MIDI source to 'user' for existing highlight styles
-  - Duplicate audio on MIDI chord detection → _suppressAutoPlay wrapper
-  - Keyboard octave jump on chord detection → manual HarmonyState.update with real MIDI octaves
-
-**Completed previous cycle (April 9-13):**
-
-- **Project rename (April 13):** Tonnetz → SongLab across GitHub, Railway, CLAUDE.md, README.md, doc filenames, cross-references. Music theory "Tonnetz" references preserved.
-
-- **Extended chord support (April 13):**
-  - `CHORD_TYPES` dictionary in transforms.js: triads, 7ths (dom7/maj7/min7/dim7/half-dim7/minmaj7), sus (sus2/sus4/7sus4), extended (add9/dom9/maj9/min9)
-  - `chordPCs`, `chordNotes`, `baseTriad`, `extensionNotes`, `chordSymbol` utility functions
-  - HarmonyState: `activeChord` field, `setChord()`, `highlightChord()`, chordType-aware `setProgressionIndex()`
-  - Keyboard extension rendering: gold ring highlights, interval labels (♭7, 7, etc.)
-  - Tonnetz extension nodes: glowing nodes + dashed connectors for notes beyond the triad
-  - Chord labels: `activeChord.symbol` preferred ("B7", "Cmaj7") across Explorer + Tonnetz
-  - Folsom Prison, Johnny B. Goode, ii-V-I, Lean On Me walkthroughs updated with chordType
-
-- **Three new walkthroughs (April 13):**
-  - Bridge Over Troubled Water (diminished passing chords, musician)
-  - Oh! Darling (augmented passing chord, student)
-  - Life on Mars? (advanced augmented connectors, musician)
-  - All with rhythm data, song-examples.js entries, landing page grid placement
-
-- **Fundamentals Chapter 4: "Beyond Triads" (April 13):**
-  - 5 interactive sections: Adding the Seventh, The Tritone, Diminished & Augmented, Suspended Chords, Hearing Them in Songs
-  - Root selectors, type toggles, gold extension highlights, coral tritone spotlight, resolution animations, song card jukebox
-  - Chapters renumbered: Meet the Tonnetz → Ch5, Transforms → Ch6
-  - Hub page, routing, intro-hub.js updated for 6 chapters
-  - 3-octave keyboards sized to fill wider containers
-
-- **Global typography overhaul (April 13):**
-  - design-tokens.css font scale increased ~40% across all sizes
-  - Explorer scoped 2x font override removed (no longer needed)
-  - Fundamentals layout widened: sections 1000px, interactives 900px, narration 800px
-  - Fundamentals keyboards: global size overrides in intro.css for all chapters
-
-
-- **Game visual unification (Phase A+.1/A+.2)**: game-shell.css extracted, all 8 games migrated, index.html converted to extend base.html, Swing Trainer converted to Jinja2 template, ~500 lines duplicate CSS removed, all legacy color vars → design tokens
-
-
-- **Game audit & build plan update (April 11-12)**:
-  - Full audit of all 8 games: Harmony Trainer, Strum Patterns, Swing Trainer, Melody Match, Chord Spotter, Rhythm Lab, Scale Builder, Relative Key Trainer
-  - Two game types identified: Performance (no Learn mode, difficulty axes) and Learning (stage-based, Intro/Practice/Test)
-  - Adaptive engine standardized on Pattern B (promote after N correct, demote after N wrong) with independent axes per game
-  - ResultDetail schema designed for competency graph (per-game detail shapes)
-  - MIDI input pulled forward from Phase F to Phase A+ (new `midi-input.js` shared module)
-  - SkratchLab lightweight DAW vision captured (song presets, chord loops, melody play-over)
-  - Two new games designed: Voice Leading Detective (B7), Polyrhythm Trainer (B8)
-  - Vienna (Billy Joel) walkthrough planned
-  - Build plan updated to v4: new Phase A+, fast path to Competency Graph (B → B.5 → E5), updated session budget
-  - Created `docs/game-engine-spec.md`
-- **SkratchLab rebrand**: Skratch Studio → SkratchLab (user-facing text + URL paths /skratchlab)
-- **Explorer visual polish**:
-  - Keyboard: cream white keys (#E8E2D6), real piano proportions, scalable via CSS overrides
-  - Tonnetz: lighter canvas (#1E1C17), visible grid edges/nodes
-  - Dark theme contrast bump across all text colors
-  - Walkthrough sidebar: wider (300px), bigger text, enlarged step badges
-  - Removed dead Spotify/Apple Music links
-  - Fixed fretboard/keyboard proportions in "Both" view
-- **Info pills**: "Learn" pills on panel headers, compact ⓘ on Transform/Key controls, linking to fundamentals
-- **Game deep-linking**: CONCEPT_GAME_MAP, "Try this" pills on walkthrough steps, games read URLSearchParams
-- **Base.html restyle**: warm SongLab palette, dropdown nav restored (Ear Training, Rhythm & Play, Games, Learn), dark theme support
-- **SkratchLab top-level nav**: promoted from dropdown to standalone nav link
-- **Rhythm analysis (new feature)**:
-  - Rhythm tab in Explorer (4th stage tab), renders beat patterns from walkthrough data
-  - Tone.js playback engine with playhead animation
-  - BPM slider, volume controls (Rhythm + Chords separate)
-  - Bass follows chord root, keyboard plays over running rhythm
-  - 7 new rhythm-tagged song entries in song-examples.js
-  - All walkthroughs backfilled with rhythm data (including 6/8 for Norwegian Wood)
-- **Audience tracks (new feature)**:
-  - 4 new walkthroughs: Let It Go, You've Got a Friend in Me (kids), Stand By Me, Lean on Me (students)
-  - All walkthroughs tagged with audience + category
-  - Landing page: audience tabs filter MIDI pad song grid
-- **SkratchLab Rhythm Builder (new feature)**:
-  - Interactive 4×8 drum machine grid (kick/snare/hihat/strum)
-  - Preset patterns (rock, train, disco, hiphop, shuffle, backbeat)
-  - Tone.js playback, BPM slider, export to Blockly blocks
-  - Rhythm data exports from Explorer → SkratchLab via sessionStorage
-- **Tutorial page**: 10-section walkthrough at /tutorial using Norwegian Wood
-- **Playback fixes**: first chord replay, Shift/CapsLock sustain, piano reset on walkthrough start
-- **Landing page**: Melody Match + Strum Patterns added to games grid, tutorial link
+- **Build plan review and consolidation** — Cantor + Harmonograph integration into the broader SongLab educational story (scales, keys, theory) deserves a dedicated planning session.
 
 ---
 
