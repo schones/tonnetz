@@ -634,15 +634,52 @@ some adaptive (e.g., onset-gating window scales with detected tempo).
 These are deliberately unresolved. Address during build or after v0
 testing.
 
-1. **MIDI publishing path during migration.** Today MIDIInput's
-   note-on/note-off handlers publish directly to MusicalEventStream
-   from inside cantor.html's template (lines 411-475). Two options:
-   (a) MIDI publishing stays in the template, AudioInterpreter only
-   handles audio; (b) MIDI publishing moves into AudioInterpreter
-   (or a paired MIDIInterpreter), making AudioInterpreter / its
-   sibling the single publisher. Option (a) is a smaller migration;
-   option (b) is architecturally cleaner. Decide during the Cantor
-   migration audit.
+1. **MIDI publishing path during migration.** ~~Open~~ **Resolved
+   2026-05-05: option (a).** Today MIDIInput's note-on/note-off
+   handlers publish directly to MusicalEventStream from inside
+   cantor.html's template (lines 411-475). Two options were
+   considered: (a) MIDI publishing stays inline at the trigger
+   site, AudioInterpreter only handles audio; (b) MIDI publishing
+   moves into AudioInterpreter or a paired MIDIInterpreter, making
+   the interpreter module(s) the single publisher.
+
+   **Decision: option (a). AudioInterpreter is the only
+   interpreter-style module; note-trigger sources publish inline
+   at the trigger site, tagged with `source`.**
+
+   Rationale. The (b) framing assumed MIDI was the only other
+   publisher candidate, in which case "two siblings" looked
+   symmetric and clean. SkratchLab's loop pedal makes the real
+   shape visible: there are not two publishers but a *family* of
+   event-source contexts — live MIDI, on-screen keyboard clicks,
+   live mic, SkratchLab loop pedal keyboard layers (Tone.Part
+   playback), SkratchLab loop pedal mic layers (Tone.Player
+   playback), the Blockly music-engine, and likely tab-audio /
+   file playback in the future. These reduce to two architectural
+   patterns: **note triggers being scheduled** (publish at the
+   callsite, six lines, no module-shaped responsibility) and
+   **audio being analyzed** (route through AudioInterpreter,
+   regardless of whether the source is a live mic or a Tone.Player
+   replaying a recorded buffer). Wrapping note-trigger publishing
+   in a "MIDIInterpreter" module to match AudioInterpreter's shape
+   would be ceremony — the inline publish call *is* the right size
+   for that responsibility. SkratchLab loop pedal mic layers,
+   notably, are not a third publisher; they are a second consumer
+   of AudioInterpreter, reachable by routing the Tone.Player output
+   through the same analyzer chain that handles live mic.
+
+   Convention. Every publish call carries `source: '<surface>'`
+   (`'midi'`, `'keyboard'`, `'audio'`, `'skratchlab-loop'`,
+   `'skratchlab-blockly'`, etc.). Subscribers that need to filter
+   by source do so on this field.
+
+   Reversibility. If a *third* genuinely interpreter-shaped
+   responsibility ever emerges (a second audio-analysis pipeline,
+   or a publisher with non-trivial lifecycle that doesn't fit
+   either pattern above), promoting an inline publisher to a
+   module is a localized refactor. The cost of waiting until that
+   shows up is low; the cost of preemptively wrapping the trivial
+   inline cases in module-shaped boilerplate is real.
 
 2. **Strength as scalar vs. feature vector.** Section 4 has
    `strength` as a single 0–1 scalar plus `spectralFeatures` as an
@@ -764,12 +801,17 @@ Migration is naturally two phases:
   for chord publishing only. MIDI publishing path unchanged. Behavior
   identical to today plus saved-device fix. Smallest possible
   behavioral footprint.
-- **Migration phase 2:** AudioInterpreter (or paired MIDIInterpreter)
-  becomes the single publisher for both audio and MIDI events.
-  Cantor's template is just a view + UI shell. Bigger behavioral
-  footprint, separate acceptance pass.
+- ***Migration phase 2:** AudioInterpreter is consolidated as the
+  single audio publisher in cantor.html (any remaining inline
+  audio-event glue moves into the interpreter or is removed). MIDI
+  publishing stays inline at the trigger site per OQ1 resolution.
+  Source-tagging convention is documented and enforced across all
+  publishers (`source: '<surface>'` on every event).
+  
 
-Phase 2 depends on Open Question 1's resolution.
+Phase 2's shape is set by OQ1's resolution (option (a)): consolidate
+AudioInterpreter as the single audio publisher; MIDI and other
+note-trigger sources keep publishing inline.
 
 ### Beat Field readiness
 

@@ -2,6 +2,76 @@
 
 Reverse chronological. Quick capture after each session: what happened, what was decided, what's next.
 
+
+## 2026-05-05 — OQ1 resolved (MIDI publishing path)
+
+### Decided
+- **OQ1 from `audio-interpreter-design.md` §11: option (a).**
+  AudioInterpreter is the only interpreter-style module.
+  Note-trigger sources (MIDI, on-screen keyboard, future
+  SkratchLab loop pedal keyboard layers, Blockly music-engine
+  triggers) publish inline at the trigger site, tagged with
+  `source: '<surface>'`. Audio sources route through
+  AudioInterpreter, regardless of whether the source is a live
+  mic or a Tone.Player replaying recorded buffers.
+- Phase 2 of the Cantor migration is now drafttable. Its shape:
+  consolidate AudioInterpreter as the single audio publisher in
+  cantor.html, document and enforce the source-tagging convention.
+- Resolution written into `docs/audio-interpreter-design.md` §11
+  (OQ1) and §12 (phasing).
+
+### Diagnosed / decided
+- The (b) framing in the original OQ1 implicitly assumed MIDI was
+  the only other publisher candidate. Greps against
+  `static/skratch-studio/` revealed a richer landscape:
+  `loop-pedal.js` records and replays both keyboard-note layers
+  (via `Tone.Part` — discrete note events) and microphone audio
+  layers (via `MediaRecorder` → `Tone.Player` — audio buffers).
+  Neither path currently publishes to MusicalEventStream, but both
+  are intended cross-tool flows for SkratchLab → Cantor /
+  Harmonograph reactivity.
+- This collapses to two patterns, not three publishers: (i)
+  note-trigger sites publish a six-line glue call (MIDI, keyboard
+  click, Tone.Part loop playback, music-engine schedule); (ii)
+  audio sources route through AudioInterpreter (live mic, mic-layer
+  Tone.Player playback, future tab-audio capture, future file
+  playback). The "second consumer of AudioInterpreter" insight —
+  that recorded-and-replayed mic audio is *the same audio analysis
+  problem as live mic, just with a different source* — is the
+  observation that makes (a) clearly the right call rather than
+  a close one.
+- Wrapping inline publish calls in a "MIDIInterpreter" module to
+  match AudioInterpreter's shape would be ceremony. The inline
+  publish call is the right size for the responsibility.
+- Reversibility: if a future genuinely interpreter-shaped
+  responsibility emerges, promoting an inline publisher to a
+  module is a localized refactor. Cost of being wrong on (a) is
+  low; cost of preemptively wrapping trivial cases in module
+  boilerplate is real.
+
+### Setup for next session
+- Phase 2 prompt drafttable. Scope: cantor.html only.
+  Acceptance: AudioInterpreter is the sole audio-event publisher
+  visible in the template, source tags present on all
+  MusicalEventStream.publish call sites, no behavioral regressions
+  on the audio-onset-analysis test corpus.
+- STATUS.md cleanup is a separate session, on `dev`. The
+  cross-tool plan (SkratchLab loop pedal → Cantor) and the
+  AudioInterpreter "second consumer" pattern (Tone.Player → analyzer
+  routing) are future work, not part of Phase 2.
+
+### Out of scope / deferred
+- SkratchLab → Cantor cross-tool wiring. Three sub-tasks identified
+  (loop pedal keyboard layers, loop pedal mic layers, Blockly
+  music-engine triggers), all deferred to post-Phase-2.
+- Routing `Tone.Player` output through AudioInterpreter as a second
+  consumer pattern. Real session, but unblocks tab-audio capture
+  and file playback at the same time, so worth scoping properly
+  rather than rushing it.
+- STATUS.md cleanup (Cantor block consolidation, Current Focus
+  rewrite, Next Priorities triage). Separate session, on `dev`.
+
+
 ## 2026-04-30 — Lifted rewireForTone into audio-input.js
 
 ### Landed
